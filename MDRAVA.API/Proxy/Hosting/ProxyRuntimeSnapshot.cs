@@ -6,4 +6,7 @@ public sealed record ProxyRuntimeSnapshot(
     string? Endpoint,
     DateTimeOffset? StartedAt,
     DateTimeOffset? StoppedAt,
-    string? LastError);
+    string? LastError,
+    bool IsShuttingDown = false,
+    DateTimeOffset? ShutdownStartedAtUtc = null,
+    DateTimeOffset? ShutdownDeadlineUtc = null);

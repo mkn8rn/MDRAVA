@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using MDRAVA.API.Proxy.Connections;
@@ -8,6 +9,7 @@ using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Observability;
 using MDRAVA.API.Proxy.Routing;
+using MDRAVA.API.Proxy.Runtime;
 using MDRAVA.API.Proxy.Tls;
 
 namespace MDRAVA.API.Proxy.Hosting;
@@ -25,9 +27,14 @@ public sealed class ProxyListenerService : BackgroundService
     private readonly ProxyMetrics _metrics;
     private readonly RequestIdGenerator _requestIdGenerator;
     private readonly AccessLogEmitter _accessLogEmitter;
+    private readonly ProxyAdmissionController _admission;
+    private readonly ProxyShutdownCoordinator _shutdown;
+    private readonly UpstreamConnectionPool _upstreamConnectionPool;
+    private readonly ClientRateLimiter _rateLimiter;
     private readonly ProxyRuntimeState _runtimeState;
     private readonly ILogger<ProxyListenerService> _logger;
     private readonly ILogger<ClientConnection> _connectionLogger;
+    private readonly ConcurrentDictionary<Task, byte> _connectionTasks = new();
     private Socket? _listenSocket;
 
     public ProxyListenerService(
@@ -42,6 +49,10 @@ public sealed class ProxyListenerService : BackgroundService
         ProxyMetrics metrics,
         RequestIdGenerator requestIdGenerator,
         AccessLogEmitter accessLogEmitter,
+        ProxyAdmissionController admission,
+        ProxyShutdownCoordinator shutdown,
+        UpstreamConnectionPool upstreamConnectionPool,
+        ClientRateLimiter rateLimiter,
         ProxyRuntimeState runtimeState,
         ILogger<ProxyListenerService> logger,
         ILogger<ClientConnection> connectionLogger)
@@ -57,6 +68,10 @@ public sealed class ProxyListenerService : BackgroundService
         _metrics = metrics;
         _requestIdGenerator = requestIdGenerator;
         _accessLogEmitter = accessLogEmitter;
+        _admission = admission;
+        _shutdown = shutdown;
+        _upstreamConnectionPool = upstreamConnectionPool;
+        _rateLimiter = rateLimiter;
         _runtimeState = runtimeState;
         _logger = logger;
         _connectionLogger = connectionLogger;
@@ -116,7 +131,20 @@ public sealed class ProxyListenerService : BackgroundService
                 _metrics.ConnectionAccepted();
                 var requestSnapshot = _configurationStore.Snapshot;
                 var requestListener = ResolveRequestListener(requestSnapshot, listener);
-                _ = RunConnectionAsync(clientSocket, requestSnapshot, requestListener, stoppingToken);
+                var admissionLease = _admission.TryAcquireClientConnection(requestSnapshot.Limits.MaxActiveClientConnections);
+                if (admissionLease is null)
+                {
+                    clientSocket.Dispose();
+                    continue;
+                }
+
+                var connectionTask = RunConnectionAsync(clientSocket, requestSnapshot, requestListener, admissionLease, _shutdown.Token);
+                _connectionTasks.TryAdd(connectionTask, 0);
+                _ = connectionTask.ContinueWith(
+                    completed => _connectionTasks.TryRemove(completed, out _),
+                    CancellationToken.None,
+                    TaskContinuationOptions.ExecuteSynchronously,
+                    TaskScheduler.Default);
             }
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -138,17 +166,40 @@ public sealed class ProxyListenerService : BackgroundService
 
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
-        var stopTask = base.StopAsync(cancellationToken);
+        var snapshot = _configurationStore.Snapshot;
+        var shutdownToken = _shutdown.BeginShutdown(snapshot.Limits.ShutdownGracePeriod);
+        if (_shutdown.StartedAtUtc is not null && _shutdown.DeadlineUtc is not null)
+        {
+            _runtimeState.MarkShuttingDown(_shutdown.StartedAtUtc.Value, _shutdown.DeadlineUtc.Value);
+        }
+
         _listenSocket?.Dispose();
-        await stopTask;
+        await base.StopAsync(cancellationToken);
+
+        var activeTasks = _connectionTasks.Keys.ToArray();
+        if (activeTasks.Length > 0)
+        {
+            try
+            {
+                await Task.WhenAll(activeTasks).WaitAsync(shutdownToken);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("Proxy shutdown grace period elapsed with {ActiveConnectionCount} active client connection tasks.", _connectionTasks.Count);
+            }
+        }
+
+        _upstreamConnectionPool.Dispose();
     }
 
     private async Task RunConnectionAsync(
         Socket clientSocket,
         ProxyConfigurationSnapshot snapshot,
         RuntimeListener listener,
+        AdmissionLease admissionLease,
         CancellationToken cancellationToken)
     {
+        using var ownedAdmission = admissionLease;
         try
         {
             var connection = new ClientConnection(
@@ -165,6 +216,7 @@ public sealed class ProxyListenerService : BackgroundService
                 _metrics,
                 _requestIdGenerator,
                 _accessLogEmitter,
+                _rateLimiter,
                 _connectionLogger);
 
             await connection.RunAsync(cancellationToken);

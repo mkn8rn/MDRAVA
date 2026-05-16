@@ -57,4 +57,11 @@ public sealed record ProxyMetricsSnapshot(
     long RequestIdsGenerated,
     long AccessLogsEmitted,
     long RecentDiagnosticsOverwritten,
+    long ConnectionAdmissionRejections,
+    long ActiveTlsHandshakes,
+    long TlsHandshakeAdmissionRejections,
+    long RateLimitedRequests,
+    long RateLimitedUpgrades,
+    long RequestBodySizeRejections,
+    long ParserLimitRejections,
     IReadOnlyDictionary<string, long> RequestFailuresByKind);

@@ -292,6 +292,104 @@ internal static class ProxyIntegrationTests
         }
     }
 
+    public static async Task OversizedRequestHeadIsRejected()
+    {
+        var largeHeader = new string('a', 1500);
+        var result = await RunProxyScenarioAsync(
+            $"GET /large HTTP/1.1\r\nHost: large.test\r\nX-Large: {largeHeader}\r\n\r\n",
+            "HTTP/1.1 500 Should Not Happen\r\nContent-Length: 0\r\n\r\n",
+            expectUpstreamConnection: false,
+            maxRequestHeadBytes: 1024);
+
+        AssertEx.True(result.ClientResponse.Contains("431 Request Header Fields Too Large", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.Equal(1L, result.Metrics.ParserLimitRejections);
+    }
+
+    public static async Task ExcessiveHeaderCountIsRejected()
+    {
+        var result = await RunProxyScenarioAsync(
+            "GET /headers HTTP/1.1\r\nHost: headers.test\r\nX-One: 1\r\nX-Two: 2\r\n\r\n",
+            "HTTP/1.1 500 Should Not Happen\r\nContent-Length: 0\r\n\r\n",
+            expectUpstreamConnection: false,
+            maxHeaderCount: 1);
+
+        AssertEx.True(result.ClientResponse.Contains("431 Request Header Fields Too Large", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.Equal("ParserLimitExceeded", result.Diagnostics[0].FailureKind);
+    }
+
+    public static async Task ExcessiveHeaderLineIsRejected()
+    {
+        var result = await RunProxyScenarioAsync(
+            $"GET /line HTTP/1.1\r\nHost: line.test\r\nX-Long: {new string('a', 96)}\r\n\r\n",
+            "HTTP/1.1 500 Should Not Happen\r\nContent-Length: 0\r\n\r\n",
+            expectUpstreamConnection: false,
+            maxHeaderLineBytes: 64);
+
+        AssertEx.True(result.ClientResponse.Contains("431 Request Header Fields Too Large", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.Equal("ParserLimitExceeded", result.Diagnostics[0].FailureKind);
+    }
+
+    public static async Task ExcessiveRequestBodySizeIsRejected()
+    {
+        var result = await RunProxyScenarioAsync(
+            "POST /body HTTP/1.1\r\nHost: body.test\r\nContent-Length: 6\r\n\r\nabcdef",
+            "HTTP/1.1 500 Should Not Happen\r\nContent-Length: 0\r\n\r\n",
+            expectUpstreamConnection: false,
+            maxRequestBodyBytes: 5);
+
+        AssertEx.True(result.ClientResponse.Contains("413 Payload Too Large", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.Equal("RequestPayloadTooLarge", result.Diagnostics[0].FailureKind);
+    }
+
+    public static async Task ChunkedRequestBodySizeIsRejected()
+    {
+        var result = await RunProxyScenarioAsync(
+            "POST /chunk-limit HTTP/1.1\r\nHost: body.test\r\nTransfer-Encoding: chunked\r\n\r\n6\r\nabcdef\r\n0\r\n\r\n",
+            "HTTP/1.1 500 Should Not Happen\r\nContent-Length: 0\r\n\r\n",
+            readBodyFromUpstreamRequest: false,
+            maxRequestBodyBytes: 5);
+
+        AssertEx.True(result.ClientResponse.Contains("413 Payload Too Large", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.Equal("RequestPayloadTooLarge", result.Diagnostics[0].FailureKind);
+    }
+
+    public static async Task PerIpRequestRateLimitIsEnforced()
+    {
+        var proxyPort = GetFreeTcpPort();
+        var upstreamPort = GetFreeTcpPort();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var upstreamStop = new CancellationTokenSource();
+        var dataDirectory = Path.Combine(Path.GetTempPath(), $"mdrava-rate-{Guid.NewGuid():N}");
+
+        try
+        {
+            ConfigurationTests.WriteSite(dataDirectory, "rate.json", proxyPort, upstreamPort);
+            ConfigurationTests.WriteOperationalConfig(dataDirectory, requestsPerMinutePerIp: 1);
+            var upstreamTask = RunReusableHttpUpstreamAsync(upstreamPort, "ok", upstreamStop.Token);
+            using var host = BuildProxyHost(dataDirectory);
+            await host.StartAsync(timeout.Token);
+
+            var first = await SendSingleRequestAsync(proxyPort, "GET /one HTTP/1.1\r\nHost: rate.test\r\nConnection: close\r\n\r\n", timeout.Token);
+            var second = await SendSingleRequestAsync(proxyPort, "GET /two HTTP/1.1\r\nHost: rate.test\r\nConnection: close\r\n\r\n", timeout.Token);
+
+            await host.StopAsync(CancellationToken.None);
+            await upstreamStop.CancelAsync();
+            await upstreamTask.WaitAsync(timeout.Token);
+
+            var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
+            var diagnostic = host.Services.GetRequiredService<RecentRequestDiagnosticsStore>().Recent(10)[0];
+            AssertEx.True(first.Contains("200 OK", StringComparison.Ordinal), first);
+            AssertEx.True(second.Contains("429 Too Many Requests", StringComparison.Ordinal), second);
+            AssertEx.Equal(1L, metrics.RateLimitedRequests);
+            AssertEx.Equal("RateLimited", diagnostic.FailureKind);
+        }
+        finally
+        {
+            await upstreamStop.CancelAsync();
+            DeleteDirectory(dataDirectory);
+        }
+    }
+
     public static async Task TimesOutIncompleteRequestHead()
     {
         var result = await RunProxyScenarioAsync(
@@ -1031,7 +1129,13 @@ internal static class ProxyIntegrationTests
         int? timeoutMs = null,
         bool sendUpstreamResponse = true,
         bool? accessLogEnabled = null,
-        int? recentDiagnosticsCapacity = null)
+        int? recentDiagnosticsCapacity = null,
+        int? maxRequestHeadBytes = null,
+        int? maxHeaderCount = null,
+        int? maxHeaderLineBytes = null,
+        long? maxRequestBodyBytes = null,
+        int? requestsPerMinutePerIp = null,
+        int? upgradeRequestsPerMinutePerIp = null)
     {
         var proxyPort = GetFreeTcpPort();
         var upstreamPort = GetFreeTcpPort();
@@ -1039,7 +1143,15 @@ internal static class ProxyIntegrationTests
         var dataDirectory = Path.Combine(Path.GetTempPath(), $"mdrava-integration-{Guid.NewGuid():N}");
 
         ConfigurationTests.WriteSite(dataDirectory, "scenario.json", proxyPort, upstreamPort);
-        if (timeoutMs.HasValue || accessLogEnabled.HasValue || recentDiagnosticsCapacity.HasValue)
+        if (timeoutMs.HasValue
+            || accessLogEnabled.HasValue
+            || recentDiagnosticsCapacity.HasValue
+            || maxRequestHeadBytes.HasValue
+            || maxHeaderCount.HasValue
+            || maxHeaderLineBytes.HasValue
+            || maxRequestBodyBytes.HasValue
+            || requestsPerMinutePerIp.HasValue
+            || upgradeRequestsPerMinutePerIp.HasValue)
         {
             ConfigurationTests.WriteOperationalConfig(
                 dataDirectory,
@@ -1050,7 +1162,13 @@ internal static class ProxyIntegrationTests
                 upstreamResponseBodyIdleTimeoutMs: timeoutMs ?? 1000,
                 downstreamWriteTimeoutMs: 1000,
                 accessLogEnabled: accessLogEnabled ?? true,
-                recentDiagnosticsCapacity: recentDiagnosticsCapacity ?? 500);
+                recentDiagnosticsCapacity: recentDiagnosticsCapacity ?? 500,
+                maxRequestHeadBytes: maxRequestHeadBytes ?? 32768,
+                maxHeaderCount: maxHeaderCount ?? 128,
+                maxHeaderLineBytes: maxHeaderLineBytes ?? 8192,
+                maxRequestBodyBytes: maxRequestBodyBytes ?? 104857600,
+                requestsPerMinutePerIp: requestsPerMinutePerIp ?? 240,
+                upgradeRequestsPerMinutePerIp: upgradeRequestsPerMinutePerIp ?? 30);
         }
         var upstreamTask = expectUpstreamConnection
             ? RunScenarioUpstreamAsync(upstreamPort, upstreamResponse, readBodyFromUpstreamRequest, sendUpstreamResponse, timeout.Token)

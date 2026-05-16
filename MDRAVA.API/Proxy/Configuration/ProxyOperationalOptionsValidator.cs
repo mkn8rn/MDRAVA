@@ -22,6 +22,7 @@ public static class ProxyOperationalOptionsValidator
         ValidateTimeout(failures, nameof(options.Timeouts.TunnelIdleTimeoutMs), options.Timeouts.TunnelIdleTimeoutMs);
         ValidateConnectionLimits(failures, options.Connections);
         ValidateObservability(failures, options.Observability);
+        ValidateLimits(failures, options.Limits);
         ValidateCertificates(failures, options.Certificates);
         return failures;
     }
@@ -92,6 +93,59 @@ public static class ProxyOperationalOptionsValidator
         if (options.RecentDiagnosticsCapacity is < MinimumDiagnosticsCapacity or > MaximumDiagnosticsCapacity)
         {
             failures.Add($"Proxy observability setting RecentDiagnosticsCapacity must be between {MinimumDiagnosticsCapacity} and {MaximumDiagnosticsCapacity}.");
+        }
+    }
+
+    private static void ValidateLimits(List<string> failures, ProxyLimitsOptions options)
+    {
+        if (options.MaxActiveClientConnections is < 1 or > 1_000_000)
+        {
+            failures.Add("Proxy limit MaxActiveClientConnections must be between 1 and 1000000.");
+        }
+
+        if (options.MaxConcurrentTlsHandshakes is < 1 or > 100_000)
+        {
+            failures.Add("Proxy limit MaxConcurrentTlsHandshakes must be between 1 and 100000.");
+        }
+
+        if (options.RequestsPerMinutePerIp is < 1 or > 1_000_000)
+        {
+            failures.Add("Proxy limit RequestsPerMinutePerIp must be between 1 and 1000000.");
+        }
+
+        if (options.UpgradeRequestsPerMinutePerIp is < 1 or > 1_000_000)
+        {
+            failures.Add("Proxy limit UpgradeRequestsPerMinutePerIp must be between 1 and 1000000.");
+        }
+
+        if (options.MaxRequestHeadBytes is < 1024 or > 1024 * 1024)
+        {
+            failures.Add("Proxy limit MaxRequestHeadBytes must be between 1024 and 1048576.");
+        }
+
+        if (options.MaxHeaderCount is < 1 or > 10_000)
+        {
+            failures.Add("Proxy limit MaxHeaderCount must be between 1 and 10000.");
+        }
+
+        if (options.MaxHeaderLineBytes is < 64 or > 1024 * 1024)
+        {
+            failures.Add("Proxy limit MaxHeaderLineBytes must be between 64 and 1048576.");
+        }
+
+        if (options.MaxRequestBodyBytes is < 0 or > 1L * 1024 * 1024 * 1024 * 1024)
+        {
+            failures.Add("Proxy limit MaxRequestBodyBytes must be between 0 and 1099511627776.");
+        }
+
+        if (options.MaxPathBytes is < 1 or > 1024 * 1024)
+        {
+            failures.Add("Proxy limit MaxPathBytes must be between 1 and 1048576.");
+        }
+
+        if (options.ShutdownGracePeriodSeconds is < 1 or > 3600)
+        {
+            failures.Add("Proxy limit ShutdownGracePeriodSeconds must be between 1 and 3600.");
         }
     }
 }

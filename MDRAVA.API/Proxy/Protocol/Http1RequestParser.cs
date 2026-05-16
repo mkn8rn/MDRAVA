@@ -11,6 +11,20 @@ public static class Http1RequestParser
         out Http1RequestHead? requestHead,
         out Http1ParseError error)
     {
+        return TryParse(
+            requestHeadBytes,
+            new Http1RequestParseLimits(int.MaxValue, int.MaxValue, int.MaxValue),
+            out requestHead,
+            out error);
+    }
+
+    public static bool TryParse(
+        ReadOnlySpan<byte> requestHeadBytes,
+        Http1RequestParseLimits limits,
+        [NotNullWhen(true)]
+        out Http1RequestHead? requestHead,
+        out Http1ParseError error)
+    {
         requestHead = null;
         error = Http1ParseError.None;
 
@@ -28,6 +42,12 @@ public static class Http1RequestParser
         }
 
         var requestLine = requestHeadBytes[..requestLineLength];
+        if (requestLine.Length > limits.MaxHeaderLineBytes)
+        {
+            error = Http1ParseError.HeaderLineTooLarge;
+            return false;
+        }
+
         var firstSpace = requestLine.IndexOf((byte)' ');
         if (firstSpace <= 0)
         {
@@ -59,6 +79,12 @@ public static class Http1RequestParser
             return false;
         }
 
+        if (targetBytes.Length > limits.MaxPathBytes)
+        {
+            error = Http1ParseError.TargetTooLarge;
+            return false;
+        }
+
         string? host = null;
         List<Http1HeaderField> headers = [];
         List<string> contentLengthValues = [];
@@ -78,6 +104,18 @@ public static class Http1RequestParser
             if (lineLength == 0)
             {
                 break;
+            }
+
+            if (lineLength > limits.MaxHeaderLineBytes)
+            {
+                error = Http1ParseError.HeaderLineTooLarge;
+                return false;
+            }
+
+            if (headers.Count >= limits.MaxHeaderCount)
+            {
+                error = Http1ParseError.HeaderCountExceeded;
+                return false;
             }
 
             var headerLine = remaining[..lineLength];

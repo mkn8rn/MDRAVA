@@ -32,6 +32,8 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Loader loads observability defaults", ConfigurationTests.LoaderLoadsObservabilityDefaults),
     ("Loader loads explicit observability settings", ConfigurationTests.LoaderLoadsExplicitObservabilitySettings),
     ("Loader rejects invalid observability capacity", ConfigurationTests.LoaderRejectsInvalidObservabilityCapacity),
+    ("Loader loads hardening limit defaults", ConfigurationTests.LoaderLoadsLimitDefaults),
+    ("Loader rejects invalid hardening limits", ConfigurationTests.LoaderRejectsInvalidLimitSettings),
     ("Loader rejects invalid operational timeout settings", ConfigurationTests.LoaderRejectsInvalidOperationalTimeouts),
     ("Loader rejects invalid tunnel connection limit", ConfigurationTests.LoaderRejectsInvalidTunnelLimit),
     ("Loader loads HTTPS listener with certificate", ConfigurationTests.LoaderLoadsHttpsListenerWithCertificate),
@@ -64,6 +66,12 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Proxy dataplane records upstream connect failure diagnostics", ProxyIntegrationTests.UpstreamConnectFailureProducesDiagnosticClassification),
     ("Proxy dataplane can disable access logs while keeping diagnostics", ProxyIntegrationTests.AccessLoggingCanBeDisabledWhileDiagnosticsRemainEnabled),
     ("Proxy dataplane records no-route diagnostics and status summary", ProxyIntegrationTests.NoMatchingRouteProducesDiagnosticClassification),
+    ("Proxy dataplane rejects oversized request head", ProxyIntegrationTests.OversizedRequestHeadIsRejected),
+    ("Proxy dataplane rejects excessive header count", ProxyIntegrationTests.ExcessiveHeaderCountIsRejected),
+    ("Proxy dataplane rejects excessive header line", ProxyIntegrationTests.ExcessiveHeaderLineIsRejected),
+    ("Proxy dataplane rejects excessive request body size", ProxyIntegrationTests.ExcessiveRequestBodySizeIsRejected),
+    ("Proxy dataplane rejects oversized chunked request body", ProxyIntegrationTests.ChunkedRequestBodySizeIsRejected),
+    ("Proxy dataplane enforces per-IP request rate limit", ProxyIntegrationTests.PerIpRequestRateLimitIsEnforced),
     ("Proxy dataplane times out incomplete request head", ProxyIntegrationTests.TimesOutIncompleteRequestHead),
     ("Proxy dataplane times out incomplete Content-Length request body", ProxyIntegrationTests.TimesOutIncompleteContentLengthRequestBody),
     ("Proxy dataplane times out incomplete chunked request body", ProxyIntegrationTests.TimesOutIncompleteChunkedRequestBody),
@@ -113,7 +121,13 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Upstream pool uses distinct endpoint keys", ProxyIntegrationTests.UpstreamPoolUsesDistinctEndpointKeys),
     ("Recent diagnostics store is bounded", Sync(ObservabilityTests.RecentDiagnosticsStoreIsBounded)),
     ("Diagnostics controller honors safe limit", Sync(ObservabilityTests.DiagnosticsControllerHonorsSafeLimit)),
-    ("Diagnostics event omits bodies and secrets", Sync(ObservabilityTests.DiagnosticsEventDoesNotCarryBodiesOrSecrets))
+    ("Diagnostics event omits bodies and secrets", Sync(ObservabilityTests.DiagnosticsEventDoesNotCarryBodiesOrSecrets)),
+    ("Admission controller enforces client limit", Sync(HardeningTests.AdmissionControllerEnforcesClientLimit)),
+    ("Admission controller enforces TLS handshake limit", Sync(HardeningTests.AdmissionControllerEnforcesTlsHandshakeLimit)),
+    ("Rate limiter enforces request limit and refill", Sync(HardeningTests.RateLimiterEnforcesRequestLimitAndRefills)),
+    ("Rate limiter enforces upgrade limit", Sync(HardeningTests.RateLimiterEnforcesUpgradeLimit)),
+    ("Rate limiter cleans stale entries", Sync(HardeningTests.RateLimiterCleansStaleEntries)),
+    ("Shutdown coordinator exposes grace deadline", Sync(HardeningTests.ShutdownCoordinatorExposesGraceDeadlineAndCancels))
 };
 
 var failures = 0;

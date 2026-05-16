@@ -7,7 +7,9 @@ using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Observability;
 using MDRAVA.API.Proxy.Protocol;
 using MDRAVA.API.Proxy.Routing;
+using MDRAVA.API.Proxy.Runtime;
 using MDRAVA.API.Proxy.Tls;
+using System.Net;
 
 namespace MDRAVA.API.Proxy.Connections;
 
@@ -30,6 +32,7 @@ public sealed class ClientConnection
     private readonly ProxyMetrics _metrics;
     private readonly RequestIdGenerator _requestIdGenerator;
     private readonly AccessLogEmitter _accessLogEmitter;
+    private readonly ClientRateLimiter _rateLimiter;
     private readonly ILogger<ClientConnection> _logger;
 
     public ClientConnection(
@@ -46,6 +49,7 @@ public sealed class ClientConnection
         ProxyMetrics metrics,
         RequestIdGenerator requestIdGenerator,
         AccessLogEmitter accessLogEmitter,
+        ClientRateLimiter rateLimiter,
         ILogger<ClientConnection> logger)
     {
         _socket = socket;
@@ -61,6 +65,7 @@ public sealed class ClientConnection
         _metrics = metrics;
         _requestIdGenerator = requestIdGenerator;
         _accessLogEmitter = accessLogEmitter;
+        _rateLimiter = rateLimiter;
         _logger = logger;
     }
 
@@ -86,7 +91,8 @@ public sealed class ClientConnection
         }
 
         await using var ownedClientStream = clientStream;
-        var requestHeadBuffer = ArrayPool<byte>.Shared.Rent(_listener.MaxRequestHeadBytes);
+        var maxRequestHeadBytes = Math.Min(_listener.MaxRequestHeadBytes, _configurationSnapshot.Limits.MaxRequestHeadBytes);
+        var requestHeadBuffer = ArrayPool<byte>.Shared.Rent(maxRequestHeadBytes);
         var requestsProcessed = 0;
         ProxyRequestContext? currentContext = null;
 
@@ -102,7 +108,7 @@ public sealed class ClientConnection
                     ? _configurationSnapshot.Timeouts.ClientRequestHeadTimeout
                     : _configurationSnapshot.Timeouts.ClientKeepAliveIdleTimeout;
                 var requestHeadRead = await ProxyTimeoutPolicy.RunAsync(
-                    timeoutToken => ReadRequestHeadAsync(clientStream, requestHeadBuffer, timeoutToken),
+                    timeoutToken => ReadRequestHeadAsync(clientStream, requestHeadBuffer, maxRequestHeadBytes, timeoutToken),
                     timeout,
                     timeoutKind,
                     cancellationToken);
@@ -116,6 +122,7 @@ public sealed class ClientConnection
                 if (requestHeadRead.HeadLength == RequestHeadTooLarge)
                 {
                     _metrics.ParseFailed();
+                    _metrics.ParserLimitRejected();
                     _metrics.MalformedRequestRejected();
                     await WriteGeneratedResponseAsync(
                         clientStream,
@@ -123,7 +130,7 @@ public sealed class ClientConnection
                         "Request Header Fields Too Large",
                         "Request Head Too Large",
                         currentContext,
-                        ProxyFailureKind.ClientMalformedRequest,
+                        ProxyFailureKind.ParserLimitExceeded,
                         cancellationToken);
                     CompleteContext(ref currentContext);
                     return;
@@ -146,9 +153,31 @@ public sealed class ClientConnection
                 }
 
                 var requestHeadBytes = requestHeadRead.HeadBytes;
-                if (!Http1RequestParser.TryParse(requestHeadBytes.Span, out var requestHead, out var parseError))
+                if (!Http1RequestParser.TryParse(
+                        requestHeadBytes.Span,
+                        new Http1RequestParseLimits(
+                            _configurationSnapshot.Limits.MaxHeaderCount,
+                            _configurationSnapshot.Limits.MaxHeaderLineBytes,
+                            _configurationSnapshot.Limits.MaxPathBytes),
+                        out var requestHead,
+                        out var parseError))
                 {
                     _metrics.ParseFailed();
+                    if (parseError is Http1ParseError.HeaderCountExceeded or Http1ParseError.HeaderLineTooLarge or Http1ParseError.TargetTooLarge)
+                    {
+                        _metrics.ParserLimitRejected();
+                        await WriteGeneratedResponseAsync(
+                            clientStream,
+                            431,
+                            "Request Header Fields Too Large",
+                            "Request Head Too Large",
+                            currentContext,
+                            ProxyFailureKind.ParserLimitExceeded,
+                            cancellationToken);
+                        CompleteContext(ref currentContext);
+                        return;
+                    }
+
                     if (parseError == Http1ParseError.UnsupportedTransferEncoding)
                     {
                         _metrics.UnsupportedRequestFramingRejected();
@@ -184,6 +213,36 @@ public sealed class ClientConnection
                     requestHead.Host,
                     requestHead.Target,
                     ExtractExternalRequestId(requestHead));
+
+                if (!_rateLimiter.TryAcquireRequest(GetClientIpAddress(), _configurationSnapshot.Limits.RequestsPerMinutePerIp))
+                {
+                    await WriteGeneratedResponseAsync(
+                        clientStream,
+                        429,
+                        "Too Many Requests",
+                        "Too Many Requests",
+                        currentContext,
+                        ProxyFailureKind.RateLimited,
+                        cancellationToken);
+                    CompleteContext(ref currentContext);
+                    return;
+                }
+
+                if (requestHead.Framing.Kind == Http1BodyKind.ContentLength
+                    && requestHead.Framing.ContentLength.GetValueOrDefault() > _configurationSnapshot.Limits.MaxRequestBodyBytes)
+                {
+                    _metrics.RequestBodySizeRejected();
+                    await WriteGeneratedResponseAsync(
+                        clientStream,
+                        413,
+                        "Payload Too Large",
+                        "Payload Too Large",
+                        currentContext,
+                        ProxyFailureKind.RequestPayloadTooLarge,
+                        cancellationToken);
+                    CompleteContext(ref currentContext);
+                    return;
+                }
 
                 if (IsUnsupportedConnectionMethod(requestHead.Method))
                 {
@@ -260,6 +319,7 @@ public sealed class ClientConnection
                     _listener,
                     _configurationSnapshot.Timeouts,
                     _configurationSnapshot.ConnectionLimits,
+                    _configurationSnapshot.Limits,
                     preferKeepAlive,
                     currentContext.RequestId,
                     cancellationToken);
@@ -344,6 +404,20 @@ public sealed class ClientConnection
         _ = requestHeadRead;
         context.IsUpgrade = true;
         _metrics.UpgradeRequestReceived();
+        if (!_rateLimiter.TryAcquireUpgrade(GetClientIpAddress(), _configurationSnapshot.Limits.UpgradeRequestsPerMinutePerIp))
+        {
+            _metrics.UpgradeRequestRejected();
+            await WriteGeneratedResponseAsync(
+                clientStream,
+                429,
+                "Too Many Requests",
+                "Too Many Requests",
+                context,
+                ProxyFailureKind.UpgradeRateLimited,
+                cancellationToken);
+            return false;
+        }
+
         if (!_upgradeRequestPolicy.TryValidate(requestHead, out var upgrade, out var rejectionReason) || upgrade is null)
         {
             _metrics.UpgradeRequestRejected();
@@ -418,11 +492,12 @@ public sealed class ClientConnection
     private async ValueTask<Http1HeadReadResult> ReadRequestHeadAsync(
         Stream clientStream,
         byte[] requestHeadBuffer,
+        int maxRequestHeadBytes,
         CancellationToken cancellationToken)
     {
         var totalBytesRead = 0;
 
-        while (totalBytesRead < _listener.MaxRequestHeadBytes)
+        while (totalBytesRead < maxRequestHeadBytes)
         {
             var bytesRead = await clientStream.ReadAsync(
                 requestHeadBuffer.AsMemory(totalBytesRead, 1),
@@ -484,6 +559,11 @@ public sealed class ClientConnection
             _listener.Transport,
             _socket.RemoteEndPoint?.ToString(),
             _configurationSnapshot.Version);
+    }
+
+    private IPAddress? GetClientIpAddress()
+    {
+        return _socket.RemoteEndPoint is IPEndPoint endpoint ? endpoint.Address : null;
     }
 
     private void CompleteContext(ref ProxyRequestContext? context)

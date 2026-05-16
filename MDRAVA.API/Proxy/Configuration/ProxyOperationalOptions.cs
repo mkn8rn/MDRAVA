@@ -8,5 +8,7 @@ public sealed class ProxyOperationalOptions
 
     public ProxyObservabilityOptions Observability { get; init; } = new();
 
+    public ProxyLimitsOptions Limits { get; init; } = new();
+
     public List<CertificateOptions> Certificates { get; init; } = [];
 }

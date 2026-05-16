@@ -2,6 +2,8 @@ namespace MDRAVA.API.Proxy.Observability;
 
 public sealed class AccessLogEmitter
 {
+    private const int MaxDiagnosticTextLength = 512;
+
     private readonly RecentRequestDiagnosticsStore _diagnostics;
     private readonly Metrics.ProxyMetrics _metrics;
     private readonly ILogger<AccessLogEmitter> _logger;
@@ -20,18 +22,18 @@ public sealed class AccessLogEmitter
     {
         var diagnostic = new ProxyRequestDiagnosticEvent(
             context.StartedAtUtc,
-            context.RequestId,
-            context.ExternalRequestId,
+            TruncateRequired(context.RequestId),
+            Truncate(context.ExternalRequestId),
             context.ConfigVersion,
-            context.ListenerName,
-            context.Transport,
-            context.ClientEndpoint,
-            context.Method,
-            context.Host,
-            context.Target,
-            context.RouteName,
-            context.UpstreamName,
-            context.UpstreamEndpoint,
+            TruncateRequired(context.ListenerName),
+            TruncateRequired(context.Transport),
+            Truncate(context.ClientEndpoint),
+            Truncate(context.Method),
+            Truncate(context.Host),
+            Truncate(context.Target),
+            Truncate(context.RouteName),
+            Truncate(context.UpstreamName),
+            Truncate(context.UpstreamEndpoint),
             context.ResponseStatusCode,
             (long)context.Elapsed.TotalMilliseconds,
             context.FailureKind.ToString(),
@@ -39,7 +41,7 @@ public sealed class AccessLogEmitter
             context.KeepClientConnectionOpen,
             context.IsUpgrade,
             context.TunnelEstablished,
-            context.TunnelCloseReason,
+            Truncate(context.TunnelCloseReason),
             context.TunnelBytesClientToUpstream,
             context.TunnelBytesUpstreamToClient);
 
@@ -77,5 +79,22 @@ public sealed class AccessLogEmitter
             diagnostic.IsUpgrade,
             diagnostic.TunnelEstablished,
             diagnostic.ConfigVersion);
+    }
+
+    private static string? Truncate(string? value)
+    {
+        if (value is null || value.Length <= MaxDiagnosticTextLength)
+        {
+            return value;
+        }
+
+        return value[..MaxDiagnosticTextLength];
+    }
+
+    private static string TruncateRequired(string value)
+    {
+        return value.Length <= MaxDiagnosticTextLength
+            ? value
+            : value[..MaxDiagnosticTextLength];
     }
 }

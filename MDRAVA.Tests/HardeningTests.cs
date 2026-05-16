@@ -1,0 +1,96 @@
+using System.Net;
+using MDRAVA.API.Proxy.Metrics;
+using MDRAVA.API.Proxy.Runtime;
+
+namespace MDRAVA.Tests;
+
+internal static class HardeningTests
+{
+    public static void AdmissionControllerEnforcesClientLimit()
+    {
+        var metrics = new ProxyMetrics();
+        var admission = new ProxyAdmissionController(metrics);
+
+        using var first = admission.TryAcquireClientConnection(1);
+        var second = admission.TryAcquireClientConnection(1);
+
+        AssertEx.True(first is not null);
+        AssertEx.Equal(null, second);
+        AssertEx.Equal(1L, metrics.Snapshot().ConnectionAdmissionRejections);
+    }
+
+    public static void AdmissionControllerEnforcesTlsHandshakeLimit()
+    {
+        var metrics = new ProxyMetrics();
+        var admission = new ProxyAdmissionController(metrics);
+
+        using var first = admission.TryAcquireTlsHandshake(1);
+        var second = admission.TryAcquireTlsHandshake(1);
+
+        AssertEx.True(first is not null);
+        AssertEx.Equal(null, second);
+        AssertEx.Equal(1L, metrics.Snapshot().TlsHandshakeAdmissionRejections);
+        AssertEx.Equal(1L, metrics.Snapshot().ActiveTlsHandshakes);
+    }
+
+    public static void RateLimiterEnforcesRequestLimitAndRefills()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var metrics = new ProxyMetrics();
+        var limiter = new ClientRateLimiter(metrics, () => now);
+        var ip = IPAddress.Parse("127.0.0.1");
+
+        AssertEx.True(limiter.TryAcquireRequest(ip, 1));
+        AssertEx.False(limiter.TryAcquireRequest(ip, 1));
+        now = now.AddSeconds(61);
+        AssertEx.True(limiter.TryAcquireRequest(ip, 1));
+        AssertEx.Equal(1L, metrics.Snapshot().RateLimitedRequests);
+    }
+
+    public static void RateLimiterEnforcesUpgradeLimit()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var metrics = new ProxyMetrics();
+        var limiter = new ClientRateLimiter(metrics, () => now);
+        var ip = IPAddress.Parse("::ffff:127.0.0.1");
+
+        AssertEx.True(limiter.TryAcquireUpgrade(ip, 1));
+        AssertEx.False(limiter.TryAcquireUpgrade(ip, 1));
+        AssertEx.Equal(1L, metrics.Snapshot().RateLimitedUpgrades);
+    }
+
+    public static void RateLimiterCleansStaleEntries()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var metrics = new ProxyMetrics();
+        var limiter = new ClientRateLimiter(metrics, () => now);
+
+        for (var index = 0; index < 300; index++)
+        {
+            limiter.TryAcquireRequest(IPAddress.Parse($"10.0.0.{index % 250}"), 10);
+        }
+
+        AssertEx.True(limiter.EntryCount > 0);
+        now = now.AddMinutes(6);
+        for (var index = 0; index < 256; index++)
+        {
+            limiter.TryAcquireRequest(IPAddress.Parse($"10.1.0.{index % 250}"), 10);
+        }
+
+        AssertEx.True(limiter.EntryCount < 300);
+    }
+
+    public static void ShutdownCoordinatorExposesGraceDeadlineAndCancels()
+    {
+        using var coordinator = new ProxyShutdownCoordinator();
+
+        var token = coordinator.BeginShutdown(TimeSpan.FromMilliseconds(100));
+
+        AssertEx.True(coordinator.IsShuttingDown);
+        AssertEx.True(coordinator.StartedAtUtc is not null);
+        AssertEx.True(coordinator.DeadlineUtc is not null);
+        AssertEx.False(token.IsCancellationRequested);
+        Thread.Sleep(250);
+        AssertEx.True(token.IsCancellationRequested);
+    }
+}

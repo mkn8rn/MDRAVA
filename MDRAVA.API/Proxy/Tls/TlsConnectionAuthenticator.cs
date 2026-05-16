@@ -4,19 +4,23 @@ using System.Security.Cryptography.X509Certificates;
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Forwarding;
 using MDRAVA.API.Proxy.Metrics;
+using MDRAVA.API.Proxy.Runtime;
 
 namespace MDRAVA.API.Proxy.Tls;
 
 public sealed class TlsConnectionAuthenticator
 {
     private readonly ProxyMetrics _metrics;
+    private readonly ProxyAdmissionController _admission;
     private readonly ILogger<TlsConnectionAuthenticator> _logger;
 
     public TlsConnectionAuthenticator(
         ProxyMetrics metrics,
+        ProxyAdmissionController admission,
         ILogger<TlsConnectionAuthenticator> logger)
     {
         _metrics = metrics;
+        _admission = admission;
         _logger = logger;
     }
 
@@ -27,6 +31,13 @@ public sealed class TlsConnectionAuthenticator
         CancellationToken cancellationToken)
     {
         _metrics.TlsHandshakeAttempted();
+        using var handshakeLease = _admission.TryAcquireTlsHandshake(snapshot.Limits.MaxConcurrentTlsHandshakes);
+        if (handshakeLease is null)
+        {
+            _logger.LogDebug("Rejected TLS handshake for listener {ListenerName} because the concurrent handshake limit is exhausted.", listener.Name);
+            return null;
+        }
+
         var sslStream = new SslStream(transportStream, false);
         var options = new SslServerAuthenticationOptions
         {

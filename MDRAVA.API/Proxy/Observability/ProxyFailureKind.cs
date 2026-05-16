@@ -20,6 +20,12 @@ public enum ProxyFailureKind
     TlsHandshakeTimeout,
     UpgradeValidationFailed,
     UpgradeRejected,
+    RateLimited,
+    UpgradeRateLimited,
+    AdmissionRejected,
+    RequestPayloadTooLarge,
+    ParserLimitExceeded,
+    Shutdown,
     TunnelIdleTimeout,
     TunnelRelayFailure,
     InternalError

@@ -203,6 +203,35 @@ internal static class ConfigurationTests
         AssertEx.True(result.Errors.Any(static error => error.Contains("RecentDiagnosticsCapacity", StringComparison.Ordinal)));
     }
 
+    public static async Task LoaderLoadsLimitDefaults()
+    {
+        using var temp = TemporaryDirectory.Create();
+        WriteSite(temp.Path, "home.json", port: 18080, upstreamPort: 15000);
+        var loader = CreateLoader(temp.Path);
+
+        var result = await loader.LoadAsync(CancellationToken.None);
+
+        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
+        var limits = AssertEx.NotNull(result.Snapshot).Limits;
+        AssertEx.Equal(4096, limits.MaxActiveClientConnections);
+        AssertEx.Equal(128, limits.MaxConcurrentTlsHandshakes);
+        AssertEx.Equal(240, limits.RequestsPerMinutePerIp);
+        AssertEx.Equal(TimeSpan.FromSeconds(15), limits.ShutdownGracePeriod);
+    }
+
+    public static async Task LoaderRejectsInvalidLimitSettings()
+    {
+        using var temp = TemporaryDirectory.Create();
+        WriteSite(temp.Path, "home.json", port: 18080, upstreamPort: 15000);
+        WriteOperationalConfig(temp.Path, maxActiveClientConnections: 0);
+        var loader = CreateLoader(temp.Path);
+
+        var result = await loader.LoadAsync(CancellationToken.None);
+
+        AssertEx.False(result.Succeeded);
+        AssertEx.True(result.Errors.Any(static error => error.Contains("MaxActiveClientConnections", StringComparison.Ordinal)));
+    }
+
     public static async Task LoaderRejectsInvalidOperationalTimeouts()
     {
         using var temp = TemporaryDirectory.Create();
@@ -556,6 +585,16 @@ internal static class ConfigurationTests
         int maxActiveUpgradedTunnels = 1024,
         bool accessLogEnabled = true,
         int recentDiagnosticsCapacity = 500,
+        int maxActiveClientConnections = 4096,
+        int maxConcurrentTlsHandshakes = 128,
+        int requestsPerMinutePerIp = 240,
+        int upgradeRequestsPerMinutePerIp = 30,
+        int maxRequestHeadBytes = 32768,
+        int maxHeaderCount = 128,
+        int maxHeaderLineBytes = 8192,
+        long maxRequestBodyBytes = 104857600,
+        int maxPathBytes = 8192,
+        int shutdownGracePeriodSeconds = 15,
         string? certificateId = null,
         string? certificatePath = null,
         string? certificatePassword = null,
@@ -600,6 +639,18 @@ internal static class ConfigurationTests
               "observability": {
                 "accessLogEnabled": {{accessLogEnabled.ToString().ToLowerInvariant()}},
                 "recentDiagnosticsCapacity": {{recentDiagnosticsCapacity}}
+              },
+              "limits": {
+                "maxActiveClientConnections": {{maxActiveClientConnections}},
+                "maxConcurrentTlsHandshakes": {{maxConcurrentTlsHandshakes}},
+                "requestsPerMinutePerIp": {{requestsPerMinutePerIp}},
+                "upgradeRequestsPerMinutePerIp": {{upgradeRequestsPerMinutePerIp}},
+                "maxRequestHeadBytes": {{maxRequestHeadBytes}},
+                "maxHeaderCount": {{maxHeaderCount}},
+                "maxHeaderLineBytes": {{maxHeaderLineBytes}},
+                "maxRequestBodyBytes": {{maxRequestBodyBytes}},
+                "maxPathBytes": {{maxPathBytes}},
+                "shutdownGracePeriodSeconds": {{shutdownGracePeriodSeconds}}
               },
               "certificates": {{certificatesJson}}
             }

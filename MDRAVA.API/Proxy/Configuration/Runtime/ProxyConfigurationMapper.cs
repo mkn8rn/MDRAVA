@@ -75,7 +75,19 @@ public static class ProxyConfigurationMapper
             operationalOptions.Observability.AccessLogEnabled,
             operationalOptions.Observability.RecentDiagnosticsCapacity);
 
-        return new ProxyConfigurationSnapshot(version, loadedAtUtc, sourceDirectory, sourceFiles, timeouts, connectionLimits, observability, certificates, listeners, routes);
+        var limits = new RuntimeLimits(
+            operationalOptions.Limits.MaxActiveClientConnections,
+            operationalOptions.Limits.MaxConcurrentTlsHandshakes,
+            operationalOptions.Limits.RequestsPerMinutePerIp,
+            operationalOptions.Limits.UpgradeRequestsPerMinutePerIp,
+            operationalOptions.Limits.MaxRequestHeadBytes,
+            operationalOptions.Limits.MaxHeaderCount,
+            operationalOptions.Limits.MaxHeaderLineBytes,
+            operationalOptions.Limits.MaxRequestBodyBytes,
+            operationalOptions.Limits.MaxPathBytes,
+            TimeSpan.FromSeconds(operationalOptions.Limits.ShutdownGracePeriodSeconds));
+
+        return new ProxyConfigurationSnapshot(version, loadedAtUtc, sourceDirectory, sourceFiles, timeouts, connectionLimits, observability, limits, certificates, listeners, routes);
     }
 
     public static ProxyConfigurationProjection ToProjection(ProxyConfigurationSnapshot snapshot)
@@ -88,6 +100,7 @@ public static class ProxyConfigurationMapper
             snapshot.Timeouts,
             snapshot.ConnectionLimits,
             snapshot.Observability,
+            snapshot.Limits,
             snapshot.Certificates.Values
                 .Select(static certificate => new RuntimeCertificateProjection(
                     certificate.Id,

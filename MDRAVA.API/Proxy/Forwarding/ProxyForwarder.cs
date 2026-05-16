@@ -36,6 +36,7 @@ public sealed class ProxyForwarder
         RuntimeListener listener,
         RuntimeTimeouts timeouts,
         RuntimeConnectionLimits connectionLimits,
+        RuntimeLimits limits,
         bool preferClientKeepAlive,
         string requestId,
         CancellationToken cancellationToken)
@@ -72,6 +73,7 @@ public sealed class ProxyForwarder
                 requestHead,
                 listener,
                 timeouts,
+                limits,
                 preReadRequestBodyReader,
                 preReadChunkLine,
                 cancellationToken);
@@ -108,6 +110,28 @@ public sealed class ProxyForwarder
         {
             await HandleTimeoutAsync(clientStream, requestHead, upstream, responseStarted, exception, timeouts, requestId, cancellationToken);
             return new ForwardingResult(false, responseStarted, false, StatusCodeForTimeout(exception.Kind, responseStarted), FailureKindForTimeout(exception.Kind));
+        }
+        catch (Http1PayloadTooLargeException exception)
+        {
+            _metrics.RequestBodySizeRejected();
+            _metrics.ClientBodyRelayFailed();
+            _logger.LogDebug(
+                exception,
+                "Rejected oversized request body for {Method} {Target}",
+                requestHead.Method,
+                requestHead.Target);
+
+            if (!responseStarted)
+            {
+                await ProxyErrorResponses.WriteAsync(
+                    clientStream,
+                    BuildGeneratedPayloadTooLarge(requestId),
+                    timeouts.DownstreamWriteTimeout,
+                    _metrics,
+                    cancellationToken);
+            }
+
+            return new ForwardingResult(false, responseStarted, false, responseStarted ? null : 413, ProxyFailureKind.RequestPayloadTooLarge);
         }
         catch (Http1ClientProtocolException exception)
         {
@@ -285,6 +309,7 @@ public sealed class ProxyForwarder
         Http1RequestHead requestHead,
         RuntimeListener listener,
         RuntimeTimeouts timeouts,
+        RuntimeLimits limits,
         Http1BodyReader? preReadReader,
         byte[]? preReadChunkLine,
         CancellationToken cancellationToken)
@@ -298,7 +323,7 @@ public sealed class ProxyForwarder
             }
             else if (requestHead.Framing.Kind == Http1BodyKind.Chunked)
             {
-                await RelayChunkedBodyAsync(reader, upstreamStream, listener, timeouts.DownstreamWriteTimeout, preReadChunkLine, cancellationToken);
+                await RelayChunkedBodyAsync(reader, upstreamStream, listener, timeouts.DownstreamWriteTimeout, preReadChunkLine, limits.MaxRequestBodyBytes, cancellationToken);
             }
         }
         catch
@@ -418,7 +443,7 @@ public sealed class ProxyForwarder
             }
             else if (responseHead.Framing.Kind == Http1BodyKind.Chunked)
             {
-                await RelayChunkedBodyAsync(reader, clientStream, listener, timeouts.DownstreamWriteTimeout, null, cancellationToken);
+                await RelayChunkedBodyAsync(reader, clientStream, listener, timeouts.DownstreamWriteTimeout, null, null, cancellationToken);
             }
             else if (responseHead.Framing.Kind == Http1BodyKind.CloseDelimited)
             {
@@ -499,9 +524,11 @@ public sealed class ProxyForwarder
         RuntimeListener listener,
         TimeSpan writeTimeout,
         byte[]? initialChunkLine,
+        long? maxPayloadBytes,
         CancellationToken cancellationToken)
     {
         var chunkLine = initialChunkLine;
+        var relayedPayloadBytes = 0L;
         while (true)
         {
             chunkLine ??= await reader.ReadLineWithCrlfAsync(listener.MaxChunkLineBytes, cancellationToken);
@@ -517,6 +544,12 @@ public sealed class ProxyForwarder
             {
                 await RelayTrailerSectionAsync(reader, destination, listener.MaxChunkLineBytes, writeTimeout, cancellationToken);
                 return;
+            }
+
+            relayedPayloadBytes += chunkSize;
+            if (maxPayloadBytes.HasValue && relayedPayloadBytes > maxPayloadBytes.Value)
+            {
+                throw new Http1PayloadTooLargeException("Chunked request body exceeded the configured maximum request body size.");
             }
 
             await RelayFixedLengthBodyAsync(reader, destination, chunkSize, listener.ForwardingBufferBytes, writeTimeout, cancellationToken);
@@ -707,6 +740,12 @@ public sealed class ProxyForwarder
             $"HTTP/1.1 504 Gateway Timeout\r\nConnection: close\r\nContent-Length: 15\r\nContent-Type: text/plain\r\nX-Request-Id: {requestId}\r\n\r\nGateway Timeout");
     }
 
+    private static ReadOnlyMemory<byte> BuildGeneratedPayloadTooLarge(string requestId)
+    {
+        return Encoding.ASCII.GetBytes(
+            $"HTTP/1.1 413 Payload Too Large\r\nConnection: close\r\nContent-Length: 17\r\nContent-Type: text/plain\r\nX-Request-Id: {requestId}\r\n\r\nPayload Too Large");
+    }
+
     private static int? StatusCodeForTimeout(ProxyTimeoutKind timeoutKind, bool responseStarted)
     {
         if (responseStarted)
@@ -873,6 +912,14 @@ public sealed class ProxyForwarder
     private sealed class Http1ClientProtocolException : IOException
     {
         public Http1ClientProtocolException(string message)
+            : base(message)
+        {
+        }
+    }
+
+    private sealed class Http1PayloadTooLargeException : IOException
+    {
+        public Http1PayloadTooLargeException(string message)
             : base(message)
         {
         }

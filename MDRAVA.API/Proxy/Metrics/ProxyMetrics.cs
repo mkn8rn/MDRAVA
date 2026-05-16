@@ -62,6 +62,13 @@ public sealed class ProxyMetrics
     private long _requestIdsGenerated;
     private long _accessLogsEmitted;
     private long _recentDiagnosticsOverwritten;
+    private long _connectionAdmissionRejections;
+    private long _activeTlsHandshakes;
+    private long _tlsHandshakeAdmissionRejections;
+    private long _rateLimitedRequests;
+    private long _rateLimitedUpgrades;
+    private long _requestBodySizeRejections;
+    private long _parserLimitRejections;
     private readonly long[] _requestFailuresByKind = new long[FailureKinds.Length];
 
     public void ConnectionAccepted()
@@ -291,6 +298,22 @@ public sealed class ProxyMetrics
         }
     }
 
+    public void ConnectionAdmissionRejected() => Interlocked.Increment(ref _connectionAdmissionRejections);
+
+    public void TlsHandshakeStarted() => Interlocked.Increment(ref _activeTlsHandshakes);
+
+    public void TlsHandshakeEnded() => Interlocked.Decrement(ref _activeTlsHandshakes);
+
+    public void TlsHandshakeAdmissionRejected() => Interlocked.Increment(ref _tlsHandshakeAdmissionRejections);
+
+    public void RequestRateLimited() => Interlocked.Increment(ref _rateLimitedRequests);
+
+    public void UpgradeRateLimited() => Interlocked.Increment(ref _rateLimitedUpgrades);
+
+    public void RequestBodySizeRejected() => Interlocked.Increment(ref _requestBodySizeRejections);
+
+    public void ParserLimitRejected() => Interlocked.Increment(ref _parserLimitRejections);
+
     public ProxyMetricsSnapshot Snapshot()
     {
         Dictionary<string, long> failuresByKind = new(StringComparer.Ordinal);
@@ -361,6 +384,13 @@ public sealed class ProxyMetrics
             Interlocked.Read(ref _requestIdsGenerated),
             Interlocked.Read(ref _accessLogsEmitted),
             Interlocked.Read(ref _recentDiagnosticsOverwritten),
+            Interlocked.Read(ref _connectionAdmissionRejections),
+            Interlocked.Read(ref _activeTlsHandshakes),
+            Interlocked.Read(ref _tlsHandshakeAdmissionRejections),
+            Interlocked.Read(ref _rateLimitedRequests),
+            Interlocked.Read(ref _rateLimitedUpgrades),
+            Interlocked.Read(ref _requestBodySizeRejections),
+            Interlocked.Read(ref _parserLimitRejections),
             failuresByKind);
     }
 }
