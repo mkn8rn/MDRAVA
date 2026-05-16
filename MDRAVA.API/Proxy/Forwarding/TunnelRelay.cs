@@ -1,0 +1,168 @@
+using System.Buffers;
+using System.Diagnostics;
+using System.Net.Sockets;
+using MDRAVA.API.Proxy.Configuration.Runtime;
+using MDRAVA.API.Proxy.Metrics;
+
+namespace MDRAVA.API.Proxy.Forwarding;
+
+public sealed class TunnelRelay
+{
+    private readonly ProxyMetrics _metrics;
+    private readonly ILogger<TunnelRelay> _logger;
+
+    public TunnelRelay(
+        ProxyMetrics metrics,
+        ILogger<TunnelRelay> logger)
+    {
+        _metrics = metrics;
+        _logger = logger;
+    }
+
+    public async ValueTask RelayAsync(
+        Stream clientStream,
+        Stream upstreamStream,
+        RuntimeListener listener,
+        RuntimeTimeouts timeouts,
+        CancellationToken cancellationToken)
+    {
+        using var tunnelCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var token = tunnelCancellation.Token;
+        var lastActivity = Stopwatch.GetTimestamp();
+        var idleTimedOut = false;
+
+        var clientToUpstream = RelayDirectionAsync(
+            clientStream,
+            upstreamStream,
+            listener.ForwardingBufferBytes,
+            bytes =>
+            {
+                Volatile.Write(ref lastActivity, Stopwatch.GetTimestamp());
+                _metrics.AddTunnelBytesClientToUpstream(bytes);
+            },
+            token).AsTask();
+        var upstreamToClient = RelayDirectionAsync(
+            upstreamStream,
+            clientStream,
+            listener.ForwardingBufferBytes,
+            bytes =>
+            {
+                Volatile.Write(ref lastActivity, Stopwatch.GetTimestamp());
+                _metrics.AddTunnelBytesUpstreamToClient(bytes);
+            },
+            token).AsTask();
+        var idleMonitor = MonitorIdleAsync(
+            timeouts.TunnelIdleTimeout,
+            () => Volatile.Read(ref lastActivity),
+            () =>
+            {
+                idleTimedOut = true;
+                tunnelCancellation.Cancel();
+            },
+            token);
+
+        try
+        {
+            var completed = await Task.WhenAny(clientToUpstream, upstreamToClient, idleMonitor);
+            if (completed == idleMonitor && idleTimedOut)
+            {
+                _metrics.TunnelIdleTimedOut();
+                _logger.LogDebug("Upgraded tunnel idle timeout elapsed.");
+            }
+        }
+        finally
+        {
+            await tunnelCancellation.CancelAsync();
+
+            try
+            {
+                await clientToUpstream;
+            }
+            catch (Exception exception) when (IsExpectedTunnelEnd(exception, cancellationToken))
+            {
+            }
+
+            try
+            {
+                await upstreamToClient;
+            }
+            catch (Exception exception) when (IsExpectedTunnelEnd(exception, cancellationToken))
+            {
+            }
+
+            try
+            {
+                await idleMonitor;
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }
+    }
+
+    private async ValueTask RelayDirectionAsync(
+        Stream source,
+        Stream destination,
+        int bufferSize,
+        Action<int> onBytesRelayed,
+        CancellationToken cancellationToken)
+    {
+        var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                var bytesRead = await source.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken);
+                if (bytesRead == 0)
+                {
+                    return;
+                }
+
+                _metrics.AddBytesRead(bytesRead);
+                onBytesRelayed(bytesRead);
+                await destination.WriteAsync(buffer.AsMemory(0, bytesRead), cancellationToken);
+                await destination.FlushAsync(cancellationToken);
+                _metrics.AddBytesWritten(bytesRead);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception) when (exception is IOException or SocketException)
+        {
+            _metrics.TunnelRelayFailed();
+            _logger.LogDebug(exception, "Upgraded tunnel relay ended with an I/O failure.");
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
+    }
+
+    private static async Task MonitorIdleAsync(
+        TimeSpan idleTimeout,
+        Func<long> getLastActivityTimestamp,
+        Action onIdleTimeout,
+        CancellationToken cancellationToken)
+    {
+        var pollInterval = TimeSpan.FromMilliseconds(Math.Min(250, Math.Max(25, idleTimeout.TotalMilliseconds / 4)));
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            await Task.Delay(pollInterval, cancellationToken);
+            var elapsed = Stopwatch.GetElapsedTime(getLastActivityTimestamp());
+            if (elapsed >= idleTimeout)
+            {
+                onIdleTimeout();
+                return;
+            }
+        }
+    }
+
+    private static bool IsExpectedTunnelEnd(Exception exception, CancellationToken outerToken)
+    {
+        return exception is OperationCanceledException
+            || exception is IOException
+            || exception is SocketException
+            || outerToken.IsCancellationRequested;
+    }
+}

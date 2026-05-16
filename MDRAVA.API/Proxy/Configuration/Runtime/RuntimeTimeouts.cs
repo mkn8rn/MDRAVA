@@ -9,4 +9,5 @@ public sealed record RuntimeTimeouts(
     TimeSpan DownstreamWriteTimeout,
     TimeSpan TlsHandshakeTimeout,
     TimeSpan ClientKeepAliveIdleTimeout,
-    TimeSpan UpstreamIdleConnectionLifetime);
+    TimeSpan UpstreamIdleConnectionLifetime,
+    TimeSpan TunnelIdleTimeout);

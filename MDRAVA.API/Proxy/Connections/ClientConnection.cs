@@ -32,6 +32,8 @@ public sealed class ClientConnection
     private readonly RuntimeListener _listener;
     private readonly IRouteMatcher _routeMatcher;
     private readonly ProxyForwarder _forwarder;
+    private readonly UpgradeForwarder _upgradeForwarder;
+    private readonly UpgradeRequestPolicy _upgradeRequestPolicy;
     private readonly TlsConnectionAuthenticator _tlsAuthenticator;
     private readonly ProxyMetrics _metrics;
     private readonly ILogger<ClientConnection> _logger;
@@ -42,6 +44,8 @@ public sealed class ClientConnection
         RuntimeListener listener,
         IRouteMatcher routeMatcher,
         ProxyForwarder forwarder,
+        UpgradeForwarder upgradeForwarder,
+        UpgradeRequestPolicy upgradeRequestPolicy,
         TlsConnectionAuthenticator tlsAuthenticator,
         ProxyMetrics metrics,
         ILogger<ClientConnection> logger)
@@ -51,6 +55,8 @@ public sealed class ClientConnection
         _listener = listener;
         _routeMatcher = routeMatcher;
         _forwarder = forwarder;
+        _upgradeForwarder = upgradeForwarder;
+        _upgradeRequestPolicy = upgradeRequestPolicy;
         _tlsAuthenticator = tlsAuthenticator;
         _metrics = metrics;
         _logger = logger;
@@ -136,10 +142,46 @@ public sealed class ClientConnection
 
                 _metrics.RequestReceived();
 
-                if (IsUnsupportedConnectionMethod(requestHead.Method) || HasUpgradeRequest(requestHead.Headers))
+                if (IsUnsupportedConnectionMethod(requestHead.Method))
                 {
                     _metrics.UnsupportedRequestFramingRejected();
                     await WriteResponseAsync(clientStream, NotImplementedResponse, cancellationToken);
+                    return;
+                }
+
+                if (_upgradeRequestPolicy.IsUpgradeRequest(requestHead))
+                {
+                    _metrics.UpgradeRequestReceived();
+                    if (!_upgradeRequestPolicy.TryValidate(requestHead, out var upgrade, out var rejectionReason) || upgrade is null)
+                    {
+                        _metrics.UpgradeRequestRejected();
+                        _metrics.MalformedRequestRejected();
+                        _logger.LogDebug(
+                            "Rejected Upgrade request for {Method} {Target}: {RejectionReason}",
+                            requestHead.Method,
+                            requestHead.Target,
+                            rejectionReason);
+                        await WriteResponseAsync(clientStream, BadRequestResponse, cancellationToken);
+                        return;
+                    }
+
+                    var upgradeRouteMatch = _routeMatcher.Match(_configurationSnapshot, requestHead);
+                    if (upgradeRouteMatch is null)
+                    {
+                        _metrics.UpgradeRequestRejected();
+                        await WriteResponseAsync(clientStream, NotFoundResponse, cancellationToken);
+                        return;
+                    }
+
+                    await _upgradeForwarder.ForwardAsync(
+                        clientStream,
+                        requestHead,
+                        upgrade,
+                        upgradeRouteMatch.Upstream,
+                        _listener,
+                        _configurationSnapshot.Timeouts,
+                        _configurationSnapshot.ConnectionLimits,
+                        cancellationToken);
                     return;
                 }
 
@@ -256,11 +298,6 @@ public sealed class ClientConnection
     private static bool IsUnsupportedConnectionMethod(string method)
     {
         return string.Equals(method, "CONNECT", StringComparison.Ordinal);
-    }
-
-    private static bool HasUpgradeRequest(IReadOnlyList<Http1HeaderField> headers)
-    {
-        return headers.Any(static header => string.Equals(header.Name, "Upgrade", StringComparison.OrdinalIgnoreCase));
     }
 
     private static bool ShouldKeepClientConnectionOpen(Http1RequestHead requestHead)

@@ -17,6 +17,7 @@ public static class ProxyOperationalOptionsValidator
         ValidateTimeout(failures, nameof(options.Timeouts.TlsHandshakeTimeoutMs), options.Timeouts.TlsHandshakeTimeoutMs);
         ValidateTimeout(failures, nameof(options.Timeouts.ClientKeepAliveIdleTimeoutMs), options.Timeouts.ClientKeepAliveIdleTimeoutMs);
         ValidateTimeout(failures, nameof(options.Timeouts.UpstreamIdleConnectionLifetimeMs), options.Timeouts.UpstreamIdleConnectionLifetimeMs);
+        ValidateTimeout(failures, nameof(options.Timeouts.TunnelIdleTimeoutMs), options.Timeouts.TunnelIdleTimeoutMs);
         ValidateConnectionLimits(failures, options.Connections);
         ValidateCertificates(failures, options.Certificates);
         return failures;
@@ -75,6 +76,11 @@ public static class ProxyOperationalOptionsValidator
         if (options.MaxIdleUpstreamConnectionsPerUpstream is < 0 or > 10_000)
         {
             failures.Add("Proxy operational connection limit MaxIdleUpstreamConnectionsPerUpstream must be between 0 and 10000.");
+        }
+
+        if (options.MaxActiveUpgradedTunnels is < 1 or > 100_000)
+        {
+            failures.Add("Proxy operational connection limit MaxActiveUpgradedTunnels must be between 1 and 100000.");
         }
     }
 }

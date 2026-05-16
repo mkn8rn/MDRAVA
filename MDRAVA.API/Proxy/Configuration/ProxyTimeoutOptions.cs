@@ -19,4 +19,6 @@ public sealed class ProxyTimeoutOptions
     public int ClientKeepAliveIdleTimeoutMs { get; init; } = 30_000;
 
     public int UpstreamIdleConnectionLifetimeMs { get; init; } = 60_000;
+
+    public int TunnelIdleTimeoutMs { get; init; } = 60_000;
 }

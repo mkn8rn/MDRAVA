@@ -38,6 +38,16 @@ public sealed class ProxyMetrics
     private long _upstreamConnectionsDiscarded;
     private long _upstreamPoolIdleConnections;
     private long _upstreamPoolActiveConnections;
+    private long _upgradeRequestsReceived;
+    private long _upgradeRequestsSucceeded;
+    private long _upgradeRequestsRejected;
+    private long _upgradeUpstreamFailures;
+    private long _activeTunnels;
+    private long _totalTunnels;
+    private long _tunnelIdleTimeouts;
+    private long _tunnelBytesClientToUpstream;
+    private long _tunnelBytesUpstreamToClient;
+    private long _tunnelRelayFailures;
 
     public void ConnectionAccepted()
     {
@@ -183,6 +193,55 @@ public sealed class ProxyMetrics
         Interlocked.Decrement(ref _upstreamPoolIdleConnections);
     }
 
+    public void UpgradeRequestReceived() => Interlocked.Increment(ref _upgradeRequestsReceived);
+
+    public void UpgradeRequestSucceeded() => Interlocked.Increment(ref _upgradeRequestsSucceeded);
+
+    public void UpgradeRequestRejected() => Interlocked.Increment(ref _upgradeRequestsRejected);
+
+    public void UpgradeUpstreamFailed() => Interlocked.Increment(ref _upgradeUpstreamFailures);
+
+    public bool TryStartTunnel(int maxActiveTunnels)
+    {
+        while (true)
+        {
+            var observed = Interlocked.Read(ref _activeTunnels);
+            if (observed >= maxActiveTunnels)
+            {
+                return false;
+            }
+
+            if (Interlocked.CompareExchange(ref _activeTunnels, observed + 1, observed) == observed)
+            {
+                return true;
+            }
+        }
+    }
+
+    public void TunnelStarted() => Interlocked.Increment(ref _totalTunnels);
+
+    public void TunnelClosed() => Interlocked.Decrement(ref _activeTunnels);
+
+    public void TunnelIdleTimedOut() => Interlocked.Increment(ref _tunnelIdleTimeouts);
+
+    public void AddTunnelBytesClientToUpstream(long bytes)
+    {
+        if (bytes > 0)
+        {
+            Interlocked.Add(ref _tunnelBytesClientToUpstream, bytes);
+        }
+    }
+
+    public void AddTunnelBytesUpstreamToClient(long bytes)
+    {
+        if (bytes > 0)
+        {
+            Interlocked.Add(ref _tunnelBytesUpstreamToClient, bytes);
+        }
+    }
+
+    public void TunnelRelayFailed() => Interlocked.Increment(ref _tunnelRelayFailures);
+
     public ProxyMetricsSnapshot Snapshot()
     {
         return new ProxyMetricsSnapshot(
@@ -221,6 +280,16 @@ public sealed class ProxyMetrics
             Interlocked.Read(ref _upstreamConnectionsReused),
             Interlocked.Read(ref _upstreamConnectionsDiscarded),
             Interlocked.Read(ref _upstreamPoolIdleConnections),
-            Interlocked.Read(ref _upstreamPoolActiveConnections));
+            Interlocked.Read(ref _upstreamPoolActiveConnections),
+            Interlocked.Read(ref _upgradeRequestsReceived),
+            Interlocked.Read(ref _upgradeRequestsSucceeded),
+            Interlocked.Read(ref _upgradeRequestsRejected),
+            Interlocked.Read(ref _upgradeUpstreamFailures),
+            Interlocked.Read(ref _activeTunnels),
+            Interlocked.Read(ref _totalTunnels),
+            Interlocked.Read(ref _tunnelIdleTimeouts),
+            Interlocked.Read(ref _tunnelBytesClientToUpstream),
+            Interlocked.Read(ref _tunnelBytesUpstreamToClient),
+            Interlocked.Read(ref _tunnelRelayFailures));
     }
 }

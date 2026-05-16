@@ -31,7 +31,10 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<UpstreamConnectionFactory>();
         services.AddSingleton<UpstreamConnectionPool>();
         services.AddSingleton<HopByHopHeaderPolicy>();
+        services.AddSingleton<UpgradeRequestPolicy>();
+        services.AddSingleton<TunnelRelay>();
         services.AddSingleton<ProxyForwarder>();
+        services.AddSingleton<UpgradeForwarder>();
         services.AddSingleton<TlsConnectionAuthenticator>();
         services.AddHostedService<ProxyConfigurationStartupService>();
         services.AddHostedService<ProxyListenerService>();

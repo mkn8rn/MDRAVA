@@ -551,6 +551,214 @@ internal static class ProxyIntegrationTests
         AssertEx.True(result.Metrics.UpstreamConnectionsDiscarded >= 1);
     }
 
+    public static async Task WebSocketUpgradeOverPlaintextReturnsSwitchingProtocols()
+    {
+        var result = await RunUpgradeScenarioAsync(
+            async (stream, request, cancellationToken) =>
+            {
+                await WriteTextAsync(stream, SwitchingProtocolsResponse(), cancellationToken);
+                return new UpgradeUpstreamResult(request, "");
+            },
+            async (stream, cancellationToken) =>
+            {
+                await WriteTextAsync(stream, WebSocketRequest(), cancellationToken);
+                return await ReadResponseHeadAsync(stream, cancellationToken);
+            });
+
+        AssertEx.True(result.ClientObservation.Contains("101 Switching Protocols", StringComparison.Ordinal), result.ClientObservation);
+        AssertEx.True(result.UpstreamResult.Request.Contains("Connection: Upgrade", StringComparison.OrdinalIgnoreCase), result.UpstreamResult.Request);
+        AssertEx.Equal(1L, result.Metrics.UpgradeRequestsSucceeded);
+        AssertEx.Equal(1L, result.Metrics.TotalTunnels);
+    }
+
+    public static async Task WebSocketTunnelRelaysClientBytesToUpstream()
+    {
+        var result = await RunUpgradeScenarioAsync(
+            async (stream, request, cancellationToken) =>
+            {
+                await WriteTextAsync(stream, SwitchingProtocolsResponse(), cancellationToken);
+                var tunneled = await ReadExactTextAsync(stream, 5, cancellationToken);
+                return new UpgradeUpstreamResult(request, tunneled);
+            },
+            async (stream, cancellationToken) =>
+            {
+                await WriteTextAsync(stream, WebSocketRequest(), cancellationToken);
+                var response = await ReadResponseHeadAsync(stream, cancellationToken);
+                await WriteTextAsync(stream, "hello", cancellationToken);
+                return response;
+            });
+
+        AssertEx.Equal("hello", result.UpstreamResult.Observation);
+        AssertEx.Equal(5L, result.Metrics.TunnelBytesClientToUpstream);
+    }
+
+    public static async Task WebSocketTunnelRelaysUpstreamBytesToClient()
+    {
+        var result = await RunUpgradeScenarioAsync(
+            async (stream, request, cancellationToken) =>
+            {
+                await WriteTextAsync(stream, SwitchingProtocolsResponse(), cancellationToken);
+                await WriteTextAsync(stream, "world", cancellationToken);
+                return new UpgradeUpstreamResult(request, "");
+            },
+            async (stream, cancellationToken) =>
+            {
+                await WriteTextAsync(stream, WebSocketRequest(), cancellationToken);
+                var response = await ReadResponseHeadAsync(stream, cancellationToken);
+                var tunneled = await ReadExactTextAsync(stream, 5, cancellationToken);
+                return response + tunneled;
+            });
+
+        AssertEx.True(result.ClientObservation.EndsWith("world", StringComparison.Ordinal), result.ClientObservation);
+        AssertEx.Equal(5L, result.Metrics.TunnelBytesUpstreamToClient);
+    }
+
+    public static async Task WebSocketTunnelClosesWhenClientCloses()
+    {
+        var result = await RunUpgradeScenarioAsync(
+            async (stream, request, cancellationToken) =>
+            {
+                await WriteTextAsync(stream, SwitchingProtocolsResponse(), cancellationToken);
+                var buffer = new byte[1];
+                var bytesRead = await stream.ReadAsync(buffer, cancellationToken);
+                return new UpgradeUpstreamResult(request, bytesRead.ToString());
+            },
+            async (stream, cancellationToken) =>
+            {
+                await WriteTextAsync(stream, WebSocketRequest(), cancellationToken);
+                return await ReadResponseHeadAsync(stream, cancellationToken);
+            });
+
+        AssertEx.Equal("0", result.UpstreamResult.Observation);
+        AssertEx.Equal(1L, result.Metrics.TotalTunnels);
+    }
+
+    public static async Task WebSocketTunnelClosesWhenUpstreamCloses()
+    {
+        var result = await RunUpgradeScenarioAsync(
+            async (stream, request, cancellationToken) =>
+            {
+                await WriteTextAsync(stream, SwitchingProtocolsResponse(), cancellationToken);
+                return new UpgradeUpstreamResult(request, "");
+            },
+            async (stream, cancellationToken) =>
+            {
+                await WriteTextAsync(stream, WebSocketRequest(), cancellationToken);
+                var response = await ReadResponseHeadAsync(stream, cancellationToken);
+                await WaitForClientCloseAsync(stream, cancellationToken);
+                return response;
+            });
+
+        AssertEx.True(result.ClientObservation.Contains("101 Switching Protocols", StringComparison.Ordinal), result.ClientObservation);
+        AssertEx.Equal(1L, result.Metrics.TotalTunnels);
+    }
+
+    public static async Task WebSocketTunnelIdleTimeoutClosesTunnel()
+    {
+        var result = await RunUpgradeScenarioAsync(
+            async (stream, request, cancellationToken) =>
+            {
+                await WriteTextAsync(stream, SwitchingProtocolsResponse(), cancellationToken);
+                await Task.Delay(1000, cancellationToken);
+                return new UpgradeUpstreamResult(request, "");
+            },
+            async (stream, cancellationToken) =>
+            {
+                await WriteTextAsync(stream, WebSocketRequest(), cancellationToken);
+                var response = await ReadResponseHeadAsync(stream, cancellationToken);
+                await WaitForClientCloseAsync(stream, cancellationToken);
+                return response;
+            },
+            tunnelIdleTimeoutMs: 150);
+
+        AssertEx.True(result.ClientObservation.Contains("101 Switching Protocols", StringComparison.Ordinal), result.ClientObservation);
+        AssertEx.Equal(1L, result.Metrics.TunnelIdleTimeouts);
+    }
+
+    public static async Task WebSocketUpgradeOverHttpsReturnsSwitchingProtocols()
+    {
+        var result = await RunUpgradeScenarioAsync(
+            async (stream, request, cancellationToken) =>
+            {
+                await WriteTextAsync(stream, SwitchingProtocolsResponse(), cancellationToken);
+                return new UpgradeUpstreamResult(request, "");
+            },
+            async (stream, cancellationToken) =>
+            {
+                await WriteTextAsync(stream, WebSocketRequest(host: "home.test"), cancellationToken);
+                return await ReadResponseHeadAsync(stream, cancellationToken);
+            },
+            https: true);
+
+        AssertEx.True(result.ClientObservation.Contains("101 Switching Protocols", StringComparison.Ordinal), result.ClientObservation);
+        AssertEx.Equal(1L, result.Metrics.TlsHandshakeSuccesses);
+        AssertEx.Equal(1L, result.Metrics.UpgradeRequestsSucceeded);
+    }
+
+    public static async Task UpgradeDoesNotUseNormalUpstreamPool()
+    {
+        var result = await RunUpgradeScenarioAsync(
+            async (stream, request, cancellationToken) =>
+            {
+                await WriteTextAsync(stream, SwitchingProtocolsResponse(), cancellationToken);
+                return new UpgradeUpstreamResult(request, "");
+            },
+            async (stream, cancellationToken) =>
+            {
+                await WriteTextAsync(stream, WebSocketRequest(), cancellationToken);
+                return await ReadResponseHeadAsync(stream, cancellationToken);
+            });
+
+        AssertEx.Equal(0L, result.Metrics.UpstreamConnectionsOpened);
+        AssertEx.Equal(0L, result.Metrics.UpstreamConnectionsReused);
+        AssertEx.Equal(0L, result.Metrics.UpstreamPoolIdleConnections);
+    }
+
+    public static async Task MissingWebSocketHeadersAreRejected()
+    {
+        var result = await RunUpgradeRejectionScenarioAsync(
+            "GET /ws HTTP/1.1\r\nHost: ws.test\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Version: 13\r\n\r\n");
+
+        AssertEx.True(result.ClientObservation.Contains("400 Bad Request", StringComparison.Ordinal), result.ClientObservation);
+        AssertEx.Equal(1L, result.Metrics.UpgradeRequestsRejected);
+    }
+
+    public static async Task UpstreamNon101UpgradeResponseIsForwardedAndClosed()
+    {
+        var result = await RunUpgradeScenarioAsync(
+            async (stream, request, cancellationToken) =>
+            {
+                await WriteTextAsync(stream, "HTTP/1.1 403 Forbidden\r\nContent-Length: 7\r\n\r\ndenied!", cancellationToken);
+                return new UpgradeUpstreamResult(request, "");
+            },
+            async (stream, cancellationToken) =>
+            {
+                await WriteTextAsync(stream, WebSocketRequest(), cancellationToken);
+                return await ReadToEndAsync(stream, cancellationToken);
+            });
+
+        AssertEx.True(result.ClientObservation.Contains("403 Forbidden", StringComparison.Ordinal), result.ClientObservation);
+        AssertEx.True(result.ClientObservation.EndsWith("denied!", StringComparison.Ordinal), result.ClientObservation);
+    }
+
+    public static async Task MalformedSwitchingProtocolsResponseProducesBadGateway()
+    {
+        var result = await RunUpgradeScenarioAsync(
+            async (stream, request, cancellationToken) =>
+            {
+                await WriteTextAsync(stream, "HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n\r\n", cancellationToken);
+                return new UpgradeUpstreamResult(request, "");
+            },
+            async (stream, cancellationToken) =>
+            {
+                await WriteTextAsync(stream, WebSocketRequest(), cancellationToken);
+                return await ReadToEndAsync(stream, cancellationToken);
+            });
+
+        AssertEx.True(result.ClientObservation.Contains("502 Bad Gateway", StringComparison.Ordinal), result.ClientObservation);
+        AssertEx.Equal(1L, result.Metrics.UpgradeUpstreamFailures);
+    }
+
     private static async Task<string> RunSingleResponseUpstreamAsync(
         int upstreamPort,
         CancellationToken cancellationToken)
@@ -655,6 +863,147 @@ internal static class ProxyIntegrationTests
             catch
             {
             }
+        }
+    }
+
+    private static async Task<UpgradeScenarioResult> RunUpgradeScenarioAsync(
+        Func<NetworkStream, string, CancellationToken, Task<UpgradeUpstreamResult>> upstreamHandler,
+        Func<Stream, CancellationToken, Task<string>> clientHandler,
+        bool https = false,
+        int tunnelIdleTimeoutMs = 1000,
+        int maxActiveUpgradedTunnels = 1024)
+    {
+        var proxyPort = GetFreeTcpPort();
+        var upstreamPort = GetFreeTcpPort();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var dataDirectory = Path.Combine(Path.GetTempPath(), $"mdrava-upgrade-{Guid.NewGuid():N}");
+
+        try
+        {
+            if (https)
+            {
+                TestCertificates.WriteSelfSignedPfx(Path.Combine(dataDirectory, "certs", "home.pfx"), "home.test");
+                ConfigurationTests.WriteHttpsSite(dataDirectory, "upgrade.json", proxyPort, upstreamPort, "home-cert");
+                ConfigurationTests.WriteOperationalConfig(
+                    dataDirectory,
+                    tunnelIdleTimeoutMs: tunnelIdleTimeoutMs,
+                    maxActiveUpgradedTunnels: maxActiveUpgradedTunnels,
+                    certificateId: "home-cert",
+                    certificatePath: "certs/home.pfx");
+            }
+            else
+            {
+                ConfigurationTests.WriteSite(dataDirectory, "upgrade.json", proxyPort, upstreamPort);
+                ConfigurationTests.WriteOperationalConfig(
+                    dataDirectory,
+                    tunnelIdleTimeoutMs: tunnelIdleTimeoutMs,
+                    maxActiveUpgradedTunnels: maxActiveUpgradedTunnels);
+            }
+
+            var upstreamTask = RunUpgradeUpstreamAsync(upstreamPort, upstreamHandler, timeout.Token);
+            using var host = BuildProxyHost(dataDirectory);
+            await host.StartAsync(timeout.Token);
+
+            string clientObservation;
+            UpgradeUpstreamResult upstreamResult;
+            try
+            {
+                using var client = new TcpClient();
+                await client.ConnectAsync(IPAddress.Loopback, proxyPort, timeout.Token);
+                if (https)
+                {
+                    await using var tlsStream = new SslStream(client.GetStream(), false, (_, _, _, _) => true);
+                    await tlsStream.AuthenticateAsClientAsync(new SslClientAuthenticationOptions
+                    {
+                        TargetHost = "home.test"
+                    }, timeout.Token);
+                    clientObservation = await clientHandler(tlsStream, timeout.Token);
+                }
+                else
+                {
+                    await using var stream = client.GetStream();
+                    clientObservation = await clientHandler(stream, timeout.Token);
+                }
+
+                try
+                {
+                    upstreamResult = await upstreamTask.WaitAsync(timeout.Token);
+                }
+                catch (OperationCanceledException exception)
+                {
+                    throw new InvalidOperationException($"Upgrade upstream did not receive a request. Client observed: {clientObservation}", exception);
+                }
+            }
+            finally
+            {
+                await host.StopAsync(CancellationToken.None);
+            }
+
+            var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
+            return new UpgradeScenarioResult(clientObservation, upstreamResult, metrics);
+        }
+        finally
+        {
+            DeleteDirectory(dataDirectory);
+        }
+    }
+
+    private static async Task<UpgradeScenarioResult> RunUpgradeRejectionScenarioAsync(string request)
+    {
+        var proxyPort = GetFreeTcpPort();
+        var upstreamPort = GetFreeTcpPort();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var dataDirectory = Path.Combine(Path.GetTempPath(), $"mdrava-upgrade-reject-{Guid.NewGuid():N}");
+
+        try
+        {
+            ConfigurationTests.WriteSite(dataDirectory, "upgrade.json", proxyPort, upstreamPort);
+            ConfigurationTests.WriteOperationalConfig(dataDirectory);
+
+            using var host = BuildProxyHost(dataDirectory);
+            await host.StartAsync(timeout.Token);
+
+            string clientObservation;
+            try
+            {
+                using var client = new TcpClient();
+                await client.ConnectAsync(IPAddress.Loopback, proxyPort, timeout.Token);
+                await using var stream = client.GetStream();
+                await WriteTextAsync(stream, request, timeout.Token);
+                clientObservation = await ReadToEndAsync(stream, timeout.Token);
+            }
+            finally
+            {
+                await host.StopAsync(CancellationToken.None);
+            }
+
+            var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
+            return new UpgradeScenarioResult(clientObservation, new UpgradeUpstreamResult("", ""), metrics);
+        }
+        finally
+        {
+            DeleteDirectory(dataDirectory);
+        }
+    }
+
+    private static async Task<UpgradeUpstreamResult> RunUpgradeUpstreamAsync(
+        int upstreamPort,
+        Func<NetworkStream, string, CancellationToken, Task<UpgradeUpstreamResult>> handler,
+        CancellationToken cancellationToken)
+    {
+        var listener = new TcpListener(IPAddress.Loopback, upstreamPort);
+        listener.Start();
+
+        try
+        {
+            using var client = await listener.AcceptTcpClientAsync(cancellationToken);
+            await using var stream = client.GetStream();
+            var request = await ReadRequestHeadAsync(stream, cancellationToken);
+            return await handler(stream, request, cancellationToken);
+        }
+        finally
+        {
+            listener.Stop();
         }
     }
 
@@ -993,6 +1342,36 @@ internal static class ProxyIntegrationTests
         }
     }
 
+    private static string WebSocketRequest(string host = "ws.test")
+    {
+        return "GET /ws HTTP/1.1\r\n"
+            + $"Host: {host}\r\n"
+            + "Connection: Upgrade\r\n"
+            + "Upgrade: websocket\r\n"
+            + "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+            + "Sec-WebSocket-Version: 13\r\n"
+            + "Origin: https://origin.test\r\n"
+            + "\r\n";
+    }
+
+    private static string SwitchingProtocolsResponse()
+    {
+        return "HTTP/1.1 101 Switching Protocols\r\n"
+            + "Connection: Upgrade\r\n"
+            + "Upgrade: websocket\r\n"
+            + "Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\n"
+            + "\r\n";
+    }
+
+    private static async Task WriteTextAsync(
+        Stream stream,
+        string text,
+        CancellationToken cancellationToken)
+    {
+        await stream.WriteAsync(Encoding.ASCII.GetBytes(text), cancellationToken);
+        await stream.FlushAsync(cancellationToken);
+    }
+
     private static async Task<string> RunScenarioUpstreamAsync(
         int upstreamPort,
         string upstreamResponse,
@@ -1313,5 +1692,14 @@ internal static class ProxyIntegrationTests
         IReadOnlyList<string> UpstreamRequests,
         int UpstreamAcceptedConnections,
         bool ClientClosedAfterLastResponse,
+        ProxyMetricsSnapshot Metrics);
+
+    private sealed record UpgradeUpstreamResult(
+        string Request,
+        string Observation);
+
+    private sealed record UpgradeScenarioResult(
+        string ClientObservation,
+        UpgradeUpstreamResult UpstreamResult,
         ProxyMetricsSnapshot Metrics);
 }

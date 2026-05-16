@@ -53,11 +53,13 @@ public static class ProxyConfigurationMapper
             TimeSpan.FromMilliseconds(operationalOptions.Timeouts.DownstreamWriteTimeoutMs),
             TimeSpan.FromMilliseconds(operationalOptions.Timeouts.TlsHandshakeTimeoutMs),
             TimeSpan.FromMilliseconds(operationalOptions.Timeouts.ClientKeepAliveIdleTimeoutMs),
-            TimeSpan.FromMilliseconds(operationalOptions.Timeouts.UpstreamIdleConnectionLifetimeMs));
+            TimeSpan.FromMilliseconds(operationalOptions.Timeouts.UpstreamIdleConnectionLifetimeMs),
+            TimeSpan.FromMilliseconds(operationalOptions.Timeouts.TunnelIdleTimeoutMs));
 
         var connectionLimits = new RuntimeConnectionLimits(
             operationalOptions.Connections.MaxRequestsPerClientConnection,
-            operationalOptions.Connections.MaxIdleUpstreamConnectionsPerUpstream);
+            operationalOptions.Connections.MaxIdleUpstreamConnectionsPerUpstream,
+            operationalOptions.Connections.MaxActiveUpgradedTunnels);
 
         return new ProxyConfigurationSnapshot(version, loadedAtUtc, sourceDirectory, sourceFiles, timeouts, connectionLimits, certificates, listeners, routes);
     }

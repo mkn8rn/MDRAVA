@@ -16,6 +16,9 @@ public static class ProxyErrorResponses
     private static readonly byte[] GatewayTimeoutResponse =
         "HTTP/1.1 504 Gateway Timeout\r\nConnection: close\r\nContent-Length: 15\r\nContent-Type: text/plain\r\n\r\nGateway Timeout"u8.ToArray();
 
+    private static readonly byte[] ServiceUnavailableResponse =
+        "HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\nContent-Length: 19\r\nContent-Type: text/plain\r\n\r\nService Unavailable"u8.ToArray();
+
     public static ReadOnlyMemory<byte> BadRequest => BadRequestResponse;
 
     public static ReadOnlyMemory<byte> RequestTimeout => RequestTimeoutResponse;
@@ -23,6 +26,8 @@ public static class ProxyErrorResponses
     public static ReadOnlyMemory<byte> BadGateway => BadGatewayResponse;
 
     public static ReadOnlyMemory<byte> GatewayTimeout => GatewayTimeoutResponse;
+
+    public static ReadOnlyMemory<byte> ServiceUnavailable => ServiceUnavailableResponse;
 
     public static async ValueTask WriteAsync(
         Stream stream,

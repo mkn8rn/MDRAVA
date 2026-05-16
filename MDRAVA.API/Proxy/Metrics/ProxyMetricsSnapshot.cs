@@ -36,4 +36,14 @@ public sealed record ProxyMetricsSnapshot(
     long UpstreamConnectionsReused,
     long UpstreamConnectionsDiscarded,
     long UpstreamPoolIdleConnections,
-    long UpstreamPoolActiveConnections);
+    long UpstreamPoolActiveConnections,
+    long UpgradeRequestsReceived,
+    long UpgradeRequestsSucceeded,
+    long UpgradeRequestsRejected,
+    long UpgradeUpstreamFailures,
+    long ActiveTunnels,
+    long TotalTunnels,
+    long TunnelIdleTimeouts,
+    long TunnelBytesClientToUpstream,
+    long TunnelBytesUpstreamToClient,
+    long TunnelRelayFailures);

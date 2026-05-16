@@ -9,5 +9,6 @@ public enum ProxyTimeoutKind
     UpstreamResponseHead,
     UpstreamResponseBodyIdle,
     DownstreamWrite,
-    TlsHandshake
+    TlsHandshake,
+    TunnelIdle
 }

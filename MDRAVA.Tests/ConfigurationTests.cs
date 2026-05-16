@@ -135,13 +135,14 @@ internal static class ConfigurationTests
     {
         using var temp = TemporaryDirectory.Create();
         WriteSite(temp.Path, "home.json", port: 18080, upstreamPort: 15000);
-        WriteOperationalConfig(temp.Path, clientRequestHeadTimeoutMs: 250);
+        WriteOperationalConfig(temp.Path, clientRequestHeadTimeoutMs: 250, tunnelIdleTimeoutMs: 750);
         var loader = CreateLoader(temp.Path);
 
         var result = await loader.LoadAsync(CancellationToken.None);
 
         AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
         AssertEx.Equal(TimeSpan.FromMilliseconds(250), AssertEx.NotNull(result.Snapshot).Timeouts.ClientRequestHeadTimeout);
+        AssertEx.Equal(TimeSpan.FromMilliseconds(750), AssertEx.NotNull(result.Snapshot).Timeouts.TunnelIdleTimeout);
     }
 
     public static async Task LoaderRejectsInvalidOperationalTimeouts()
@@ -155,6 +156,19 @@ internal static class ConfigurationTests
 
         AssertEx.False(result.Succeeded);
         AssertEx.True(result.Errors.Count > 0);
+    }
+
+    public static async Task LoaderRejectsInvalidTunnelLimit()
+    {
+        using var temp = TemporaryDirectory.Create();
+        WriteSite(temp.Path, "home.json", port: 18080, upstreamPort: 15000);
+        WriteOperationalConfig(temp.Path, maxActiveUpgradedTunnels: 0);
+        var loader = CreateLoader(temp.Path);
+
+        var result = await loader.LoadAsync(CancellationToken.None);
+
+        AssertEx.False(result.Succeeded);
+        AssertEx.True(result.Errors.Any(static error => error.Contains("MaxActiveUpgradedTunnels", StringComparison.Ordinal)));
     }
 
     public static async Task LoaderLoadsHttpsListenerWithCertificate()
@@ -424,8 +438,10 @@ internal static class ConfigurationTests
         int tlsHandshakeTimeoutMs = 1000,
         int clientKeepAliveIdleTimeoutMs = 1000,
         int upstreamIdleConnectionLifetimeMs = 1000,
+        int tunnelIdleTimeoutMs = 1000,
         int maxRequestsPerClientConnection = 100,
         int maxIdleUpstreamConnectionsPerUpstream = 16,
+        int maxActiveUpgradedTunnels = 1024,
         string? certificateId = null,
         string? certificatePath = null,
         string? certificatePassword = null,
@@ -459,11 +475,13 @@ internal static class ConfigurationTests
                 "downstreamWriteTimeoutMs": {{downstreamWriteTimeoutMs}},
                 "tlsHandshakeTimeoutMs": {{tlsHandshakeTimeoutMs}},
                 "clientKeepAliveIdleTimeoutMs": {{clientKeepAliveIdleTimeoutMs}},
-                "upstreamIdleConnectionLifetimeMs": {{upstreamIdleConnectionLifetimeMs}}
+                "upstreamIdleConnectionLifetimeMs": {{upstreamIdleConnectionLifetimeMs}},
+                "tunnelIdleTimeoutMs": {{tunnelIdleTimeoutMs}}
               },
               "connections": {
                 "maxRequestsPerClientConnection": {{maxRequestsPerClientConnection}},
-                "maxIdleUpstreamConnectionsPerUpstream": {{maxIdleUpstreamConnectionsPerUpstream}}
+                "maxIdleUpstreamConnectionsPerUpstream": {{maxIdleUpstreamConnectionsPerUpstream}},
+                "maxActiveUpgradedTunnels": {{maxActiveUpgradedTunnels}}
               },
               "certificates": {{certificatesJson}}
             }

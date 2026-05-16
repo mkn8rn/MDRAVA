@@ -15,6 +15,8 @@ public sealed class ProxyListenerService : BackgroundService
     private readonly IProxyConfigurationStore _configurationStore;
     private readonly IRouteMatcher _routeMatcher;
     private readonly ProxyForwarder _forwarder;
+    private readonly UpgradeForwarder _upgradeForwarder;
+    private readonly UpgradeRequestPolicy _upgradeRequestPolicy;
     private readonly TlsConnectionAuthenticator _tlsAuthenticator;
     private readonly ProxyMetrics _metrics;
     private readonly ProxyRuntimeState _runtimeState;
@@ -26,6 +28,8 @@ public sealed class ProxyListenerService : BackgroundService
         IProxyConfigurationStore configurationStore,
         IRouteMatcher routeMatcher,
         ProxyForwarder forwarder,
+        UpgradeForwarder upgradeForwarder,
+        UpgradeRequestPolicy upgradeRequestPolicy,
         TlsConnectionAuthenticator tlsAuthenticator,
         ProxyMetrics metrics,
         ProxyRuntimeState runtimeState,
@@ -35,6 +39,8 @@ public sealed class ProxyListenerService : BackgroundService
         _configurationStore = configurationStore;
         _routeMatcher = routeMatcher;
         _forwarder = forwarder;
+        _upgradeForwarder = upgradeForwarder;
+        _upgradeRequestPolicy = upgradeRequestPolicy;
         _tlsAuthenticator = tlsAuthenticator;
         _metrics = metrics;
         _runtimeState = runtimeState;
@@ -135,11 +141,13 @@ public sealed class ProxyListenerService : BackgroundService
                 clientSocket,
                 snapshot,
                 listener,
-            _routeMatcher,
-            _forwarder,
-            _tlsAuthenticator,
-            _metrics,
-            _connectionLogger);
+                _routeMatcher,
+                _forwarder,
+                _upgradeForwarder,
+                _upgradeRequestPolicy,
+                _tlsAuthenticator,
+                _metrics,
+                _connectionLogger);
 
             await connection.RunAsync(cancellationToken);
         }

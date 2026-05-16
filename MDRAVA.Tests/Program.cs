@@ -29,6 +29,7 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Loader uses defaults when operational config is missing", ConfigurationTests.LoaderUsesDefaultsWhenOperationalConfigIsMissing),
     ("Loader loads explicit operational timeout settings", ConfigurationTests.LoaderLoadsExplicitOperationalTimeouts),
     ("Loader rejects invalid operational timeout settings", ConfigurationTests.LoaderRejectsInvalidOperationalTimeouts),
+    ("Loader rejects invalid tunnel connection limit", ConfigurationTests.LoaderRejectsInvalidTunnelLimit),
     ("Loader loads HTTPS listener with certificate", ConfigurationTests.LoaderLoadsHttpsListenerWithCertificate),
     ("Loader rejects HTTPS listener with missing certificate reference", ConfigurationTests.LoaderRejectsHttpsListenerWithMissingCertificateReference),
     ("Loader rejects invalid certificate path", ConfigurationTests.LoaderRejectsInvalidCertificatePath),
@@ -75,7 +76,18 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Persistent client proxies chunked POST", ProxyIntegrationTests.PersistentClientProxiesChunkedPost),
     ("Upstream connection is not reused after response Connection close", ProxyIntegrationTests.UpstreamConnectionIsNotReusedAfterResponseConnectionClose),
     ("Upstream connection is not reused after premature disconnect", ProxyIntegrationTests.UpstreamConnectionIsNotReusedAfterPrematureDisconnect),
-    ("Upstream connection is not reused after framing error", ProxyIntegrationTests.UpstreamConnectionIsNotReusedAfterFramingError)
+    ("Upstream connection is not reused after framing error", ProxyIntegrationTests.UpstreamConnectionIsNotReusedAfterFramingError),
+    ("WebSocket Upgrade over plaintext returns 101", ProxyIntegrationTests.WebSocketUpgradeOverPlaintextReturnsSwitchingProtocols),
+    ("WebSocket tunnel relays client bytes upstream", ProxyIntegrationTests.WebSocketTunnelRelaysClientBytesToUpstream),
+    ("WebSocket tunnel relays upstream bytes client", ProxyIntegrationTests.WebSocketTunnelRelaysUpstreamBytesToClient),
+    ("WebSocket tunnel closes when client closes", ProxyIntegrationTests.WebSocketTunnelClosesWhenClientCloses),
+    ("WebSocket tunnel closes when upstream closes", ProxyIntegrationTests.WebSocketTunnelClosesWhenUpstreamCloses),
+    ("WebSocket tunnel idle timeout closes tunnel", ProxyIntegrationTests.WebSocketTunnelIdleTimeoutClosesTunnel),
+    ("WebSocket Upgrade over HTTPS returns 101", ProxyIntegrationTests.WebSocketUpgradeOverHttpsReturnsSwitchingProtocols),
+    ("Upgrade does not use normal upstream pool", ProxyIntegrationTests.UpgradeDoesNotUseNormalUpstreamPool),
+    ("Missing WebSocket headers are rejected", ProxyIntegrationTests.MissingWebSocketHeadersAreRejected),
+    ("Upstream non-101 Upgrade response is forwarded and closed", ProxyIntegrationTests.UpstreamNon101UpgradeResponseIsForwardedAndClosed),
+    ("Malformed 101 Upgrade response produces bad gateway", ProxyIntegrationTests.MalformedSwitchingProtocolsResponseProducesBadGateway)
 };
 
 var failures = 0;
