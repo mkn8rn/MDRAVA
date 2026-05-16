@@ -1,7 +1,9 @@
+using MDRAVA.API.Controllers;
 using MDRAVA.API.Proxy.Configuration.Loading;
 using MDRAVA.API.Proxy.Configuration.Paths;
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Configuration.Storage;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -450,10 +452,144 @@ internal static class ConfigurationTests
         AssertEx.Equal(1, projection.SourceFiles.Count);
     }
 
+    public static async Task LoaderRejectsUnsafeHeaderRule()
+    {
+        using var temp = TemporaryDirectory.Create();
+        WriteCustomSite(
+            temp.Path,
+            "unsafe.json",
+            """
+            {
+              "name": "unsafe",
+              "listeners": [
+                {
+                  "name": "main",
+                  "address": "127.0.0.1",
+                  "port": 18080
+                }
+              ],
+              "host": "*",
+              "routes": [
+                {
+                  "name": "app",
+                  "pathPrefix": "/",
+                  "action": "proxy",
+                  "headerPolicy": {
+                    "setRequestHeaders": [
+                      {
+                        "name": "Content-Length",
+                        "value": "1"
+                      }
+                    ]
+                  },
+                  "upstreams": [
+                    {
+                      "name": "local",
+                      "address": "127.0.0.1",
+                      "port": 15000
+                    }
+                  ]
+                }
+              ]
+            }
+            """);
+        var loader = CreateLoader(temp.Path);
+
+        var result = await loader.LoadAsync(CancellationToken.None);
+
+        AssertEx.False(result.Succeeded);
+        AssertEx.True(result.Errors.Any(static error => error.Contains("restricted", StringComparison.OrdinalIgnoreCase)), string.Join("; ", result.Errors));
+    }
+
+    public static async Task ConfigValidateReportsValidWithoutApplying()
+    {
+        using var temp = TemporaryDirectory.Create();
+        WriteSite(temp.Path, "home.json", port: 18080, upstreamPort: 15000);
+        var store = new ProxyConfigurationStore();
+        var service = CreateReloadService(temp.Path, store);
+        var first = await service.ReloadAsync(CancellationToken.None);
+        AssertEx.True(first.Succeeded);
+
+        File.WriteAllText(
+            Path.Combine(temp.Path, "config", "sites", "home.json"),
+            SiteJson("home", 18081, 15001));
+
+        var validation = await service.ValidateAsync(CancellationToken.None);
+
+        AssertEx.True(validation.Succeeded, string.Join("; ", validation.Errors));
+        AssertEx.Equal(1, store.Snapshot.Version);
+        AssertEx.Equal(2, validation.WouldBeVersion);
+        AssertEx.Equal(18080, store.Snapshot.Listeners[0].Port);
+    }
+
+    public static async Task ConfigValidateReportsInvalidWithoutReplacingActiveConfig()
+    {
+        using var temp = TemporaryDirectory.Create();
+        WriteSite(temp.Path, "home.json", port: 18080, upstreamPort: 15000);
+        var store = new ProxyConfigurationStore();
+        var service = CreateReloadService(temp.Path, store);
+        var first = await service.ReloadAsync(CancellationToken.None);
+        AssertEx.True(first.Succeeded);
+
+        File.WriteAllText(Path.Combine(temp.Path, "config", "sites", "broken.json"), "{ nope");
+        var validation = await service.ValidateAsync(CancellationToken.None);
+
+        AssertEx.False(validation.Succeeded);
+        AssertEx.Equal(1, store.Snapshot.Version);
+        AssertEx.True(validation.FileErrors.Any(error => error.Path?.EndsWith("broken.json", StringComparison.OrdinalIgnoreCase) == true));
+    }
+
+    public static async Task EffectiveConfigProjectionRedactsCertificateSecrets()
+    {
+        using var temp = TemporaryDirectory.Create();
+        var certificatePath = Path.Combine(temp.Path, "certs", "home.pfx");
+        TestCertificates.WriteSelfSignedPfx(certificatePath, "home.test", "secret");
+        WriteHttpsSite(temp.Path, "home.json", port: 18443, upstreamPort: 15000, certificateId: "home-cert");
+        WriteOperationalConfig(temp.Path, certificateId: "home-cert", certificatePath: "certs/home.pfx", certificatePassword: "secret");
+        var store = new ProxyConfigurationStore();
+        var service = CreateReloadService(temp.Path, store);
+        var result = await service.ReloadAsync(CancellationToken.None);
+        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
+
+        var controller = new ProxyConfigurationController(service, store);
+        var actionResult = controller.Effective();
+        var ok = (OkObjectResult)AssertEx.NotNull(actionResult.Result);
+        var projection = (ProxyConfigurationProjection)AssertEx.NotNull(ok.Value);
+
+        AssertEx.Equal(true, projection.Certificates[0].HasConfiguredPassword);
+        AssertEx.False(projection.ToString().Contains("secret", StringComparison.OrdinalIgnoreCase));
+    }
+
+    public static async Task ReloadFailureReportsPerFileErrorAndPreservesActiveConfig()
+    {
+        using var temp = TemporaryDirectory.Create();
+        WriteSite(temp.Path, "home.json", port: 18080, upstreamPort: 15000);
+        var store = new ProxyConfigurationStore();
+        var service = CreateReloadService(temp.Path, store);
+        var first = await service.ReloadAsync(CancellationToken.None);
+        AssertEx.True(first.Succeeded);
+        var loadedAt = store.Snapshot.LoadedAtUtc;
+
+        File.WriteAllText(Path.Combine(temp.Path, "config", "sites", "broken.json"), "{ nope");
+        var second = await service.ReloadAsync(CancellationToken.None);
+
+        AssertEx.False(second.Succeeded);
+        AssertEx.Equal(1, store.Snapshot.Version);
+        AssertEx.Equal(1, second.ActiveVersion);
+        AssertEx.Equal(loadedAt, second.LastSuccessfulLoadAtUtc);
+        AssertEx.True(second.FileErrors.Any(error => error.Path?.EndsWith("broken.json", StringComparison.OrdinalIgnoreCase) == true));
+    }
+
     internal static void WriteSite(string dataDirectory, string fileName, int port, int upstreamPort)
     {
         var sites = Directory.CreateDirectory(Path.Combine(dataDirectory, "config", "sites")).FullName;
         File.WriteAllText(Path.Combine(sites, fileName), SiteJson(Path.GetFileNameWithoutExtension(fileName), port, upstreamPort));
+    }
+
+    internal static void WriteCustomSite(string dataDirectory, string fileName, string json)
+    {
+        var sites = Directory.CreateDirectory(Path.Combine(dataDirectory, "config", "sites")).FullName;
+        File.WriteAllText(Path.Combine(sites, fileName), json);
     }
 
     internal static void WriteSiteWithTwoUpstreams(
@@ -595,6 +731,8 @@ internal static class ConfigurationTests
         long maxRequestBodyBytes = 104857600,
         int maxPathBytes = 8192,
         int shutdownGracePeriodSeconds = 15,
+        bool forwardedHeadersEnabled = true,
+        string[]? trustedProxies = null,
         string? certificateId = null,
         string? certificatePath = null,
         string? certificatePassword = null,
@@ -614,6 +752,9 @@ internal static class ConfigurationTests
                 }
               ]
             """;
+        var trustedProxiesJson = trustedProxies is null
+            ? "[]"
+            : "[" + string.Join(", ", trustedProxies.Select(static proxy => $@"""{proxy}""")) + "]";
 
         File.WriteAllText(
             Path.Combine(configDirectory, "proxy.json"),
@@ -651,6 +792,10 @@ internal static class ConfigurationTests
                 "maxRequestBodyBytes": {{maxRequestBodyBytes}},
                 "maxPathBytes": {{maxPathBytes}},
                 "shutdownGracePeriodSeconds": {{shutdownGracePeriodSeconds}}
+              },
+              "forwardedHeaders": {
+                "enabled": {{forwardedHeadersEnabled.ToString().ToLowerInvariant()}},
+                "trustedProxies": {{trustedProxiesJson}}
               },
               "certificates": {{certificatesJson}}
             }

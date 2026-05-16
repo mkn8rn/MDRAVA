@@ -38,10 +38,13 @@ public sealed class UpgradeForwarder
         Stream clientStream,
         Http1RequestHead requestHead,
         UpgradeRequestInfo upgrade,
+        RuntimeRoute route,
         RuntimeUpstream upstream,
         RuntimeListener listener,
         RuntimeTimeouts timeouts,
         RuntimeConnectionLimits connectionLimits,
+        string upstreamTarget,
+        ForwardedHeadersContext forwardedHeaders,
         string requestId,
         CancellationToken cancellationToken)
     {
@@ -71,7 +74,7 @@ public sealed class UpgradeForwarder
                     cancellationToken);
                 upstreamStream = new NetworkStream(upstreamSocket, ownsSocket: false);
 
-                await WriteUpgradeRequestAsync(upstreamStream, requestHead, upgrade, timeouts, cancellationToken);
+                await WriteUpgradeRequestAsync(upstreamStream, requestHead, upgrade, route, upstreamTarget, forwardedHeaders, timeouts, cancellationToken);
                 var responseHeadRead = await ReadResponseHeadAsync(
                     upstreamStream,
                     listener.MaxResponseHeadBytes,
@@ -98,6 +101,7 @@ public sealed class UpgradeForwarder
                         clientStream,
                         responseHeadRead.InitialBodyBytes,
                         responseHead,
+                        route,
                         listener,
                         timeouts,
                         requestId,
@@ -111,7 +115,7 @@ public sealed class UpgradeForwarder
                     throw new Http1UpstreamProtocolException("Upstream returned an invalid 101 Switching Protocols response.");
                 }
 
-                await WriteSwitchingProtocolsResponseAsync(clientStream, responseHead, upgrade, timeouts, requestId, cancellationToken);
+                await WriteSwitchingProtocolsResponseAsync(clientStream, responseHead, upgrade, route, timeouts, requestId, cancellationToken);
                 responseStarted = true;
                 _metrics.UpgradeRequestSucceeded();
                 _metrics.TunnelStarted();
@@ -249,12 +253,15 @@ public sealed class UpgradeForwarder
         Stream upstreamStream,
         Http1RequestHead requestHead,
         UpgradeRequestInfo upgrade,
+        RuntimeRoute route,
+        string upstreamTarget,
+        ForwardedHeadersContext forwardedHeaders,
         RuntimeTimeouts timeouts,
         CancellationToken cancellationToken)
     {
         var builder = new StringBuilder();
         builder.Append(requestHead.Method).Append(' ')
-            .Append(requestHead.Target).Append(' ')
+            .Append(upstreamTarget).Append(' ')
             .Append("HTTP/1.1").Append("\r\n");
 
         var filtered = _headerPolicy.FilterForForwarding(
@@ -262,7 +269,8 @@ public sealed class UpgradeForwarder
             preserveTransferEncoding: false,
             preserveTrailer: false);
 
-        foreach (var header in filtered)
+        var requestHeaders = ApplyRequestHeaderPolicy(filtered, route.HeaderPolicy, forwardedHeaders);
+        foreach (var header in requestHeaders)
         {
             if (IsManagedUpgradeHeader(header.Name))
             {
@@ -283,6 +291,7 @@ public sealed class UpgradeForwarder
         Stream clientStream,
         Http1ResponseHead responseHead,
         UpgradeRequestInfo upgrade,
+        RuntimeRoute route,
         RuntimeTimeouts timeouts,
         string requestId,
         CancellationToken cancellationToken)
@@ -292,7 +301,8 @@ public sealed class UpgradeForwarder
             .Append(responseHead.StatusCode).Append(' ')
             .Append(responseHead.ReasonPhrase).Append("\r\n");
 
-        foreach (var header in responseHead.Headers)
+        var responseHeaders = ApplyResponseHeaderPolicy(responseHead.Headers, route.HeaderPolicy);
+        foreach (var header in responseHeaders)
         {
             if (IsManagedUpgradeHeader(header.Name)
                 || IsUnsafeUpgradeResponseHeader(header.Name))
@@ -316,12 +326,13 @@ public sealed class UpgradeForwarder
         Stream clientStream,
         ReadOnlyMemory<byte> initialBodyBytes,
         Http1ResponseHead responseHead,
+        RuntimeRoute route,
         RuntimeListener listener,
         RuntimeTimeouts timeouts,
         string requestId,
         CancellationToken cancellationToken)
     {
-        await WriteNonUpgradeResponseHeadAsync(clientStream, responseHead, timeouts, requestId, cancellationToken);
+        await WriteNonUpgradeResponseHeadAsync(clientStream, responseHead, route, timeouts, requestId, cancellationToken);
         await RelayNonUpgradeResponseBodyAsync(
             upstreamStream,
             clientStream,
@@ -335,6 +346,7 @@ public sealed class UpgradeForwarder
     private async ValueTask WriteNonUpgradeResponseHeadAsync(
         Stream clientStream,
         Http1ResponseHead responseHead,
+        RuntimeRoute route,
         RuntimeTimeouts timeouts,
         string requestId,
         CancellationToken cancellationToken)
@@ -349,7 +361,8 @@ public sealed class UpgradeForwarder
             preserveTransferEncoding: false,
             preserveTrailer: responseHead.Framing.Kind == Http1BodyKind.Chunked);
 
-        foreach (var header in filtered)
+        var responseHeaders = ApplyResponseHeaderPolicy(filtered, route.HeaderPolicy);
+        foreach (var header in responseHeaders)
         {
             if (IsManagedFramingHeader(header.Name))
             {
@@ -680,6 +693,45 @@ public sealed class UpgradeForwarder
             || string.Equals(headerName, "TE", StringComparison.OrdinalIgnoreCase)
             || string.Equals(headerName, "Trailer", StringComparison.OrdinalIgnoreCase)
             || string.Equals(headerName, "Transfer-Encoding", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static IReadOnlyList<Http1HeaderField> ApplyRequestHeaderPolicy(
+        IReadOnlyList<Http1HeaderField> headers,
+        RuntimeHeaderPolicy policy,
+        ForwardedHeadersContext forwardedHeaders)
+    {
+        var result = headers
+            .Where(header => !ForwardedHeadersPolicy.IsForwardedHeader(header.Name))
+            .Where(header => !ContainsHeaderName(policy.RemoveRequestHeaders, header.Name))
+            .Where(header => !ContainsHeaderName(policy.SetRequestHeaders.Select(static set => set.Name), header.Name))
+            .ToList();
+
+        result.AddRange(policy.SetRequestHeaders);
+        foreach (var forwardedHeader in forwardedHeaders.Headers)
+        {
+            result.RemoveAll(header => string.Equals(header.Name, forwardedHeader.Name, StringComparison.OrdinalIgnoreCase));
+            result.Add(forwardedHeader);
+        }
+
+        return result;
+    }
+
+    private static IReadOnlyList<Http1HeaderField> ApplyResponseHeaderPolicy(
+        IReadOnlyList<Http1HeaderField> headers,
+        RuntimeHeaderPolicy policy)
+    {
+        var result = headers
+            .Where(header => !ContainsHeaderName(policy.RemoveResponseHeaders, header.Name))
+            .Where(header => !ContainsHeaderName(policy.SetResponseHeaders.Select(static set => set.Name), header.Name))
+            .ToList();
+
+        result.AddRange(policy.SetResponseHeaders);
+        return result;
+    }
+
+    private static bool ContainsHeaderName(IEnumerable<string> headerNames, string headerName)
+    {
+        return headerNames.Any(name => string.Equals(name, headerName, StringComparison.OrdinalIgnoreCase));
     }
 
     private static ReadOnlyMemory<byte> BuildGeneratedBadGateway(string requestId)

@@ -27,8 +27,26 @@ public sealed class ProxyConfigurationController : ControllerBase
         return result.Succeeded ? Ok(result) : BadRequest(result);
     }
 
+    [HttpPost("validate")]
+    public async ValueTask<ActionResult<ProxyConfigurationValidationResult>> Validate(CancellationToken cancellationToken)
+    {
+        var result = await _reloadService.ValidateAsync(cancellationToken);
+        return result.Succeeded ? Ok(result) : BadRequest(result);
+    }
+
     [HttpGet("active")]
     public ActionResult<ProxyConfigurationProjection> Active()
+    {
+        if (!_configurationStore.TryGetSnapshot(out var snapshot) || snapshot is null)
+        {
+            return NotFound();
+        }
+
+        return Ok(ProxyConfigurationMapper.ToProjection(snapshot));
+    }
+
+    [HttpGet("effective")]
+    public ActionResult<ProxyConfigurationProjection> Effective()
     {
         if (!_configurationStore.TryGetSnapshot(out var snapshot) || snapshot is null)
         {

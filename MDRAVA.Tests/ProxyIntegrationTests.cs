@@ -250,6 +250,327 @@ internal static class ProxyIntegrationTests
         AssertEx.Equal(0L, result.Metrics.AccessLogsEmitted);
     }
 
+    public static async Task HttpToHttpsRedirectPreservesPathAndQuery()
+    {
+        var result = await RunCustomProxyScenarioAsync(
+            (proxyPort, upstreamPort) => SiteWithSingleProxyRoute(
+                proxyPort,
+                upstreamPort,
+                """
+                  "httpsRedirect": {
+                    "enabled": true,
+                    "httpsPort": 9443
+                  },
+                """),
+            "GET /app/users?id=1 HTTP/1.1\r\nHost: example.test\r\n\r\n",
+            "HTTP/1.1 500 Should Not Happen\r\nContent-Length: 0\r\n\r\n",
+            expectUpstreamConnection: false);
+
+        AssertEx.True(result.ClientResponse.Contains("308 Permanent Redirect", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.True(result.ClientResponse.Contains("Location: https://example.test:9443/app/users?id=1", StringComparison.OrdinalIgnoreCase), result.ClientResponse);
+        AssertEx.Equal("", result.UpstreamRequest);
+    }
+
+    public static async Task CanonicalHostRedirectWorks()
+    {
+        var result = await RunCustomProxyScenarioAsync(
+            (proxyPort, upstreamPort) => SiteWithSingleProxyRoute(
+                proxyPort,
+                upstreamPort,
+                """
+                  "canonicalHost": {
+                    "targetHost": "www.example.test"
+                  },
+                """),
+            "GET /docs?page=2 HTTP/1.1\r\nHost: example.test\r\n\r\n",
+            "HTTP/1.1 500 Should Not Happen\r\nContent-Length: 0\r\n\r\n",
+            expectUpstreamConnection: false);
+
+        AssertEx.True(result.ClientResponse.Contains("308 Permanent Redirect", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.True(result.ClientResponse.Contains("Location: http://www.example.test/docs?page=2", StringComparison.OrdinalIgnoreCase), result.ClientResponse);
+    }
+
+    public static async Task CanonicalHostRedirectDoesNotLoop()
+    {
+        var result = await RunCustomProxyScenarioAsync(
+            (proxyPort, upstreamPort) => SiteWithSingleProxyRoute(
+                proxyPort,
+                upstreamPort,
+                """
+                  "canonicalHost": {
+                    "targetHost": "example.test"
+                  },
+                """),
+            "GET /docs HTTP/1.1\r\nHost: example.test\r\n\r\n",
+            "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
+            readBodyFromUpstreamRequest: false);
+
+        AssertEx.True(result.ClientResponse.Contains("200 OK", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.False(result.ClientResponse.Contains("Location:", StringComparison.OrdinalIgnoreCase), result.ClientResponse);
+        AssertEx.True(result.UpstreamRequest.StartsWith("GET /docs HTTP/1.1", StringComparison.Ordinal), result.UpstreamRequest);
+    }
+
+    public static async Task ForwardedHeadersGeneratedForUntrustedDirectClient()
+    {
+        var result = await RunProxyScenarioAsync(
+            "GET /forwarded HTTP/1.1\r\nHost: forward.test\r\n\r\n",
+            "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
+            readBodyFromUpstreamRequest: false);
+
+        AssertEx.True(result.UpstreamRequest.Contains("X-Forwarded-For: 127.0.0.1", StringComparison.OrdinalIgnoreCase), result.UpstreamRequest);
+        AssertEx.True(result.UpstreamRequest.Contains("X-Forwarded-Host: forward.test", StringComparison.OrdinalIgnoreCase), result.UpstreamRequest);
+        AssertEx.True(result.UpstreamRequest.Contains("X-Forwarded-Proto: http", StringComparison.OrdinalIgnoreCase), result.UpstreamRequest);
+        AssertEx.True(result.UpstreamRequest.Contains("X-Forwarded-Port:", StringComparison.OrdinalIgnoreCase), result.UpstreamRequest);
+        AssertEx.True(result.UpstreamRequest.Contains("Forwarded:", StringComparison.OrdinalIgnoreCase), result.UpstreamRequest);
+    }
+
+    public static async Task TrustedProxyAcceptsPriorForwardedChain()
+    {
+        var result = await RunCustomProxyScenarioAsync(
+            SiteWithSingleProxyRoute,
+            "GET /trusted HTTP/1.1\r\nHost: trusted.test\r\nX-Forwarded-For: 203.0.113.10\r\nX-Forwarded-Proto: https\r\n\r\n",
+            "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
+            readBodyFromUpstreamRequest: false,
+            configureOperational: dataDirectory => ConfigurationTests.WriteOperationalConfig(dataDirectory, trustedProxies: ["127.0.0.1"]));
+
+        AssertEx.True(result.UpstreamRequest.Contains("X-Forwarded-For: 203.0.113.10, 127.0.0.1", StringComparison.OrdinalIgnoreCase), result.UpstreamRequest);
+        AssertEx.True(result.UpstreamRequest.Contains("X-Forwarded-Proto: https", StringComparison.OrdinalIgnoreCase), result.UpstreamRequest);
+        AssertEx.Equal("203.0.113.10", result.Diagnostics[0].ClientEndpoint);
+    }
+
+    public static async Task UntrustedClientForwardedHeadersAreStrippedAndReplaced()
+    {
+        var result = await RunProxyScenarioAsync(
+            "GET /untrusted HTTP/1.1\r\nHost: untrusted.test\r\nX-Forwarded-For: 203.0.113.10\r\nX-Forwarded-Proto: https\r\n\r\n",
+            "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
+            readBodyFromUpstreamRequest: false);
+
+        AssertEx.True(result.UpstreamRequest.Contains("X-Forwarded-For: 127.0.0.1", StringComparison.OrdinalIgnoreCase), result.UpstreamRequest);
+        AssertEx.False(result.UpstreamRequest.Contains("203.0.113.10", StringComparison.Ordinal), result.UpstreamRequest);
+        AssertEx.True(result.UpstreamRequest.Contains("X-Forwarded-Proto: http", StringComparison.OrdinalIgnoreCase), result.UpstreamRequest);
+    }
+
+    public static async Task RequestHeaderSetAndRemoveRulesApplyUpstream()
+    {
+        var result = await RunCustomProxyScenarioAsync(
+            (proxyPort, upstreamPort) => SiteWithSingleProxyRoute(
+                proxyPort,
+                upstreamPort,
+                """
+                  "headerPolicy": {
+                    "removeRequestHeaders": [ "X-Remove" ],
+                    "setRequestHeaders": [
+                      {
+                        "name": "X-Set",
+                        "value": "yes"
+                      }
+                    ]
+                  },
+                """),
+            "GET /headers HTTP/1.1\r\nHost: headers.test\r\nX-Remove: old\r\n\r\n",
+            "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
+            readBodyFromUpstreamRequest: false);
+
+        AssertEx.False(result.UpstreamRequest.Contains("X-Remove:", StringComparison.OrdinalIgnoreCase), result.UpstreamRequest);
+        AssertEx.True(result.UpstreamRequest.Contains("X-Set: yes", StringComparison.OrdinalIgnoreCase), result.UpstreamRequest);
+    }
+
+    public static async Task ResponseHeaderSetAndRemoveRulesApplyDownstream()
+    {
+        var result = await RunCustomProxyScenarioAsync(
+            (proxyPort, upstreamPort) => SiteWithSingleProxyRoute(
+                proxyPort,
+                upstreamPort,
+                """
+                  "headerPolicy": {
+                    "removeResponseHeaders": [ "X-Remove" ],
+                    "setResponseHeaders": [
+                      {
+                        "name": "X-Set",
+                        "value": "yes"
+                      }
+                    ]
+                  },
+                """),
+            "GET /headers HTTP/1.1\r\nHost: headers.test\r\n\r\n",
+            "HTTP/1.1 200 OK\r\nX-Remove: old\r\nContent-Length: 2\r\n\r\nok",
+            readBodyFromUpstreamRequest: false);
+
+        AssertEx.False(result.ClientResponse.Contains("X-Remove:", StringComparison.OrdinalIgnoreCase), result.ClientResponse);
+        AssertEx.True(result.ClientResponse.Contains("X-Set: yes", StringComparison.OrdinalIgnoreCase), result.ClientResponse);
+    }
+
+    public static async Task PathPrefixStrippingPreservesQueryString()
+    {
+        var result = await RunCustomProxyScenarioAsync(
+            (proxyPort, upstreamPort) => SiteWithSingleProxyRoute(
+                proxyPort,
+                upstreamPort,
+                """
+                  "pathRewrite": {
+                    "stripPrefix": "/public"
+                  },
+                """),
+            "GET /public/api/users?id=1 HTTP/1.1\r\nHost: rewrite.test\r\n\r\n",
+            "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
+            readBodyFromUpstreamRequest: false);
+
+        AssertEx.True(result.UpstreamRequest.StartsWith("GET /api/users?id=1 HTTP/1.1", StringComparison.Ordinal), result.UpstreamRequest);
+    }
+
+    public static async Task PathPrefixReplacementWorks()
+    {
+        var result = await RunCustomProxyScenarioAsync(
+            (proxyPort, upstreamPort) => SiteWithSingleProxyRoute(
+                proxyPort,
+                upstreamPort,
+                """
+                  "pathRewrite": {
+                    "replacePrefix": "/v1",
+                    "replacement": "/api"
+                  },
+                """),
+            "GET /v1/users?active=true HTTP/1.1\r\nHost: rewrite.test\r\n\r\n",
+            "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
+            readBodyFromUpstreamRequest: false);
+
+        AssertEx.True(result.UpstreamRequest.StartsWith("GET /api/users?active=true HTTP/1.1", StringComparison.Ordinal), result.UpstreamRequest);
+    }
+
+    public static async Task PathRewriteNoMatchForwardsOriginalTarget()
+    {
+        var result = await RunCustomProxyScenarioAsync(
+            (proxyPort, upstreamPort) => SiteWithSingleProxyRoute(
+                proxyPort,
+                upstreamPort,
+                """
+                  "pathRewrite": {
+                    "stripPrefix": "/public"
+                  },
+                """),
+            "GET /private?id=1 HTTP/1.1\r\nHost: rewrite.test\r\n\r\n",
+            "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
+            readBodyFromUpstreamRequest: false);
+
+        AssertEx.True(result.UpstreamRequest.StartsWith("GET /private?id=1 HTTP/1.1", StringComparison.Ordinal), result.UpstreamRequest);
+    }
+
+
+    public static async Task RedirectRouteReturnsConfiguredRedirect()
+    {
+        var result = await RunCustomProxyScenarioAsync(
+            (proxyPort, _) => SiteWithRoutes(
+                proxyPort,
+                """
+                    {
+                      "name": "old",
+                      "pathPrefix": "/old",
+                      "action": "redirect",
+                      "redirect": {
+                        "statusCode": 307,
+                        "targetPath": "/new",
+                        "preserveQuery": true
+                      }
+                    }
+                """),
+            "GET /old?id=1 HTTP/1.1\r\nHost: redirect.test\r\n\r\n",
+            "HTTP/1.1 500 Should Not Happen\r\nContent-Length: 0\r\n\r\n",
+            expectUpstreamConnection: false);
+
+        AssertEx.True(result.ClientResponse.Contains("307 Temporary Redirect", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.True(result.ClientResponse.Contains("Location: /new?id=1", StringComparison.OrdinalIgnoreCase), result.ClientResponse);
+        AssertEx.Equal("", result.UpstreamRequest);
+    }
+
+    public static async Task StaticResponseRouteReturnsConfiguredResponse()
+    {
+        var result = await RunCustomProxyScenarioAsync(
+            (proxyPort, _) => SiteWithRoutes(
+                proxyPort,
+                """
+                    {
+                      "name": "gone",
+                      "pathPrefix": "/gone",
+                      "action": "staticResponse",
+                      "staticResponse": {
+                        "statusCode": 410,
+                        "contentType": "text/plain",
+                        "body": "gone"
+                      }
+                    }
+                """),
+            "GET /gone HTTP/1.1\r\nHost: static.test\r\n\r\n",
+            "HTTP/1.1 500 Should Not Happen\r\nContent-Length: 0\r\n\r\n",
+            expectUpstreamConnection: false);
+
+        AssertEx.True(result.ClientResponse.Contains("410 Gone", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.True(result.ClientResponse.Contains("Content-Type: text/plain", StringComparison.OrdinalIgnoreCase), result.ClientResponse);
+        AssertEx.True(result.ClientResponse.EndsWith("gone", StringComparison.Ordinal), result.ClientResponse);
+    }
+
+    public static async Task MaintenanceModeReturns503AndDoesNotContactUpstream()
+    {
+        var result = await RunCustomProxyScenarioAsync(
+            (proxyPort, upstreamPort) => SiteWithSingleProxyRoute(
+                proxyPort,
+                upstreamPort,
+                """
+                  "maintenance": {
+                    "enabled": true,
+                    "retryAfterSeconds": 120,
+                    "contentType": "text/plain",
+                    "body": "maintenance"
+                  },
+                """),
+            "GET / HTTP/1.1\r\nHost: maintenance.test\r\n\r\n",
+            "HTTP/1.1 500 Should Not Happen\r\nContent-Length: 0\r\n\r\n",
+            expectUpstreamConnection: false);
+
+        AssertEx.True(result.ClientResponse.Contains("503 Service Unavailable", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.True(result.ClientResponse.Contains("Retry-After: 120", StringComparison.OrdinalIgnoreCase), result.ClientResponse);
+        AssertEx.True(result.ClientResponse.EndsWith("maintenance", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.Equal("", result.UpstreamRequest);
+    }
+
+    public static async Task PerRouteBodySizeOverrideWorks()
+    {
+        var result = await RunCustomProxyScenarioAsync(
+            (proxyPort, upstreamPort) => SiteWithSingleProxyRoute(
+                proxyPort,
+                upstreamPort,
+                """
+                  "overrides": {
+                    "maxRequestBodyBytes": 10
+                  },
+                """),
+            "POST /body HTTP/1.1\r\nHost: body.test\r\nContent-Length: 6\r\n\r\nabcdef",
+            "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
+            configureOperational: dataDirectory => ConfigurationTests.WriteOperationalConfig(dataDirectory, maxRequestBodyBytes: 5));
+
+        AssertEx.True(result.ClientResponse.Contains("200 OK", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.True(result.UpstreamRequest.EndsWith("abcdef", StringComparison.Ordinal), result.UpstreamRequest);
+    }
+
+    public static async Task PerRouteAccessLogDisableIsReflectedInDiagnostics()
+    {
+        var result = await RunCustomProxyScenarioAsync(
+            (proxyPort, upstreamPort) => SiteWithSingleProxyRoute(
+                proxyPort,
+                upstreamPort,
+                """
+                  "overrides": {
+                    "accessLogEnabled": false
+                  },
+                """),
+            "GET /quiet HTTP/1.1\r\nHost: quiet-route.test\r\n\r\n",
+            "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
+            readBodyFromUpstreamRequest: false);
+
+        AssertEx.Equal(1, result.Diagnostics.Count);
+        AssertEx.Equal(0L, result.Metrics.AccessLogsEmitted);
+        AssertEx.Equal("scenario", result.Diagnostics[0].RouteName);
+    }
+
     public static async Task NoMatchingRouteProducesDiagnosticClassification()
     {
         var proxyPort = GetFreeTcpPort();
@@ -1226,6 +1547,104 @@ internal static class ProxyIntegrationTests
             {
             }
         }
+    }
+
+    private static async Task<ProxyScenarioResult> RunCustomProxyScenarioAsync(
+        Func<int, int, string> siteJsonFactory,
+        string clientRequest,
+        string upstreamResponse,
+        bool readBodyFromUpstreamRequest = true,
+        bool expectUpstreamConnection = true,
+        bool sendUpstreamResponse = true,
+        Action<string>? configureOperational = null)
+    {
+        var proxyPort = GetFreeTcpPort();
+        var upstreamPort = GetFreeTcpPort();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var dataDirectory = Path.Combine(Path.GetTempPath(), $"mdrava-integration-{Guid.NewGuid():N}");
+
+        ConfigurationTests.WriteCustomSite(dataDirectory, "scenario.json", siteJsonFactory(proxyPort, upstreamPort));
+        configureOperational?.Invoke(dataDirectory);
+        var upstreamTask = expectUpstreamConnection
+            ? RunScenarioUpstreamAsync(upstreamPort, upstreamResponse, readBodyFromUpstreamRequest, sendUpstreamResponse, timeout.Token)
+            : Task.FromResult("");
+
+        try
+        {
+            using var host = BuildProxyHost(dataDirectory);
+            await host.StartAsync(timeout.Token);
+
+            try
+            {
+                using var client = new TcpClient();
+                await client.ConnectAsync(IPAddress.Loopback, proxyPort, timeout.Token);
+                await using var stream = client.GetStream();
+                await stream.WriteAsync(Encoding.ASCII.GetBytes(WithConnectionClose(clientRequest)), timeout.Token);
+
+                var clientResponse = await ReadToEndAsync(stream, timeout.Token);
+                var upstreamRequest = await upstreamTask.WaitAsync(timeout.Token);
+                var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
+                var diagnostics = host.Services.GetRequiredService<RecentRequestDiagnosticsStore>().Recent(50);
+                return new ProxyScenarioResult(clientResponse, upstreamRequest, metrics, diagnostics);
+            }
+            finally
+            {
+                await host.StopAsync(CancellationToken.None);
+            }
+        }
+        finally
+        {
+            DeleteDirectory(dataDirectory);
+        }
+    }
+
+    private static string SiteWithSingleProxyRoute(int proxyPort, int upstreamPort)
+    {
+        return SiteWithSingleProxyRoute(proxyPort, upstreamPort, "");
+    }
+
+    private static string SiteWithSingleProxyRoute(
+        int proxyPort,
+        int upstreamPort,
+        string routeExtraJson)
+    {
+        return SiteWithRoutes(
+            proxyPort,
+            $$"""
+                {
+                  "name": "scenario",
+                  "pathPrefix": "/",
+                  "action": "proxy",
+                  {{routeExtraJson}}
+                  "upstreams": [
+                    {
+                      "name": "local-test",
+                      "address": "127.0.0.1",
+                      "port": {{upstreamPort}}
+                    }
+                  ]
+                }
+            """);
+    }
+
+    private static string SiteWithRoutes(int proxyPort, string routesJson)
+    {
+        return $$"""
+        {
+          "name": "scenario",
+          "listeners": [
+            {
+              "name": "main",
+              "address": "127.0.0.1",
+              "port": {{proxyPort}}
+            }
+          ],
+          "host": "*",
+          "routes": [
+            {{routesJson}}
+          ]
+        }
+        """;
     }
 
     private static async Task<TwoUpstreamHttpResult> RunTwoUpstreamHttpScenarioAsync(

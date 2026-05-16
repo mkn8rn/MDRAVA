@@ -1,10 +1,28 @@
 using System.Net;
+using System.Text;
 using Microsoft.Extensions.Options;
 
 namespace MDRAVA.API.Proxy.Configuration;
 
 public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
 {
+    private const int MaxGeneratedBodyBytes = 64 * 1024;
+    private static readonly HashSet<int> RedirectStatusCodes = [301, 302, 303, 307, 308];
+    private static readonly HashSet<string> RestrictedHeaderNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Connection",
+        "Keep-Alive",
+        "Proxy-Authenticate",
+        "Proxy-Authorization",
+        "TE",
+        "Trailer",
+        "Transfer-Encoding",
+        "Upgrade",
+        "Content-Length",
+        "Host",
+        "X-Request-Id"
+    };
+
     public ValidateOptionsResult Validate(string? name, ProxyOptions options)
     {
         List<string> failures = [];
@@ -95,16 +113,43 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
                 failures.Add($"{routePrefix}:PathPrefix must start with '/'.");
             }
 
-            if (!string.Equals(route.LoadBalancingPolicy, "round-robin", StringComparison.OrdinalIgnoreCase))
+            var routeAction = string.IsNullOrWhiteSpace(route.Action) ? "proxy" : route.Action;
+            if (!IsRouteAction(routeAction))
+            {
+                failures.Add($"{routePrefix}:Action must be 'proxy', 'redirect', or 'staticResponse'.");
+            }
+
+            if (IsProxyAction(routeAction)
+                && !string.Equals(route.LoadBalancingPolicy, "round-robin", StringComparison.OrdinalIgnoreCase))
             {
                 failures.Add($"{routePrefix}:LoadBalancingPolicy must be 'round-robin' for Phase 8.");
             }
 
-            ValidateHealthCheck(failures, routePrefix, route.HealthCheck);
+            if (IsProxyAction(routeAction))
+            {
+                ValidateHealthCheck(failures, routePrefix, route.HealthCheck);
+            }
 
-            if (route.Upstreams.Count == 0)
+            ValidateRedirectPolicy(failures, routePrefix, route.HttpsRedirect, allowEmptyTarget: true);
+            ValidateCanonicalHost(failures, routePrefix, route.CanonicalHost);
+            ValidateHeaderPolicy(failures, routePrefix, route.HeaderPolicy);
+            ValidatePathRewrite(failures, routePrefix, route.PathRewrite);
+            ValidateMaintenance(failures, routePrefix, route.Maintenance);
+            ValidateOverrides(failures, routePrefix, route.Overrides);
+
+            if (IsProxyAction(routeAction) && route.Upstreams.Count == 0)
             {
                 failures.Add($"{routePrefix}:Upstreams must contain at least one upstream.");
+            }
+
+            if (IsRedirectAction(routeAction))
+            {
+                ValidateRedirectRoute(failures, routePrefix, route.Redirect);
+            }
+
+            if (IsStaticResponseAction(routeAction))
+            {
+                ValidateStaticResponse(failures, routePrefix, route.StaticResponse);
             }
 
             HashSet<string> upstreamNames = new(StringComparer.OrdinalIgnoreCase);
@@ -145,6 +190,26 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
             : ValidateOptionsResult.Fail(failures);
     }
 
+    private static bool IsRouteAction(string action)
+    {
+        return IsProxyAction(action) || IsRedirectAction(action) || IsStaticResponseAction(action);
+    }
+
+    private static bool IsProxyAction(string action)
+    {
+        return string.Equals(action, "proxy", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsRedirectAction(string action)
+    {
+        return string.Equals(action, "redirect", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsStaticResponseAction(string action)
+    {
+        return string.Equals(action, "staticResponse", StringComparison.OrdinalIgnoreCase);
+    }
+
     private static void ValidateHealthCheck(
         List<string> failures,
         string routePrefix,
@@ -180,6 +245,258 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
         if (healthCheck.UnhealthyThreshold is < 1 or > 100)
         {
             failures.Add($"{prefix}:UnhealthyThreshold must be between 1 and 100.");
+        }
+    }
+
+    private static void ValidateRedirectPolicy(
+        List<string> failures,
+        string routePrefix,
+        ProxyHttpsRedirectOptions redirect,
+        bool allowEmptyTarget)
+    {
+        _ = allowEmptyTarget;
+        if (redirect.StatusCode.HasValue && !RedirectStatusCodes.Contains(redirect.StatusCode.Value))
+        {
+            failures.Add($"{routePrefix}:HttpsRedirect:StatusCode must be one of 301, 302, 303, 307, or 308.");
+        }
+
+        if (redirect.HttpsPort is < 1 or > 65535)
+        {
+            failures.Add($"{routePrefix}:HttpsRedirect:HttpsPort must be between 1 and 65535.");
+        }
+    }
+
+    private static void ValidateCanonicalHost(
+        List<string> failures,
+        string routePrefix,
+        ProxyCanonicalHostOptions canonicalHost)
+    {
+        if (canonicalHost.StatusCode.HasValue && !RedirectStatusCodes.Contains(canonicalHost.StatusCode.Value))
+        {
+            failures.Add($"{routePrefix}:CanonicalHost:StatusCode must be one of 301, 302, 303, 307, or 308.");
+        }
+
+        var enabled = canonicalHost.Enabled == true || !string.IsNullOrWhiteSpace(canonicalHost.TargetHost);
+        if (!enabled)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(canonicalHost.TargetHost))
+        {
+            failures.Add($"{routePrefix}:CanonicalHost:TargetHost is required when canonical host redirect is enabled.");
+            return;
+        }
+
+        if (canonicalHost.TargetHost.Contains('/', StringComparison.Ordinal)
+            || canonicalHost.TargetHost.Contains('\\', StringComparison.Ordinal)
+            || canonicalHost.TargetHost.Any(char.IsWhiteSpace))
+        {
+            failures.Add($"{routePrefix}:CanonicalHost:TargetHost must be a host name, not a URL or path.");
+        }
+    }
+
+    private static void ValidateHeaderPolicy(
+        List<string> failures,
+        string routePrefix,
+        ProxyHeaderPolicyOptions policy)
+    {
+        ValidateHeaderSetRules(failures, $"{routePrefix}:HeaderPolicy:SetRequestHeaders", policy.SetRequestHeaders);
+        ValidateHeaderSetRules(failures, $"{routePrefix}:HeaderPolicy:SetResponseHeaders", policy.SetResponseHeaders);
+        ValidateHeaderRemoveRules(failures, $"{routePrefix}:HeaderPolicy:RemoveRequestHeaders", policy.RemoveRequestHeaders);
+        ValidateHeaderRemoveRules(failures, $"{routePrefix}:HeaderPolicy:RemoveResponseHeaders", policy.RemoveResponseHeaders);
+    }
+
+    private static void ValidateHeaderSetRules(
+        List<string> failures,
+        string prefix,
+        IReadOnlyList<ProxyHeaderSetOptions> rules)
+    {
+        for (var index = 0; index < rules.Count; index++)
+        {
+            var rule = rules[index];
+            var rulePrefix = $"{prefix}:{index}";
+            ValidateHeaderName(failures, $"{rulePrefix}:Name", rule.Name);
+            if (rule.Value.Any(static character => character is '\r' or '\n'))
+            {
+                failures.Add($"{rulePrefix}:Value must not contain CR or LF.");
+            }
+        }
+    }
+
+    private static void ValidateHeaderRemoveRules(
+        List<string> failures,
+        string prefix,
+        IReadOnlyList<string> headerNames)
+    {
+        for (var index = 0; index < headerNames.Count; index++)
+        {
+            ValidateHeaderName(failures, $"{prefix}:{index}", headerNames[index]);
+        }
+    }
+
+    private static void ValidateHeaderName(List<string> failures, string prefix, string headerName)
+    {
+        if (string.IsNullOrWhiteSpace(headerName))
+        {
+            failures.Add($"{prefix} is required.");
+            return;
+        }
+
+        if (RestrictedHeaderNames.Contains(headerName))
+        {
+            failures.Add($"{prefix} '{headerName}' is restricted and cannot be modified by header policy.");
+            return;
+        }
+
+        foreach (var character in headerName)
+        {
+            var valid = character is >= '!' and <= '~'
+                && character is not '(' and not ')' and not '<' and not '>' and not '@'
+                && character is not ',' and not ';' and not ':' and not '\\' and not '"'
+                && character is not '/' and not '[' and not ']' and not '?' and not '='
+                && character is not '{' and not '}';
+            if (!valid)
+            {
+                failures.Add($"{prefix} '{headerName}' is not a valid HTTP field name.");
+                return;
+            }
+        }
+    }
+
+    private static void ValidatePathRewrite(
+        List<string> failures,
+        string routePrefix,
+        ProxyPathRewriteOptions rewrite)
+    {
+        if (!string.IsNullOrWhiteSpace(rewrite.StripPrefix) && !rewrite.StripPrefix.StartsWith('/'))
+        {
+            failures.Add($"{routePrefix}:PathRewrite:StripPrefix must start with '/'.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(rewrite.ReplacePrefix) && !rewrite.ReplacePrefix.StartsWith('/'))
+        {
+            failures.Add($"{routePrefix}:PathRewrite:ReplacePrefix must start with '/'.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(rewrite.Replacement) && !rewrite.Replacement.StartsWith('/'))
+        {
+            failures.Add($"{routePrefix}:PathRewrite:Replacement must start with '/'.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(rewrite.StripPrefix)
+            && !string.IsNullOrWhiteSpace(rewrite.ReplacePrefix))
+        {
+            failures.Add($"{routePrefix}:PathRewrite must not configure both StripPrefix and ReplacePrefix.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(rewrite.ReplacePrefix)
+            && string.IsNullOrWhiteSpace(rewrite.Replacement))
+        {
+            failures.Add($"{routePrefix}:PathRewrite:Replacement is required when ReplacePrefix is configured.");
+        }
+    }
+
+    private static void ValidateRedirectRoute(
+        List<string> failures,
+        string routePrefix,
+        ProxyRedirectOptions redirect)
+    {
+        var statusCode = redirect.StatusCode ?? 308;
+        if (!RedirectStatusCodes.Contains(statusCode))
+        {
+            failures.Add($"{routePrefix}:Redirect:StatusCode must be one of 301, 302, 303, 307, or 308.");
+        }
+
+        var hasTargetUrl = !string.IsNullOrWhiteSpace(redirect.TargetUrl);
+        var hasTargetPath = !string.IsNullOrWhiteSpace(redirect.TargetPath);
+        if (hasTargetUrl == hasTargetPath)
+        {
+            failures.Add($"{routePrefix}:Redirect must set exactly one of TargetUrl or TargetPath.");
+            return;
+        }
+
+        if (hasTargetUrl && !Uri.TryCreate(redirect.TargetUrl, UriKind.Absolute, out _))
+        {
+            failures.Add($"{routePrefix}:Redirect:TargetUrl must be an absolute URL.");
+        }
+
+        if (hasTargetPath && !redirect.TargetPath.StartsWith('/'))
+        {
+            failures.Add($"{routePrefix}:Redirect:TargetPath must start with '/'.");
+        }
+    }
+
+    private static void ValidateStaticResponse(
+        List<string> failures,
+        string routePrefix,
+        ProxyStaticResponseOptions response)
+    {
+        if (response.StatusCode is < 200 or > 599)
+        {
+            failures.Add($"{routePrefix}:StaticResponse:StatusCode must be between 200 and 599.");
+        }
+
+        if (string.IsNullOrWhiteSpace(response.ContentType)
+            || response.ContentType.Any(static character => character is '\r' or '\n'))
+        {
+            failures.Add($"{routePrefix}:StaticResponse:ContentType must be a non-empty single-line value.");
+        }
+
+        if (Encoding.UTF8.GetByteCount(response.Body) > MaxGeneratedBodyBytes)
+        {
+            failures.Add($"{routePrefix}:StaticResponse:Body must not exceed {MaxGeneratedBodyBytes} UTF-8 bytes.");
+        }
+    }
+
+    private static void ValidateMaintenance(
+        List<string> failures,
+        string routePrefix,
+        ProxyMaintenanceOptions maintenance)
+    {
+        if (maintenance.RetryAfterSeconds is < 0 or > 86400)
+        {
+            failures.Add($"{routePrefix}:Maintenance:RetryAfterSeconds must be between 0 and 86400.");
+        }
+
+        if (string.IsNullOrWhiteSpace(maintenance.ContentType)
+            || maintenance.ContentType.Any(static character => character is '\r' or '\n'))
+        {
+            failures.Add($"{routePrefix}:Maintenance:ContentType must be a non-empty single-line value.");
+        }
+
+        if (Encoding.UTF8.GetByteCount(maintenance.Body) > MaxGeneratedBodyBytes)
+        {
+            failures.Add($"{routePrefix}:Maintenance:Body must not exceed {MaxGeneratedBodyBytes} UTF-8 bytes.");
+        }
+    }
+
+    private static void ValidateOverrides(
+        List<string> failures,
+        string routePrefix,
+        ProxyRouteOverrideOptions overrides)
+    {
+        if (overrides.MaxRequestBodyBytes is < 0 or > 1L * 1024 * 1024 * 1024 * 1024)
+        {
+            failures.Add($"{routePrefix}:Overrides:MaxRequestBodyBytes must be between 0 and 1099511627776.");
+        }
+
+        if (overrides.ClientRequestHeadTimeoutMs.HasValue)
+        {
+            ValidateOverrideTimeout(failures, $"{routePrefix}:Overrides:ClientRequestHeadTimeoutMs", overrides.ClientRequestHeadTimeoutMs.Value);
+        }
+
+        if (overrides.UpstreamResponseHeadTimeoutMs.HasValue)
+        {
+            ValidateOverrideTimeout(failures, $"{routePrefix}:Overrides:UpstreamResponseHeadTimeoutMs", overrides.UpstreamResponseHeadTimeoutMs.Value);
+        }
+    }
+
+    private static void ValidateOverrideTimeout(List<string> failures, string name, int value)
+    {
+        if (value is < 100 or > 10 * 60 * 1000)
+        {
+            failures.Add($"{name} must be between 100 and 600000 milliseconds.");
         }
     }
 }

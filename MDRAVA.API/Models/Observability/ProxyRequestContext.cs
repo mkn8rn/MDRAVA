@@ -29,7 +29,7 @@ public sealed class ProxyRequestContext
 
     public string Transport { get; }
 
-    public string? ClientEndpoint { get; }
+    public string? ClientEndpoint { get; private set; }
 
     public int ConfigVersion { get; }
 
@@ -65,6 +65,8 @@ public sealed class ProxyRequestContext
 
     public ProxyFailureKind FailureKind { get; set; } = ProxyFailureKind.None;
 
+    public bool? AccessLogEnabled { get; set; }
+
     public TimeSpan Elapsed => TimeProvider.System.GetElapsedTime(_startedTimestamp);
 
     public void SetRequest(string method, string host, string target, string? externalRequestId)
@@ -78,11 +80,17 @@ public sealed class ProxyRequestContext
     public void SetRoute(RuntimeRoute route)
     {
         RouteName = route.Name;
+        AccessLogEnabled = route.ResolvedOptions.AccessLogEnabled;
     }
 
     public void SetUpstream(RuntimeUpstream upstream)
     {
         UpstreamName = upstream.Name;
         UpstreamEndpoint = upstream.Endpoint;
+    }
+
+    public void SetClientEndpoint(string? clientEndpoint)
+    {
+        ClientEndpoint = clientEndpoint;
     }
 }

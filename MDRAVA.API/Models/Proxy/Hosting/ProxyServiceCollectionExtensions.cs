@@ -43,7 +43,10 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<UpstreamConnectionPool>();
         services.AddSingleton<UpstreamHealthCheckClient>();
         services.AddSingleton<HopByHopHeaderPolicy>();
+        services.AddSingleton<ForwardedHeadersPolicy>();
         services.AddSingleton<UpgradeRequestPolicy>();
+        services.AddSingleton<ProxyRouteActionPolicy>();
+        services.AddSingleton<PathRewritePolicy>();
         services.AddSingleton<TunnelRelay>();
         services.AddSingleton<ProxyForwarder>();
         services.AddSingleton<UpgradeForwarder>();

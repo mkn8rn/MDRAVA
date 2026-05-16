@@ -23,6 +23,7 @@ public static class ProxyOperationalOptionsValidator
         ValidateConnectionLimits(failures, options.Connections);
         ValidateObservability(failures, options.Observability);
         ValidateLimits(failures, options.Limits);
+        ValidateForwardedHeaders(failures, options.ForwardedHeaders);
         ValidateCertificates(failures, options.Certificates);
         return failures;
     }
@@ -146,6 +147,32 @@ public static class ProxyOperationalOptionsValidator
         if (options.ShutdownGracePeriodSeconds is < 1 or > 3600)
         {
             failures.Add("Proxy limit ShutdownGracePeriodSeconds must be between 1 and 3600.");
+        }
+    }
+
+    private static void ValidateForwardedHeaders(List<string> failures, ProxyForwardedHeadersOptions options)
+    {
+        HashSet<string> entries = new(StringComparer.OrdinalIgnoreCase);
+        for (var index = 0; index < options.TrustedProxies.Count; index++)
+        {
+            var entry = options.TrustedProxies[index];
+            var prefix = $"Proxy:ForwardedHeaders:TrustedProxies:{index}";
+            if (string.IsNullOrWhiteSpace(entry))
+            {
+                failures.Add($"{prefix} must not be empty.");
+                continue;
+            }
+
+            if (!entries.Add(entry.Trim()))
+            {
+                failures.Add($"{prefix} '{entry}' is duplicated.");
+                continue;
+            }
+
+            if (!RuntimeTrustedProxy.TryParse(entry, out _))
+            {
+                failures.Add($"{prefix} '{entry}' must be an exact IPv4/IPv6 address or CIDR range.");
+            }
         }
     }
 }

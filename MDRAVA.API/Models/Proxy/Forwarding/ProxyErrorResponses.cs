@@ -38,27 +38,46 @@ public static class ProxyErrorResponses
         string? requestId,
         TimeSpan timeout,
         ProxyMetrics metrics,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? contentType = "text/plain",
+        IReadOnlyList<Http1HeaderField>? headers = null)
     {
         var builder = new StringBuilder();
+        var bodyBytes = Encoding.UTF8.GetBytes(body);
         builder.Append("HTTP/1.1 ")
             .Append(statusCode)
             .Append(' ')
             .Append(reasonPhrase)
-            .Append("\r\nConnection: close\r\nContent-Type: text/plain\r\n");
+            .Append("\r\nConnection: close\r\n");
+        if (!string.IsNullOrWhiteSpace(contentType))
+        {
+            builder.Append("Content-Type: ").Append(contentType).Append("\r\n");
+        }
+
         if (!string.IsNullOrWhiteSpace(requestId))
         {
             builder.Append("X-Request-Id: ").Append(requestId).Append("\r\n");
         }
 
-        builder.Append("Content-Length: ")
-            .Append(Encoding.ASCII.GetByteCount(body))
-            .Append("\r\n\r\n")
-            .Append(body);
+        if (headers is not null)
+        {
+            foreach (var header in headers)
+            {
+                builder.Append(header.Name).Append(": ").Append(header.Value).Append("\r\n");
+            }
+        }
 
+        builder.Append("Content-Length: ")
+            .Append(bodyBytes.Length)
+            .Append("\r\n\r\n");
+
+        var headBytes = Encoding.ASCII.GetBytes(builder.ToString());
+        var response = new byte[headBytes.Length + bodyBytes.Length];
+        headBytes.CopyTo(response, 0);
+        bodyBytes.CopyTo(response, headBytes.Length);
         return WriteAsync(
             stream,
-            Encoding.ASCII.GetBytes(builder.ToString()),
+            response,
             timeout,
             metrics,
             cancellationToken);

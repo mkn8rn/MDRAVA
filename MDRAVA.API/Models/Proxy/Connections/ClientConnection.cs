@@ -28,6 +28,9 @@ public sealed class ClientConnection
     private readonly ProxyForwarder _forwarder;
     private readonly UpgradeForwarder _upgradeForwarder;
     private readonly UpgradeRequestPolicy _upgradeRequestPolicy;
+    private readonly ForwardedHeadersPolicy _forwardedHeadersPolicy;
+    private readonly ProxyRouteActionPolicy _routeActionPolicy;
+    private readonly PathRewritePolicy _pathRewritePolicy;
     private readonly TlsConnectionAuthenticator _tlsAuthenticator;
     private readonly ProxyMetrics _metrics;
     private readonly RequestIdGenerator _requestIdGenerator;
@@ -45,6 +48,9 @@ public sealed class ClientConnection
         ProxyForwarder forwarder,
         UpgradeForwarder upgradeForwarder,
         UpgradeRequestPolicy upgradeRequestPolicy,
+        ForwardedHeadersPolicy forwardedHeadersPolicy,
+        ProxyRouteActionPolicy routeActionPolicy,
+        PathRewritePolicy pathRewritePolicy,
         TlsConnectionAuthenticator tlsAuthenticator,
         ProxyMetrics metrics,
         RequestIdGenerator requestIdGenerator,
@@ -61,6 +67,9 @@ public sealed class ClientConnection
         _forwarder = forwarder;
         _upgradeForwarder = upgradeForwarder;
         _upgradeRequestPolicy = upgradeRequestPolicy;
+        _forwardedHeadersPolicy = forwardedHeadersPolicy;
+        _routeActionPolicy = routeActionPolicy;
+        _pathRewritePolicy = pathRewritePolicy;
         _tlsAuthenticator = tlsAuthenticator;
         _metrics = metrics;
         _requestIdGenerator = requestIdGenerator;
@@ -214,7 +223,14 @@ public sealed class ClientConnection
                     requestHead.Target,
                     ExtractExternalRequestId(requestHead));
 
-                if (!_rateLimiter.TryAcquireRequest(GetClientIpAddress(), _configurationSnapshot.Limits.RequestsPerMinutePerIp))
+                var forwardedHeaders = _forwardedHeadersPolicy.Build(
+                    requestHead,
+                    _listener,
+                    _configurationSnapshot.ForwardedHeaders,
+                    GetRemoteEndPoint());
+                currentContext.SetClientEndpoint(forwardedHeaders.ResolvedClientEndpoint);
+
+                if (!_rateLimiter.TryAcquireRequest(forwardedHeaders.ResolvedClientIp, _configurationSnapshot.Limits.RequestsPerMinutePerIp))
                 {
                     await WriteGeneratedResponseAsync(
                         clientStream,
@@ -223,22 +239,6 @@ public sealed class ClientConnection
                         "Too Many Requests",
                         currentContext,
                         ProxyFailureKind.RateLimited,
-                        cancellationToken);
-                    CompleteContext(ref currentContext);
-                    return;
-                }
-
-                if (requestHead.Framing.Kind == Http1BodyKind.ContentLength
-                    && requestHead.Framing.ContentLength.GetValueOrDefault() > _configurationSnapshot.Limits.MaxRequestBodyBytes)
-                {
-                    _metrics.RequestBodySizeRejected();
-                    await WriteGeneratedResponseAsync(
-                        clientStream,
-                        413,
-                        "Payload Too Large",
-                        "Payload Too Large",
-                        currentContext,
-                        ProxyFailureKind.RequestPayloadTooLarge,
                         cancellationToken);
                     CompleteContext(ref currentContext);
                     return;
@@ -265,6 +265,7 @@ public sealed class ClientConnection
                         clientStream,
                         requestHeadRead,
                         requestHead,
+                        forwardedHeaders,
                         currentContext,
                         cancellationToken);
                     CompleteContext(ref currentContext);
@@ -292,6 +293,38 @@ public sealed class ClientConnection
                 }
                 currentContext.SetRoute(routeMatch.Route);
 
+                var actionDecision = _routeActionPolicy.Evaluate(
+                    routeMatch.Route,
+                    requestHead,
+                    _listener,
+                    isUpgradeRequest: false);
+                if (!actionDecision.ShouldProxy)
+                {
+                    await WriteGeneratedRouteResponseAsync(
+                        clientStream,
+                        actionDecision.Response!,
+                        currentContext,
+                        cancellationToken);
+                    CompleteContext(ref currentContext);
+                    return;
+                }
+
+                if (requestHead.Framing.Kind == Http1BodyKind.ContentLength
+                    && requestHead.Framing.ContentLength.GetValueOrDefault() > routeMatch.Route.ResolvedOptions.MaxRequestBodyBytes)
+                {
+                    _metrics.RequestBodySizeRejected();
+                    await WriteGeneratedResponseAsync(
+                        clientStream,
+                        413,
+                        "Payload Too Large",
+                        "Payload Too Large",
+                        currentContext,
+                        ProxyFailureKind.RequestPayloadTooLarge,
+                        cancellationToken);
+                    CompleteContext(ref currentContext);
+                    return;
+                }
+
                 var selection = _upstreamSelector.Select(routeMatch.Route);
                 if (selection is null)
                 {
@@ -311,15 +344,20 @@ public sealed class ClientConnection
                 var nextRequestCount = requestsProcessed + 1;
                 var preferKeepAlive = ShouldKeepClientConnectionOpen(requestHead)
                     && nextRequestCount < _configurationSnapshot.ConnectionLimits.MaxRequestsPerClientConnection;
+                var upstreamTarget = _pathRewritePolicy.Apply(routeMatch.Route, requestHead.Target, requestHead.Path);
+                var effectiveTimeouts = ApplyRouteTimeouts(routeMatch.Route, _configurationSnapshot.Timeouts);
                 var result = await _forwarder.ForwardAsync(
                     clientStream,
                     requestHeadRead,
                     requestHead,
+                    routeMatch.Route,
                     selection.Upstream,
                     _listener,
-                    _configurationSnapshot.Timeouts,
+                    effectiveTimeouts,
                     _configurationSnapshot.ConnectionLimits,
                     _configurationSnapshot.Limits,
+                    upstreamTarget,
+                    forwardedHeaders,
                     preferKeepAlive,
                     currentContext.RequestId,
                     cancellationToken);
@@ -398,13 +436,14 @@ public sealed class ClientConnection
         Stream clientStream,
         Http1HeadReadResult requestHeadRead,
         Http1RequestHead requestHead,
+        ForwardedHeadersContext forwardedHeaders,
         ProxyRequestContext context,
         CancellationToken cancellationToken)
     {
         _ = requestHeadRead;
         context.IsUpgrade = true;
         _metrics.UpgradeRequestReceived();
-        if (!_rateLimiter.TryAcquireUpgrade(GetClientIpAddress(), _configurationSnapshot.Limits.UpgradeRequestsPerMinutePerIp))
+        if (!_rateLimiter.TryAcquireUpgrade(forwardedHeaders.ResolvedClientIp, _configurationSnapshot.Limits.UpgradeRequestsPerMinutePerIp))
         {
             _metrics.UpgradeRequestRejected();
             await WriteGeneratedResponseAsync(
@@ -454,6 +493,21 @@ public sealed class ClientConnection
         }
         context.SetRoute(upgradeRouteMatch.Route);
 
+        var actionDecision = _routeActionPolicy.Evaluate(
+            upgradeRouteMatch.Route,
+            requestHead,
+            _listener,
+            isUpgradeRequest: true);
+        if (!actionDecision.ShouldProxy)
+        {
+            await WriteGeneratedRouteResponseAsync(
+                clientStream,
+                actionDecision.Response!,
+                context,
+                cancellationToken);
+            return false;
+        }
+
         var upgradeSelection = _upstreamSelector.Select(upgradeRouteMatch.Route);
         if (upgradeSelection is null)
         {
@@ -470,14 +524,19 @@ public sealed class ClientConnection
         }
         context.SetUpstream(upgradeSelection.Upstream);
 
+        var upstreamTarget = _pathRewritePolicy.Apply(upgradeRouteMatch.Route, requestHead.Target, requestHead.Path);
+        var effectiveTimeouts = ApplyRouteTimeouts(upgradeRouteMatch.Route, _configurationSnapshot.Timeouts);
         var upgradeResult = await _upgradeForwarder.ForwardAsync(
             clientStream,
             requestHead,
             upgrade,
+            upgradeRouteMatch.Route,
             upgradeSelection.Upstream,
             _listener,
-            _configurationSnapshot.Timeouts,
+            effectiveTimeouts,
             _configurationSnapshot.ConnectionLimits,
+            upstreamTarget,
+            forwardedHeaders,
             context.RequestId,
             cancellationToken);
         if (!upgradeResult.Succeeded)
@@ -551,6 +610,29 @@ public sealed class ClientConnection
         context.KeepClientConnectionOpen = false;
     }
 
+    private async ValueTask WriteGeneratedRouteResponseAsync(
+        Stream clientStream,
+        GeneratedRouteResponse response,
+        ProxyRequestContext context,
+        CancellationToken cancellationToken)
+    {
+        await ProxyErrorResponses.WriteGeneratedAsync(
+            clientStream,
+            response.StatusCode,
+            response.ReasonPhrase,
+            response.Body,
+            context.RequestId,
+            _configurationSnapshot.Timeouts.DownstreamWriteTimeout,
+            _metrics,
+            cancellationToken,
+            response.ContentType,
+            response.Headers);
+
+        context.ResponseStarted = true;
+        context.ResponseStatusCode = response.StatusCode;
+        context.KeepClientConnectionOpen = false;
+    }
+
     private ProxyRequestContext CreateRequestContext()
     {
         return new ProxyRequestContext(
@@ -561,9 +643,9 @@ public sealed class ClientConnection
             _configurationSnapshot.Version);
     }
 
-    private IPAddress? GetClientIpAddress()
+    private IPEndPoint? GetRemoteEndPoint()
     {
-        return _socket.RemoteEndPoint is IPEndPoint endpoint ? endpoint.Address : null;
+        return _socket.RemoteEndPoint as IPEndPoint;
     }
 
     private void CompleteContext(ref ProxyRequestContext? context)
@@ -575,9 +657,17 @@ public sealed class ClientConnection
 
         _accessLogEmitter.Complete(
             context,
-            _configurationSnapshot.Observability.AccessLogEnabled,
+            context.AccessLogEnabled ?? _configurationSnapshot.Observability.AccessLogEnabled,
             _configurationSnapshot.Observability.RecentDiagnosticsCapacity);
         context = null;
+    }
+
+    private static RuntimeTimeouts ApplyRouteTimeouts(RuntimeRoute route, RuntimeTimeouts timeouts)
+    {
+        return timeouts with
+        {
+            UpstreamResponseHeadTimeout = route.ResolvedOptions.UpstreamResponseHeadTimeout
+        };
     }
 
     private static void ApplyForwardingResult(ProxyRequestContext context, ForwardingResult result)

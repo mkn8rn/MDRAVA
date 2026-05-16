@@ -32,26 +32,7 @@ public static class ProxyConfigurationMapper
             .ToArray();
 
         var routes = options.Routes
-            .Select(static route => new RuntimeRoute(
-                route.Name,
-                route.Host,
-                route.PathPrefix,
-                string.IsNullOrWhiteSpace(route.LoadBalancingPolicy) ? "round-robin" : route.LoadBalancingPolicy,
-                new RuntimeHealthCheckOptions(
-                    route.HealthCheck.Enabled,
-                    string.IsNullOrWhiteSpace(route.HealthCheck.Path) ? "/health" : route.HealthCheck.Path,
-                    TimeSpan.FromSeconds(route.HealthCheck.IntervalSeconds),
-                    TimeSpan.FromSeconds(route.HealthCheck.TimeoutSeconds),
-                    route.HealthCheck.HealthyThreshold,
-                    route.HealthCheck.UnhealthyThreshold),
-                route.Upstreams
-                    .Select(upstream => new RuntimeUpstream(
-                        route.Name,
-                        upstream.Name,
-                        upstream.Address,
-                        upstream.Port,
-                        upstream.Weight))
-                    .ToArray()))
+            .Select(route => ToRuntimeRoute(route, operationalOptions))
             .ToArray();
 
         var timeouts = new RuntimeTimeouts(
@@ -87,7 +68,15 @@ public static class ProxyConfigurationMapper
             operationalOptions.Limits.MaxPathBytes,
             TimeSpan.FromSeconds(operationalOptions.Limits.ShutdownGracePeriodSeconds));
 
-        return new ProxyConfigurationSnapshot(version, loadedAtUtc, sourceDirectory, sourceFiles, timeouts, connectionLimits, observability, limits, certificates, listeners, routes);
+        var forwardedHeaders = new RuntimeForwardedHeadersOptions(
+            operationalOptions.ForwardedHeaders.Enabled,
+            operationalOptions.ForwardedHeaders.TrustedProxies
+                .Select(static entry => RuntimeTrustedProxy.TryParse(entry, out var trustedProxy) ? trustedProxy : null)
+                .Where(static trustedProxy => trustedProxy is not null)
+                .Select(static trustedProxy => trustedProxy!)
+                .ToArray());
+
+        return new ProxyConfigurationSnapshot(version, loadedAtUtc, sourceDirectory, sourceFiles, timeouts, connectionLimits, observability, limits, forwardedHeaders, certificates, listeners, routes);
     }
 
     public static ProxyConfigurationProjection ToProjection(ProxyConfigurationSnapshot snapshot)
@@ -101,6 +90,7 @@ public static class ProxyConfigurationMapper
             snapshot.ConnectionLimits,
             snapshot.Observability,
             snapshot.Limits,
+            snapshot.ForwardedHeaders,
             snapshot.Certificates.Values
                 .Select(static certificate => new RuntimeCertificateProjection(
                     certificate.Id,
@@ -115,6 +105,87 @@ public static class ProxyConfigurationMapper
                 .ToArray(),
             snapshot.Listeners,
             snapshot.Routes);
+    }
+
+    private static RuntimeRoute ToRuntimeRoute(ProxyRouteOptions route, ProxyOperationalOptions operationalOptions)
+    {
+        var action = ParseAction(route.Action);
+        return new RuntimeRoute(
+            route.Name,
+            route.Host,
+            route.PathPrefix,
+            action,
+            string.IsNullOrWhiteSpace(route.LoadBalancingPolicy) ? "round-robin" : route.LoadBalancingPolicy,
+            new RuntimeHealthCheckOptions(
+                route.HealthCheck.Enabled,
+                string.IsNullOrWhiteSpace(route.HealthCheck.Path) ? "/health" : route.HealthCheck.Path,
+                TimeSpan.FromSeconds(route.HealthCheck.IntervalSeconds),
+                TimeSpan.FromSeconds(route.HealthCheck.TimeoutSeconds),
+                route.HealthCheck.HealthyThreshold,
+                route.HealthCheck.UnhealthyThreshold),
+            route.Upstreams
+                .Select(upstream => new RuntimeUpstream(
+                    route.Name,
+                    upstream.Name,
+                    upstream.Address,
+                    upstream.Port,
+                    upstream.Weight))
+                .ToArray(),
+            new RuntimeHttpsRedirectPolicy(
+                route.HttpsRedirect.Enabled ?? false,
+                route.HttpsRedirect.StatusCode ?? 308,
+                route.HttpsRedirect.HttpsPort),
+            new RuntimeCanonicalHostPolicy(
+                route.CanonicalHost.Enabled ?? !string.IsNullOrWhiteSpace(route.CanonicalHost.TargetHost),
+                route.CanonicalHost.TargetHost,
+                route.CanonicalHost.StatusCode ?? 308),
+            new RuntimeHeaderPolicy(
+                route.HeaderPolicy.SetRequestHeaders
+                    .Select(static header => new Http1HeaderField(header.Name, header.Value))
+                    .ToArray(),
+                route.HeaderPolicy.RemoveRequestHeaders.ToArray(),
+                route.HeaderPolicy.SetResponseHeaders
+                    .Select(static header => new Http1HeaderField(header.Name, header.Value))
+                    .ToArray(),
+                route.HeaderPolicy.RemoveResponseHeaders.ToArray()),
+            new RuntimePathRewritePolicy(
+                route.PathRewrite.StripPrefix,
+                route.PathRewrite.ReplacePrefix,
+                route.PathRewrite.Replacement),
+            new RuntimeRedirectPolicy(
+                route.Redirect.StatusCode ?? 308,
+                route.Redirect.TargetUrl,
+                route.Redirect.TargetPath,
+                route.Redirect.PreserveQuery),
+            new RuntimeStaticResponse(
+                route.StaticResponse.StatusCode,
+                route.StaticResponse.ContentType,
+                route.StaticResponse.Body),
+            new RuntimeMaintenancePolicy(
+                route.Maintenance.Enabled ?? false,
+                route.Maintenance.RetryAfterSeconds,
+                route.Maintenance.ContentType,
+                route.Maintenance.Body),
+            new RuntimeRouteResolvedOptions(
+                route.Overrides.MaxRequestBodyBytes ?? operationalOptions.Limits.MaxRequestBodyBytes,
+                TimeSpan.FromMilliseconds(route.Overrides.ClientRequestHeadTimeoutMs ?? operationalOptions.Timeouts.ClientRequestHeadTimeoutMs),
+                TimeSpan.FromMilliseconds(route.Overrides.UpstreamResponseHeadTimeoutMs ?? operationalOptions.Timeouts.UpstreamResponseHeadTimeoutMs),
+                route.Overrides.AccessLogEnabled ?? operationalOptions.Observability.AccessLogEnabled));
+    }
+
+    private static RuntimeRouteAction ParseAction(string action)
+    {
+        if (string.Equals(action, "redirect", StringComparison.OrdinalIgnoreCase))
+        {
+            return RuntimeRouteAction.Redirect;
+        }
+
+        if (string.Equals(action, "staticResponse", StringComparison.OrdinalIgnoreCase))
+        {
+            return RuntimeRouteAction.StaticResponse;
+        }
+
+        return RuntimeRouteAction.Proxy;
     }
 
     private static RuntimeListenerTransport ParseTransport(string transport)

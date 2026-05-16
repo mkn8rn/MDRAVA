@@ -23,6 +23,9 @@ public sealed class ProxyListenerService : BackgroundService
     private readonly ProxyForwarder _forwarder;
     private readonly UpgradeForwarder _upgradeForwarder;
     private readonly UpgradeRequestPolicy _upgradeRequestPolicy;
+    private readonly ForwardedHeadersPolicy _forwardedHeadersPolicy;
+    private readonly ProxyRouteActionPolicy _routeActionPolicy;
+    private readonly PathRewritePolicy _pathRewritePolicy;
     private readonly TlsConnectionAuthenticator _tlsAuthenticator;
     private readonly ProxyMetrics _metrics;
     private readonly RequestIdGenerator _requestIdGenerator;
@@ -45,6 +48,9 @@ public sealed class ProxyListenerService : BackgroundService
         ProxyForwarder forwarder,
         UpgradeForwarder upgradeForwarder,
         UpgradeRequestPolicy upgradeRequestPolicy,
+        ForwardedHeadersPolicy forwardedHeadersPolicy,
+        ProxyRouteActionPolicy routeActionPolicy,
+        PathRewritePolicy pathRewritePolicy,
         TlsConnectionAuthenticator tlsAuthenticator,
         ProxyMetrics metrics,
         RequestIdGenerator requestIdGenerator,
@@ -64,6 +70,9 @@ public sealed class ProxyListenerService : BackgroundService
         _forwarder = forwarder;
         _upgradeForwarder = upgradeForwarder;
         _upgradeRequestPolicy = upgradeRequestPolicy;
+        _forwardedHeadersPolicy = forwardedHeadersPolicy;
+        _routeActionPolicy = routeActionPolicy;
+        _pathRewritePolicy = pathRewritePolicy;
         _tlsAuthenticator = tlsAuthenticator;
         _metrics = metrics;
         _requestIdGenerator = requestIdGenerator;
@@ -212,6 +221,9 @@ public sealed class ProxyListenerService : BackgroundService
                 _forwarder,
                 _upgradeForwarder,
                 _upgradeRequestPolicy,
+                _forwardedHeadersPolicy,
+                _routeActionPolicy,
+                _pathRewritePolicy,
                 _tlsAuthenticator,
                 _metrics,
                 _requestIdGenerator,

@@ -15,4 +15,16 @@ public sealed class SiteOptions
     public HealthCheckOptions HealthCheck { get; init; } = new();
 
     public List<UpstreamOptions> Upstreams { get; init; } = [];
+
+    public ProxyHttpsRedirectOptions HttpsRedirect { get; init; } = new();
+
+    public ProxyCanonicalHostOptions CanonicalHost { get; init; } = new();
+
+    public ProxyHeaderPolicyOptions HeaderPolicy { get; init; } = new();
+
+    public ProxyMaintenanceOptions Maintenance { get; init; } = new();
+
+    public ProxyRouteOverrideOptions Overrides { get; init; } = new();
+
+    public List<ProxyRouteOptions> Routes { get; init; } = [];
 }

@@ -144,6 +144,7 @@ internal static class HealthCheckTests
             "test",
             "*",
             "/",
+            RuntimeRouteAction.Proxy,
             "round-robin",
             new RuntimeHealthCheckOptions(
                 true,
@@ -152,7 +153,19 @@ internal static class HealthCheckTests
                 TimeSpan.FromSeconds(timeoutSeconds),
                 healthyThreshold,
                 unhealthyThreshold),
-            upstreams);
+            upstreams,
+            new RuntimeHttpsRedirectPolicy(false, 308, null),
+            new RuntimeCanonicalHostPolicy(false, "", 308),
+            RuntimeHeaderPolicy.Empty,
+            new RuntimePathRewritePolicy("", "", ""),
+            new RuntimeRedirectPolicy(308, "", "", true),
+            new RuntimeStaticResponse(200, "text/plain; charset=utf-8", ""),
+            new RuntimeMaintenancePolicy(false, null, "text/plain; charset=utf-8", "Service Unavailable"),
+            new RuntimeRouteResolvedOptions(
+                100L * 1024 * 1024,
+                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(30),
+                true));
     }
 
     private static RuntimeUpstream Upstream(int port)

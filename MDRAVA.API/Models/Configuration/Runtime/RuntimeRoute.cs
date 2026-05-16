@@ -4,6 +4,15 @@ public sealed record RuntimeRoute(
     string Name,
     string Host,
     string PathPrefix,
+    RuntimeRouteAction Action,
     string LoadBalancingPolicy,
     RuntimeHealthCheckOptions HealthCheck,
-    IReadOnlyList<RuntimeUpstream> Upstreams);
+    IReadOnlyList<RuntimeUpstream> Upstreams,
+    RuntimeHttpsRedirectPolicy HttpsRedirect,
+    RuntimeCanonicalHostPolicy CanonicalHost,
+    RuntimeHeaderPolicy HeaderPolicy,
+    RuntimePathRewritePolicy PathRewrite,
+    RuntimeRedirectPolicy Redirect,
+    RuntimeStaticResponse StaticResponse,
+    RuntimeMaintenancePolicy Maintenance,
+    RuntimeRouteResolvedOptions ResolvedOptions);

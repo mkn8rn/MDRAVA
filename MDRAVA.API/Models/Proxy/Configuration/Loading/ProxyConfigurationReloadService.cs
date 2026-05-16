@@ -33,9 +33,12 @@ public sealed class ProxyConfigurationReloadService : IProxyConfigurationReloadS
             return new ProxyConfigurationReloadResult(
                 false,
                 loadResult.SourceDirectory,
+                loadResult.AttemptedAtUtc,
                 hasExisting && existing is not null ? existing.Version : null,
                 existing?.LoadedAtUtc,
+                existing?.LoadedAtUtc,
                 loadResult.Errors,
+                loadResult.FileErrors,
                 existing is null ? null : ProxyConfigurationMapper.ToProjection(existing));
         }
 
@@ -48,9 +51,28 @@ public sealed class ProxyConfigurationReloadService : IProxyConfigurationReloadS
         return new ProxyConfigurationReloadResult(
             true,
             snapshot.SourceDirectory,
+            loadResult.AttemptedAtUtc,
             snapshot.Version,
             snapshot.LoadedAtUtc,
+            snapshot.LoadedAtUtc,
+            [],
             [],
             ProxyConfigurationMapper.ToProjection(snapshot));
+    }
+
+    public async ValueTask<ProxyConfigurationValidationResult> ValidateAsync(CancellationToken cancellationToken)
+    {
+        var loadResult = await _loader.ValidateAsync(cancellationToken);
+        var hasExisting = _store.TryGetSnapshot(out var existing);
+        return new ProxyConfigurationValidationResult(
+            loadResult.Succeeded,
+            loadResult.SourceDirectory,
+            loadResult.AttemptedAtUtc,
+            hasExisting && existing is not null ? existing.Version : null,
+            existing?.LoadedAtUtc,
+            loadResult.WouldBeVersion,
+            loadResult.SourceFiles,
+            loadResult.Errors,
+            loadResult.FileErrors);
     }
 }

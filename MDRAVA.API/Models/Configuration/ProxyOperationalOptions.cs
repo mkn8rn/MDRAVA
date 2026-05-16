@@ -10,5 +10,7 @@ public sealed class ProxyOperationalOptions
 
     public ProxyLimitsOptions Limits { get; init; } = new();
 
+    public ProxyForwardedHeadersOptions ForwardedHeaders { get; init; } = new();
+
     public List<CertificateOptions> Certificates { get; init; } = [];
 }
