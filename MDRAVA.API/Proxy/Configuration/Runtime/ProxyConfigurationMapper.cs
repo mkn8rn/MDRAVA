@@ -71,7 +71,11 @@ public static class ProxyConfigurationMapper
             operationalOptions.Connections.MaxIdleUpstreamConnectionsPerUpstream,
             operationalOptions.Connections.MaxActiveUpgradedTunnels);
 
-        return new ProxyConfigurationSnapshot(version, loadedAtUtc, sourceDirectory, sourceFiles, timeouts, connectionLimits, certificates, listeners, routes);
+        var observability = new RuntimeObservabilityOptions(
+            operationalOptions.Observability.AccessLogEnabled,
+            operationalOptions.Observability.RecentDiagnosticsCapacity);
+
+        return new ProxyConfigurationSnapshot(version, loadedAtUtc, sourceDirectory, sourceFiles, timeouts, connectionLimits, observability, certificates, listeners, routes);
     }
 
     public static ProxyConfigurationProjection ToProjection(ProxyConfigurationSnapshot snapshot)
@@ -83,6 +87,7 @@ public static class ProxyConfigurationMapper
             snapshot.SourceFiles,
             snapshot.Timeouts,
             snapshot.ConnectionLimits,
+            snapshot.Observability,
             snapshot.Certificates.Values
                 .Select(static certificate => new RuntimeCertificateProjection(
                     certificate.Id,

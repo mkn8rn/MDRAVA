@@ -8,6 +8,7 @@ using MDRAVA.API.Controllers;
 using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Hosting;
+using MDRAVA.API.Proxy.Observability;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -185,6 +186,110 @@ internal static class ProxyIntegrationTests
             readBodyFromUpstreamRequest: false);
 
         AssertEx.True(result.UpstreamRequest.Contains("Host: original.test", StringComparison.OrdinalIgnoreCase), result.UpstreamRequest);
+    }
+
+    public static async Task ResponseIncludesGeneratedRequestId()
+    {
+        var result = await RunProxyScenarioAsync(
+            "GET /id HTTP/1.1\r\nHost: id.test\r\n\r\n",
+            "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
+            readBodyFromUpstreamRequest: false);
+
+        AssertEx.True(result.ClientResponse.Contains("\r\nX-Request-Id: mdr-", StringComparison.OrdinalIgnoreCase), result.ClientResponse);
+        AssertEx.Equal(1, result.Diagnostics.Count);
+        AssertEx.True(result.Diagnostics[0].RequestId.StartsWith("mdr-", StringComparison.Ordinal));
+    }
+
+    public static async Task ExternalRequestIdIsPreservedInDiagnostics()
+    {
+        var result = await RunProxyScenarioAsync(
+            "GET /external HTTP/1.1\r\nHost: id.test\r\nX-Request-Id: client-123\r\n\r\n",
+            "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
+            readBodyFromUpstreamRequest: false);
+
+        AssertEx.Equal("client-123", result.Diagnostics[0].ExternalRequestId);
+        AssertEx.True(result.Diagnostics[0].RequestId.StartsWith("mdr-", StringComparison.Ordinal));
+        AssertEx.False(string.Equals(result.Diagnostics[0].RequestId, result.Diagnostics[0].ExternalRequestId, StringComparison.Ordinal));
+    }
+
+    public static async Task SuccessfulRequestProducesDiagnosticRouteAndUpstream()
+    {
+        var result = await RunProxyScenarioAsync(
+            "GET /diag HTTP/1.1\r\nHost: diag.test\r\n\r\n",
+            "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
+            readBodyFromUpstreamRequest: false);
+
+        var diagnostic = result.Diagnostics[0];
+        AssertEx.Equal("scenario", diagnostic.RouteName);
+        AssertEx.Equal("local-test", diagnostic.UpstreamName);
+        AssertEx.Equal(200, diagnostic.ResponseStatusCode);
+        AssertEx.Equal("None", diagnostic.FailureKind);
+    }
+
+    public static async Task UpstreamConnectFailureProducesDiagnosticClassification()
+    {
+        var result = await RunProxyScenarioAsync(
+            "GET /unavailable HTTP/1.1\r\nHost: upstream.test\r\n\r\n",
+            "",
+            expectUpstreamConnection: false);
+
+        AssertEx.Equal("UpstreamConnectFailed", result.Diagnostics[0].FailureKind);
+        AssertEx.Equal(502, result.Diagnostics[0].ResponseStatusCode);
+        AssertEx.Equal(1L, result.Metrics.RequestFailuresByKind["UpstreamConnectFailed"]);
+    }
+
+    public static async Task AccessLoggingCanBeDisabledWhileDiagnosticsRemainEnabled()
+    {
+        var result = await RunProxyScenarioAsync(
+            "GET /quiet HTTP/1.1\r\nHost: quiet.test\r\n\r\n",
+            "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
+            readBodyFromUpstreamRequest: false,
+            accessLogEnabled: false);
+
+        AssertEx.Equal(1, result.Diagnostics.Count);
+        AssertEx.Equal(0L, result.Metrics.AccessLogsEmitted);
+    }
+
+    public static async Task NoMatchingRouteProducesDiagnosticClassification()
+    {
+        var proxyPort = GetFreeTcpPort();
+        var upstreamPort = GetFreeTcpPort();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var dataDirectory = Path.Combine(Path.GetTempPath(), $"mdrava-no-route-{Guid.NewGuid():N}");
+
+        try
+        {
+            ConfigurationTests.WriteSite(dataDirectory, "specific.json", proxyPort, upstreamPort);
+            var sitePath = Path.Combine(dataDirectory, "config", "sites", "specific.json");
+            File.WriteAllText(sitePath, File.ReadAllText(sitePath).Replace("\"host\": \"*\"", "\"host\": \"expected.test\"", StringComparison.Ordinal));
+
+            using var host = BuildProxyHost(dataDirectory);
+            await host.StartAsync(timeout.Token);
+
+            try
+            {
+                var response = await SendSingleRequestAsync(
+                    proxyPort,
+                    "GET /missing HTTP/1.1\r\nHost: other.test\r\nConnection: close\r\n\r\n",
+                    timeout.Token);
+                AssertEx.True(response.Contains("404 Not Found", StringComparison.Ordinal), response);
+                var status = ActivatorUtilities.CreateInstance<ProxyStatusController>(host.Services).Get();
+                AssertEx.Equal(1, status.ConfigVersion);
+                AssertEx.Equal(1L, status.Metrics.RequestFailuresByKind["NoMatchingRoute"]);
+            }
+            finally
+            {
+                await host.StopAsync(CancellationToken.None);
+            }
+
+            var diagnostic = host.Services.GetRequiredService<RecentRequestDiagnosticsStore>().Recent(10)[0];
+            AssertEx.Equal("NoMatchingRoute", diagnostic.FailureKind);
+            AssertEx.Equal(404, diagnostic.ResponseStatusCode);
+        }
+        finally
+        {
+            DeleteDirectory(dataDirectory);
+        }
     }
 
     public static async Task TimesOutIncompleteRequestHead()
@@ -573,6 +678,27 @@ internal static class ProxyIntegrationTests
         AssertEx.Equal(1L, result.Metrics.TotalTunnels);
     }
 
+    public static async Task WebSocketUpgradeProducesTunnelDiagnostic()
+    {
+        var result = await RunUpgradeScenarioAsync(
+            async (stream, request, cancellationToken) =>
+            {
+                await WriteTextAsync(stream, SwitchingProtocolsResponse(), cancellationToken);
+                return new UpgradeUpstreamResult(request, "");
+            },
+            async (stream, cancellationToken) =>
+            {
+                await WriteTextAsync(stream, WebSocketRequest(), cancellationToken);
+                return await ReadResponseHeadAsync(stream, cancellationToken);
+            });
+
+        var diagnostic = result.Diagnostics[0];
+        AssertEx.Equal(101, diagnostic.ResponseStatusCode);
+        AssertEx.True(diagnostic.IsUpgrade);
+        AssertEx.True(diagnostic.TunnelEstablished);
+        AssertEx.Equal("Closed", diagnostic.TunnelCloseReason);
+    }
+
     public static async Task WebSocketTunnelRelaysClientBytesToUpstream()
     {
         var result = await RunUpgradeScenarioAsync(
@@ -811,9 +937,12 @@ internal static class ProxyIntegrationTests
                 "GET /anything HTTP/1.1\r\nHost: unhealthy.test\r\nConnection: close\r\n\r\n",
                 timeout.Token);
             var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
+            var diagnostic = host.Services.GetRequiredService<RecentRequestDiagnosticsStore>().Recent(10)[0];
 
             AssertEx.True(response.Contains("503 Service Unavailable", StringComparison.Ordinal), response);
             AssertEx.Equal(1L, metrics.NoHealthyUpstreamFailures);
+            AssertEx.Equal("NoHealthyUpstream", diagnostic.FailureKind);
+            AssertEx.Equal(503, diagnostic.ResponseStatusCode);
             await host.StopAsync(CancellationToken.None);
         }
         finally
@@ -900,7 +1029,9 @@ internal static class ProxyIntegrationTests
         bool readBodyFromUpstreamRequest = true,
         bool expectUpstreamConnection = true,
         int? timeoutMs = null,
-        bool sendUpstreamResponse = true)
+        bool sendUpstreamResponse = true,
+        bool? accessLogEnabled = null,
+        int? recentDiagnosticsCapacity = null)
     {
         var proxyPort = GetFreeTcpPort();
         var upstreamPort = GetFreeTcpPort();
@@ -908,16 +1039,18 @@ internal static class ProxyIntegrationTests
         var dataDirectory = Path.Combine(Path.GetTempPath(), $"mdrava-integration-{Guid.NewGuid():N}");
 
         ConfigurationTests.WriteSite(dataDirectory, "scenario.json", proxyPort, upstreamPort);
-        if (timeoutMs.HasValue)
+        if (timeoutMs.HasValue || accessLogEnabled.HasValue || recentDiagnosticsCapacity.HasValue)
         {
             ConfigurationTests.WriteOperationalConfig(
                 dataDirectory,
-                clientRequestHeadTimeoutMs: timeoutMs.Value,
-                clientRequestBodyIdleTimeoutMs: timeoutMs.Value,
-                upstreamConnectTimeoutMs: timeoutMs.Value,
-                upstreamResponseHeadTimeoutMs: timeoutMs.Value,
-                upstreamResponseBodyIdleTimeoutMs: timeoutMs.Value,
-                downstreamWriteTimeoutMs: 1000);
+                clientRequestHeadTimeoutMs: timeoutMs ?? 1000,
+                clientRequestBodyIdleTimeoutMs: timeoutMs ?? 1000,
+                upstreamConnectTimeoutMs: timeoutMs ?? 1000,
+                upstreamResponseHeadTimeoutMs: timeoutMs ?? 1000,
+                upstreamResponseBodyIdleTimeoutMs: timeoutMs ?? 1000,
+                downstreamWriteTimeoutMs: 1000,
+                accessLogEnabled: accessLogEnabled ?? true,
+                recentDiagnosticsCapacity: recentDiagnosticsCapacity ?? 500);
         }
         var upstreamTask = expectUpstreamConnection
             ? RunScenarioUpstreamAsync(upstreamPort, upstreamResponse, readBodyFromUpstreamRequest, sendUpstreamResponse, timeout.Token)
@@ -954,7 +1087,8 @@ internal static class ProxyIntegrationTests
                 var clientResponse = await ReadToEndAsync(stream, timeout.Token);
                 var upstreamRequest = await upstreamTask.WaitAsync(timeout.Token);
                 var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
-                return new ProxyScenarioResult(clientResponse, upstreamRequest, metrics);
+                var diagnostics = host.Services.GetRequiredService<RecentRequestDiagnosticsStore>().Recent(50);
+                return new ProxyScenarioResult(clientResponse, upstreamRequest, metrics, diagnostics);
             }
             finally
             {
@@ -1024,6 +1158,7 @@ internal static class ProxyIntegrationTests
             var firstRequests = await firstTask.WaitAsync(timeout.Token);
             var secondRequests = await secondTask.WaitAsync(timeout.Token);
             var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
+            var diagnostics = host.Services.GetRequiredService<RecentRequestDiagnosticsStore>().Recent(50);
             var upstreams = host.Services.GetRequiredService<UpstreamHealthStore>()
                 .Snapshot(host.Services.GetRequiredService<MDRAVA.API.Proxy.Configuration.Storage.IProxyConfigurationStore>().Snapshot)
                 .Select(static status => new ProxyUpstreamStatusResponse(
@@ -1040,7 +1175,7 @@ internal static class ProxyIntegrationTests
                     status.RequestFailures))
                 .ToArray();
 
-            return new TwoUpstreamHttpResult(firstRequests, secondRequests, metrics, upstreams);
+            return new TwoUpstreamHttpResult(firstRequests, secondRequests, metrics, upstreams, diagnostics);
         }
         finally
         {
@@ -1122,7 +1257,8 @@ internal static class ProxyIntegrationTests
             }
 
             var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
-            return new UpgradeScenarioResult(clientObservation, upstreamResult, metrics);
+            var diagnostics = host.Services.GetRequiredService<RecentRequestDiagnosticsStore>().Recent(50);
+            return new UpgradeScenarioResult(clientObservation, upstreamResult, metrics, diagnostics);
         }
         finally
         {
@@ -1160,7 +1296,8 @@ internal static class ProxyIntegrationTests
             }
 
             var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
-            return new UpgradeScenarioResult(clientObservation, new UpgradeUpstreamResult("", ""), metrics);
+            var diagnostics = host.Services.GetRequiredService<RecentRequestDiagnosticsStore>().Recent(50);
+            return new UpgradeScenarioResult(clientObservation, new UpgradeUpstreamResult("", ""), metrics, diagnostics);
         }
         finally
         {
@@ -1983,7 +2120,8 @@ internal static class ProxyIntegrationTests
     private sealed record ProxyScenarioResult(
         string ClientResponse,
         string UpstreamRequest,
-        ProxyMetricsSnapshot Metrics);
+        ProxyMetricsSnapshot Metrics,
+        IReadOnlyList<ProxyRequestDiagnosticEvent> Diagnostics);
 
     private sealed record TlsProxyScenarioResult(
         string ClientResponse,
@@ -2009,11 +2147,13 @@ internal static class ProxyIntegrationTests
     private sealed record UpgradeScenarioResult(
         string ClientObservation,
         UpgradeUpstreamResult UpstreamResult,
-        ProxyMetricsSnapshot Metrics);
+        ProxyMetricsSnapshot Metrics,
+        IReadOnlyList<ProxyRequestDiagnosticEvent> Diagnostics);
 
     private sealed record TwoUpstreamHttpResult(
         int FirstRequests,
         int SecondRequests,
         ProxyMetricsSnapshot Metrics,
-        IReadOnlyList<ProxyUpstreamStatusResponse> Upstreams);
+        IReadOnlyList<ProxyUpstreamStatusResponse> Upstreams,
+        IReadOnlyList<ProxyRequestDiagnosticEvent> Diagnostics);
 }

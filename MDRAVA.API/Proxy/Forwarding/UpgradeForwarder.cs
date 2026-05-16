@@ -5,6 +5,7 @@ using System.Text;
 using MDRAVA.API.Proxy.Connections;
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Metrics;
+using MDRAVA.API.Proxy.Observability;
 using MDRAVA.API.Proxy.Protocol;
 
 namespace MDRAVA.API.Proxy.Forwarding;
@@ -41,6 +42,7 @@ public sealed class UpgradeForwarder
         RuntimeListener listener,
         RuntimeTimeouts timeouts,
         RuntimeConnectionLimits connectionLimits,
+        string requestId,
         CancellationToken cancellationToken)
     {
         var responseStarted = false;
@@ -54,11 +56,11 @@ public sealed class UpgradeForwarder
                 _metrics.UpgradeRequestRejected();
                 await ProxyErrorResponses.WriteAsync(
                     clientStream,
-                    ProxyErrorResponses.ServiceUnavailable,
+                    BuildGeneratedServiceUnavailable(requestId),
                     timeouts.DownstreamWriteTimeout,
                     _metrics,
                     cancellationToken);
-                return new ForwardingResult(false, responseStarted, false);
+                return new ForwardingResult(false, responseStarted, false, 503, ProxyFailureKind.UpgradeRejected);
             }
 
             try
@@ -98,9 +100,10 @@ public sealed class UpgradeForwarder
                         responseHead,
                         listener,
                         timeouts,
+                        requestId,
                         cancellationToken);
                     responseStarted = true;
-                    return new ForwardingResult(true, responseStarted, false);
+                    return new ForwardingResult(true, responseStarted, false, responseHead.StatusCode);
                 }
 
                 if (!IsValidSwitchingProtocolsResponse(responseHead, upgrade))
@@ -108,7 +111,7 @@ public sealed class UpgradeForwarder
                     throw new Http1UpstreamProtocolException("Upstream returned an invalid 101 Switching Protocols response.");
                 }
 
-                await WriteSwitchingProtocolsResponseAsync(clientStream, responseHead, upgrade, timeouts, cancellationToken);
+                await WriteSwitchingProtocolsResponseAsync(clientStream, responseHead, upgrade, timeouts, requestId, cancellationToken);
                 responseStarted = true;
                 _metrics.UpgradeRequestSucceeded();
                 _metrics.TunnelStarted();
@@ -118,8 +121,13 @@ public sealed class UpgradeForwarder
                     requestHead.Target,
                     upgrade.Protocol,
                     upstream.Name);
-                await _tunnelRelay.RelayAsync(clientStream, upstreamStream, listener, timeouts, cancellationToken);
-                return new ForwardingResult(true, responseStarted, false);
+                var tunnelResult = await _tunnelRelay.RelayAsync(clientStream, upstreamStream, listener, timeouts, cancellationToken);
+                var failureKind = tunnelResult.CloseReason == "IdleTimeout"
+                    ? ProxyFailureKind.TunnelIdleTimeout
+                    : tunnelResult.CloseReason == "RelayFailure"
+                        ? ProxyFailureKind.TunnelRelayFailure
+                        : ProxyFailureKind.None;
+                return new ForwardingResult(true, responseStarted, false, 101, failureKind, tunnelResult);
             }
             finally
             {
@@ -132,8 +140,8 @@ public sealed class UpgradeForwarder
         }
         catch (ProxyTimeoutException exception)
         {
-            await HandleTimeoutAsync(clientStream, requestHead, upstream, responseStarted, exception, timeouts, cancellationToken);
-            return new ForwardingResult(false, responseStarted, false);
+            await HandleTimeoutAsync(clientStream, requestHead, upstream, responseStarted, exception, timeouts, requestId, cancellationToken);
+            return new ForwardingResult(false, responseStarted, false, StatusCodeForTimeout(exception.Kind, responseStarted), FailureKindForTimeout(exception.Kind));
         }
         catch (Http1UpstreamProtocolException exception)
         {
@@ -152,13 +160,13 @@ public sealed class UpgradeForwarder
                 _metrics.ProxyGenerated502();
                 await ProxyErrorResponses.WriteAsync(
                     clientStream,
-                    ProxyErrorResponses.BadGateway,
+                    BuildGeneratedBadGateway(requestId),
                     timeouts.DownstreamWriteTimeout,
                     _metrics,
                     cancellationToken);
             }
 
-            return new ForwardingResult(false, responseStarted, false);
+            return new ForwardingResult(false, responseStarted, false, responseStarted ? null : 502, ProxyFailureKind.UpstreamMalformedResponse);
         }
         catch (Exception exception) when (exception is SocketException or IOException)
         {
@@ -176,13 +184,13 @@ public sealed class UpgradeForwarder
                 _metrics.ProxyGenerated502();
                 await ProxyErrorResponses.WriteAsync(
                     clientStream,
-                    ProxyErrorResponses.BadGateway,
+                    BuildGeneratedBadGateway(requestId),
                     timeouts.DownstreamWriteTimeout,
                     _metrics,
                     cancellationToken);
             }
 
-            return new ForwardingResult(false, responseStarted, false);
+            return new ForwardingResult(false, responseStarted, false, responseStarted ? null : 502, ProxyFailureKind.UpstreamConnectFailed);
         }
         finally
         {
@@ -198,6 +206,7 @@ public sealed class UpgradeForwarder
         bool responseStarted,
         ProxyTimeoutException exception,
         RuntimeTimeouts timeouts,
+        string requestId,
         CancellationToken cancellationToken)
     {
         switch (exception.Kind)
@@ -210,7 +219,7 @@ public sealed class UpgradeForwarder
                 if (!responseStarted)
                 {
                     _metrics.ProxyGenerated504();
-                    await ProxyErrorResponses.WriteAsync(clientStream, ProxyErrorResponses.GatewayTimeout, timeouts.DownstreamWriteTimeout, _metrics, cancellationToken);
+                    await ProxyErrorResponses.WriteAsync(clientStream, BuildGeneratedGatewayTimeout(requestId), timeouts.DownstreamWriteTimeout, _metrics, cancellationToken);
                 }
                 break;
             case ProxyTimeoutKind.UpstreamResponseHead:
@@ -221,7 +230,7 @@ public sealed class UpgradeForwarder
                 if (!responseStarted)
                 {
                     _metrics.ProxyGenerated504();
-                    await ProxyErrorResponses.WriteAsync(clientStream, ProxyErrorResponses.GatewayTimeout, timeouts.DownstreamWriteTimeout, _metrics, cancellationToken);
+                    await ProxyErrorResponses.WriteAsync(clientStream, BuildGeneratedGatewayTimeout(requestId), timeouts.DownstreamWriteTimeout, _metrics, cancellationToken);
                 }
                 break;
             case ProxyTimeoutKind.UpstreamResponseBodyIdle:
@@ -275,6 +284,7 @@ public sealed class UpgradeForwarder
         Http1ResponseHead responseHead,
         UpgradeRequestInfo upgrade,
         RuntimeTimeouts timeouts,
+        string requestId,
         CancellationToken cancellationToken)
     {
         var builder = new StringBuilder();
@@ -293,6 +303,7 @@ public sealed class UpgradeForwarder
             builder.Append(header.Name).Append(": ").Append(header.Value).Append("\r\n");
         }
 
+        builder.Append("X-Request-Id: ").Append(requestId).Append("\r\n");
         builder.Append("Upgrade: ").Append(upgrade.Protocol).Append("\r\n");
         builder.Append("Connection: Upgrade\r\n\r\n");
         var bytes = Encoding.ASCII.GetBytes(builder.ToString());
@@ -307,9 +318,10 @@ public sealed class UpgradeForwarder
         Http1ResponseHead responseHead,
         RuntimeListener listener,
         RuntimeTimeouts timeouts,
+        string requestId,
         CancellationToken cancellationToken)
     {
-        await WriteNonUpgradeResponseHeadAsync(clientStream, responseHead, timeouts, cancellationToken);
+        await WriteNonUpgradeResponseHeadAsync(clientStream, responseHead, timeouts, requestId, cancellationToken);
         await RelayNonUpgradeResponseBodyAsync(
             upstreamStream,
             clientStream,
@@ -324,6 +336,7 @@ public sealed class UpgradeForwarder
         Stream clientStream,
         Http1ResponseHead responseHead,
         RuntimeTimeouts timeouts,
+        string requestId,
         CancellationToken cancellationToken)
     {
         var builder = new StringBuilder();
@@ -345,6 +358,8 @@ public sealed class UpgradeForwarder
 
             builder.Append(header.Name).Append(": ").Append(header.Value).Append("\r\n");
         }
+
+        builder.Append("X-Request-Id: ").Append(requestId).Append("\r\n");
 
         if (responseHead.Framing.Kind == Http1BodyKind.ContentLength)
         {
@@ -653,7 +668,8 @@ public sealed class UpgradeForwarder
     {
         return string.Equals(headerName, "Content-Length", StringComparison.OrdinalIgnoreCase)
             || string.Equals(headerName, "Transfer-Encoding", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(headerName, "Connection", StringComparison.OrdinalIgnoreCase);
+            || string.Equals(headerName, "Connection", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(headerName, "X-Request-Id", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsUnsafeUpgradeResponseHeader(string headerName)
@@ -664,6 +680,51 @@ public sealed class UpgradeForwarder
             || string.Equals(headerName, "TE", StringComparison.OrdinalIgnoreCase)
             || string.Equals(headerName, "Trailer", StringComparison.OrdinalIgnoreCase)
             || string.Equals(headerName, "Transfer-Encoding", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static ReadOnlyMemory<byte> BuildGeneratedBadGateway(string requestId)
+    {
+        return Encoding.ASCII.GetBytes(
+            $"HTTP/1.1 502 Bad Gateway\r\nConnection: close\r\nContent-Length: 11\r\nContent-Type: text/plain\r\nX-Request-Id: {requestId}\r\n\r\nBad Gateway");
+    }
+
+    private static ReadOnlyMemory<byte> BuildGeneratedGatewayTimeout(string requestId)
+    {
+        return Encoding.ASCII.GetBytes(
+            $"HTTP/1.1 504 Gateway Timeout\r\nConnection: close\r\nContent-Length: 15\r\nContent-Type: text/plain\r\nX-Request-Id: {requestId}\r\n\r\nGateway Timeout");
+    }
+
+    private static ReadOnlyMemory<byte> BuildGeneratedServiceUnavailable(string requestId)
+    {
+        return Encoding.ASCII.GetBytes(
+            $"HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\nContent-Length: 19\r\nContent-Type: text/plain\r\nX-Request-Id: {requestId}\r\n\r\nService Unavailable");
+    }
+
+    private static int? StatusCodeForTimeout(ProxyTimeoutKind timeoutKind, bool responseStarted)
+    {
+        if (responseStarted)
+        {
+            return null;
+        }
+
+        return timeoutKind switch
+        {
+            ProxyTimeoutKind.UpstreamConnect => 504,
+            ProxyTimeoutKind.UpstreamResponseHead => 504,
+            _ => null
+        };
+    }
+
+    private static ProxyFailureKind FailureKindForTimeout(ProxyTimeoutKind timeoutKind)
+    {
+        return timeoutKind switch
+        {
+            ProxyTimeoutKind.UpstreamConnect => ProxyFailureKind.UpstreamConnectTimeout,
+            ProxyTimeoutKind.UpstreamResponseHead => ProxyFailureKind.UpstreamResponseHeadTimeout,
+            ProxyTimeoutKind.UpstreamResponseBodyIdle => ProxyFailureKind.UpstreamResponseBodyTimeout,
+            ProxyTimeoutKind.DownstreamWrite => ProxyFailureKind.ClientDisconnected,
+            _ => ProxyFailureKind.InternalError
+        };
     }
 
     private static int FindHeadLength(ReadOnlySpan<byte> bytes)

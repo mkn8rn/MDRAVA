@@ -58,6 +58,8 @@ public sealed class ProxyStatusController : ControllerBase
             runtime.StartedAt,
             runtime.StoppedAt,
             runtime.LastError,
+            snapshot?.Version,
+            snapshot?.LoadedAtUtc,
             listenerCount,
             routeCount,
             _metrics.Snapshot(),

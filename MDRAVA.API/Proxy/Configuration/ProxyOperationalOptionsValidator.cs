@@ -4,6 +4,8 @@ public static class ProxyOperationalOptionsValidator
 {
     private const int MinimumTimeoutMs = 100;
     private const int MaximumTimeoutMs = 10 * 60 * 1000;
+    private const int MinimumDiagnosticsCapacity = 1;
+    private const int MaximumDiagnosticsCapacity = 10_000;
 
     public static IReadOnlyList<string> Validate(ProxyOperationalOptions options)
     {
@@ -19,6 +21,7 @@ public static class ProxyOperationalOptionsValidator
         ValidateTimeout(failures, nameof(options.Timeouts.UpstreamIdleConnectionLifetimeMs), options.Timeouts.UpstreamIdleConnectionLifetimeMs);
         ValidateTimeout(failures, nameof(options.Timeouts.TunnelIdleTimeoutMs), options.Timeouts.TunnelIdleTimeoutMs);
         ValidateConnectionLimits(failures, options.Connections);
+        ValidateObservability(failures, options.Observability);
         ValidateCertificates(failures, options.Certificates);
         return failures;
     }
@@ -81,6 +84,14 @@ public static class ProxyOperationalOptionsValidator
         if (options.MaxActiveUpgradedTunnels is < 1 or > 100_000)
         {
             failures.Add("Proxy operational connection limit MaxActiveUpgradedTunnels must be between 1 and 100000.");
+        }
+    }
+
+    private static void ValidateObservability(List<string> failures, ProxyObservabilityOptions options)
+    {
+        if (options.RecentDiagnosticsCapacity is < MinimumDiagnosticsCapacity or > MaximumDiagnosticsCapacity)
+        {
+            failures.Add($"Proxy observability setting RecentDiagnosticsCapacity must be between {MinimumDiagnosticsCapacity} and {MaximumDiagnosticsCapacity}.");
         }
     }
 }

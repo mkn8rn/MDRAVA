@@ -19,7 +19,7 @@ public sealed class TunnelRelay
         _logger = logger;
     }
 
-    public async ValueTask RelayAsync(
+    public async ValueTask<TunnelRelayResult> RelayAsync(
         Stream clientStream,
         Stream upstreamStream,
         RuntimeListener listener,
@@ -30,6 +30,10 @@ public sealed class TunnelRelay
         var token = tunnelCancellation.Token;
         var lastActivity = Stopwatch.GetTimestamp();
         var idleTimedOut = false;
+        var relayFailed = false;
+        var bytesClientToUpstream = 0L;
+        var bytesUpstreamToClient = 0L;
+        var started = Stopwatch.GetTimestamp();
 
         var clientToUpstream = RelayDirectionAsync(
             clientStream,
@@ -38,8 +42,10 @@ public sealed class TunnelRelay
             bytes =>
             {
                 Volatile.Write(ref lastActivity, Stopwatch.GetTimestamp());
+                Interlocked.Add(ref bytesClientToUpstream, bytes);
                 _metrics.AddTunnelBytesClientToUpstream(bytes);
             },
+            () => relayFailed = true,
             token).AsTask();
         var upstreamToClient = RelayDirectionAsync(
             upstreamStream,
@@ -48,8 +54,10 @@ public sealed class TunnelRelay
             bytes =>
             {
                 Volatile.Write(ref lastActivity, Stopwatch.GetTimestamp());
+                Interlocked.Add(ref bytesUpstreamToClient, bytes);
                 _metrics.AddTunnelBytesUpstreamToClient(bytes);
             },
+            () => relayFailed = true,
             token).AsTask();
         var idleMonitor = MonitorIdleAsync(
             timeouts.TunnelIdleTimeout,
@@ -98,6 +106,20 @@ public sealed class TunnelRelay
             {
             }
         }
+
+        var closeReason = idleTimedOut
+            ? "IdleTimeout"
+            : relayFailed
+                ? "RelayFailure"
+                : cancellationToken.IsCancellationRequested
+                    ? "Shutdown"
+                    : "Closed";
+
+        return new TunnelRelayResult(
+            closeReason,
+            Interlocked.Read(ref bytesClientToUpstream),
+            Interlocked.Read(ref bytesUpstreamToClient),
+            Stopwatch.GetElapsedTime(started));
     }
 
     private async ValueTask RelayDirectionAsync(
@@ -105,6 +127,7 @@ public sealed class TunnelRelay
         Stream destination,
         int bufferSize,
         Action<int> onBytesRelayed,
+        Action onRelayFailure,
         CancellationToken cancellationToken)
     {
         var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
@@ -131,6 +154,7 @@ public sealed class TunnelRelay
         catch (Exception exception) when (exception is IOException or SocketException)
         {
             _metrics.TunnelRelayFailed();
+            onRelayFailure();
             _logger.LogDebug(exception, "Upgraded tunnel relay ended with an I/O failure.");
         }
         finally

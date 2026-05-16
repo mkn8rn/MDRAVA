@@ -161,6 +161,48 @@ internal static class ConfigurationTests
         AssertEx.Equal(TimeSpan.FromMilliseconds(750), AssertEx.NotNull(result.Snapshot).Timeouts.TunnelIdleTimeout);
     }
 
+    public static async Task LoaderLoadsObservabilityDefaults()
+    {
+        using var temp = TemporaryDirectory.Create();
+        WriteSite(temp.Path, "home.json", port: 18080, upstreamPort: 15000);
+        var loader = CreateLoader(temp.Path);
+
+        var result = await loader.LoadAsync(CancellationToken.None);
+
+        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
+        var observability = AssertEx.NotNull(result.Snapshot).Observability;
+        AssertEx.True(observability.AccessLogEnabled);
+        AssertEx.Equal(500, observability.RecentDiagnosticsCapacity);
+    }
+
+    public static async Task LoaderLoadsExplicitObservabilitySettings()
+    {
+        using var temp = TemporaryDirectory.Create();
+        WriteSite(temp.Path, "home.json", port: 18080, upstreamPort: 15000);
+        WriteOperationalConfig(temp.Path, accessLogEnabled: false, recentDiagnosticsCapacity: 12);
+        var loader = CreateLoader(temp.Path);
+
+        var result = await loader.LoadAsync(CancellationToken.None);
+
+        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
+        var observability = AssertEx.NotNull(result.Snapshot).Observability;
+        AssertEx.False(observability.AccessLogEnabled);
+        AssertEx.Equal(12, observability.RecentDiagnosticsCapacity);
+    }
+
+    public static async Task LoaderRejectsInvalidObservabilityCapacity()
+    {
+        using var temp = TemporaryDirectory.Create();
+        WriteSite(temp.Path, "home.json", port: 18080, upstreamPort: 15000);
+        WriteOperationalConfig(temp.Path, recentDiagnosticsCapacity: 0);
+        var loader = CreateLoader(temp.Path);
+
+        var result = await loader.LoadAsync(CancellationToken.None);
+
+        AssertEx.False(result.Succeeded);
+        AssertEx.True(result.Errors.Any(static error => error.Contains("RecentDiagnosticsCapacity", StringComparison.Ordinal)));
+    }
+
     public static async Task LoaderRejectsInvalidOperationalTimeouts()
     {
         using var temp = TemporaryDirectory.Create();
@@ -512,6 +554,8 @@ internal static class ConfigurationTests
         int maxRequestsPerClientConnection = 100,
         int maxIdleUpstreamConnectionsPerUpstream = 16,
         int maxActiveUpgradedTunnels = 1024,
+        bool accessLogEnabled = true,
+        int recentDiagnosticsCapacity = 500,
         string? certificateId = null,
         string? certificatePath = null,
         string? certificatePassword = null,
@@ -552,6 +596,10 @@ internal static class ConfigurationTests
                 "maxRequestsPerClientConnection": {{maxRequestsPerClientConnection}},
                 "maxIdleUpstreamConnectionsPerUpstream": {{maxIdleUpstreamConnectionsPerUpstream}},
                 "maxActiveUpgradedTunnels": {{maxActiveUpgradedTunnels}}
+              },
+              "observability": {
+                "accessLogEnabled": {{accessLogEnabled.ToString().ToLowerInvariant()}},
+                "recentDiagnosticsCapacity": {{recentDiagnosticsCapacity}}
               },
               "certificates": {{certificatesJson}}
             }

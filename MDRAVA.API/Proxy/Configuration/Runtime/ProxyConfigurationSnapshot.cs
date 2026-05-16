@@ -7,6 +7,7 @@ public sealed record ProxyConfigurationSnapshot(
     IReadOnlyList<string> SourceFiles,
     RuntimeTimeouts Timeouts,
     RuntimeConnectionLimits ConnectionLimits,
+    RuntimeObservabilityOptions Observability,
     IReadOnlyDictionary<string, RuntimeCertificate> Certificates,
     IReadOnlyList<RuntimeListener> Listeners,
     IReadOnlyList<RuntimeRoute> Routes)

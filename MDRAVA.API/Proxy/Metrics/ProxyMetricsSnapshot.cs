@@ -53,4 +53,8 @@ public sealed record ProxyMetricsSnapshot(
     long HealthChecksSucceeded,
     long HealthChecksFailed,
     long UpstreamHealthTransitions,
-    long UpstreamRequestFailures);
+    long UpstreamRequestFailures,
+    long RequestIdsGenerated,
+    long AccessLogsEmitted,
+    long RecentDiagnosticsOverwritten,
+    IReadOnlyDictionary<string, long> RequestFailuresByKind);

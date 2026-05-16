@@ -6,6 +6,7 @@ using MDRAVA.API.Proxy.Configuration.Storage;
 using MDRAVA.API.Proxy.Forwarding;
 using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Metrics;
+using MDRAVA.API.Proxy.Observability;
 using MDRAVA.API.Proxy.Routing;
 using MDRAVA.API.Proxy.Tls;
 
@@ -22,6 +23,8 @@ public sealed class ProxyListenerService : BackgroundService
     private readonly UpgradeRequestPolicy _upgradeRequestPolicy;
     private readonly TlsConnectionAuthenticator _tlsAuthenticator;
     private readonly ProxyMetrics _metrics;
+    private readonly RequestIdGenerator _requestIdGenerator;
+    private readonly AccessLogEmitter _accessLogEmitter;
     private readonly ProxyRuntimeState _runtimeState;
     private readonly ILogger<ProxyListenerService> _logger;
     private readonly ILogger<ClientConnection> _connectionLogger;
@@ -37,6 +40,8 @@ public sealed class ProxyListenerService : BackgroundService
         UpgradeRequestPolicy upgradeRequestPolicy,
         TlsConnectionAuthenticator tlsAuthenticator,
         ProxyMetrics metrics,
+        RequestIdGenerator requestIdGenerator,
+        AccessLogEmitter accessLogEmitter,
         ProxyRuntimeState runtimeState,
         ILogger<ProxyListenerService> logger,
         ILogger<ClientConnection> connectionLogger)
@@ -50,6 +55,8 @@ public sealed class ProxyListenerService : BackgroundService
         _upgradeRequestPolicy = upgradeRequestPolicy;
         _tlsAuthenticator = tlsAuthenticator;
         _metrics = metrics;
+        _requestIdGenerator = requestIdGenerator;
+        _accessLogEmitter = accessLogEmitter;
         _runtimeState = runtimeState;
         _logger = logger;
         _connectionLogger = connectionLogger;
@@ -156,6 +163,8 @@ public sealed class ProxyListenerService : BackgroundService
                 _upgradeRequestPolicy,
                 _tlsAuthenticator,
                 _metrics,
+                _requestIdGenerator,
+                _accessLogEmitter,
                 _connectionLogger);
 
             await connection.RunAsync(cancellationToken);

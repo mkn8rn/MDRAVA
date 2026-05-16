@@ -9,6 +9,8 @@ public sealed record ProxyStatusResponse(
     DateTimeOffset? StartedAt,
     DateTimeOffset? StoppedAt,
     string? LastError,
+    int? ConfigVersion,
+    DateTimeOffset? ConfigLoadedAtUtc,
     int ConfiguredListeners,
     int ConfiguredRoutes,
     ProxyMetricsSnapshot Metrics,

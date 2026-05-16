@@ -1,7 +1,11 @@
+using MDRAVA.API.Proxy.Observability;
+
 namespace MDRAVA.API.Proxy.Metrics;
 
 public sealed class ProxyMetrics
 {
+    private static readonly ProxyFailureKind[] FailureKinds = Enum.GetValues<ProxyFailureKind>();
+
     private long _acceptedConnections;
     private long _activeConnections;
     private long _totalRequests;
@@ -55,6 +59,10 @@ public sealed class ProxyMetrics
     private long _healthChecksFailed;
     private long _upstreamHealthTransitions;
     private long _upstreamRequestFailures;
+    private long _requestIdsGenerated;
+    private long _accessLogsEmitted;
+    private long _recentDiagnosticsOverwritten;
+    private readonly long[] _requestFailuresByKind = new long[FailureKinds.Length];
 
     public void ConnectionAccepted()
     {
@@ -263,8 +271,39 @@ public sealed class ProxyMetrics
 
     public void UpstreamRequestFailed(object _) => Interlocked.Increment(ref _upstreamRequestFailures);
 
+    public void RequestIdGenerated() => Interlocked.Increment(ref _requestIdsGenerated);
+
+    public void AccessLogEmitted() => Interlocked.Increment(ref _accessLogsEmitted);
+
+    public void RecentDiagnosticOverwritten() => Interlocked.Increment(ref _recentDiagnosticsOverwritten);
+
+    public void RequestFailed(ProxyFailureKind failureKind)
+    {
+        if (failureKind == ProxyFailureKind.None)
+        {
+            return;
+        }
+
+        var index = (int)failureKind;
+        if ((uint)index < (uint)_requestFailuresByKind.Length)
+        {
+            Interlocked.Increment(ref _requestFailuresByKind[index]);
+        }
+    }
+
     public ProxyMetricsSnapshot Snapshot()
     {
+        Dictionary<string, long> failuresByKind = new(StringComparer.Ordinal);
+        foreach (var failureKind in FailureKinds)
+        {
+            if (failureKind == ProxyFailureKind.None)
+            {
+                continue;
+            }
+
+            failuresByKind[failureKind.ToString()] = Interlocked.Read(ref _requestFailuresByKind[(int)failureKind]);
+        }
+
         return new ProxyMetricsSnapshot(
             Interlocked.Read(ref _acceptedConnections),
             Interlocked.Read(ref _activeConnections),
@@ -318,6 +357,10 @@ public sealed class ProxyMetrics
             Interlocked.Read(ref _healthChecksSucceeded),
             Interlocked.Read(ref _healthChecksFailed),
             Interlocked.Read(ref _upstreamHealthTransitions),
-            Interlocked.Read(ref _upstreamRequestFailures));
+            Interlocked.Read(ref _upstreamRequestFailures),
+            Interlocked.Read(ref _requestIdsGenerated),
+            Interlocked.Read(ref _accessLogsEmitted),
+            Interlocked.Read(ref _recentDiagnosticsOverwritten),
+            failuresByKind);
     }
 }

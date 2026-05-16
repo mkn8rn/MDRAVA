@@ -4,6 +4,7 @@ using System.Text;
 using MDRAVA.API.Proxy.Connections;
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Metrics;
+using MDRAVA.API.Proxy.Observability;
 using MDRAVA.API.Proxy.Protocol;
 
 namespace MDRAVA.API.Proxy.Forwarding;
@@ -36,6 +37,7 @@ public sealed class ProxyForwarder
         RuntimeTimeouts timeouts,
         RuntimeConnectionLimits connectionLimits,
         bool preferClientKeepAlive,
+        string requestId,
         CancellationToken cancellationToken)
     {
         var responseStarted = false;
@@ -81,6 +83,7 @@ public sealed class ProxyForwarder
                 listener,
                 timeouts,
                 preferClientKeepAlive,
+                requestId,
                 cancellationToken);
             responseStarted = responseResult.ResponseStarted;
 
@@ -95,7 +98,7 @@ public sealed class ProxyForwarder
                 requestHead.Method,
                 requestHead.Target,
                 upstream.Name);
-            return new ForwardingResult(true, responseStarted, responseResult.KeepClientConnectionOpen);
+            return new ForwardingResult(true, responseStarted, responseResult.KeepClientConnectionOpen, responseResult.StatusCode);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -103,8 +106,8 @@ public sealed class ProxyForwarder
         }
         catch (ProxyTimeoutException exception)
         {
-            await HandleTimeoutAsync(clientStream, requestHead, upstream, responseStarted, exception, timeouts, cancellationToken);
-            return new ForwardingResult(false, responseStarted, false);
+            await HandleTimeoutAsync(clientStream, requestHead, upstream, responseStarted, exception, timeouts, requestId, cancellationToken);
+            return new ForwardingResult(false, responseStarted, false, StatusCodeForTimeout(exception.Kind, responseStarted), FailureKindForTimeout(exception.Kind));
         }
         catch (Http1ClientProtocolException exception)
         {
@@ -119,12 +122,12 @@ public sealed class ProxyForwarder
             {
                 await ProxyErrorResponses.WriteAsync(
                     clientStream,
-                    ProxyErrorResponses.BadRequest,
+                    BuildGeneratedBadRequest(requestId),
                     timeouts.DownstreamWriteTimeout,
                     _metrics,
                     cancellationToken);
             }
-            return new ForwardingResult(false, responseStarted, false);
+            return new ForwardingResult(false, responseStarted, false, responseStarted ? null : 400, ProxyFailureKind.ClientMalformedRequest);
         }
         catch (Http1UpstreamProtocolException exception)
         {
@@ -146,12 +149,12 @@ public sealed class ProxyForwarder
                 _metrics.ProxyGenerated502();
                 await ProxyErrorResponses.WriteAsync(
                     clientStream,
-                    ProxyErrorResponses.BadGateway,
+                    BuildGeneratedBadGateway(requestId),
                     timeouts.DownstreamWriteTimeout,
                     _metrics,
                     cancellationToken);
             }
-            return new ForwardingResult(false, responseStarted, false);
+            return new ForwardingResult(false, responseStarted, false, responseStarted ? null : 502, ProxyFailureKind.UpstreamMalformedResponse);
         }
         catch (Exception exception) when (exception is SocketException or IOException)
         {
@@ -168,12 +171,17 @@ public sealed class ProxyForwarder
                 _metrics.ProxyGenerated502();
                 await ProxyErrorResponses.WriteAsync(
                     clientStream,
-                    ProxyErrorResponses.BadGateway,
+                    BuildGeneratedBadGateway(requestId),
                     timeouts.DownstreamWriteTimeout,
                     _metrics,
                     cancellationToken);
             }
-            return new ForwardingResult(false, responseStarted, false);
+            return new ForwardingResult(
+                false,
+                responseStarted,
+                false,
+                responseStarted ? null : 502,
+                responseStarted ? ProxyFailureKind.UpstreamPrematureDisconnect : ProxyFailureKind.UpstreamConnectFailed);
         }
     }
 
@@ -184,6 +192,7 @@ public sealed class ProxyForwarder
         bool responseStarted,
         ProxyTimeoutException exception,
         RuntimeTimeouts timeouts,
+        string requestId,
         CancellationToken cancellationToken)
     {
         switch (exception.Kind)
@@ -193,7 +202,7 @@ public sealed class ProxyForwarder
                 _logger.LogDebug(exception, "Client request body timed out for {Method} {Target}", requestHead.Method, requestHead.Target);
                 if (!responseStarted)
                 {
-                    await ProxyErrorResponses.WriteAsync(clientStream, ProxyErrorResponses.RequestTimeout, timeouts.DownstreamWriteTimeout, _metrics, cancellationToken);
+                    await ProxyErrorResponses.WriteAsync(clientStream, BuildGeneratedRequestTimeout(requestId), timeouts.DownstreamWriteTimeout, _metrics, cancellationToken);
                 }
                 break;
             case ProxyTimeoutKind.UpstreamConnect:
@@ -203,7 +212,7 @@ public sealed class ProxyForwarder
                 if (!responseStarted)
                 {
                     _metrics.ProxyGenerated504();
-                    await ProxyErrorResponses.WriteAsync(clientStream, ProxyErrorResponses.GatewayTimeout, timeouts.DownstreamWriteTimeout, _metrics, cancellationToken);
+                    await ProxyErrorResponses.WriteAsync(clientStream, BuildGeneratedGatewayTimeout(requestId), timeouts.DownstreamWriteTimeout, _metrics, cancellationToken);
                 }
                 break;
             case ProxyTimeoutKind.UpstreamResponseHead:
@@ -213,7 +222,7 @@ public sealed class ProxyForwarder
                 if (!responseStarted)
                 {
                     _metrics.ProxyGenerated504();
-                    await ProxyErrorResponses.WriteAsync(clientStream, ProxyErrorResponses.GatewayTimeout, timeouts.DownstreamWriteTimeout, _metrics, cancellationToken);
+                    await ProxyErrorResponses.WriteAsync(clientStream, BuildGeneratedGatewayTimeout(requestId), timeouts.DownstreamWriteTimeout, _metrics, cancellationToken);
                 }
                 break;
             case ProxyTimeoutKind.UpstreamResponseBodyIdle:
@@ -306,6 +315,7 @@ public sealed class ProxyForwarder
         RuntimeListener listener,
         RuntimeTimeouts timeouts,
         bool preferClientKeepAlive,
+        string requestId,
         CancellationToken cancellationToken)
     {
         ReadOnlyMemory<byte> initialBodyBytes = ReadOnlyMemory<byte>.Empty;
@@ -331,7 +341,7 @@ public sealed class ProxyForwarder
             var upstreamWantsClose = HasConnectionToken(responseHead.Headers, "close");
             var keepClientConnectionOpen = preferClientKeepAlive
                 && responseHead.Framing.Kind != Http1BodyKind.CloseDelimited;
-            await WriteResponseHeadAsync(clientStream, responseHead, timeouts, keepClientConnectionOpen, cancellationToken);
+            await WriteResponseHeadAsync(clientStream, responseHead, timeouts, keepClientConnectionOpen, requestId, cancellationToken);
             responseStarted = true;
             initialBodyBytes = responseHeadRead.InitialBodyBytes;
 
@@ -340,7 +350,7 @@ public sealed class ProxyForwarder
                 await RelayResponseBodyAsync(upstreamStream, clientStream, initialBodyBytes, responseHead, listener, timeouts, cancellationToken);
                 var canReuseUpstream = !upstreamWantsClose
                     && responseHead.Framing.Kind != Http1BodyKind.CloseDelimited;
-                return new ResponseForwardingResult(responseStarted, keepClientConnectionOpen, canReuseUpstream);
+                return new ResponseForwardingResult(responseStarted, keepClientConnectionOpen, canReuseUpstream, responseHead.StatusCode);
             }
         }
     }
@@ -350,6 +360,7 @@ public sealed class ProxyForwarder
         Http1ResponseHead responseHead,
         RuntimeTimeouts timeouts,
         bool keepClientConnectionOpen,
+        string requestId,
         CancellationToken cancellationToken)
     {
         var builder = new StringBuilder();
@@ -371,6 +382,8 @@ public sealed class ProxyForwarder
 
             builder.Append(header.Name).Append(": ").Append(header.Value).Append("\r\n");
         }
+
+        builder.Append("X-Request-Id: ").Append(requestId).Append("\r\n");
 
         if (responseHead.Framing.Kind == Http1BodyKind.ContentLength)
         {
@@ -666,7 +679,61 @@ public sealed class ProxyForwarder
     {
         return string.Equals(headerName, "Content-Length", StringComparison.OrdinalIgnoreCase)
             || string.Equals(headerName, "Transfer-Encoding", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(headerName, "Connection", StringComparison.OrdinalIgnoreCase);
+            || string.Equals(headerName, "Connection", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(headerName, "X-Request-Id", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static ReadOnlyMemory<byte> BuildGeneratedBadRequest(string requestId)
+    {
+        return Encoding.ASCII.GetBytes(
+            $"HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 11\r\nContent-Type: text/plain\r\nX-Request-Id: {requestId}\r\n\r\nBad Request");
+    }
+
+    private static ReadOnlyMemory<byte> BuildGeneratedBadGateway(string requestId)
+    {
+        return Encoding.ASCII.GetBytes(
+            $"HTTP/1.1 502 Bad Gateway\r\nConnection: close\r\nContent-Length: 11\r\nContent-Type: text/plain\r\nX-Request-Id: {requestId}\r\n\r\nBad Gateway");
+    }
+
+    private static ReadOnlyMemory<byte> BuildGeneratedRequestTimeout(string requestId)
+    {
+        return Encoding.ASCII.GetBytes(
+            $"HTTP/1.1 408 Request Timeout\r\nConnection: close\r\nContent-Length: 15\r\nContent-Type: text/plain\r\nX-Request-Id: {requestId}\r\n\r\nRequest Timeout");
+    }
+
+    private static ReadOnlyMemory<byte> BuildGeneratedGatewayTimeout(string requestId)
+    {
+        return Encoding.ASCII.GetBytes(
+            $"HTTP/1.1 504 Gateway Timeout\r\nConnection: close\r\nContent-Length: 15\r\nContent-Type: text/plain\r\nX-Request-Id: {requestId}\r\n\r\nGateway Timeout");
+    }
+
+    private static int? StatusCodeForTimeout(ProxyTimeoutKind timeoutKind, bool responseStarted)
+    {
+        if (responseStarted)
+        {
+            return null;
+        }
+
+        return timeoutKind switch
+        {
+            ProxyTimeoutKind.ClientRequestBodyIdle => 408,
+            ProxyTimeoutKind.UpstreamConnect => 504,
+            ProxyTimeoutKind.UpstreamResponseHead => 504,
+            _ => null
+        };
+    }
+
+    private static ProxyFailureKind FailureKindForTimeout(ProxyTimeoutKind timeoutKind)
+    {
+        return timeoutKind switch
+        {
+            ProxyTimeoutKind.ClientRequestBodyIdle => ProxyFailureKind.ClientRequestBodyTimeout,
+            ProxyTimeoutKind.UpstreamConnect => ProxyFailureKind.UpstreamConnectTimeout,
+            ProxyTimeoutKind.UpstreamResponseHead => ProxyFailureKind.UpstreamResponseHeadTimeout,
+            ProxyTimeoutKind.UpstreamResponseBodyIdle => ProxyFailureKind.UpstreamResponseBodyTimeout,
+            ProxyTimeoutKind.DownstreamWrite => ProxyFailureKind.ClientDisconnected,
+            _ => ProxyFailureKind.InternalError
+        };
     }
 
     public static bool HasConnectionToken(IReadOnlyList<Http1HeaderField> headers, string token)
@@ -792,7 +859,8 @@ public sealed class ProxyForwarder
     private sealed record ResponseForwardingResult(
         bool ResponseStarted,
         bool KeepClientConnectionOpen,
-        bool CanReuseUpstreamConnection);
+        bool CanReuseUpstreamConnection,
+        int StatusCode);
 
     private sealed class Http1UpstreamProtocolException : IOException
     {

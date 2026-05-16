@@ -1,4 +1,5 @@
 using MDRAVA.API.Proxy.Metrics;
+using System.Text;
 
 namespace MDRAVA.API.Proxy.Forwarding;
 
@@ -28,6 +29,40 @@ public static class ProxyErrorResponses
     public static ReadOnlyMemory<byte> GatewayTimeout => GatewayTimeoutResponse;
 
     public static ReadOnlyMemory<byte> ServiceUnavailable => ServiceUnavailableResponse;
+
+    public static ValueTask WriteGeneratedAsync(
+        Stream stream,
+        int statusCode,
+        string reasonPhrase,
+        string body,
+        string? requestId,
+        TimeSpan timeout,
+        ProxyMetrics metrics,
+        CancellationToken cancellationToken)
+    {
+        var builder = new StringBuilder();
+        builder.Append("HTTP/1.1 ")
+            .Append(statusCode)
+            .Append(' ')
+            .Append(reasonPhrase)
+            .Append("\r\nConnection: close\r\nContent-Type: text/plain\r\n");
+        if (!string.IsNullOrWhiteSpace(requestId))
+        {
+            builder.Append("X-Request-Id: ").Append(requestId).Append("\r\n");
+        }
+
+        builder.Append("Content-Length: ")
+            .Append(Encoding.ASCII.GetByteCount(body))
+            .Append("\r\n\r\n")
+            .Append(body);
+
+        return WriteAsync(
+            stream,
+            Encoding.ASCII.GetBytes(builder.ToString()),
+            timeout,
+            metrics,
+            cancellationToken);
+    }
 
     public static async ValueTask WriteAsync(
         Stream stream,

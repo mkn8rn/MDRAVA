@@ -29,6 +29,9 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Loader loads existing empty sites directory", ConfigurationTests.LoaderLoadsExistingEmptySitesDirectory),
     ("Loader uses defaults when operational config is missing", ConfigurationTests.LoaderUsesDefaultsWhenOperationalConfigIsMissing),
     ("Loader loads explicit operational timeout settings", ConfigurationTests.LoaderLoadsExplicitOperationalTimeouts),
+    ("Loader loads observability defaults", ConfigurationTests.LoaderLoadsObservabilityDefaults),
+    ("Loader loads explicit observability settings", ConfigurationTests.LoaderLoadsExplicitObservabilitySettings),
+    ("Loader rejects invalid observability capacity", ConfigurationTests.LoaderRejectsInvalidObservabilityCapacity),
     ("Loader rejects invalid operational timeout settings", ConfigurationTests.LoaderRejectsInvalidOperationalTimeouts),
     ("Loader rejects invalid tunnel connection limit", ConfigurationTests.LoaderRejectsInvalidTunnelLimit),
     ("Loader loads HTTPS listener with certificate", ConfigurationTests.LoaderLoadsHttpsListenerWithCertificate),
@@ -55,6 +58,12 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Proxy dataplane rejects malformed chunked request body", ProxyIntegrationTests.RejectsMalformedChunkedRequestBody),
     ("Proxy dataplane filters hop-by-hop request headers", ProxyIntegrationTests.FiltersHopByHopRequestHeaders),
     ("Proxy dataplane preserves Host header", ProxyIntegrationTests.PreservesHostHeader),
+    ("Proxy dataplane emits generated response request ID", ProxyIntegrationTests.ResponseIncludesGeneratedRequestId),
+    ("Proxy dataplane preserves external request ID in diagnostics", ProxyIntegrationTests.ExternalRequestIdIsPreservedInDiagnostics),
+    ("Proxy dataplane records successful diagnostics", ProxyIntegrationTests.SuccessfulRequestProducesDiagnosticRouteAndUpstream),
+    ("Proxy dataplane records upstream connect failure diagnostics", ProxyIntegrationTests.UpstreamConnectFailureProducesDiagnosticClassification),
+    ("Proxy dataplane can disable access logs while keeping diagnostics", ProxyIntegrationTests.AccessLoggingCanBeDisabledWhileDiagnosticsRemainEnabled),
+    ("Proxy dataplane records no-route diagnostics and status summary", ProxyIntegrationTests.NoMatchingRouteProducesDiagnosticClassification),
     ("Proxy dataplane times out incomplete request head", ProxyIntegrationTests.TimesOutIncompleteRequestHead),
     ("Proxy dataplane times out incomplete Content-Length request body", ProxyIntegrationTests.TimesOutIncompleteContentLengthRequestBody),
     ("Proxy dataplane times out incomplete chunked request body", ProxyIntegrationTests.TimesOutIncompleteChunkedRequestBody),
@@ -79,6 +88,7 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Upstream connection is not reused after premature disconnect", ProxyIntegrationTests.UpstreamConnectionIsNotReusedAfterPrematureDisconnect),
     ("Upstream connection is not reused after framing error", ProxyIntegrationTests.UpstreamConnectionIsNotReusedAfterFramingError),
     ("WebSocket Upgrade over plaintext returns 101", ProxyIntegrationTests.WebSocketUpgradeOverPlaintextReturnsSwitchingProtocols),
+    ("WebSocket Upgrade produces tunnel diagnostic", ProxyIntegrationTests.WebSocketUpgradeProducesTunnelDiagnostic),
     ("WebSocket tunnel relays client bytes upstream", ProxyIntegrationTests.WebSocketTunnelRelaysClientBytesToUpstream),
     ("WebSocket tunnel relays upstream bytes client", ProxyIntegrationTests.WebSocketTunnelRelaysUpstreamBytesToClient),
     ("WebSocket tunnel closes when client closes", ProxyIntegrationTests.WebSocketTunnelClosesWhenClientCloses),
@@ -100,7 +110,10 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Unhealthy upstream is not selected", ProxyIntegrationTests.UnhealthyUpstreamIsNotSelected),
     ("All unhealthy upstreams return service unavailable", ProxyIntegrationTests.AllUnhealthyUpstreamsReturnServiceUnavailable),
     ("WebSocket Upgrade uses round-robin upstream selection", ProxyIntegrationTests.WebSocketUpgradeUsesRoundRobinUpstreamSelection),
-    ("Upstream pool uses distinct endpoint keys", ProxyIntegrationTests.UpstreamPoolUsesDistinctEndpointKeys)
+    ("Upstream pool uses distinct endpoint keys", ProxyIntegrationTests.UpstreamPoolUsesDistinctEndpointKeys),
+    ("Recent diagnostics store is bounded", Sync(ObservabilityTests.RecentDiagnosticsStoreIsBounded)),
+    ("Diagnostics controller honors safe limit", Sync(ObservabilityTests.DiagnosticsControllerHonorsSafeLimit)),
+    ("Diagnostics event omits bodies and secrets", Sync(ObservabilityTests.DiagnosticsEventDoesNotCarryBodiesOrSecrets))
 };
 
 var failures = 0;
