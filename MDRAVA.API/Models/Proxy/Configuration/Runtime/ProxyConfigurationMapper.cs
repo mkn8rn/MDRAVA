@@ -1,3 +1,5 @@
+using MDRAVA.API.Proxy.Security;
+
 namespace MDRAVA.API.Proxy.Configuration.Runtime;
 
 public static class ProxyConfigurationMapper
@@ -77,17 +79,29 @@ public static class ProxyConfigurationMapper
                 .Select(static trustedProxy => trustedProxy!)
                 .ToArray());
 
-        return new ProxyConfigurationSnapshot(version, loadedAtUtc, sourceDirectory, sourceFiles, discovery, timeouts, connectionLimits, observability, limits, forwardedHeaders, certificates, listeners, routes);
+        var adminSecurity = AdminSecurityTokenResolver.ToRuntimeOptions(operationalOptions.Admin);
+
+        return new ProxyConfigurationSnapshot(version, loadedAtUtc, sourceDirectory, sourceFiles, discovery, adminSecurity, timeouts, connectionLimits, observability, limits, forwardedHeaders, certificates, listeners, routes);
     }
 
     public static ProxyConfigurationProjection ToProjection(ProxyConfigurationSnapshot snapshot)
     {
+        var adminSecurity = new RuntimeAdminSecurityProjection(
+            snapshot.AdminSecurity.Urls,
+            snapshot.AdminSecurity.RequireAuthentication,
+            snapshot.AdminSecurity.HasConfiguredToken,
+            SecretRedactor.RedactConfiguredSecret(snapshot.AdminSecurity.HasConfiguredToken),
+            snapshot.AdminSecurity.TokenEnvironmentVariable,
+            snapshot.AdminSecurity.TokenSource,
+            snapshot.AdminSecurity.RecentAuditCapacity);
+
         return new ProxyConfigurationProjection(
             snapshot.Version,
             snapshot.LoadedAtUtc,
             snapshot.SourceDirectory,
             snapshot.SourceFiles,
             snapshot.Discovery,
+            adminSecurity,
             snapshot.Timeouts,
             snapshot.ConnectionLimits,
             snapshot.Observability,

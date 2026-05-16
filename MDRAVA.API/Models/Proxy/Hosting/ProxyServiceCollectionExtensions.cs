@@ -9,6 +9,7 @@ using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Observability;
 using MDRAVA.API.Proxy.Routing;
 using MDRAVA.API.Proxy.Runtime;
+using MDRAVA.API.Proxy.Security;
 using MDRAVA.API.Proxy.Tls;
 using Microsoft.Extensions.Options;
 
@@ -35,6 +36,7 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<RequestIdGenerator>();
         services.AddSingleton<RecentRequestDiagnosticsStore>();
         services.AddSingleton<AccessLogEmitter>();
+        services.AddSingleton<AdminAuditStore>();
         services.AddSingleton<ProxyAdmissionController>();
         services.AddSingleton<ProxyShutdownCoordinator>();
         services.AddSingleton<ClientRateLimiter>();

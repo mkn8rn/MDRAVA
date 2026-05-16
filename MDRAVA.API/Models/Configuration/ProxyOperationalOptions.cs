@@ -2,6 +2,8 @@ namespace MDRAVA.API.Models.Configuration;
 
 public sealed class ProxyOperationalOptions
 {
+    public ProxyAdminOptions Admin { get; init; } = new();
+
     public ProxyTimeoutOptions Timeouts { get; init; } = new();
 
     public ProxyConnectionOptions Connections { get; init; } = new();

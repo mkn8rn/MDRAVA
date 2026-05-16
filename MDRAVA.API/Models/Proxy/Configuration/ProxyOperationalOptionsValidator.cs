@@ -1,3 +1,5 @@
+using MDRAVA.API.Proxy.Security;
+
 namespace MDRAVA.API.Proxy.Configuration;
 
 public static class ProxyOperationalOptionsValidator
@@ -6,6 +8,8 @@ public static class ProxyOperationalOptionsValidator
     private const int MaximumTimeoutMs = 10 * 60 * 1000;
     private const int MinimumDiagnosticsCapacity = 1;
     private const int MaximumDiagnosticsCapacity = 10_000;
+    private const int MinimumAuditCapacity = 1;
+    private const int MaximumAuditCapacity = 10_000;
 
     public static IReadOnlyList<string> Validate(ProxyOperationalOptions options)
     {
@@ -25,6 +29,7 @@ public static class ProxyOperationalOptionsValidator
         ValidateLimits(failures, options.Limits);
         ValidateForwardedHeaders(failures, options.ForwardedHeaders);
         ValidateCertificates(failures, options.Certificates);
+        ValidateAdmin(failures, options.Admin);
         return failures;
     }
 
@@ -174,5 +179,53 @@ public static class ProxyOperationalOptionsValidator
                 failures.Add($"{prefix} '{entry}' must be an exact IPv4/IPv6 address or CIDR range.");
             }
         }
+    }
+
+    private static void ValidateAdmin(List<string> failures, ProxyAdminOptions options)
+    {
+        if (options.RecentAuditCapacity is < MinimumAuditCapacity or > MaximumAuditCapacity)
+        {
+            failures.Add($"Proxy admin setting RecentAuditCapacity must be between {MinimumAuditCapacity} and {MaximumAuditCapacity}.");
+        }
+
+        var tokenResolution = AdminSecurityTokenResolver.Resolve(options);
+        if (options.RequireAuthentication && string.IsNullOrEmpty(tokenResolution.Token))
+        {
+            failures.Add(
+                "Proxy admin RequireAuthentication is true, but no token was provided by Admin:Token "
+                + $"or environment variable '{tokenResolution.TokenEnvironmentVariable}'.");
+        }
+
+        if (!string.IsNullOrEmpty(options.Token) && ContainsControlCharacter(options.Token))
+        {
+            failures.Add("Proxy admin Token must not contain control characters.");
+        }
+
+        if (ContainsControlCharacter(tokenResolution.TokenEnvironmentVariable))
+        {
+            failures.Add("Proxy admin TokenEnvironmentVariable must not contain control characters.");
+        }
+
+        var urls = AdminSecurityTokenResolver.NormalizeUrls(options.Urls);
+        for (var index = 0; index < urls.Count; index++)
+        {
+            var url = urls[index];
+            var prefix = $"Proxy:Admin:Urls:{index}";
+            if (!AdminBindPolicy.IsValidAdminUrl(url))
+            {
+                failures.Add($"{prefix} '{url}' must be an absolute http or https URL.");
+            }
+        }
+
+        if (urls.Any(static url => AdminBindPolicy.IsValidAdminUrl(url) && !AdminBindPolicy.IsLocalAdminUrl(url))
+            && !AdminSecurityTokenResolver.IsAuthenticationEnabled(options))
+        {
+            failures.Add("Proxy admin Urls includes a non-local bind address, so Admin:RequireAuthentication must be true with a configured token.");
+        }
+    }
+
+    private static bool ContainsControlCharacter(string value)
+    {
+        return value.Any(char.IsControl);
     }
 }
