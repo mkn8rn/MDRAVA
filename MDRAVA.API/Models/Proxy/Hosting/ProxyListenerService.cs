@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using MDRAVA.API.Proxy.Connections;
+using MDRAVA.API.Proxy.Acme;
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Configuration.Storage;
 using MDRAVA.API.Proxy.Forwarding;
@@ -26,6 +27,7 @@ public sealed class ProxyListenerService : BackgroundService
     private readonly ForwardedHeadersPolicy _forwardedHeadersPolicy;
     private readonly ProxyRouteActionPolicy _routeActionPolicy;
     private readonly PathRewritePolicy _pathRewritePolicy;
+    private readonly AcmeHttp01ChallengeResponder _acmeChallengeResponder;
     private readonly TlsConnectionAuthenticator _tlsAuthenticator;
     private readonly ProxyMetrics _metrics;
     private readonly RequestIdGenerator _requestIdGenerator;
@@ -51,6 +53,7 @@ public sealed class ProxyListenerService : BackgroundService
         ForwardedHeadersPolicy forwardedHeadersPolicy,
         ProxyRouteActionPolicy routeActionPolicy,
         PathRewritePolicy pathRewritePolicy,
+        AcmeHttp01ChallengeResponder acmeChallengeResponder,
         TlsConnectionAuthenticator tlsAuthenticator,
         ProxyMetrics metrics,
         RequestIdGenerator requestIdGenerator,
@@ -73,6 +76,7 @@ public sealed class ProxyListenerService : BackgroundService
         _forwardedHeadersPolicy = forwardedHeadersPolicy;
         _routeActionPolicy = routeActionPolicy;
         _pathRewritePolicy = pathRewritePolicy;
+        _acmeChallengeResponder = acmeChallengeResponder;
         _tlsAuthenticator = tlsAuthenticator;
         _metrics = metrics;
         _requestIdGenerator = requestIdGenerator;
@@ -224,6 +228,7 @@ public sealed class ProxyListenerService : BackgroundService
                 _forwardedHeadersPolicy,
                 _routeActionPolicy,
                 _pathRewritePolicy,
+                _acmeChallengeResponder,
                 _tlsAuthenticator,
                 _metrics,
                 _requestIdGenerator,

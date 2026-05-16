@@ -80,8 +80,9 @@ public static class ProxyConfigurationMapper
                 .ToArray());
 
         var adminSecurity = AdminSecurityTokenResolver.ToRuntimeOptions(operationalOptions.Admin);
+        var acme = ToRuntimeAcmeOptions(operationalOptions.Acme);
 
-        return new ProxyConfigurationSnapshot(version, loadedAtUtc, sourceDirectory, sourceFiles, discovery, adminSecurity, timeouts, connectionLimits, observability, limits, forwardedHeaders, certificates, listeners, routes);
+        return new ProxyConfigurationSnapshot(version, loadedAtUtc, sourceDirectory, sourceFiles, discovery, adminSecurity, acme, timeouts, connectionLimits, observability, limits, forwardedHeaders, certificates, listeners, routes);
     }
 
     public static ProxyConfigurationProjection ToProjection(ProxyConfigurationSnapshot snapshot)
@@ -92,8 +93,19 @@ public static class ProxyConfigurationMapper
             snapshot.AdminSecurity.HasConfiguredToken,
             SecretRedactor.RedactConfiguredSecret(snapshot.AdminSecurity.HasConfiguredToken),
             snapshot.AdminSecurity.TokenEnvironmentVariable,
-            snapshot.AdminSecurity.TokenSource,
-            snapshot.AdminSecurity.RecentAuditCapacity);
+                snapshot.AdminSecurity.TokenSource,
+                snapshot.AdminSecurity.RecentAuditCapacity);
+        var acme = new RuntimeAcmeProjection(
+            snapshot.Acme.Enabled,
+            snapshot.Acme.UseStaging,
+            snapshot.Acme.DirectoryUrl,
+            snapshot.Acme.ContactEmails,
+            snapshot.Acme.TermsAccepted,
+            snapshot.Acme.StoragePath,
+            snapshot.Acme.RenewBeforeDays,
+            snapshot.Acme.CheckIntervalMinutes,
+            snapshot.Acme.RetryAfterMinutes,
+            snapshot.Acme.Certificates);
 
         return new ProxyConfigurationProjection(
             snapshot.Version,
@@ -102,6 +114,7 @@ public static class ProxyConfigurationMapper
             snapshot.SourceFiles,
             snapshot.Discovery,
             adminSecurity,
+            acme,
             snapshot.Timeouts,
             snapshot.ConnectionLimits,
             snapshot.Observability,
@@ -112,6 +125,8 @@ public static class ProxyConfigurationMapper
                     certificate.Id,
                     certificate.Path,
                     certificate.Format,
+                    certificate.Source,
+                    certificate.Domains ?? [],
                     certificate.HasConfiguredPassword,
                     certificate.Certificate.Subject,
                     certificate.Certificate.Thumbprint,
@@ -121,6 +136,46 @@ public static class ProxyConfigurationMapper
                 .ToArray(),
             snapshot.Listeners,
             snapshot.Routes);
+    }
+
+    public static RuntimeAcmeOptions ToRuntimeAcmeOptions(ProxyAcmeOptions options)
+    {
+        var directoryUrl = ResolveAcmeDirectoryUrl(options);
+        return new RuntimeAcmeOptions(
+            options.Enabled,
+            options.UseStaging,
+            directoryUrl,
+            options.ContactEmails
+                .Where(static contact => !string.IsNullOrWhiteSpace(contact))
+                .Select(static contact => contact.Trim())
+                .ToArray(),
+            options.TermsAccepted,
+            string.IsNullOrWhiteSpace(options.StoragePath) ? "acme" : options.StoragePath.Trim(),
+            options.RenewBeforeDays,
+            options.CheckIntervalMinutes,
+            options.RetryAfterMinutes,
+            options.Certificates
+                .Select(certificate => new RuntimeAcmeCertificateOptions(
+                    certificate.Id,
+                    certificate.Enabled,
+                    certificate.Domains
+                        .Where(static domain => !string.IsNullOrWhiteSpace(domain))
+                        .Select(static domain => domain.Trim().ToLowerInvariant())
+                        .ToArray(),
+                    certificate.RenewBeforeDays ?? options.RenewBeforeDays))
+                .ToArray());
+    }
+
+    public static string ResolveAcmeDirectoryUrl(ProxyAcmeOptions options)
+    {
+        if (!string.IsNullOrWhiteSpace(options.DirectoryUrl))
+        {
+            return options.DirectoryUrl.Trim();
+        }
+
+        return options.UseStaging
+            ? "https://acme-staging-v02.api.letsencrypt.org/directory"
+            : "https://acme-v02.api.letsencrypt.org/directory";
     }
 
     private static RuntimeRoute ToRuntimeRoute(ProxyRouteOptions route, ProxyOperationalOptions operationalOptions)

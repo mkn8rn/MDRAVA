@@ -7,6 +7,7 @@ public sealed record ProxyConfigurationProjection(
     IReadOnlyList<string> SourceFiles,
     ProxyConfigurationDiscovery Discovery,
     RuntimeAdminSecurityProjection AdminSecurity,
+    RuntimeAcmeProjection Acme,
     RuntimeTimeouts Timeouts,
     RuntimeConnectionLimits ConnectionLimits,
     RuntimeObservabilityOptions Observability,

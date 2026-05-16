@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using MDRAVA.API.Proxy.Acme;
 using MDRAVA.API.Proxy.Configuration.Paths;
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using Microsoft.Extensions.Options;
@@ -206,6 +207,16 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader
             .Select(static certificate => certificate.Id)
             .Where(static id => !string.IsNullOrWhiteSpace(id))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (operationalOptions.Acme.Enabled)
+        {
+            foreach (var acmeCertificateId in operationalOptions.Acme.Certificates
+                .Where(static certificate => certificate.Enabled)
+                .Select(static certificate => certificate.Id)
+                .Where(static id => !string.IsNullOrWhiteSpace(id)))
+            {
+                certificateIds.Add(acmeCertificateId);
+            }
+        }
 
         for (var listenerIndex = 0; listenerIndex < options.Listeners.Count; listenerIndex++)
         {
@@ -349,12 +360,22 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader
                         certificatePath,
                         "pfx",
                         hasConfiguredPassword,
-                        certificate));
+                        certificate,
+                        "manualPfx",
+                        []));
             }
             catch (CryptographicException exception)
             {
                 errors.Add(new ProxyConfigurationFileError(null, $"Certificate '{certificateOptions.Id}' could not be loaded from '{certificatePath}': {exception.Message}"));
             }
+        }
+
+        foreach (var acmeCertificate in AcmeCertificateMaterialStore.LoadRuntimeCertificates(
+            operationalOptions.Acme,
+            dataDirectory,
+            errors))
+        {
+            certificates[acmeCertificate.Key] = acmeCertificate.Value;
         }
 
         return certificates;

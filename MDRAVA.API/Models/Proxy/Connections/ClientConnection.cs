@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Net.Sockets;
+using MDRAVA.API.Proxy.Acme;
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Forwarding;
 using MDRAVA.API.Proxy.Health;
@@ -31,6 +32,7 @@ public sealed class ClientConnection
     private readonly ForwardedHeadersPolicy _forwardedHeadersPolicy;
     private readonly ProxyRouteActionPolicy _routeActionPolicy;
     private readonly PathRewritePolicy _pathRewritePolicy;
+    private readonly AcmeHttp01ChallengeResponder _acmeChallengeResponder;
     private readonly TlsConnectionAuthenticator _tlsAuthenticator;
     private readonly ProxyMetrics _metrics;
     private readonly RequestIdGenerator _requestIdGenerator;
@@ -51,6 +53,7 @@ public sealed class ClientConnection
         ForwardedHeadersPolicy forwardedHeadersPolicy,
         ProxyRouteActionPolicy routeActionPolicy,
         PathRewritePolicy pathRewritePolicy,
+        AcmeHttp01ChallengeResponder acmeChallengeResponder,
         TlsConnectionAuthenticator tlsAuthenticator,
         ProxyMetrics metrics,
         RequestIdGenerator requestIdGenerator,
@@ -70,6 +73,7 @@ public sealed class ClientConnection
         _forwardedHeadersPolicy = forwardedHeadersPolicy;
         _routeActionPolicy = routeActionPolicy;
         _pathRewritePolicy = pathRewritePolicy;
+        _acmeChallengeResponder = acmeChallengeResponder;
         _tlsAuthenticator = tlsAuthenticator;
         _metrics = metrics;
         _requestIdGenerator = requestIdGenerator;
@@ -254,6 +258,17 @@ public sealed class ClientConnection
                         "Not Implemented",
                         currentContext,
                         ProxyFailureKind.ClientMalformedRequest,
+                        cancellationToken);
+                    CompleteContext(ref currentContext);
+                    return;
+                }
+
+                if (_acmeChallengeResponder.TryCreateResponse(requestHead, out var acmeChallengeResponse))
+                {
+                    await WriteGeneratedRouteResponseAsync(
+                        clientStream,
+                        acmeChallengeResponse,
+                        currentContext,
                         cancellationToken);
                     CompleteContext(ref currentContext);
                     return;

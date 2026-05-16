@@ -1,0 +1,391 @@
+using MDRAVA.API.Controllers;
+using MDRAVA.API.Proxy.Acme;
+using MDRAVA.API.Proxy.Configuration;
+using MDRAVA.API.Proxy.Configuration.Loading;
+using MDRAVA.API.Proxy.Configuration.Paths;
+using MDRAVA.API.Proxy.Configuration.Runtime;
+using MDRAVA.API.Proxy.Configuration.Storage;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+
+namespace MDRAVA.Tests;
+
+internal static class AcmeTests
+{
+    public static async Task ManualPfxCertificateBehaviorRemainsValid()
+    {
+        using var temp = TemporaryDirectory.Create();
+        var certificatePath = Path.Combine(temp.Path, "certs", "manual.pfx");
+        TestCertificates.WriteSelfSignedPfx(certificatePath, "manual.test", "secret");
+        ConfigurationTests.WriteHttpsSite(temp.Path, "manual.json", 18443, 15000, "manual-cert");
+        ConfigurationTests.WriteOperationalConfig(
+            temp.Path,
+            certificateId: "manual-cert",
+            certificatePath: "certs/manual.pfx",
+            certificatePassword: "secret");
+
+        var result = await CreateLoader(temp.Path).LoadAsync(CancellationToken.None);
+
+        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
+        var snapshot = AssertEx.NotNull(result.Snapshot);
+        var certificate = snapshot.Certificates["manual-cert"];
+        AssertEx.Equal("manualPfx", certificate.Source);
+        var projection = ProxyConfigurationMapper.ToProjection(snapshot);
+        AssertEx.Equal("manualPfx", projection.Certificates[0].Source);
+    }
+
+    public static void AcmeConfigValidationRejectsMissingTermsAcceptance()
+    {
+        var failures = ProxyOperationalOptionsValidator.Validate(new ProxyOperationalOptions
+        {
+            Acme = new ProxyAcmeOptions
+            {
+                Enabled = true,
+                TermsAccepted = false,
+                Certificates =
+                [
+                    new AcmeManagedCertificateOptions
+                    {
+                        Id = "home-acme",
+                        Domains = ["home.example.test"]
+                    }
+                ]
+            }
+        });
+
+        AssertEx.True(failures.Any(static failure => failure.Contains("TermsAccepted", StringComparison.Ordinal)));
+    }
+
+    public static void Http01ChallengeReturnsExactTokenResponse()
+    {
+        var time = new ManualTimeProvider(DateTimeOffset.UtcNow);
+        var store = new AcmeChallengeStore();
+        AssertEx.True(store.TryRegister("abc_123-token", "abc_123-token.thumbprint", time.GetUtcNow().AddMinutes(5)));
+        var responder = new AcmeHttp01ChallengeResponder(store, time);
+
+        var handled = responder.TryCreateResponse(
+            Request("GET", "/.well-known/acme-challenge/abc_123-token"),
+            out var response);
+
+        AssertEx.True(handled);
+        AssertEx.Equal(200, response.StatusCode);
+        AssertEx.Equal("abc_123-token.thumbprint", response.Body);
+    }
+
+    public static void UnknownHttp01ChallengeReturnsSafe404()
+    {
+        var responder = new AcmeHttp01ChallengeResponder(
+            new AcmeChallengeStore(),
+            new ManualTimeProvider(DateTimeOffset.UtcNow));
+
+        var handled = responder.TryCreateResponse(
+            Request("GET", "/.well-known/acme-challenge/missing"),
+            out var response);
+
+        AssertEx.True(handled);
+        AssertEx.Equal(404, response.StatusCode);
+    }
+
+    public static async Task AcmeRenewalStoresMaterialUnderCertsDirectory()
+    {
+        using var temp = TemporaryDirectory.Create();
+        var issuer = new FakeIssuer(TestCertificates.CreateSelfSignedPfxBytes("home.example.test"));
+        var store = CreateStore(temp.Path);
+        var statusStore = new AcmeCertificateStatusStore();
+        var manager = CreateManager(temp.Path, store, issuer, statusStore);
+
+        await manager.CheckRenewalsAsync(CancellationToken.None);
+
+        var layout = AcmeCertificateMaterialStore.GetLayout(temp.Path, "acme");
+        AssertEx.True(File.Exists(AcmeCertificateMaterialStore.GetPrivateKeyPfxPath(layout, "home-acme")));
+        AssertEx.True(File.Exists(AcmeCertificateMaterialStore.GetCertificatePemPath(layout, "home-acme")));
+        AssertEx.True(File.Exists(AcmeCertificateMaterialStore.GetMetadataPath(layout, "home-acme")));
+        AssertEx.Equal("acme", store.Snapshot.Certificates["home-acme"].Source);
+        AssertEx.True(statusStore.Get("home-acme")?.Active == true);
+    }
+
+    public static async Task LoaderLoadsStoredAcmeCertificateOnStartup()
+    {
+        using var temp = TemporaryDirectory.Create();
+        var acmeOptions = new ProxyAcmeOptions
+        {
+            Enabled = true,
+            TermsAccepted = true,
+            Certificates =
+            [
+                new AcmeManagedCertificateOptions
+                {
+                    Id = "home-acme",
+                    Domains = ["home.example.test"]
+                }
+            ]
+        };
+        var runtimeAcme = ProxyConfigurationMapper.ToRuntimeAcmeOptions(acmeOptions);
+        AcmeCertificateMaterialStore.WriteAndLoad(
+            runtimeAcme,
+            runtimeAcme.Certificates[0],
+            temp.Path,
+            TestCertificates.CreateSelfSignedPfxBytes("home.example.test"));
+        var config = Directory.CreateDirectory(Path.Combine(temp.Path, "config")).FullName;
+        File.WriteAllText(
+            Path.Combine(config, "proxy.json"),
+            """
+            {
+              "acme": {
+                "enabled": true,
+                "termsAccepted": true,
+                "certificates": [
+                  {
+                    "id": "home-acme",
+                    "domains": [ "home.example.test" ]
+                  }
+                ]
+              }
+            }
+            """);
+
+        var result = await CreateLoader(temp.Path).LoadAsync(CancellationToken.None);
+
+        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
+        AssertEx.Equal("acme", AssertEx.NotNull(result.Snapshot).Certificates["home-acme"].Source);
+    }
+
+    public static async Task FailedAcmeRenewalPreservesCurrentActiveCertificate()
+    {
+        using var temp = TemporaryDirectory.Create();
+        var store = CreateStore(temp.Path);
+        var initial = AcmeCertificateMaterialStore.WriteAndLoad(
+            store.Snapshot.Acme,
+            store.Snapshot.Acme.Certificates[0],
+            temp.Path,
+            TestCertificates.CreateSelfSignedPfxBytes("home.example.test", validDays: 10));
+        store.Replace(store.Snapshot with
+        {
+            Certificates = new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["home-acme"] = initial
+            }
+        });
+        var originalThumbprint = initial.Certificate.Thumbprint;
+        var statusStore = new AcmeCertificateStatusStore();
+        var manager = CreateManager(temp.Path, store, new FakeIssuer("issuer failed"), statusStore);
+
+        await manager.CheckRenewalsAsync(CancellationToken.None);
+
+        AssertEx.Equal(originalThumbprint, store.Snapshot.Certificates["home-acme"].Certificate.Thumbprint);
+        AssertEx.Equal("failed", AssertEx.NotNull(statusStore.Get("home-acme")).LastResult);
+    }
+
+    public static async Task AcmeStatusProjectionDoesNotExposePrivateMaterial()
+    {
+        using var temp = TemporaryDirectory.Create();
+        var store = CreateStore(temp.Path);
+        var statusStore = new AcmeCertificateStatusStore();
+        var manager = CreateManager(
+            temp.Path,
+            store,
+            new FakeIssuer(TestCertificates.CreateSelfSignedPfxBytes("home.example.test")),
+            statusStore);
+        await manager.CheckRenewalsAsync(CancellationToken.None);
+        var controller = new ProxyAcmeController(store, statusStore);
+
+        var result = controller.Status();
+        var ok = (OkObjectResult)AssertEx.NotNull(result.Result);
+        var status = (AcmeStatusResponse)AssertEx.NotNull(ok.Value);
+        var text = status.ToString();
+
+        AssertEx.False(text.Contains("PRIVATE KEY", StringComparison.OrdinalIgnoreCase));
+        AssertEx.False(text.Contains("current.pfx", StringComparison.OrdinalIgnoreCase));
+        AssertEx.False(text.Contains(temp.Path, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public static async Task AcmeRenewalAvoidsTightRetryLoopAfterFailure()
+    {
+        using var temp = TemporaryDirectory.Create();
+        var issuer = new FakeIssuer("issuer failed");
+        var statusStore = new AcmeCertificateStatusStore();
+        var now = DateTimeOffset.UtcNow;
+        var manager = CreateManager(
+            temp.Path,
+            CreateStore(temp.Path),
+            issuer,
+            statusStore,
+            new ManualTimeProvider(now));
+
+        await manager.CheckRenewalsAsync(CancellationToken.None);
+        await manager.CheckRenewalsAsync(CancellationToken.None);
+
+        AssertEx.Equal(1, issuer.Calls);
+        AssertEx.True(statusStore.Get("home-acme")?.NextAttemptNotBeforeUtc > now);
+    }
+
+    private static Http1RequestHead Request(string method, string path)
+    {
+        return new Http1RequestHead(
+            method,
+            path,
+            path,
+            "HTTP/1.1",
+            "home.example.test",
+            Http1RequestFraming.None,
+            []);
+    }
+
+    private static ProxyConfigurationStore CreateStore(string dataDirectory)
+    {
+        var options = new ProxyOperationalOptions
+        {
+            Acme = new ProxyAcmeOptions
+            {
+                Enabled = true,
+                TermsAccepted = true,
+                RetryAfterMinutes = 60,
+                Certificates =
+                [
+                    new AcmeManagedCertificateOptions
+                    {
+                        Id = "home-acme",
+                        Domains = ["home.example.test"],
+                        RenewBeforeDays = 30
+                    }
+                ]
+            }
+        };
+        var snapshot = ProxyConfigurationMapper.ToRuntimeSnapshot(
+            new ProxyOptions(),
+            options,
+            new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),
+            1,
+            DateTimeOffset.UtcNow,
+            Path.Combine(dataDirectory, "config", "sites"),
+            [],
+            new ProxyConfigurationDiscovery(
+                new ProxyFilesystemLayout(
+                    dataDirectory,
+                    Path.Combine(dataDirectory, "config"),
+                    Path.Combine(dataDirectory, "config", "sites"),
+                    Path.Combine(dataDirectory, "logs"),
+                    Path.Combine(dataDirectory, "certs"),
+                    Path.Combine(dataDirectory, "state"),
+                    Path.Combine(dataDirectory, "config", "proxy.json")),
+                [],
+                [],
+                []));
+        var store = new ProxyConfigurationStore();
+        store.Replace(snapshot);
+        return store;
+    }
+
+    private static AcmeCertificateManager CreateManager(
+        string dataDirectory,
+        ProxyConfigurationStore store,
+        IAcmeCertificateIssuer issuer,
+        AcmeCertificateStatusStore statusStore,
+        TimeProvider? timeProvider = null)
+    {
+        return new AcmeCertificateManager(
+            store,
+            new MdravaDataDirectoryProvider(Options.Create(new MdravaDataDirectoryOptions
+            {
+                DataDirectory = dataDirectory
+            })),
+            issuer,
+            new AcmeChallengeStore(),
+            statusStore,
+            timeProvider ?? new ManualTimeProvider(DateTimeOffset.UtcNow),
+            NullLogger<AcmeCertificateManager>.Instance);
+    }
+
+    private static ProxyConfigurationLoader CreateLoader(string dataDirectory)
+    {
+        var provider = new MdravaDataDirectoryProvider(Options.Create(new MdravaDataDirectoryOptions
+        {
+            DataDirectory = dataDirectory
+        }));
+        return new ProxyConfigurationLoader(
+            provider,
+            new ProxyOptionsValidator(),
+            new ProxyDataDirectoryBootstrapper(provider),
+            new SiteConfigurationParser(),
+            NullLogger<ProxyConfigurationLoader>.Instance);
+    }
+
+    private sealed class FakeIssuer : IAcmeCertificateIssuer
+    {
+        private readonly byte[]? _pfxBytes;
+        private readonly string? _error;
+
+        public FakeIssuer(byte[] pfxBytes)
+        {
+            _pfxBytes = pfxBytes;
+        }
+
+        public FakeIssuer(string error)
+        {
+            _error = error;
+        }
+
+        public int Calls { get; private set; }
+
+        public ValueTask<AcmeCertificateIssueResult> IssueAsync(
+            AcmeCertificateIssueRequest request,
+            AcmeChallengeStore challengeStore,
+            CancellationToken cancellationToken)
+        {
+            _ = request;
+            _ = challengeStore;
+            _ = cancellationToken;
+            Calls++;
+            return ValueTask.FromResult(_pfxBytes is not null
+                ? AcmeCertificateIssueResult.Success(_pfxBytes)
+                : AcmeCertificateIssueResult.Failure(_error ?? "failed"));
+        }
+    }
+
+    private sealed class ManualTimeProvider : TimeProvider
+    {
+        private readonly DateTimeOffset _utcNow;
+
+        public ManualTimeProvider(DateTimeOffset utcNow)
+        {
+            _utcNow = utcNow;
+        }
+
+        public override DateTimeOffset GetUtcNow()
+        {
+            return _utcNow;
+        }
+    }
+
+    private sealed class TemporaryDirectory : IDisposable
+    {
+        private TemporaryDirectory(string path)
+        {
+            Path = path;
+        }
+
+        public string Path { get; }
+
+        public static TemporaryDirectory Create()
+        {
+            var path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"mdrava-acme-tests-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(path);
+            return new TemporaryDirectory(path);
+        }
+
+        public void Dispose()
+        {
+            try
+            {
+                if (Directory.Exists(Path))
+                {
+                    Directory.Delete(Path, recursive: true);
+                }
+            }
+            catch
+            {
+            }
+        }
+    }
+}

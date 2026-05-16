@@ -1,4 +1,5 @@
 using MDRAVA.API.Proxy.Configuration;
+using MDRAVA.API.Proxy.Acme;
 using MDRAVA.API.Proxy.Configuration.Loading;
 using MDRAVA.API.Proxy.Configuration.Paths;
 using MDRAVA.API.Proxy.Configuration.Storage;
@@ -37,6 +38,12 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<RecentRequestDiagnosticsStore>();
         services.AddSingleton<AccessLogEmitter>();
         services.AddSingleton<AdminAuditStore>();
+        services.AddSingleton(TimeProvider.System);
+        services.AddSingleton<AcmeChallengeStore>();
+        services.AddSingleton<AcmeHttp01ChallengeResponder>();
+        services.AddSingleton<AcmeCertificateStatusStore>();
+        services.AddSingleton<IAcmeCertificateIssuer, DisabledAcmeCertificateIssuer>();
+        services.AddSingleton<AcmeCertificateManager>();
         services.AddSingleton<ProxyAdmissionController>();
         services.AddSingleton<ProxyShutdownCoordinator>();
         services.AddSingleton<ClientRateLimiter>();
@@ -57,6 +64,7 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<UpgradeForwarder>();
         services.AddSingleton<TlsConnectionAuthenticator>();
         services.AddHostedService<ProxyConfigurationStartupService>();
+        services.AddHostedService<AcmeRenewalService>();
         services.AddHostedService<UpstreamHealthCheckService>();
         services.AddHostedService<ProxyListenerService>();
 

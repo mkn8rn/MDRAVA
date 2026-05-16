@@ -7,4 +7,6 @@ public sealed record RuntimeCertificate(
     string Path,
     string Format,
     bool HasConfiguredPassword,
-    X509Certificate2 Certificate);
+    X509Certificate2 Certificate,
+    string Source = "manualPfx",
+    IReadOnlyList<string>? Domains = null);

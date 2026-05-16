@@ -7,6 +7,7 @@ public sealed record ProxyConfigurationSnapshot(
     IReadOnlyList<string> SourceFiles,
     ProxyConfigurationDiscovery Discovery,
     RuntimeAdminSecurityOptions AdminSecurity,
+    RuntimeAcmeOptions Acme,
     RuntimeTimeouts Timeouts,
     RuntimeConnectionLimits ConnectionLimits,
     RuntimeObservabilityOptions Observability,

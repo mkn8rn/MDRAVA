@@ -11,6 +11,14 @@ internal static class TestCertificates
         string? password = null)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllBytes(path, CreateSelfSignedPfxBytes(subjectName, password));
+    }
+
+    public static byte[] CreateSelfSignedPfxBytes(
+        string subjectName,
+        string? password = null,
+        int validDays = 30)
+    {
         using var key = RSA.Create(2048);
         var request = new CertificateRequest(
             $"CN={subjectName}",
@@ -38,8 +46,8 @@ internal static class TestCertificates
 
         using var certificate = request.CreateSelfSigned(
             DateTimeOffset.UtcNow.AddDays(-1),
-            DateTimeOffset.UtcNow.AddDays(30));
+            DateTimeOffset.UtcNow.AddDays(validDays));
 
-        File.WriteAllBytes(path, certificate.Export(X509ContentType.Pfx, password));
+        return certificate.Export(X509ContentType.Pfx, password);
     }
 }

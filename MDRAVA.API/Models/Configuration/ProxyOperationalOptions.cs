@@ -4,6 +4,8 @@ public sealed class ProxyOperationalOptions
 {
     public ProxyAdminOptions Admin { get; init; } = new();
 
+    public ProxyAcmeOptions Acme { get; init; } = new();
+
     public ProxyTimeoutOptions Timeouts { get; init; } = new();
 
     public ProxyConnectionOptions Connections { get; init; } = new();
