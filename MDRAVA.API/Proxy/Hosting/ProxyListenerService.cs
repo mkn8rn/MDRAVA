@@ -41,7 +41,14 @@ public sealed class ProxyListenerService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var startupSnapshot = _configurationStore.Snapshot;
-        var listener = startupSnapshot.GetFirstEnabledListener();
+        if (!startupSnapshot.TryGetFirstEnabledListener(out var listener) || listener is null)
+        {
+            _runtimeState.MarkStopped("No configured proxy listener.");
+            _logger.LogWarning(
+                "Proxy dataplane has no configured listener; control-plane endpoints remain available and listener changes still require process restart.");
+            return;
+        }
+
         var listenAddress = IPAddress.Parse(listener.Address);
         var listenEndPoint = new IPEndPoint(listenAddress, listener.Port);
         string? stopError = null;

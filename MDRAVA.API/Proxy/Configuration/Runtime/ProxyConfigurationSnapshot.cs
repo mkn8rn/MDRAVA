@@ -9,6 +9,12 @@ public sealed record ProxyConfigurationSnapshot(
     IReadOnlyList<RuntimeListener> Listeners,
     IReadOnlyList<RuntimeRoute> Routes)
 {
+    public bool TryGetFirstEnabledListener(out RuntimeListener? listener)
+    {
+        listener = Listeners.FirstOrDefault(static candidate => candidate.Enabled);
+        return listener is not null;
+    }
+
     public RuntimeListener GetFirstEnabledListener()
     {
         return Listeners.First(static listener => listener.Enabled);

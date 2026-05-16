@@ -85,6 +85,51 @@ internal static class ConfigurationTests
         AssertEx.Equal(TimeSpan.FromSeconds(10), snapshot.Timeouts.ClientRequestHeadTimeout);
     }
 
+    public static async Task LoaderCreatesMissingConfigDirectoriesAndLoadsEmptySnapshot()
+    {
+        using var temp = TemporaryDirectory.Create();
+        var configDirectory = Path.Combine(temp.Path, "config");
+        var sitesDirectory = Path.Combine(configDirectory, "sites");
+        var loader = CreateLoader(temp.Path);
+
+        var result = await loader.LoadAsync(CancellationToken.None);
+
+        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
+        AssertEx.True(Directory.Exists(configDirectory));
+        AssertEx.True(Directory.Exists(sitesDirectory));
+        var snapshot = AssertEx.NotNull(result.Snapshot);
+        AssertEx.Equal(0, snapshot.Listeners.Count);
+        AssertEx.Equal(0, snapshot.Routes.Count);
+        AssertEx.Equal(0, snapshot.SourceFiles.Count);
+    }
+
+    public static async Task LoaderLoadsExistingEmptySitesDirectory()
+    {
+        using var temp = TemporaryDirectory.Create();
+        Directory.CreateDirectory(Path.Combine(temp.Path, "config", "sites"));
+        var loader = CreateLoader(temp.Path);
+
+        var result = await loader.LoadAsync(CancellationToken.None);
+
+        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
+        var snapshot = AssertEx.NotNull(result.Snapshot);
+        AssertEx.Equal(0, snapshot.Listeners.Count);
+        AssertEx.Equal(0, snapshot.Routes.Count);
+    }
+
+    public static async Task LoaderUsesDefaultsWhenOperationalConfigIsMissing()
+    {
+        using var temp = TemporaryDirectory.Create();
+        WriteSite(temp.Path, "home.json", port: 18080, upstreamPort: 15000);
+        var loader = CreateLoader(temp.Path);
+
+        var result = await loader.LoadAsync(CancellationToken.None);
+
+        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
+        AssertEx.False(File.Exists(Path.Combine(temp.Path, "config", "proxy.json")));
+        AssertEx.Equal(TimeSpan.FromSeconds(10), AssertEx.NotNull(result.Snapshot).Timeouts.ClientRequestHeadTimeout);
+    }
+
     public static async Task LoaderLoadsExplicitOperationalTimeouts()
     {
         using var temp = TemporaryDirectory.Create();
@@ -164,6 +209,29 @@ internal static class ConfigurationTests
         AssertEx.Equal(18081, store.Snapshot.Listeners[0].Port);
     }
 
+    public static async Task ReloadReplacesActiveSnapshotWithEmptySitesDirectory()
+    {
+        using var temp = TemporaryDirectory.Create();
+        WriteSite(temp.Path, "home.json", port: 18080, upstreamPort: 15000);
+
+        var store = new ProxyConfigurationStore();
+        var service = CreateReloadService(temp.Path, store);
+        var first = await service.ReloadAsync(CancellationToken.None);
+        AssertEx.True(first.Succeeded);
+
+        foreach (var siteFile in Directory.EnumerateFiles(Path.Combine(temp.Path, "config", "sites"), "*.json"))
+        {
+            File.Delete(siteFile);
+        }
+
+        var second = await service.ReloadAsync(CancellationToken.None);
+
+        AssertEx.True(second.Succeeded, string.Join("; ", second.Errors));
+        AssertEx.Equal(2, store.Snapshot.Version);
+        AssertEx.Equal(0, store.Snapshot.Listeners.Count);
+        AssertEx.Equal(0, store.Snapshot.Routes.Count);
+    }
+
     public static async Task ActiveInspectionProjectionReflectsStore()
     {
         using var temp = TemporaryDirectory.Create();
@@ -219,7 +287,8 @@ internal static class ConfigurationTests
             {
                 DataDirectory = dataDirectory
             })),
-            new MDRAVA.API.Proxy.Configuration.ProxyOptionsValidator());
+            new MDRAVA.API.Proxy.Configuration.ProxyOptionsValidator(),
+            NullLogger<ProxyConfigurationLoader>.Instance);
     }
 
     private static ProxyConfigurationReloadService CreateReloadService(

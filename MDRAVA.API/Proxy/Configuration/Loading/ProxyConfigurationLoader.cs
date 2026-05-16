@@ -16,14 +16,17 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader
 
     private readonly IMdravaDataDirectoryProvider _dataDirectoryProvider;
     private readonly IValidateOptions<ProxyOptions> _validator;
+    private readonly ILogger<ProxyConfigurationLoader> _logger;
     private int _nextVersion;
 
     public ProxyConfigurationLoader(
         IMdravaDataDirectoryProvider dataDirectoryProvider,
-        IValidateOptions<ProxyOptions> validator)
+        IValidateOptions<ProxyOptions> validator,
+        ILogger<ProxyConfigurationLoader> logger)
     {
         _dataDirectoryProvider = dataDirectoryProvider;
         _validator = validator;
+        _logger = logger;
     }
 
     public async ValueTask<ProxyConfigurationLoadResult> LoadAsync(CancellationToken cancellationToken)
@@ -31,24 +34,12 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader
         var sourceDirectory = _dataDirectoryProvider.GetSitesConfigDirectory();
         var operationalConfigPath = _dataDirectoryProvider.GetProxyOperationalConfigPath();
 
-        if (!Directory.Exists(sourceDirectory))
-        {
-            return ProxyConfigurationLoadResult.Failure(
-                sourceDirectory,
-                [$"Proxy site configuration directory does not exist: {sourceDirectory}"]);
-        }
+        Directory.CreateDirectory(sourceDirectory);
 
         var siteFiles = Directory
             .EnumerateFiles(sourceDirectory, "*.json", SearchOption.TopDirectoryOnly)
             .Order(StringComparer.OrdinalIgnoreCase)
             .ToArray();
-
-        if (siteFiles.Length == 0)
-        {
-            return ProxyConfigurationLoadResult.Failure(
-                sourceDirectory,
-                [$"Proxy site configuration directory contains no .json files: {sourceDirectory}"]);
-        }
 
         List<SiteConfigurationSource> sites = [];
         List<string> errors = [];
@@ -86,12 +77,21 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader
         }
 
         var options = SiteOptionsAggregator.ToProxyOptions(sites);
-        var validation = _validator.Validate(null, options);
-        if (validation.Failed)
+        if (siteFiles.Length > 0)
         {
-            return ProxyConfigurationLoadResult.Failure(
-                sourceDirectory,
-                validation.Failures.ToArray());
+            var validation = _validator.Validate(null, options);
+            if (validation.Failed)
+            {
+                return ProxyConfigurationLoadResult.Failure(
+                    sourceDirectory,
+                    validation.Failures.ToArray());
+            }
+        }
+        else
+        {
+            _logger.LogWarning(
+                "No proxy site configuration files were found in {SourcePath}; MDRAVA will start with no configured sites, listeners, or routes.",
+                sourceDirectory);
         }
 
         var version = Interlocked.Increment(ref _nextVersion);
@@ -106,13 +106,16 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader
         return ProxyConfigurationLoadResult.Success(sourceDirectory, snapshot);
     }
 
-    private static async ValueTask<ProxyOperationalOptions> ReadOperationalOptionsAsync(
+    private async ValueTask<ProxyOperationalOptions> ReadOperationalOptionsAsync(
         string operationalConfigPath,
         List<string> errors,
         CancellationToken cancellationToken)
     {
         if (!File.Exists(operationalConfigPath))
         {
+            _logger.LogInformation(
+                "Proxy operational configuration file {ConfigPath} was not found; using in-memory default timeout settings.",
+                operationalConfigPath);
             return new ProxyOperationalOptions();
         }
 
