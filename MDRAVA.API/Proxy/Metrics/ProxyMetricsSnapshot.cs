@@ -46,4 +46,11 @@ public sealed record ProxyMetricsSnapshot(
     long TunnelIdleTimeouts,
     long TunnelBytesClientToUpstream,
     long TunnelBytesUpstreamToClient,
-    long TunnelRelayFailures);
+    long TunnelRelayFailures,
+    long UpstreamSelections,
+    long NoHealthyUpstreamFailures,
+    long HealthChecksAttempted,
+    long HealthChecksSucceeded,
+    long HealthChecksFailed,
+    long UpstreamHealthTransitions,
+    long UpstreamRequestFailures);

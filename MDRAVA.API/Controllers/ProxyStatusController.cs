@@ -1,4 +1,5 @@
 using MDRAVA.API.Proxy.Configuration.Storage;
+using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Hosting;
 using MDRAVA.API.Proxy.Metrics;
 using Microsoft.AspNetCore.Mvc;
@@ -12,15 +13,18 @@ public sealed class ProxyStatusController : ControllerBase
     private readonly ProxyRuntimeState _runtimeState;
     private readonly ProxyMetrics _metrics;
     private readonly IProxyConfigurationStore _configurationStore;
+    private readonly UpstreamHealthStore _healthStore;
 
     public ProxyStatusController(
         ProxyRuntimeState runtimeState,
         ProxyMetrics metrics,
-        IProxyConfigurationStore configurationStore)
+        IProxyConfigurationStore configurationStore,
+        UpstreamHealthStore healthStore)
     {
         _runtimeState = runtimeState;
         _metrics = metrics;
         _configurationStore = configurationStore;
+        _healthStore = healthStore;
     }
 
     [HttpGet("status")]
@@ -32,6 +36,21 @@ public sealed class ProxyStatusController : ControllerBase
             : 0;
         var routeCount = snapshot?.Routes.Count ?? 0;
 
+        var upstreams = _healthStore.Snapshot(snapshot)
+            .Select(static upstream => new ProxyUpstreamStatusResponse(
+                upstream.RouteName,
+                upstream.UpstreamName,
+                upstream.Endpoint,
+                upstream.HealthCheckEnabled,
+                upstream.State,
+                upstream.LastResult,
+                upstream.LastCheckedAtUtc,
+                upstream.ConsecutiveSuccesses,
+                upstream.ConsecutiveFailures,
+                upstream.SelectedRequests,
+                upstream.RequestFailures))
+            .ToArray();
+
         return new ProxyStatusResponse(
             runtime.IsRunning,
             runtime.ListenerName,
@@ -41,6 +60,7 @@ public sealed class ProxyStatusController : ControllerBase
             runtime.LastError,
             listenerCount,
             routeCount,
-            _metrics.Snapshot());
+            _metrics.Snapshot(),
+            upstreams);
     }
 }

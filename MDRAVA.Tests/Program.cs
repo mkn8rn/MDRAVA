@@ -24,6 +24,7 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Data directory uses environment override", Sync(ConfigurationTests.DataDirectoryUsesEnvironmentOverride)),
     ("Data directory defaults under local application data when available", Sync(ConfigurationTests.DataDirectoryDefaultsUnderLocalApplicationDataWhenAvailable)),
     ("Loader loads valid per-site JSON config files", ConfigurationTests.LoaderLoadsValidSiteFiles),
+    ("Loader loads route load-balancing and health-check settings", ConfigurationTests.LoaderLoadsRouteLoadBalancingAndHealthCheckSettings),
     ("Loader creates missing config directories and loads empty snapshot", ConfigurationTests.LoaderCreatesMissingConfigDirectoriesAndLoadsEmptySnapshot),
     ("Loader loads existing empty sites directory", ConfigurationTests.LoaderLoadsExistingEmptySitesDirectory),
     ("Loader uses defaults when operational config is missing", ConfigurationTests.LoaderUsesDefaultsWhenOperationalConfigIsMissing),
@@ -87,7 +88,19 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Upgrade does not use normal upstream pool", ProxyIntegrationTests.UpgradeDoesNotUseNormalUpstreamPool),
     ("Missing WebSocket headers are rejected", ProxyIntegrationTests.MissingWebSocketHeadersAreRejected),
     ("Upstream non-101 Upgrade response is forwarded and closed", ProxyIntegrationTests.UpstreamNon101UpgradeResponseIsForwardedAndClosed),
-    ("Malformed 101 Upgrade response produces bad gateway", ProxyIntegrationTests.MalformedSwitchingProtocolsResponseProducesBadGateway)
+    ("Malformed 101 Upgrade response produces bad gateway", ProxyIntegrationTests.MalformedSwitchingProtocolsResponseProducesBadGateway),
+    ("Health check 2xx response is healthy", HealthCheckTests.HealthCheck2xxIsHealthy),
+    ("Health check 3xx response is healthy", HealthCheckTests.HealthCheck3xxIsHealthy),
+    ("Health check 4xx response is unhealthy", HealthCheckTests.HealthCheck4xxIsUnhealthy),
+    ("Health check 5xx response is unhealthy", HealthCheckTests.HealthCheck5xxIsUnhealthy),
+    ("Health check timeout is unhealthy", HealthCheckTests.HealthCheckTimeoutIsUnhealthy),
+    ("Health state transitions to unhealthy after threshold", Sync(HealthCheckTests.HealthStateTransitionsToUnhealthyAfterThreshold)),
+    ("Health state transitions to healthy after recovery threshold", Sync(HealthCheckTests.HealthStateTransitionsToHealthyAfterRecoveryThreshold)),
+    ("Round-robin distributes sequential requests across two upstreams", ProxyIntegrationTests.RoundRobinDistributesSequentialRequestsAcrossTwoUpstreams),
+    ("Unhealthy upstream is not selected", ProxyIntegrationTests.UnhealthyUpstreamIsNotSelected),
+    ("All unhealthy upstreams return service unavailable", ProxyIntegrationTests.AllUnhealthyUpstreamsReturnServiceUnavailable),
+    ("WebSocket Upgrade uses round-robin upstream selection", ProxyIntegrationTests.WebSocketUpgradeUsesRoundRobinUpstreamSelection),
+    ("Upstream pool uses distinct endpoint keys", ProxyIntegrationTests.UpstreamPoolUsesDistinctEndpointKeys)
 };
 
 var failures = 0;

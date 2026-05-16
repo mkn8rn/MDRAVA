@@ -36,11 +36,21 @@ public static class ProxyConfigurationMapper
                 route.Name,
                 route.Host,
                 route.PathPrefix,
+                string.IsNullOrWhiteSpace(route.LoadBalancingPolicy) ? "round-robin" : route.LoadBalancingPolicy,
+                new RuntimeHealthCheckOptions(
+                    route.HealthCheck.Enabled,
+                    string.IsNullOrWhiteSpace(route.HealthCheck.Path) ? "/health" : route.HealthCheck.Path,
+                    TimeSpan.FromSeconds(route.HealthCheck.IntervalSeconds),
+                    TimeSpan.FromSeconds(route.HealthCheck.TimeoutSeconds),
+                    route.HealthCheck.HealthyThreshold,
+                    route.HealthCheck.UnhealthyThreshold),
                 route.Upstreams
-                    .Select(static upstream => new RuntimeUpstream(
+                    .Select(upstream => new RuntimeUpstream(
+                        route.Name,
                         upstream.Name,
                         upstream.Address,
-                        upstream.Port))
+                        upstream.Port,
+                        upstream.Weight))
                     .ToArray()))
             .ToArray();
 

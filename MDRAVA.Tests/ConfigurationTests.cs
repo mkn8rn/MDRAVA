@@ -86,6 +86,22 @@ internal static class ConfigurationTests
         AssertEx.Equal(TimeSpan.FromSeconds(10), snapshot.Timeouts.ClientRequestHeadTimeout);
     }
 
+    public static async Task LoaderLoadsRouteLoadBalancingAndHealthCheckSettings()
+    {
+        using var temp = TemporaryDirectory.Create();
+        WriteSiteWithTwoUpstreams(temp.Path, "pool.json", port: 18080, firstUpstreamPort: 15000, secondUpstreamPort: 15001, healthCheckEnabled: true);
+        var loader = CreateLoader(temp.Path);
+
+        var result = await loader.LoadAsync(CancellationToken.None);
+
+        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
+        var route = AssertEx.NotNull(result.Snapshot).Routes[0];
+        AssertEx.Equal("round-robin", route.LoadBalancingPolicy);
+        AssertEx.True(route.HealthCheck.Enabled);
+        AssertEx.Equal(2, route.Upstreams.Count);
+        AssertEx.Equal(2, route.Upstreams[1].Weight);
+    }
+
     public static async Task LoaderCreatesMissingConfigDirectoriesAndLoadsEmptySnapshot()
     {
         using var temp = TemporaryDirectory.Create();
@@ -367,6 +383,60 @@ internal static class ConfigurationTests
     {
         var sites = Directory.CreateDirectory(Path.Combine(dataDirectory, "config", "sites")).FullName;
         File.WriteAllText(Path.Combine(sites, fileName), SiteJson(Path.GetFileNameWithoutExtension(fileName), port, upstreamPort));
+    }
+
+    internal static void WriteSiteWithTwoUpstreams(
+        string dataDirectory,
+        string fileName,
+        int port,
+        int firstUpstreamPort,
+        int secondUpstreamPort,
+        bool healthCheckEnabled = false,
+        int healthIntervalSeconds = 1,
+        int healthTimeoutSeconds = 1,
+        int healthyThreshold = 1,
+        int unhealthyThreshold = 1)
+    {
+        var sites = Directory.CreateDirectory(Path.Combine(dataDirectory, "config", "sites")).FullName;
+        File.WriteAllText(
+            Path.Combine(sites, fileName),
+            $$"""
+            {
+              "name": "{{Path.GetFileNameWithoutExtension(fileName)}}",
+              "listeners": [
+                {
+                  "name": "main",
+                  "address": "127.0.0.1",
+                  "port": {{port}}
+                }
+              ],
+              "host": "*",
+              "pathPrefix": "/",
+              "loadBalancingPolicy": "round-robin",
+              "healthCheck": {
+                "enabled": {{healthCheckEnabled.ToString().ToLowerInvariant()}},
+                "path": "/health",
+                "intervalSeconds": {{healthIntervalSeconds}},
+                "timeoutSeconds": {{healthTimeoutSeconds}},
+                "healthyThreshold": {{healthyThreshold}},
+                "unhealthyThreshold": {{unhealthyThreshold}}
+              },
+              "upstreams": [
+                {
+                  "name": "first",
+                  "address": "127.0.0.1",
+                  "port": {{firstUpstreamPort}},
+                  "weight": 1
+                },
+                {
+                  "name": "second",
+                  "address": "127.0.0.1",
+                  "port": {{secondUpstreamPort}},
+                  "weight": 2
+                }
+              ]
+            }
+            """);
     }
 
     internal static void WriteHttpsSite(

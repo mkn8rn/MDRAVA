@@ -131,6 +131,28 @@ public sealed class UpstreamConnectionPool : IDisposable
         }
     }
 
+    public void PruneIdleConnections(RuntimeUpstream upstream)
+    {
+        var key = GetKey(upstream);
+        lock (_gate)
+        {
+            if (!_idleConnections.TryGetValue(key, out var queue))
+            {
+                return;
+            }
+
+            while (queue.Count > 0)
+            {
+                var connection = queue.Dequeue();
+                connection.Dispose();
+                _metrics.UpstreamConnectionDiscarded();
+                _metrics.UpstreamPoolIdleConnectionDiscarded();
+            }
+
+            _idleConnections.Remove(key);
+        }
+    }
+
     private Queue<PooledUpstreamConnection> GetOrCreateQueue(string key)
     {
         if (!_idleConnections.TryGetValue(key, out var queue))

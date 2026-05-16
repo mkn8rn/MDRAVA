@@ -19,13 +19,7 @@ public sealed class SingleUpstreamRouteMatcher : IRouteMatcher
                 continue;
             }
 
-            var upstream = route.Upstreams.Count == 0 ? null : route.Upstreams[0];
-            if (upstream is null)
-            {
-                continue;
-            }
-
-            return new RouteMatch(route, upstream);
+            return new RouteMatch(route);
         }
 
         return null;

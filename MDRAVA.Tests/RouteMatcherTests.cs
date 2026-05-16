@@ -38,7 +38,7 @@ internal static class RouteMatcherTests
 
         AssertEx.NotNull(match);
         AssertEx.Equal("default", match!.Route.Name);
-        AssertEx.Equal("local", match.Upstream.Name);
+        AssertEx.Equal("local", match.Route.Upstreams[0].Name);
     }
 
     public static void MatchesHostWithoutRequestPort()
@@ -72,7 +72,7 @@ internal static class RouteMatcherTests
 
         AssertEx.NotNull(match);
         AssertEx.Equal("example", match!.Route.Name);
-        AssertEx.Equal("api", match.Upstream.Name);
+        AssertEx.Equal("api", match.Route.Upstreams[0].Name);
     }
 
     private static ProxyConfigurationSnapshot Snapshot(ProxyOptions options)

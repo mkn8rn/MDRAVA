@@ -48,6 +48,13 @@ public sealed class ProxyMetrics
     private long _tunnelBytesClientToUpstream;
     private long _tunnelBytesUpstreamToClient;
     private long _tunnelRelayFailures;
+    private long _upstreamSelections;
+    private long _noHealthyUpstreamFailures;
+    private long _healthChecksAttempted;
+    private long _healthChecksSucceeded;
+    private long _healthChecksFailed;
+    private long _upstreamHealthTransitions;
+    private long _upstreamRequestFailures;
 
     public void ConnectionAccepted()
     {
@@ -242,6 +249,20 @@ public sealed class ProxyMetrics
 
     public void TunnelRelayFailed() => Interlocked.Increment(ref _tunnelRelayFailures);
 
+    public void UpstreamSelected(object _) => Interlocked.Increment(ref _upstreamSelections);
+
+    public void NoHealthyUpstream() => Interlocked.Increment(ref _noHealthyUpstreamFailures);
+
+    public void HealthCheckAttempted() => Interlocked.Increment(ref _healthChecksAttempted);
+
+    public void HealthCheckSucceeded() => Interlocked.Increment(ref _healthChecksSucceeded);
+
+    public void HealthCheckFailed() => Interlocked.Increment(ref _healthChecksFailed);
+
+    public void UpstreamHealthTransition() => Interlocked.Increment(ref _upstreamHealthTransitions);
+
+    public void UpstreamRequestFailed(object _) => Interlocked.Increment(ref _upstreamRequestFailures);
+
     public ProxyMetricsSnapshot Snapshot()
     {
         return new ProxyMetricsSnapshot(
@@ -290,6 +311,13 @@ public sealed class ProxyMetrics
             Interlocked.Read(ref _tunnelIdleTimeouts),
             Interlocked.Read(ref _tunnelBytesClientToUpstream),
             Interlocked.Read(ref _tunnelBytesUpstreamToClient),
-            Interlocked.Read(ref _tunnelRelayFailures));
+            Interlocked.Read(ref _tunnelRelayFailures),
+            Interlocked.Read(ref _upstreamSelections),
+            Interlocked.Read(ref _noHealthyUpstreamFailures),
+            Interlocked.Read(ref _healthChecksAttempted),
+            Interlocked.Read(ref _healthChecksSucceeded),
+            Interlocked.Read(ref _healthChecksFailed),
+            Interlocked.Read(ref _upstreamHealthTransitions),
+            Interlocked.Read(ref _upstreamRequestFailures));
     }
 }

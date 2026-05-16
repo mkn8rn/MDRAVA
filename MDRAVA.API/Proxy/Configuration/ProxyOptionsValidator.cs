@@ -70,6 +70,7 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
             failures.Add("Proxy:Routes must contain at least one route.");
         }
 
+        HashSet<string> routeNames = new(StringComparer.OrdinalIgnoreCase);
         for (var routeIndex = 0; routeIndex < options.Routes.Count; routeIndex++)
         {
             var route = options.Routes[routeIndex];
@@ -78,6 +79,10 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
             if (string.IsNullOrWhiteSpace(route.Name))
             {
                 failures.Add($"{routePrefix}:Name is required.");
+            }
+            else if (!routeNames.Add(route.Name))
+            {
+                failures.Add($"{routePrefix}:Name '{route.Name}' is duplicated.");
             }
 
             if (string.IsNullOrWhiteSpace(route.Host))
@@ -90,10 +95,19 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
                 failures.Add($"{routePrefix}:PathPrefix must start with '/'.");
             }
 
+            if (!string.Equals(route.LoadBalancingPolicy, "round-robin", StringComparison.OrdinalIgnoreCase))
+            {
+                failures.Add($"{routePrefix}:LoadBalancingPolicy must be 'round-robin' for Phase 8.");
+            }
+
+            ValidateHealthCheck(failures, routePrefix, route.HealthCheck);
+
             if (route.Upstreams.Count == 0)
             {
                 failures.Add($"{routePrefix}:Upstreams must contain at least one upstream.");
             }
+
+            HashSet<string> upstreamNames = new(StringComparer.OrdinalIgnoreCase);
 
             for (var upstreamIndex = 0; upstreamIndex < route.Upstreams.Count; upstreamIndex++)
             {
@@ -103,6 +117,10 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
                 if (string.IsNullOrWhiteSpace(upstream.Name))
                 {
                     failures.Add($"{upstreamPrefix}:Name is required.");
+                }
+                else if (!upstreamNames.Add(upstream.Name))
+                {
+                    failures.Add($"{upstreamPrefix}:Name '{upstream.Name}' is duplicated within route '{route.Name}'.");
                 }
 
                 if (string.IsNullOrWhiteSpace(upstream.Address))
@@ -114,11 +132,54 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
                 {
                     failures.Add($"{upstreamPrefix}:Port must be between 1 and 65535.");
                 }
+
+                if (upstream.Weight is < 1 or > 100_000)
+                {
+                    failures.Add($"{upstreamPrefix}:Weight must be between 1 and 100000.");
+                }
             }
         }
 
         return failures.Count == 0
             ? ValidateOptionsResult.Success
             : ValidateOptionsResult.Fail(failures);
+    }
+
+    private static void ValidateHealthCheck(
+        List<string> failures,
+        string routePrefix,
+        HealthCheckOptions healthCheck)
+    {
+        var prefix = $"{routePrefix}:HealthCheck";
+
+        if (string.IsNullOrWhiteSpace(healthCheck.Path) || !healthCheck.Path.StartsWith('/'))
+        {
+            failures.Add($"{prefix}:Path must start with '/'.");
+        }
+
+        if (healthCheck.IntervalSeconds is < 1 or > 3600)
+        {
+            failures.Add($"{prefix}:IntervalSeconds must be between 1 and 3600.");
+        }
+
+        if (healthCheck.TimeoutSeconds is < 1 or > 300)
+        {
+            failures.Add($"{prefix}:TimeoutSeconds must be between 1 and 300.");
+        }
+
+        if (healthCheck.TimeoutSeconds > healthCheck.IntervalSeconds)
+        {
+            failures.Add($"{prefix}:TimeoutSeconds must not exceed IntervalSeconds.");
+        }
+
+        if (healthCheck.HealthyThreshold is < 1 or > 100)
+        {
+            failures.Add($"{prefix}:HealthyThreshold must be between 1 and 100.");
+        }
+
+        if (healthCheck.UnhealthyThreshold is < 1 or > 100)
+        {
+            failures.Add($"{prefix}:UnhealthyThreshold must be between 1 and 100.");
+        }
     }
 }

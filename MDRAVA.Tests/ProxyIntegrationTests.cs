@@ -4,6 +4,8 @@ using System.Net.Sockets;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using MDRAVA.API.Controllers;
+using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -759,6 +761,114 @@ internal static class ProxyIntegrationTests
         AssertEx.Equal(1L, result.Metrics.UpgradeUpstreamFailures);
     }
 
+    public static async Task RoundRobinDistributesSequentialRequestsAcrossTwoUpstreams()
+    {
+        var result = await RunTwoUpstreamHttpScenarioAsync(
+            healthCheckEnabled: false,
+            requestsToSend: 4);
+
+        AssertEx.Equal(2, result.FirstRequests);
+        AssertEx.Equal(2, result.SecondRequests);
+        AssertEx.Equal(4L, result.Metrics.UpstreamSelections);
+    }
+
+    public static async Task UnhealthyUpstreamIsNotSelected()
+    {
+        var result = await RunTwoUpstreamHttpScenarioAsync(
+            healthCheckEnabled: true,
+            requestsToSend: 2,
+            startFirstUpstream: false,
+            waitForFirstUnhealthy: true);
+
+        AssertEx.Equal(0, result.FirstRequests);
+        AssertEx.Equal(2, result.SecondRequests);
+        AssertEx.True(result.Upstreams.Any(static upstream =>
+            upstream.UpstreamName == "first" && upstream.HealthState == UpstreamHealthState.Unhealthy));
+    }
+
+    public static async Task AllUnhealthyUpstreamsReturnServiceUnavailable()
+    {
+        var proxyPort = GetFreeTcpPort();
+        var firstPort = GetFreeTcpPort();
+        var secondPort = GetFreeTcpPort();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var dataDirectory = Path.Combine(Path.GetTempPath(), $"mdrava-all-unhealthy-{Guid.NewGuid():N}");
+
+        try
+        {
+            ConfigurationTests.WriteSiteWithTwoUpstreams(dataDirectory, "pool.json", proxyPort, firstPort, secondPort, healthCheckEnabled: true);
+            ConfigurationTests.WriteOperationalConfig(dataDirectory);
+            using var host = BuildProxyHost(dataDirectory);
+            await host.StartAsync(timeout.Token);
+
+            await WaitForUpstreamStatusAsync(
+                host,
+                statuses => statuses.Count(status => status.HealthState == UpstreamHealthState.Unhealthy) == 2,
+                timeout.Token);
+
+            var response = await SendSingleRequestAsync(
+                proxyPort,
+                "GET /anything HTTP/1.1\r\nHost: unhealthy.test\r\nConnection: close\r\n\r\n",
+                timeout.Token);
+            var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
+
+            AssertEx.True(response.Contains("503 Service Unavailable", StringComparison.Ordinal), response);
+            AssertEx.Equal(1L, metrics.NoHealthyUpstreamFailures);
+            await host.StopAsync(CancellationToken.None);
+        }
+        finally
+        {
+            DeleteDirectory(dataDirectory);
+        }
+    }
+
+    public static async Task WebSocketUpgradeUsesRoundRobinUpstreamSelection()
+    {
+        var proxyPort = GetFreeTcpPort();
+        var firstPort = GetFreeTcpPort();
+        var secondPort = GetFreeTcpPort();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var dataDirectory = Path.Combine(Path.GetTempPath(), $"mdrava-upgrade-lb-{Guid.NewGuid():N}");
+
+        try
+        {
+            ConfigurationTests.WriteSiteWithTwoUpstreams(dataDirectory, "pool.json", proxyPort, firstPort, secondPort);
+            ConfigurationTests.WriteOperationalConfig(dataDirectory);
+            var firstTask = RunUpgradeCountingUpstreamAsync(firstPort, timeout.Token);
+            var secondTask = RunUpgradeCountingUpstreamAsync(secondPort, timeout.Token);
+            using var host = BuildProxyHost(dataDirectory);
+            await host.StartAsync(timeout.Token);
+
+            var firstResponse = await SendUpgradeHandshakeAsync(proxyPort, timeout.Token);
+            var secondResponse = await SendUpgradeHandshakeAsync(proxyPort, timeout.Token);
+
+            await host.StopAsync(CancellationToken.None);
+            var firstCount = await firstTask.WaitAsync(timeout.Token);
+            var secondCount = await secondTask.WaitAsync(timeout.Token);
+
+            AssertEx.True(firstResponse.Contains("101 Switching Protocols", StringComparison.Ordinal), firstResponse);
+            AssertEx.True(secondResponse.Contains("101 Switching Protocols", StringComparison.Ordinal), secondResponse);
+            AssertEx.Equal(1, firstCount);
+            AssertEx.Equal(1, secondCount);
+        }
+        finally
+        {
+            DeleteDirectory(dataDirectory);
+        }
+    }
+
+    public static async Task UpstreamPoolUsesDistinctEndpointKeys()
+    {
+        var result = await RunTwoUpstreamHttpScenarioAsync(
+            healthCheckEnabled: false,
+            requestsToSend: 2);
+
+        AssertEx.Equal(1, result.FirstRequests);
+        AssertEx.Equal(1, result.SecondRequests);
+        AssertEx.Equal(2L, result.Metrics.UpstreamConnectionsOpened);
+        AssertEx.Equal(0L, result.Metrics.UpstreamConnectionsReused);
+    }
+
     private static async Task<string> RunSingleResponseUpstreamAsync(
         int upstreamPort,
         CancellationToken cancellationToken)
@@ -863,6 +973,78 @@ internal static class ProxyIntegrationTests
             catch
             {
             }
+        }
+    }
+
+    private static async Task<TwoUpstreamHttpResult> RunTwoUpstreamHttpScenarioAsync(
+        bool healthCheckEnabled,
+        int requestsToSend,
+        bool startFirstUpstream = true,
+        bool waitForFirstUnhealthy = false)
+    {
+        var proxyPort = GetFreeTcpPort();
+        var firstPort = GetFreeTcpPort();
+        var secondPort = GetFreeTcpPort();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var upstreamStop = new CancellationTokenSource();
+        var dataDirectory = Path.Combine(Path.GetTempPath(), $"mdrava-lb-{Guid.NewGuid():N}");
+
+        try
+        {
+            ConfigurationTests.WriteSiteWithTwoUpstreams(dataDirectory, "pool.json", proxyPort, firstPort, secondPort, healthCheckEnabled: healthCheckEnabled);
+            ConfigurationTests.WriteOperationalConfig(dataDirectory);
+            var firstTask = startFirstUpstream
+                ? RunReusableHttpUpstreamAsync(firstPort, "first", upstreamStop.Token)
+                : Task.FromResult(0);
+            var secondTask = RunReusableHttpUpstreamAsync(secondPort, "second", upstreamStop.Token);
+
+            using var host = BuildProxyHost(dataDirectory);
+            await host.StartAsync(timeout.Token);
+
+            if (waitForFirstUnhealthy)
+            {
+                await WaitForUpstreamStatusAsync(
+                    host,
+                    statuses => statuses.Any(static status =>
+                        status.UpstreamName == "first" && status.HealthState == UpstreamHealthState.Unhealthy),
+                    timeout.Token);
+            }
+
+            for (var index = 0; index < requestsToSend; index++)
+            {
+                var response = await SendSingleRequestAsync(
+                    proxyPort,
+                    $"GET /request-{index} HTTP/1.1\r\nHost: lb.test\r\nConnection: close\r\n\r\n",
+                    timeout.Token);
+                AssertEx.True(response.Contains("200 OK", StringComparison.Ordinal), response);
+            }
+
+            await host.StopAsync(CancellationToken.None);
+            await upstreamStop.CancelAsync();
+            var firstRequests = await firstTask.WaitAsync(timeout.Token);
+            var secondRequests = await secondTask.WaitAsync(timeout.Token);
+            var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
+            var upstreams = host.Services.GetRequiredService<UpstreamHealthStore>()
+                .Snapshot(host.Services.GetRequiredService<MDRAVA.API.Proxy.Configuration.Storage.IProxyConfigurationStore>().Snapshot)
+                .Select(static status => new ProxyUpstreamStatusResponse(
+                    status.RouteName,
+                    status.UpstreamName,
+                    status.Endpoint,
+                    status.HealthCheckEnabled,
+                    status.State,
+                    status.LastResult,
+                    status.LastCheckedAtUtc,
+                    status.ConsecutiveSuccesses,
+                    status.ConsecutiveFailures,
+                    status.SelectedRequests,
+                    status.RequestFailures))
+                .ToArray();
+
+            return new TwoUpstreamHttpResult(firstRequests, secondRequests, metrics, upstreams);
+        }
+        finally
+        {
+            DeleteDirectory(dataDirectory);
         }
     }
 
@@ -1005,6 +1187,132 @@ internal static class ProxyIntegrationTests
         {
             listener.Stop();
         }
+    }
+
+    private static async Task<int> RunUpgradeCountingUpstreamAsync(
+        int upstreamPort,
+        CancellationToken cancellationToken)
+    {
+        var listener = new TcpListener(IPAddress.Loopback, upstreamPort);
+        listener.Start();
+        var count = 0;
+
+        try
+        {
+            while (count < 1)
+            {
+                using var client = await listener.AcceptTcpClientAsync(cancellationToken);
+                await using var stream = client.GetStream();
+                await ReadRequestHeadAsync(stream, cancellationToken);
+                count++;
+                await WriteTextAsync(stream, SwitchingProtocolsResponse(), cancellationToken);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            listener.Stop();
+        }
+
+        return count;
+    }
+
+    private static async Task<int> RunReusableHttpUpstreamAsync(
+        int upstreamPort,
+        string name,
+        CancellationToken cancellationToken)
+    {
+        var listener = new TcpListener(IPAddress.Loopback, upstreamPort);
+        listener.Start();
+        var requestCount = 0;
+
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                using var client = await listener.AcceptTcpClientAsync(cancellationToken);
+                await using var stream = client.GetStream();
+
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    var request = await ReadRequestHeadAsync(stream, cancellationToken);
+                    if (string.IsNullOrEmpty(request))
+                    {
+                        break;
+                    }
+
+                    if (request.Contains("GET /health ", StringComparison.Ordinal))
+                    {
+                        await WriteTextAsync(stream, "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", cancellationToken);
+                        break;
+                    }
+
+                    requestCount++;
+                    var body = name;
+                    await WriteTextAsync(
+                        stream,
+                        $"HTTP/1.1 200 OK\r\nContent-Length: {body.Length}\r\n\r\n{body}",
+                        cancellationToken);
+                }
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (IOException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            listener.Stop();
+        }
+
+        return requestCount;
+    }
+
+    private static async Task<IReadOnlyList<ProxyUpstreamStatusResponse>> WaitForUpstreamStatusAsync(
+        IHost host,
+        Func<IReadOnlyList<ProxyUpstreamStatusResponse>, bool> predicate,
+        CancellationToken cancellationToken)
+    {
+        var healthStore = host.Services.GetRequiredService<UpstreamHealthStore>();
+        var configurationStore = host.Services.GetRequiredService<MDRAVA.API.Proxy.Configuration.Storage.IProxyConfigurationStore>();
+        while (true)
+        {
+            var records = healthStore.Snapshot(configurationStore.Snapshot)
+                .Select(static status => new ProxyUpstreamStatusResponse(
+                    status.RouteName,
+                    status.UpstreamName,
+                    status.Endpoint,
+                    status.HealthCheckEnabled,
+                    status.State,
+                    status.LastResult,
+                    status.LastCheckedAtUtc,
+                    status.ConsecutiveSuccesses,
+                    status.ConsecutiveFailures,
+                    status.SelectedRequests,
+                    status.RequestFailures))
+                .ToArray();
+            if (predicate(records))
+            {
+                return records;
+            }
+
+            await Task.Delay(25, cancellationToken);
+        }
+    }
+
+    private static async Task<string> SendUpgradeHandshakeAsync(
+        int proxyPort,
+        CancellationToken cancellationToken)
+    {
+        using var client = new TcpClient();
+        await client.ConnectAsync(IPAddress.Loopback, proxyPort, cancellationToken);
+        await using var stream = client.GetStream();
+        await WriteTextAsync(stream, WebSocketRequest(), cancellationToken);
+        return await ReadResponseHeadAsync(stream, cancellationToken);
     }
 
     private static async Task<TlsProxyScenarioResult> RunTlsProxyScenarioAsync(
@@ -1702,4 +2010,10 @@ internal static class ProxyIntegrationTests
         string ClientObservation,
         UpgradeUpstreamResult UpstreamResult,
         ProxyMetricsSnapshot Metrics);
+
+    private sealed record TwoUpstreamHttpResult(
+        int FirstRequests,
+        int SecondRequests,
+        ProxyMetricsSnapshot Metrics,
+        IReadOnlyList<ProxyUpstreamStatusResponse> Upstreams);
 }

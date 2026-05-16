@@ -11,4 +11,5 @@ public sealed record ProxyStatusResponse(
     string? LastError,
     int ConfiguredListeners,
     int ConfiguredRoutes,
-    ProxyMetricsSnapshot Metrics);
+    ProxyMetricsSnapshot Metrics,
+    IReadOnlyList<ProxyUpstreamStatusResponse> Upstreams);

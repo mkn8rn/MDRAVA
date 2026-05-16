@@ -27,6 +27,8 @@ public static class SiteOptionsAggregator
                 Name = source.Site.Name,
                 Host = source.Site.Host,
                 PathPrefix = source.Site.PathPrefix,
+                LoadBalancingPolicy = source.Site.LoadBalancingPolicy,
+                HealthCheck = source.Site.HealthCheck,
                 Upstreams = source.Site.Upstreams
             });
         }

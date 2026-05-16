@@ -2,6 +2,7 @@ using System.Buffers;
 using System.Net.Sockets;
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Forwarding;
+using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Protocol;
 using MDRAVA.API.Proxy.Routing;
@@ -31,6 +32,8 @@ public sealed class ClientConnection
     private readonly ProxyConfigurationSnapshot _configurationSnapshot;
     private readonly RuntimeListener _listener;
     private readonly IRouteMatcher _routeMatcher;
+    private readonly IUpstreamSelector _upstreamSelector;
+    private readonly UpstreamHealthStore _healthStore;
     private readonly ProxyForwarder _forwarder;
     private readonly UpgradeForwarder _upgradeForwarder;
     private readonly UpgradeRequestPolicy _upgradeRequestPolicy;
@@ -43,6 +46,8 @@ public sealed class ClientConnection
         ProxyConfigurationSnapshot configurationSnapshot,
         RuntimeListener listener,
         IRouteMatcher routeMatcher,
+        IUpstreamSelector upstreamSelector,
+        UpstreamHealthStore healthStore,
         ProxyForwarder forwarder,
         UpgradeForwarder upgradeForwarder,
         UpgradeRequestPolicy upgradeRequestPolicy,
@@ -54,6 +59,8 @@ public sealed class ClientConnection
         _configurationSnapshot = configurationSnapshot;
         _listener = listener;
         _routeMatcher = routeMatcher;
+        _upstreamSelector = upstreamSelector;
+        _healthStore = healthStore;
         _forwarder = forwarder;
         _upgradeForwarder = upgradeForwarder;
         _upgradeRequestPolicy = upgradeRequestPolicy;
@@ -173,15 +180,28 @@ public sealed class ClientConnection
                         return;
                     }
 
-                    await _upgradeForwarder.ForwardAsync(
+                    var upgradeSelection = _upstreamSelector.Select(upgradeRouteMatch.Route);
+                    if (upgradeSelection is null)
+                    {
+                        _metrics.UpgradeRequestRejected();
+                        await WriteResponseAsync(clientStream, ProxyErrorResponses.ServiceUnavailable, cancellationToken);
+                        return;
+                    }
+
+                    var upgradeResult = await _upgradeForwarder.ForwardAsync(
                         clientStream,
                         requestHead,
                         upgrade,
-                        upgradeRouteMatch.Upstream,
+                        upgradeSelection.Upstream,
                         _listener,
                         _configurationSnapshot.Timeouts,
                         _configurationSnapshot.ConnectionLimits,
                         cancellationToken);
+                    if (!upgradeResult.Succeeded)
+                    {
+                        _healthStore.RecordRequestFailure(upgradeSelection.Upstream);
+                    }
+
                     return;
                 }
 
@@ -192,6 +212,13 @@ public sealed class ClientConnection
                     return;
                 }
 
+                var selection = _upstreamSelector.Select(routeMatch.Route);
+                if (selection is null)
+                {
+                    await WriteResponseAsync(clientStream, ProxyErrorResponses.ServiceUnavailable, cancellationToken);
+                    return;
+                }
+
                 var nextRequestCount = requestsProcessed + 1;
                 var preferKeepAlive = ShouldKeepClientConnectionOpen(requestHead)
                     && nextRequestCount < _configurationSnapshot.ConnectionLimits.MaxRequestsPerClientConnection;
@@ -199,12 +226,17 @@ public sealed class ClientConnection
                     clientStream,
                     requestHeadRead,
                     requestHead,
-                    routeMatch.Upstream,
+                    selection.Upstream,
                     _listener,
                     _configurationSnapshot.Timeouts,
                     _configurationSnapshot.ConnectionLimits,
                     preferKeepAlive,
                     cancellationToken);
+
+                if (!result.Succeeded)
+                {
+                    _healthStore.RecordRequestFailure(selection.Upstream);
+                }
 
                 requestsProcessed = nextRequestCount;
                 if (requestsProcessed >= _configurationSnapshot.ConnectionLimits.MaxRequestsPerClientConnection)

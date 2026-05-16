@@ -4,6 +4,7 @@ using MDRAVA.API.Proxy.Configuration.Paths;
 using MDRAVA.API.Proxy.Configuration.Storage;
 using MDRAVA.API.Proxy.Connections;
 using MDRAVA.API.Proxy.Forwarding;
+using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Routing;
 using MDRAVA.API.Proxy.Tls;
@@ -27,9 +28,12 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<IProxyConfigurationReloadService, ProxyConfigurationReloadService>();
         services.AddSingleton<ProxyMetrics>();
         services.AddSingleton<ProxyRuntimeState>();
+        services.AddSingleton<UpstreamHealthStore>();
         services.AddSingleton<IRouteMatcher, SingleUpstreamRouteMatcher>();
+        services.AddSingleton<IUpstreamSelector, RoundRobinUpstreamSelector>();
         services.AddSingleton<UpstreamConnectionFactory>();
         services.AddSingleton<UpstreamConnectionPool>();
+        services.AddSingleton<UpstreamHealthCheckClient>();
         services.AddSingleton<HopByHopHeaderPolicy>();
         services.AddSingleton<UpgradeRequestPolicy>();
         services.AddSingleton<TunnelRelay>();
@@ -37,6 +41,7 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<UpgradeForwarder>();
         services.AddSingleton<TlsConnectionAuthenticator>();
         services.AddHostedService<ProxyConfigurationStartupService>();
+        services.AddHostedService<UpstreamHealthCheckService>();
         services.AddHostedService<ProxyListenerService>();
 
         return services;

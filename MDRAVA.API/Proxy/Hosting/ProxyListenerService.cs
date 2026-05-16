@@ -4,6 +4,7 @@ using MDRAVA.API.Proxy.Connections;
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Configuration.Storage;
 using MDRAVA.API.Proxy.Forwarding;
+using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Routing;
 using MDRAVA.API.Proxy.Tls;
@@ -14,6 +15,8 @@ public sealed class ProxyListenerService : BackgroundService
 {
     private readonly IProxyConfigurationStore _configurationStore;
     private readonly IRouteMatcher _routeMatcher;
+    private readonly IUpstreamSelector _upstreamSelector;
+    private readonly UpstreamHealthStore _healthStore;
     private readonly ProxyForwarder _forwarder;
     private readonly UpgradeForwarder _upgradeForwarder;
     private readonly UpgradeRequestPolicy _upgradeRequestPolicy;
@@ -27,6 +30,8 @@ public sealed class ProxyListenerService : BackgroundService
     public ProxyListenerService(
         IProxyConfigurationStore configurationStore,
         IRouteMatcher routeMatcher,
+        IUpstreamSelector upstreamSelector,
+        UpstreamHealthStore healthStore,
         ProxyForwarder forwarder,
         UpgradeForwarder upgradeForwarder,
         UpgradeRequestPolicy upgradeRequestPolicy,
@@ -38,6 +43,8 @@ public sealed class ProxyListenerService : BackgroundService
     {
         _configurationStore = configurationStore;
         _routeMatcher = routeMatcher;
+        _upstreamSelector = upstreamSelector;
+        _healthStore = healthStore;
         _forwarder = forwarder;
         _upgradeForwarder = upgradeForwarder;
         _upgradeRequestPolicy = upgradeRequestPolicy;
@@ -142,6 +149,8 @@ public sealed class ProxyListenerService : BackgroundService
                 snapshot,
                 listener,
                 _routeMatcher,
+                _upstreamSelector,
+                _healthStore,
                 _forwarder,
                 _upgradeForwarder,
                 _upgradeRequestPolicy,
