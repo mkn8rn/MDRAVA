@@ -34,7 +34,11 @@ internal static class StartupSmokeTests
 
         AssertEx.True(Directory.Exists(configDirectory));
         AssertEx.True(Directory.Exists(sitesDirectory));
-        AssertEx.False(File.Exists(Path.Combine(configDirectory, "proxy.json")));
+        AssertEx.True(Directory.Exists(Path.Combine(temp.Path, "logs")));
+        AssertEx.True(Directory.Exists(Path.Combine(temp.Path, "certs")));
+        AssertEx.True(Directory.Exists(Path.Combine(temp.Path, "state")));
+        AssertEx.True(File.Exists(Path.Combine(configDirectory, "proxy.json")));
+        AssertEx.True(File.Exists(Path.Combine(sitesDirectory, "example.site.yaml")));
         AssertEx.Equal(0, snapshot.Listeners.Count);
         AssertEx.Equal(0, snapshot.Routes.Count);
         AssertEx.Equal(TimeSpan.FromSeconds(10), snapshot.Timeouts.ClientRequestHeadTimeout);

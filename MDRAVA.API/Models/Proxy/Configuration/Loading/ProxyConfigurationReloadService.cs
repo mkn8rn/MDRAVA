@@ -37,6 +37,7 @@ public sealed class ProxyConfigurationReloadService : IProxyConfigurationReloadS
                 hasExisting && existing is not null ? existing.Version : null,
                 existing?.LoadedAtUtc,
                 existing?.LoadedAtUtc,
+                loadResult.Discovery,
                 loadResult.Errors,
                 loadResult.FileErrors,
                 existing is null ? null : ProxyConfigurationMapper.ToProjection(existing));
@@ -55,6 +56,7 @@ public sealed class ProxyConfigurationReloadService : IProxyConfigurationReloadS
             snapshot.Version,
             snapshot.LoadedAtUtc,
             snapshot.LoadedAtUtc,
+            loadResult.Discovery,
             [],
             [],
             ProxyConfigurationMapper.ToProjection(snapshot));
@@ -72,6 +74,7 @@ public sealed class ProxyConfigurationReloadService : IProxyConfigurationReloadS
             existing?.LoadedAtUtc,
             loadResult.WouldBeVersion,
             loadResult.SourceFiles,
+            loadResult.Discovery,
             loadResult.Errors,
             loadResult.FileErrors);
     }

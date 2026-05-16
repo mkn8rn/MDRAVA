@@ -49,4 +49,19 @@ public sealed class MdravaDataDirectoryProvider : IMdravaDataDirectoryProvider
     {
         return Path.Combine(GetProxyConfigDirectory(), "proxy.json");
     }
+
+    public string GetLogsDirectory()
+    {
+        return Path.Combine(GetDataDirectory(), "logs");
+    }
+
+    public string GetCertificatesDirectory()
+    {
+        return Path.Combine(GetDataDirectory(), "certs");
+    }
+
+    public string GetStateDirectory()
+    {
+        return Path.Combine(GetDataDirectory(), "state");
+    }
 }

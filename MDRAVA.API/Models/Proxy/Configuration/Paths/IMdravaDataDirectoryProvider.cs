@@ -9,4 +9,10 @@ public interface IMdravaDataDirectoryProvider
     string GetProxyOperationalConfigPath();
 
     string GetSitesConfigDirectory();
+
+    string GetLogsDirectory();
+
+    string GetCertificatesDirectory();
+
+    string GetStateDirectory();
 }

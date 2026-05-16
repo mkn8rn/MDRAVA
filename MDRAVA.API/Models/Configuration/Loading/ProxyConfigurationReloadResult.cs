@@ -9,6 +9,7 @@ public sealed record ProxyConfigurationReloadResult(
     int? ActiveVersion,
     DateTimeOffset? LoadedAtUtc,
     DateTimeOffset? LastSuccessfulLoadAtUtc,
+    ProxyConfigurationDiscovery Discovery,
     IReadOnlyList<string> Errors,
     IReadOnlyList<ProxyConfigurationFileError> FileErrors,
     ProxyConfigurationProjection? ActiveConfiguration);

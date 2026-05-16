@@ -9,7 +9,8 @@ public static class ProxyConfigurationMapper
         int version,
         DateTimeOffset loadedAtUtc,
         string sourceDirectory,
-        IReadOnlyList<string> sourceFiles)
+        IReadOnlyList<string> sourceFiles,
+        ProxyConfigurationDiscovery discovery)
     {
         var listeners = options.Listeners
             .Select(static listener => new RuntimeListener(
@@ -76,7 +77,7 @@ public static class ProxyConfigurationMapper
                 .Select(static trustedProxy => trustedProxy!)
                 .ToArray());
 
-        return new ProxyConfigurationSnapshot(version, loadedAtUtc, sourceDirectory, sourceFiles, timeouts, connectionLimits, observability, limits, forwardedHeaders, certificates, listeners, routes);
+        return new ProxyConfigurationSnapshot(version, loadedAtUtc, sourceDirectory, sourceFiles, discovery, timeouts, connectionLimits, observability, limits, forwardedHeaders, certificates, listeners, routes);
     }
 
     public static ProxyConfigurationProjection ToProjection(ProxyConfigurationSnapshot snapshot)
@@ -86,6 +87,7 @@ public static class ProxyConfigurationMapper
             snapshot.LoadedAtUtc,
             snapshot.SourceDirectory,
             snapshot.SourceFiles,
+            snapshot.Discovery,
             snapshot.Timeouts,
             snapshot.ConnectionLimits,
             snapshot.Observability,

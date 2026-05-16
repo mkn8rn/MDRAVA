@@ -84,6 +84,11 @@ internal static class RouteMatcherTests
             1,
             DateTimeOffset.UnixEpoch,
             "test",
-            []);
+            [],
+            new ProxyConfigurationDiscovery(
+                new ProxyFilesystemLayout("test", "test/config", "test/config/sites", "test/logs", "test/certs", "test/state", "test/config/proxy.json"),
+                [],
+                [],
+                []));
     }
 }

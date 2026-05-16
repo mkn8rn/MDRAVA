@@ -25,6 +25,9 @@ public static class ProxyServiceCollectionExtensions
 
         services.AddSingleton<IMdravaDataDirectoryProvider, MdravaDataDirectoryProvider>();
         services.AddSingleton<IValidateOptions<ProxyOptions>, ProxyOptionsValidator>();
+        services.AddSingleton<ProxyDataDirectoryBootstrapper>();
+        services.AddSingleton<SiteConfigurationParser>();
+        services.AddSingleton<IProxyConfigurationNormalizer, ProxyConfigurationNormalizer>();
         services.AddSingleton<IProxyConfigurationStore, ProxyConfigurationStore>();
         services.AddSingleton<IProxyConfigurationLoader, ProxyConfigurationLoader>();
         services.AddSingleton<IProxyConfigurationReloadService, ProxyConfigurationReloadService>();

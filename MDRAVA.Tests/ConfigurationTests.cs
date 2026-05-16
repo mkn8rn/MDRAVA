@@ -22,6 +22,9 @@ internal static class ConfigurationTests
         AssertEx.Equal(Path.GetFullPath(expected), provider.GetDataDirectory());
         AssertEx.Equal(Path.Combine(Path.GetFullPath(expected), "config"), provider.GetProxyConfigDirectory());
         AssertEx.Equal(Path.Combine(Path.GetFullPath(expected), "config", "sites"), provider.GetSitesConfigDirectory());
+        AssertEx.Equal(Path.Combine(Path.GetFullPath(expected), "logs"), provider.GetLogsDirectory());
+        AssertEx.Equal(Path.Combine(Path.GetFullPath(expected), "certs"), provider.GetCertificatesDirectory());
+        AssertEx.Equal(Path.Combine(Path.GetFullPath(expected), "state"), provider.GetStateDirectory());
     }
 
     public static void DataDirectoryUsesEnvironmentOverride()
@@ -88,6 +91,46 @@ internal static class ConfigurationTests
         AssertEx.Equal(TimeSpan.FromSeconds(10), snapshot.Timeouts.ClientRequestHeadTimeout);
     }
 
+    public static async Task LoaderLoadsEquivalentJsonAndYamlSiteFiles()
+    {
+        using var jsonTemp = TemporaryDirectory.Create();
+        using var yamlTemp = TemporaryDirectory.Create();
+        WriteSite(jsonTemp.Path, "home.json", port: 18080, upstreamPort: 15000);
+        WriteYamlSite(yamlTemp.Path, "home.yml", port: 18080, upstreamPort: 15000);
+
+        var jsonResult = await CreateLoader(jsonTemp.Path).LoadAsync(CancellationToken.None);
+        var yamlResult = await CreateLoader(yamlTemp.Path).LoadAsync(CancellationToken.None);
+
+        AssertEx.True(jsonResult.Succeeded, string.Join("; ", jsonResult.Errors));
+        AssertEx.True(yamlResult.Succeeded, string.Join("; ", yamlResult.Errors));
+        var jsonSnapshot = AssertEx.NotNull(jsonResult.Snapshot);
+        var yamlSnapshot = AssertEx.NotNull(yamlResult.Snapshot);
+        AssertEx.Equal(jsonSnapshot.Listeners[0].Name, yamlSnapshot.Listeners[0].Name);
+        AssertEx.Equal(jsonSnapshot.Listeners[0].Port, yamlSnapshot.Listeners[0].Port);
+        AssertEx.Equal(jsonSnapshot.Routes[0].Name, yamlSnapshot.Routes[0].Name);
+        AssertEx.Equal(jsonSnapshot.Routes[0].Upstreams[0].Endpoint, yamlSnapshot.Routes[0].Upstreams[0].Endpoint);
+        AssertEx.True(yamlSnapshot.Discovery.Files.Any(static file => file.Format == "yaml" && file.Status == "loaded"));
+    }
+
+    public static async Task LoaderReportsYamlParseErrorsWithPerFileDiagnostics()
+    {
+        using var temp = TemporaryDirectory.Create();
+        var sites = Directory.CreateDirectory(Path.Combine(temp.Path, "config", "sites")).FullName;
+        var yamlPath = Path.Combine(sites, "broken.yaml");
+        File.WriteAllText(yamlPath, "name: broken\nlisteners:\n  - name: main\n    port: [not-closed\n");
+        var loader = CreateLoader(temp.Path);
+
+        var result = await loader.LoadAsync(CancellationToken.None);
+
+        AssertEx.False(result.Succeeded);
+        AssertEx.True(result.FileErrors.Any(error => string.Equals(error.Path, yamlPath, StringComparison.OrdinalIgnoreCase)));
+        AssertEx.True(result.Errors.Any(static error => error.Contains("YAML", StringComparison.OrdinalIgnoreCase)), string.Join("; ", result.Errors));
+        AssertEx.True(result.Discovery.Files.Any(file =>
+            string.Equals(file.Path, yamlPath, StringComparison.OrdinalIgnoreCase)
+            && file.Format == "yaml"
+            && file.Status == "failed"));
+    }
+
     public static async Task LoaderLoadsRouteLoadBalancingAndHealthCheckSettings()
     {
         using var temp = TemporaryDirectory.Create();
@@ -116,10 +159,36 @@ internal static class ConfigurationTests
         AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
         AssertEx.True(Directory.Exists(configDirectory));
         AssertEx.True(Directory.Exists(sitesDirectory));
+        AssertEx.True(Directory.Exists(Path.Combine(temp.Path, "logs")));
+        AssertEx.True(Directory.Exists(Path.Combine(temp.Path, "certs")));
+        AssertEx.True(Directory.Exists(Path.Combine(temp.Path, "state")));
+        AssertEx.True(File.Exists(Path.Combine(configDirectory, "proxy.json")));
+        AssertEx.True(File.Exists(Path.Combine(sitesDirectory, "example.site.yaml")));
         var snapshot = AssertEx.NotNull(result.Snapshot);
         AssertEx.Equal(0, snapshot.Listeners.Count);
         AssertEx.Equal(0, snapshot.Routes.Count);
         AssertEx.Equal(0, snapshot.SourceFiles.Count);
+        AssertEx.True(snapshot.Discovery.CreatedPaths.Count > 0);
+        AssertEx.True(snapshot.Discovery.Files.Any(static file => file.Status == "skipped" && file.Format == "yaml"));
+    }
+
+    public static async Task LoaderDoesNotOverwriteExistingPlaceholderFiles()
+    {
+        using var temp = TemporaryDirectory.Create();
+        var config = Directory.CreateDirectory(Path.Combine(temp.Path, "config")).FullName;
+        var sites = Directory.CreateDirectory(Path.Combine(config, "sites")).FullName;
+        var proxyPath = Path.Combine(config, "proxy.json");
+        var examplePath = Path.Combine(sites, "example.site.yaml");
+        File.WriteAllText(proxyPath, "{ \"observability\": { \"accessLogEnabled\": false } }");
+        File.WriteAllText(examplePath, "# custom example");
+        var loader = CreateLoader(temp.Path);
+
+        var result = await loader.LoadAsync(CancellationToken.None);
+
+        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
+        AssertEx.Equal("{ \"observability\": { \"accessLogEnabled\": false } }", File.ReadAllText(proxyPath));
+        AssertEx.Equal("# custom example", File.ReadAllText(examplePath));
+        AssertEx.False(AssertEx.NotNull(result.Snapshot).Observability.AccessLogEnabled);
     }
 
     public static async Task LoaderLoadsExistingEmptySitesDirectory()
@@ -145,7 +214,7 @@ internal static class ConfigurationTests
         var result = await loader.LoadAsync(CancellationToken.None);
 
         AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
-        AssertEx.False(File.Exists(Path.Combine(temp.Path, "config", "proxy.json")));
+        AssertEx.True(File.Exists(Path.Combine(temp.Path, "config", "proxy.json")));
         AssertEx.Equal(TimeSpan.FromSeconds(10), AssertEx.NotNull(result.Snapshot).Timeouts.ClientRequestHeadTimeout);
     }
 
@@ -539,6 +608,29 @@ internal static class ConfigurationTests
         AssertEx.True(validation.FileErrors.Any(error => error.Path?.EndsWith("broken.json", StringComparison.OrdinalIgnoreCase) == true));
     }
 
+    public static async Task ConfigNormalizeConvertsYamlToJsonWithoutApplying()
+    {
+        using var temp = TemporaryDirectory.Create();
+        WriteSite(temp.Path, "home.json", port: 18080, upstreamPort: 15000);
+        var store = new ProxyConfigurationStore();
+        var service = CreateReloadService(temp.Path, store);
+        var first = await service.ReloadAsync(CancellationToken.None);
+        AssertEx.True(first.Succeeded);
+        var normalizer = new ProxyConfigurationNormalizer(new SiteConfigurationParser(), new MDRAVA.API.Proxy.Configuration.ProxyOptionsValidator());
+        var controller = new ProxyConfigurationController(service, store, normalizer);
+
+        var actionResult = controller.Normalize(new ProxyConfigurationNormalizeRequest(
+            "yaml",
+            YamlSiteText("normalized", port: 18081, upstreamPort: 15001)));
+
+        var ok = (OkObjectResult)AssertEx.NotNull(actionResult.Result);
+        var normalize = (ProxyConfigurationNormalizeResult)AssertEx.NotNull(ok.Value);
+        AssertEx.True(normalize.Succeeded, string.Join("; ", normalize.Errors));
+        AssertEx.True(AssertEx.NotNull(normalize.CanonicalJson).Contains("\"Name\": \"normalized\"", StringComparison.Ordinal));
+        AssertEx.Equal(1, store.Snapshot.Version);
+        AssertEx.Equal(18080, store.Snapshot.Listeners[0].Port);
+    }
+
     public static async Task EffectiveConfigProjectionRedactsCertificateSecrets()
     {
         using var temp = TemporaryDirectory.Create();
@@ -551,7 +643,10 @@ internal static class ConfigurationTests
         var result = await service.ReloadAsync(CancellationToken.None);
         AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
 
-        var controller = new ProxyConfigurationController(service, store);
+        var controller = new ProxyConfigurationController(
+            service,
+            store,
+            new ProxyConfigurationNormalizer(new SiteConfigurationParser(), new MDRAVA.API.Proxy.Configuration.ProxyOptionsValidator()));
         var actionResult = controller.Effective();
         var ok = (OkObjectResult)AssertEx.NotNull(actionResult.Result);
         var projection = (ProxyConfigurationProjection)AssertEx.NotNull(ok.Value);
@@ -590,6 +685,29 @@ internal static class ConfigurationTests
     {
         var sites = Directory.CreateDirectory(Path.Combine(dataDirectory, "config", "sites")).FullName;
         File.WriteAllText(Path.Combine(sites, fileName), json);
+    }
+
+    internal static void WriteYamlSite(string dataDirectory, string fileName, int port, int upstreamPort)
+    {
+        var sites = Directory.CreateDirectory(Path.Combine(dataDirectory, "config", "sites")).FullName;
+        File.WriteAllText(Path.Combine(sites, fileName), YamlSiteText(Path.GetFileNameWithoutExtension(fileName), port, upstreamPort));
+    }
+
+    private static string YamlSiteText(string name, int port, int upstreamPort)
+    {
+        return $$"""
+        name: {{name}}
+        listeners:
+          - name: main
+            address: 127.0.0.1
+            port: {{port}}
+        host: "*"
+        pathPrefix: /
+        upstreams:
+          - name: local-test
+            address: 127.0.0.1
+            port: {{upstreamPort}}
+        """;
     }
 
     internal static void WriteSiteWithTwoUpstreams(
@@ -810,6 +928,11 @@ internal static class ConfigurationTests
                 DataDirectory = dataDirectory
             })),
             new MDRAVA.API.Proxy.Configuration.ProxyOptionsValidator(),
+            new ProxyDataDirectoryBootstrapper(new MdravaDataDirectoryProvider(Options.Create(new MdravaDataDirectoryOptions
+            {
+                DataDirectory = dataDirectory
+            }))),
+            new SiteConfigurationParser(),
             NullLogger<ProxyConfigurationLoader>.Instance);
     }
 

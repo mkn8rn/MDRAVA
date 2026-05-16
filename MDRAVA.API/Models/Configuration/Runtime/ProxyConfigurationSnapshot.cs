@@ -5,6 +5,7 @@ public sealed record ProxyConfigurationSnapshot(
     DateTimeOffset LoadedAtUtc,
     string SourceDirectory,
     IReadOnlyList<string> SourceFiles,
+    ProxyConfigurationDiscovery Discovery,
     RuntimeTimeouts Timeouts,
     RuntimeConnectionLimits ConnectionLimits,
     RuntimeObservabilityOptions Observability,

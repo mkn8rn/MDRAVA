@@ -8,5 +8,6 @@ public sealed record ProxyConfigurationValidationResult(
     DateTimeOffset? LastSuccessfulLoadAtUtc,
     int? WouldBeVersion,
     IReadOnlyList<string> SourceFiles,
+    ProxyConfigurationDiscovery Discovery,
     IReadOnlyList<string> Errors,
     IReadOnlyList<ProxyConfigurationFileError> FileErrors);

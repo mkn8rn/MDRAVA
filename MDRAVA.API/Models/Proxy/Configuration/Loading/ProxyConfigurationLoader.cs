@@ -4,30 +4,30 @@ using System.Security.Cryptography.X509Certificates;
 using MDRAVA.API.Proxy.Configuration.Paths;
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using Microsoft.Extensions.Options;
+using YamlDotNet.Core;
 
 namespace MDRAVA.API.Proxy.Configuration.Loading;
 
 public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        ReadCommentHandling = JsonCommentHandling.Skip,
-        AllowTrailingCommas = true
-    };
-
     private readonly IMdravaDataDirectoryProvider _dataDirectoryProvider;
     private readonly IValidateOptions<ProxyOptions> _validator;
+    private readonly ProxyDataDirectoryBootstrapper _bootstrapper;
+    private readonly SiteConfigurationParser _siteParser;
     private readonly ILogger<ProxyConfigurationLoader> _logger;
     private int _nextVersion;
 
     public ProxyConfigurationLoader(
         IMdravaDataDirectoryProvider dataDirectoryProvider,
         IValidateOptions<ProxyOptions> validator,
+        ProxyDataDirectoryBootstrapper bootstrapper,
+        SiteConfigurationParser siteParser,
         ILogger<ProxyConfigurationLoader> logger)
     {
         _dataDirectoryProvider = dataDirectoryProvider;
         _validator = validator;
+        _bootstrapper = bootstrapper;
+        _siteParser = siteParser;
         _logger = logger;
     }
 
@@ -49,24 +49,29 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader
         var operationalConfigPath = _dataDirectoryProvider.GetProxyOperationalConfigPath();
         var attemptedAtUtc = DateTimeOffset.UtcNow;
         var wouldBeVersion = Volatile.Read(ref _nextVersion) + 1;
+        var bootstrapDiscovery = _bootstrapper.EnsureLayout();
+        List<ProxyConfigurationFileDiscovery> discoveredFiles = [.. bootstrapDiscovery.Files];
 
-        Directory.CreateDirectory(sourceDirectory);
-
-        var siteFiles = Directory
-            .EnumerateFiles(sourceDirectory, "*.json", SearchOption.TopDirectoryOnly)
-            .Order(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+        var discoveredSiteFiles = SiteConfigurationFileDiscovery.DiscoverLoadableSiteFiles(
+            sourceDirectory,
+            discoveredFiles);
+        var siteFiles = discoveredSiteFiles.Select(static file => file.Path).ToArray();
 
         List<SiteConfigurationSource> sites = [];
         List<ProxyConfigurationFileError> errors = [];
 
-        foreach (var siteFile in siteFiles)
+        foreach (var (siteFile, format) in discoveredSiteFiles)
         {
-            var site = await ReadSiteAsync(siteFile, errors, cancellationToken);
+            var site = await ReadSiteAsync(siteFile, format, discoveredFiles, errors, cancellationToken);
             if (site is not null)
             {
                 sites.Add(new SiteConfigurationSource(siteFile, site));
             }
+        }
+
+        ProxyConfigurationDiscovery BuildDiscovery()
+        {
+            return bootstrapDiscovery with { Files = discoveredFiles.ToArray() };
         }
 
         if (errors.Count > 0)
@@ -75,6 +80,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader
                 sourceDirectory,
                 attemptedAtUtc,
                 siteFiles,
+                BuildDiscovery(),
                 errors,
                 wouldBeVersion);
         }
@@ -86,17 +92,19 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader
                 sourceDirectory,
                 attemptedAtUtc,
                 siteFiles,
+                BuildDiscovery(),
                 listenerMergeFailures.Select(static failure => new ProxyConfigurationFileError(null, failure)).ToArray(),
                 wouldBeVersion);
         }
 
-        var operationalOptions = await ReadOperationalOptionsAsync(operationalConfigPath, errors, cancellationToken);
+        var operationalOptions = await ReadOperationalOptionsAsync(operationalConfigPath, discoveredFiles, errors, cancellationToken);
         if (errors.Count > 0)
         {
             return ProxyConfigurationLoadResult.Failure(
                 sourceDirectory,
                 attemptedAtUtc,
                 siteFiles,
+                BuildDiscovery(),
                 errors,
                 wouldBeVersion);
         }
@@ -108,6 +116,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader
                 sourceDirectory,
                 attemptedAtUtc,
                 siteFiles,
+                BuildDiscovery(),
                 operationalFailures.Select(failure => new ProxyConfigurationFileError(operationalConfigPath, failure)).ToArray(),
                 wouldBeVersion);
         }
@@ -120,6 +129,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader
                 sourceDirectory,
                 attemptedAtUtc,
                 siteFiles,
+                BuildDiscovery(),
                 certificateValidationFailures.Select(static failure => new ProxyConfigurationFileError(null, failure)).ToArray(),
                 wouldBeVersion);
         }
@@ -133,6 +143,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader
                     sourceDirectory,
                     attemptedAtUtc,
                     siteFiles,
+                    BuildDiscovery(),
                     validation.Failures.Select(static failure => new ProxyConfigurationFileError(null, failure)).ToArray(),
                     wouldBeVersion);
             }
@@ -152,6 +163,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader
                 sourceDirectory,
                 attemptedAtUtc,
                 siteFiles,
+                BuildDiscovery(),
                 errors,
                 wouldBeVersion);
         }
@@ -164,6 +176,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader
                 sourceDirectory,
                 attemptedAtUtc,
                 siteFiles,
+                BuildDiscovery(),
                 null,
                 [],
                 [],
@@ -178,9 +191,10 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader
             version,
             DateTimeOffset.UtcNow,
             sourceDirectory,
-            siteFiles);
+            siteFiles,
+            BuildDiscovery());
 
-        return ProxyConfigurationLoadResult.Success(sourceDirectory, snapshot);
+        return ProxyConfigurationLoadResult.Success(sourceDirectory, snapshot, BuildDiscovery());
     }
 
     private static IReadOnlyList<string> ValidateTlsReferences(
@@ -366,11 +380,17 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader
 
     private async ValueTask<ProxyOperationalOptions> ReadOperationalOptionsAsync(
         string operationalConfigPath,
+        List<ProxyConfigurationFileDiscovery> discoveries,
         List<ProxyConfigurationFileError> errors,
         CancellationToken cancellationToken)
     {
         if (!File.Exists(operationalConfigPath))
         {
+            discoveries.Add(new ProxyConfigurationFileDiscovery(
+                operationalConfigPath,
+                "json",
+                "skipped",
+                "Proxy operational configuration file does not exist; defaults are used."));
             _logger.LogInformation(
                 "Proxy operational configuration file {ConfigPath} was not found; using in-memory default timeout settings.",
                 operationalConfigPath);
@@ -382,68 +402,126 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader
             await using var stream = File.OpenRead(operationalConfigPath);
             var options = await JsonSerializer.DeserializeAsync<ProxyOperationalOptions>(
                 stream,
-                JsonOptions,
+                SiteConfigurationParser.ReadJsonOptions,
                 cancellationToken);
 
             if (options is null)
             {
                 errors.Add(new ProxyConfigurationFileError(operationalConfigPath, "Operational configuration did not contain a JSON object."));
+                discoveries.Add(new ProxyConfigurationFileDiscovery(
+                    operationalConfigPath,
+                    "json",
+                    "failed",
+                    "Operational configuration did not contain a JSON object."));
                 return new ProxyOperationalOptions();
             }
 
+            discoveries.Add(new ProxyConfigurationFileDiscovery(
+                operationalConfigPath,
+                "json",
+                "loaded",
+                "Proxy operational configuration."));
             return options;
         }
         catch (JsonException exception)
         {
             errors.Add(new ProxyConfigurationFileError(operationalConfigPath, $"JSON is invalid: {exception.Message}"));
+            discoveries.Add(new ProxyConfigurationFileDiscovery(
+                operationalConfigPath,
+                "json",
+                "failed",
+                $"JSON is invalid: {exception.Message}"));
             return new ProxyOperationalOptions();
         }
         catch (IOException exception)
         {
             errors.Add(new ProxyConfigurationFileError(operationalConfigPath, $"File could not be read: {exception.Message}"));
+            discoveries.Add(new ProxyConfigurationFileDiscovery(
+                operationalConfigPath,
+                "json",
+                "failed",
+                $"File could not be read: {exception.Message}"));
             return new ProxyOperationalOptions();
         }
         catch (UnauthorizedAccessException exception)
         {
             errors.Add(new ProxyConfigurationFileError(operationalConfigPath, $"File could not be accessed: {exception.Message}"));
+            discoveries.Add(new ProxyConfigurationFileDiscovery(
+                operationalConfigPath,
+                "json",
+                "failed",
+                $"File could not be accessed: {exception.Message}"));
             return new ProxyOperationalOptions();
         }
     }
 
-    private static async ValueTask<SiteOptions?> ReadSiteAsync(
+    private async ValueTask<SiteOptions?> ReadSiteAsync(
         string siteFile,
+        SiteConfigurationFormat format,
+        List<ProxyConfigurationFileDiscovery> discoveries,
         List<ProxyConfigurationFileError> errors,
         CancellationToken cancellationToken)
     {
         try
         {
-            await using var stream = File.OpenRead(siteFile);
-            var site = await JsonSerializer.DeserializeAsync<SiteOptions>(
-                stream,
-                JsonOptions,
-                cancellationToken);
+            var site = await _siteParser.ReadSiteFileAsync(siteFile, format, cancellationToken);
 
             if (site is null)
             {
                 errors.Add(new ProxyConfigurationFileError(siteFile, "Site configuration did not contain a JSON object."));
+                discoveries.Add(new ProxyConfigurationFileDiscovery(
+                    siteFile,
+                    SiteConfigurationFileDiscovery.FormatName(format),
+                    "failed",
+                    "Site configuration did not contain a JSON object."));
                 return null;
             }
 
+            discoveries.Add(new ProxyConfigurationFileDiscovery(
+                siteFile,
+                SiteConfigurationFileDiscovery.FormatName(format),
+                "loaded",
+                "Site configuration."));
             return site;
         }
         catch (JsonException exception)
         {
             errors.Add(new ProxyConfigurationFileError(siteFile, $"JSON is invalid: {exception.Message}"));
+            discoveries.Add(new ProxyConfigurationFileDiscovery(
+                siteFile,
+                SiteConfigurationFileDiscovery.FormatName(format),
+                "failed",
+                $"JSON is invalid: {exception.Message}"));
+            return null;
+        }
+        catch (YamlException exception)
+        {
+            errors.Add(new ProxyConfigurationFileError(siteFile, $"YAML is invalid: {exception.Message}"));
+            discoveries.Add(new ProxyConfigurationFileDiscovery(
+                siteFile,
+                SiteConfigurationFileDiscovery.FormatName(format),
+                "failed",
+                $"YAML is invalid: {exception.Message}"));
             return null;
         }
         catch (IOException exception)
         {
             errors.Add(new ProxyConfigurationFileError(siteFile, $"File could not be read: {exception.Message}"));
+            discoveries.Add(new ProxyConfigurationFileDiscovery(
+                siteFile,
+                SiteConfigurationFileDiscovery.FormatName(format),
+                "failed",
+                $"File could not be read: {exception.Message}"));
             return null;
         }
         catch (UnauthorizedAccessException exception)
         {
             errors.Add(new ProxyConfigurationFileError(siteFile, $"File could not be accessed: {exception.Message}"));
+            discoveries.Add(new ProxyConfigurationFileDiscovery(
+                siteFile,
+                SiteConfigurationFileDiscovery.FormatName(format),
+                "failed",
+                $"File could not be accessed: {exception.Message}"));
             return null;
         }
     }
