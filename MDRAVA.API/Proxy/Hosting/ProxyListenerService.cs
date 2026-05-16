@@ -1,0 +1,149 @@
+using System.Net;
+using System.Net.Sockets;
+using MDRAVA.API.Proxy.Connections;
+using MDRAVA.API.Proxy.Configuration.Runtime;
+using MDRAVA.API.Proxy.Configuration.Storage;
+using MDRAVA.API.Proxy.Forwarding;
+using MDRAVA.API.Proxy.Metrics;
+using MDRAVA.API.Proxy.Routing;
+
+namespace MDRAVA.API.Proxy.Hosting;
+
+public sealed class ProxyListenerService : BackgroundService
+{
+    private readonly IProxyConfigurationStore _configurationStore;
+    private readonly IRouteMatcher _routeMatcher;
+    private readonly ProxyForwarder _forwarder;
+    private readonly ProxyMetrics _metrics;
+    private readonly ProxyRuntimeState _runtimeState;
+    private readonly ILogger<ProxyListenerService> _logger;
+    private readonly ILogger<ClientConnection> _connectionLogger;
+    private Socket? _listenSocket;
+
+    public ProxyListenerService(
+        IProxyConfigurationStore configurationStore,
+        IRouteMatcher routeMatcher,
+        ProxyForwarder forwarder,
+        ProxyMetrics metrics,
+        ProxyRuntimeState runtimeState,
+        ILogger<ProxyListenerService> logger,
+        ILogger<ClientConnection> connectionLogger)
+    {
+        _configurationStore = configurationStore;
+        _routeMatcher = routeMatcher;
+        _forwarder = forwarder;
+        _metrics = metrics;
+        _runtimeState = runtimeState;
+        _logger = logger;
+        _connectionLogger = connectionLogger;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        var startupSnapshot = _configurationStore.Snapshot;
+        var listener = startupSnapshot.GetFirstEnabledListener();
+        var listenAddress = IPAddress.Parse(listener.Address);
+        var listenEndPoint = new IPEndPoint(listenAddress, listener.Port);
+        string? stopError = null;
+
+        try
+        {
+            _listenSocket = new Socket(listenAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
+            {
+                NoDelay = true,
+                ExclusiveAddressUse = false
+            };
+
+            _listenSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+            _listenSocket.Bind(listenEndPoint);
+            _listenSocket.Listen(listener.Backlog);
+
+            _runtimeState.MarkRunning(listener.Name, listenEndPoint);
+            _logger.LogInformation(
+                "Proxy listener {ListenerName} is accepting HTTP/1.1 connections on {Address}:{Port}",
+                listener.Name,
+                listener.Address,
+                listener.Port);
+
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                Socket clientSocket;
+
+                try
+                {
+                    clientSocket = await _listenSocket.AcceptAsync(stoppingToken);
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (ObjectDisposedException) when (stoppingToken.IsCancellationRequested)
+                {
+                    break;
+                }
+
+                _metrics.ConnectionAccepted();
+                var requestSnapshot = _configurationStore.Snapshot;
+                _ = RunConnectionAsync(clientSocket, requestSnapshot, listener, stoppingToken);
+            }
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            stopError = exception.Message;
+            _logger.LogCritical(exception, "Proxy listener failed.");
+            throw;
+        }
+        finally
+        {
+            _listenSocket?.Dispose();
+            _runtimeState.MarkStopped(stopError);
+            _logger.LogInformation("Proxy listener stopped.");
+        }
+    }
+
+    public override async Task StopAsync(CancellationToken cancellationToken)
+    {
+        var stopTask = base.StopAsync(cancellationToken);
+        _listenSocket?.Dispose();
+        await stopTask;
+    }
+
+    private async Task RunConnectionAsync(
+        Socket clientSocket,
+        ProxyConfigurationSnapshot snapshot,
+        RuntimeListener listener,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var connection = new ClientConnection(
+                clientSocket,
+                snapshot,
+                listener,
+                _routeMatcher,
+                _forwarder,
+                _metrics,
+                _connectionLogger);
+
+            await connection.RunAsync(cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception) when (exception is SocketException or IOException)
+        {
+            _logger.LogDebug(exception, "Client connection ended with an I/O error.");
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Client connection failed unexpectedly.");
+        }
+        finally
+        {
+            _metrics.ConnectionClosed();
+        }
+    }
+}

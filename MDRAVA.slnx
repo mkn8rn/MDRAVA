@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="MDRAVA.API/MDRAVA.API.csproj" />
+  <Project Path="MDRAVA.Tests/MDRAVA.Tests.csproj" />
+</Solution>

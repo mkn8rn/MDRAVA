@@ -1,0 +1,237 @@
+using MDRAVA.API.Proxy.Configuration.Loading;
+using MDRAVA.API.Proxy.Configuration.Paths;
+using MDRAVA.API.Proxy.Configuration.Storage;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+
+namespace MDRAVA.Tests;
+
+internal static class ConfigurationTests
+{
+    public static void DataDirectoryUsesConfiguredOverride()
+    {
+        var expected = Path.Combine(Path.GetTempPath(), $"mdrava-test-{Guid.NewGuid():N}");
+        var provider = new MdravaDataDirectoryProvider(Options.Create(new MdravaDataDirectoryOptions
+        {
+            DataDirectory = expected
+        }));
+
+        AssertEx.Equal(Path.GetFullPath(expected), provider.GetDataDirectory());
+        AssertEx.Equal(Path.Combine(Path.GetFullPath(expected), "config"), provider.GetProxyConfigDirectory());
+        AssertEx.Equal(Path.Combine(Path.GetFullPath(expected), "config", "sites"), provider.GetSitesConfigDirectory());
+    }
+
+    public static void DataDirectoryUsesEnvironmentOverride()
+    {
+        var previous = Environment.GetEnvironmentVariable(MdravaDataDirectoryProvider.EnvironmentVariableName);
+        var expected = Path.Combine(Path.GetTempPath(), $"mdrava-env-{Guid.NewGuid():N}");
+
+        try
+        {
+            Environment.SetEnvironmentVariable(MdravaDataDirectoryProvider.EnvironmentVariableName, expected);
+            var provider = new MdravaDataDirectoryProvider(Options.Create(new MdravaDataDirectoryOptions
+            {
+                DataDirectory = Path.Combine(Path.GetTempPath(), "ignored")
+            }));
+
+            AssertEx.Equal(Path.GetFullPath(expected), provider.GetDataDirectory());
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(MdravaDataDirectoryProvider.EnvironmentVariableName, previous);
+        }
+    }
+
+    public static void DataDirectoryDefaultsUnderLocalApplicationDataWhenAvailable()
+    {
+        var previous = Environment.GetEnvironmentVariable(MdravaDataDirectoryProvider.EnvironmentVariableName);
+
+        try
+        {
+            Environment.SetEnvironmentVariable(MdravaDataDirectoryProvider.EnvironmentVariableName, null);
+            var provider = new MdravaDataDirectoryProvider(Options.Create(new MdravaDataDirectoryOptions()));
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+
+            if (!string.IsNullOrWhiteSpace(localAppData))
+            {
+                AssertEx.Equal(Path.Combine(localAppData, "MDRAVA"), provider.GetDataDirectory());
+            }
+            else
+            {
+                AssertEx.Equal(Path.Combine(AppContext.BaseDirectory, "MDRAVA"), provider.GetDataDirectory());
+            }
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(MdravaDataDirectoryProvider.EnvironmentVariableName, previous);
+        }
+    }
+
+    public static async Task LoaderLoadsValidSiteFiles()
+    {
+        using var temp = TemporaryDirectory.Create();
+        WriteSite(temp.Path, "home.json", port: 18080, upstreamPort: 15000);
+        var loader = CreateLoader(temp.Path);
+
+        var result = await loader.LoadAsync(CancellationToken.None);
+
+        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
+        var snapshot = AssertEx.NotNull(result.Snapshot);
+        AssertEx.Equal(Path.Combine(temp.Path, "config", "sites"), result.SourceDirectory);
+        AssertEx.Equal(1, snapshot.Listeners.Count);
+        AssertEx.Equal(1, snapshot.Routes.Count);
+        AssertEx.Equal("home", snapshot.Routes[0].Name);
+        AssertEx.Equal(1, snapshot.SourceFiles.Count);
+    }
+
+    public static async Task LoaderRejectsInvalidSiteFile()
+    {
+        using var temp = TemporaryDirectory.Create();
+        var sites = Directory.CreateDirectory(Path.Combine(temp.Path, "config", "sites")).FullName;
+        File.WriteAllText(Path.Combine(sites, "broken.json"), "{ nope");
+        var loader = CreateLoader(temp.Path);
+
+        var result = await loader.LoadAsync(CancellationToken.None);
+
+        AssertEx.False(result.Succeeded);
+        AssertEx.True(result.Errors.Count > 0);
+        AssertEx.Equal(null, result.Snapshot);
+    }
+
+    public static async Task ReloadPreservesActiveSnapshotWhenLoadFails()
+    {
+        using var temp = TemporaryDirectory.Create();
+        WriteSite(temp.Path, "home.json", port: 18080, upstreamPort: 15000);
+
+        var store = new ProxyConfigurationStore();
+        var service = CreateReloadService(temp.Path, store);
+        var first = await service.ReloadAsync(CancellationToken.None);
+        AssertEx.True(first.Succeeded);
+        AssertEx.Equal(1, store.Snapshot.Version);
+
+        File.WriteAllText(Path.Combine(temp.Path, "config", "sites", "broken.json"), "{ nope");
+        var second = await service.ReloadAsync(CancellationToken.None);
+
+        AssertEx.False(second.Succeeded);
+        AssertEx.Equal(1, store.Snapshot.Version);
+    }
+
+    public static async Task ReloadReplacesActiveSnapshotWhenLoadSucceeds()
+    {
+        using var temp = TemporaryDirectory.Create();
+        WriteSite(temp.Path, "home.json", port: 18080, upstreamPort: 15000);
+
+        var store = new ProxyConfigurationStore();
+        var service = CreateReloadService(temp.Path, store);
+        var first = await service.ReloadAsync(CancellationToken.None);
+        AssertEx.True(first.Succeeded);
+
+        File.WriteAllText(
+            Path.Combine(temp.Path, "config", "sites", "home.json"),
+            SiteJson("home", 18081, 15001));
+
+        var second = await service.ReloadAsync(CancellationToken.None);
+
+        AssertEx.True(second.Succeeded, string.Join("; ", second.Errors));
+        AssertEx.Equal(2, store.Snapshot.Version);
+        AssertEx.Equal(18081, store.Snapshot.Listeners[0].Port);
+    }
+
+    public static async Task ActiveInspectionProjectionReflectsStore()
+    {
+        using var temp = TemporaryDirectory.Create();
+        WriteSite(temp.Path, "home.json", port: 18080, upstreamPort: 15000);
+
+        var store = new ProxyConfigurationStore();
+        var service = CreateReloadService(temp.Path, store);
+        var result = await service.ReloadAsync(CancellationToken.None);
+
+        AssertEx.True(result.Succeeded);
+        var projection = AssertEx.NotNull(result.ActiveConfiguration);
+        AssertEx.Equal(1, projection.Version);
+        AssertEx.Equal("home", projection.Routes[0].Name);
+        AssertEx.Equal(1, projection.SourceFiles.Count);
+    }
+
+    internal static void WriteSite(string dataDirectory, string fileName, int port, int upstreamPort)
+    {
+        var sites = Directory.CreateDirectory(Path.Combine(dataDirectory, "config", "sites")).FullName;
+        File.WriteAllText(Path.Combine(sites, fileName), SiteJson(Path.GetFileNameWithoutExtension(fileName), port, upstreamPort));
+    }
+
+    private static ProxyConfigurationLoader CreateLoader(string dataDirectory)
+    {
+        return new ProxyConfigurationLoader(
+            new MdravaDataDirectoryProvider(Options.Create(new MdravaDataDirectoryOptions
+            {
+                DataDirectory = dataDirectory
+            })),
+            new MDRAVA.API.Proxy.Configuration.ProxyOptionsValidator());
+    }
+
+    private static ProxyConfigurationReloadService CreateReloadService(
+        string dataDirectory,
+        ProxyConfigurationStore store)
+    {
+        return new ProxyConfigurationReloadService(
+            CreateLoader(dataDirectory),
+            store,
+            NullLogger<ProxyConfigurationReloadService>.Instance);
+    }
+
+    private static string SiteJson(string name, int port, int upstreamPort)
+    {
+        return $$"""
+        {
+          "name": "{{name}}",
+          "listeners": [
+            {
+              "name": "main",
+              "address": "127.0.0.1",
+              "port": {{port}}
+            }
+          ],
+          "host": "*",
+          "pathPrefix": "/",
+          "upstreams": [
+            {
+              "name": "local-test",
+              "address": "127.0.0.1",
+              "port": {{upstreamPort}}
+            }
+          ]
+        }
+        """;
+    }
+
+    private sealed class TemporaryDirectory : IDisposable
+    {
+        private TemporaryDirectory(string path)
+        {
+            Path = path;
+        }
+
+        public string Path { get; }
+
+        public static TemporaryDirectory Create()
+        {
+            var path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"mdrava-tests-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(path);
+            return new TemporaryDirectory(path);
+        }
+
+        public void Dispose()
+        {
+            try
+            {
+                if (Directory.Exists(Path))
+                {
+                    Directory.Delete(Path, recursive: true);
+                }
+            }
+            catch
+            {
+            }
+        }
+    }
+}
