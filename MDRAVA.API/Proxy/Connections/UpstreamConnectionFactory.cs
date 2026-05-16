@@ -1,14 +1,22 @@
 using System.Net;
 using System.Net.Sockets;
 using MDRAVA.API.Proxy.Configuration.Runtime;
+using MDRAVA.API.Proxy.Forwarding;
 
 namespace MDRAVA.API.Proxy.Connections;
 
 public sealed class UpstreamConnectionFactory
 {
-    public async ValueTask<Socket> ConnectAsync(RuntimeUpstream upstream, CancellationToken cancellationToken)
+    public async ValueTask<Socket> ConnectAsync(
+        RuntimeUpstream upstream,
+        TimeSpan connectTimeout,
+        CancellationToken cancellationToken)
     {
-        var addresses = await ResolveAddressesAsync(upstream, cancellationToken);
+        var addresses = await ProxyTimeoutPolicy.RunAsync(
+            timeoutToken => ResolveAddressesAsync(upstream, timeoutToken),
+            connectTimeout,
+            ProxyTimeoutKind.UpstreamConnect,
+            cancellationToken);
         Exception? lastException = null;
 
         foreach (var address in addresses)
@@ -20,7 +28,14 @@ public sealed class UpstreamConnectionFactory
 
             try
             {
-                await socket.ConnectAsync(new IPEndPoint(address, upstream.Port), cancellationToken);
+                await ProxyTimeoutPolicy.RunAsync(
+                    async timeoutToken =>
+                    {
+                        await socket.ConnectAsync(new IPEndPoint(address, upstream.Port), timeoutToken);
+                    },
+                    connectTimeout,
+                    ProxyTimeoutKind.UpstreamConnect,
+                    cancellationToken);
                 return socket;
             }
             catch (OperationCanceledException)

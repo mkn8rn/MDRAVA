@@ -82,6 +82,33 @@ internal static class ConfigurationTests
         AssertEx.Equal(1, snapshot.Routes.Count);
         AssertEx.Equal("home", snapshot.Routes[0].Name);
         AssertEx.Equal(1, snapshot.SourceFiles.Count);
+        AssertEx.Equal(TimeSpan.FromSeconds(10), snapshot.Timeouts.ClientRequestHeadTimeout);
+    }
+
+    public static async Task LoaderLoadsExplicitOperationalTimeouts()
+    {
+        using var temp = TemporaryDirectory.Create();
+        WriteSite(temp.Path, "home.json", port: 18080, upstreamPort: 15000);
+        WriteOperationalConfig(temp.Path, clientRequestHeadTimeoutMs: 250);
+        var loader = CreateLoader(temp.Path);
+
+        var result = await loader.LoadAsync(CancellationToken.None);
+
+        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
+        AssertEx.Equal(TimeSpan.FromMilliseconds(250), AssertEx.NotNull(result.Snapshot).Timeouts.ClientRequestHeadTimeout);
+    }
+
+    public static async Task LoaderRejectsInvalidOperationalTimeouts()
+    {
+        using var temp = TemporaryDirectory.Create();
+        WriteSite(temp.Path, "home.json", port: 18080, upstreamPort: 15000);
+        WriteOperationalConfig(temp.Path, clientRequestHeadTimeoutMs: 1);
+        var loader = CreateLoader(temp.Path);
+
+        var result = await loader.LoadAsync(CancellationToken.None);
+
+        AssertEx.False(result.Succeeded);
+        AssertEx.True(result.Errors.Count > 0);
     }
 
     public static async Task LoaderRejectsInvalidSiteFile()
@@ -157,6 +184,32 @@ internal static class ConfigurationTests
     {
         var sites = Directory.CreateDirectory(Path.Combine(dataDirectory, "config", "sites")).FullName;
         File.WriteAllText(Path.Combine(sites, fileName), SiteJson(Path.GetFileNameWithoutExtension(fileName), port, upstreamPort));
+    }
+
+    internal static void WriteOperationalConfig(
+        string dataDirectory,
+        int clientRequestHeadTimeoutMs = 1000,
+        int clientRequestBodyIdleTimeoutMs = 1000,
+        int upstreamConnectTimeoutMs = 1000,
+        int upstreamResponseHeadTimeoutMs = 1000,
+        int upstreamResponseBodyIdleTimeoutMs = 1000,
+        int downstreamWriteTimeoutMs = 1000)
+    {
+        var configDirectory = Directory.CreateDirectory(Path.Combine(dataDirectory, "config")).FullName;
+        File.WriteAllText(
+            Path.Combine(configDirectory, "proxy.json"),
+            $$"""
+            {
+              "timeouts": {
+                "clientRequestHeadTimeoutMs": {{clientRequestHeadTimeoutMs}},
+                "clientRequestBodyIdleTimeoutMs": {{clientRequestBodyIdleTimeoutMs}},
+                "upstreamConnectTimeoutMs": {{upstreamConnectTimeoutMs}},
+                "upstreamResponseHeadTimeoutMs": {{upstreamResponseHeadTimeoutMs}},
+                "upstreamResponseBodyIdleTimeoutMs": {{upstreamResponseBodyIdleTimeoutMs}},
+                "downstreamWriteTimeoutMs": {{downstreamWriteTimeoutMs}}
+              }
+            }
+            """);
     }
 
     private static ProxyConfigurationLoader CreateLoader(string dataDirectory)

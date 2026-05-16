@@ -13,4 +13,15 @@ public sealed record ProxyMetricsSnapshot(
     long RejectedUnsupportedRequestFraming,
     long UpstreamMalformedResponses,
     long ClientBodyRelayFailures,
-    long UpstreamBodyRelayFailures);
+    long UpstreamBodyRelayFailures,
+    long ClientRequestHeadTimeouts,
+    long ClientRequestBodyTimeouts,
+    long UpstreamConnectFailures,
+    long UpstreamConnectTimeouts,
+    long UpstreamResponseHeadTimeouts,
+    long UpstreamResponseBodyTimeouts,
+    long UpstreamPrematureDisconnects,
+    long ClientPrematureDisconnects,
+    long ProxyGenerated502Responses,
+    long ProxyGenerated504Responses,
+    long DownstreamWriteTimeouts);

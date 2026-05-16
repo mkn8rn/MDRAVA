@@ -79,6 +79,7 @@ internal static class RouteMatcherTests
     {
         return ProxyConfigurationMapper.ToRuntimeSnapshot(
             options,
+            new ProxyOperationalOptions(),
             1,
             DateTimeOffset.UnixEpoch,
             "test",

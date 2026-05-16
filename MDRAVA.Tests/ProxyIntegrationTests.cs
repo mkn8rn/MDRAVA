@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -181,6 +182,81 @@ internal static class ProxyIntegrationTests
         AssertEx.True(result.UpstreamRequest.Contains("Host: original.test", StringComparison.OrdinalIgnoreCase), result.UpstreamRequest);
     }
 
+    public static async Task TimesOutIncompleteRequestHead()
+    {
+        var result = await RunProxyScenarioAsync(
+            "GET /slow",
+            "",
+            expectUpstreamConnection: false,
+            timeoutMs: 150);
+
+        AssertEx.True(result.ClientResponse.Contains("408 Request Timeout", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.Equal(1L, result.Metrics.ClientRequestHeadTimeouts);
+    }
+
+    public static async Task TimesOutIncompleteContentLengthRequestBody()
+    {
+        var result = await RunProxyScenarioAsync(
+            "POST /slow-body HTTP/1.1\r\nHost: body.test\r\nContent-Length: 10\r\n\r\nabc",
+            "HTTP/1.1 500 Should Not Happen\r\nContent-Length: 0\r\n\r\n",
+            readBodyFromUpstreamRequest: false,
+            timeoutMs: 150);
+
+        AssertEx.True(result.ClientResponse.Contains("408 Request Timeout", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.Equal(1L, result.Metrics.ClientRequestBodyTimeouts);
+    }
+
+    public static async Task TimesOutIncompleteChunkedRequestBody()
+    {
+        var result = await RunProxyScenarioAsync(
+            "POST /slow-chunk HTTP/1.1\r\nHost: chunk.test\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nabc",
+            "HTTP/1.1 500 Should Not Happen\r\nContent-Length: 0\r\n\r\n",
+            readBodyFromUpstreamRequest: false,
+            timeoutMs: 150);
+
+        AssertEx.True(result.ClientResponse.Contains("408 Request Timeout", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.Equal(1L, result.Metrics.ClientRequestBodyTimeouts);
+    }
+
+    public static async Task UnavailableUpstreamProducesBadGateway()
+    {
+        var result = await RunProxyScenarioAsync(
+            "GET /unavailable HTTP/1.1\r\nHost: upstream.test\r\n\r\n",
+            "",
+            expectUpstreamConnection: false);
+
+        AssertEx.True(result.ClientResponse.Contains("502 Bad Gateway", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.Equal(1L, result.Metrics.ProxyGenerated502Responses);
+    }
+
+    public static async Task UpstreamResponseHeadTimeoutProducesGatewayTimeout()
+    {
+        var result = await RunProxyScenarioAsync(
+            "GET /slow-upstream HTTP/1.1\r\nHost: upstream.test\r\n\r\n",
+            "",
+            readBodyFromUpstreamRequest: false,
+            timeoutMs: 150,
+            sendUpstreamResponse: false);
+
+        AssertEx.True(result.ClientResponse.Contains("504 Gateway Timeout", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.Equal(1L, result.Metrics.UpstreamResponseHeadTimeouts);
+        AssertEx.Equal(1L, result.Metrics.ProxyGenerated504Responses);
+    }
+
+    public static async Task UpstreamContentLengthEarlyCloseClosesAfterStartedResponse()
+    {
+        var result = await RunProxyScenarioAsync(
+            "GET /short HTTP/1.1\r\nHost: upstream.test\r\n\r\n",
+            "HTTP/1.1 200 OK\r\nContent-Length: 10\r\n\r\nhello",
+            readBodyFromUpstreamRequest: false,
+            timeoutMs: 150);
+
+        AssertEx.True(result.ClientResponse.Contains("200 OK", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.False(result.ClientResponse.Contains("502 Bad Gateway", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.False(result.ClientResponse.Contains("504 Gateway Timeout", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.Equal(1L, result.Metrics.UpstreamBodyRelayFailures);
+    }
+
     private static async Task<string> RunSingleResponseUpstreamAsync(
         int upstreamPort,
         CancellationToken cancellationToken)
@@ -210,7 +286,9 @@ internal static class ProxyIntegrationTests
         string clientRequest,
         string upstreamResponse,
         bool readBodyFromUpstreamRequest = true,
-        bool expectUpstreamConnection = true)
+        bool expectUpstreamConnection = true,
+        int? timeoutMs = null,
+        bool sendUpstreamResponse = true)
     {
         var proxyPort = GetFreeTcpPort();
         var upstreamPort = GetFreeTcpPort();
@@ -218,8 +296,19 @@ internal static class ProxyIntegrationTests
         var dataDirectory = Path.Combine(Path.GetTempPath(), $"mdrava-integration-{Guid.NewGuid():N}");
 
         ConfigurationTests.WriteSite(dataDirectory, "scenario.json", proxyPort, upstreamPort);
+        if (timeoutMs.HasValue)
+        {
+            ConfigurationTests.WriteOperationalConfig(
+                dataDirectory,
+                clientRequestHeadTimeoutMs: timeoutMs.Value,
+                clientRequestBodyIdleTimeoutMs: timeoutMs.Value,
+                upstreamConnectTimeoutMs: timeoutMs.Value,
+                upstreamResponseHeadTimeoutMs: timeoutMs.Value,
+                upstreamResponseBodyIdleTimeoutMs: timeoutMs.Value,
+                downstreamWriteTimeoutMs: 1000);
+        }
         var upstreamTask = expectUpstreamConnection
-            ? RunScenarioUpstreamAsync(upstreamPort, upstreamResponse, readBodyFromUpstreamRequest, timeout.Token)
+            ? RunScenarioUpstreamAsync(upstreamPort, upstreamResponse, readBodyFromUpstreamRequest, sendUpstreamResponse, timeout.Token)
             : Task.FromResult("");
 
         try
@@ -252,7 +341,8 @@ internal static class ProxyIntegrationTests
 
                 var clientResponse = await ReadToEndAsync(stream, timeout.Token);
                 var upstreamRequest = await upstreamTask.WaitAsync(timeout.Token);
-                return new ProxyScenarioResult(clientResponse, upstreamRequest);
+                var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
+                return new ProxyScenarioResult(clientResponse, upstreamRequest, metrics);
             }
             finally
             {
@@ -278,6 +368,7 @@ internal static class ProxyIntegrationTests
         int upstreamPort,
         string upstreamResponse,
         bool readBody,
+        bool sendResponse,
         CancellationToken cancellationToken)
     {
         var listener = new TcpListener(IPAddress.Loopback, upstreamPort);
@@ -288,9 +379,13 @@ internal static class ProxyIntegrationTests
             using var client = await listener.AcceptTcpClientAsync(cancellationToken);
             await using var stream = client.GetStream();
             var requestText = await ReadHttpRequestAsync(stream, readBody, cancellationToken);
-            var responseBytes = Encoding.ASCII.GetBytes(upstreamResponse);
-            await stream.WriteAsync(responseBytes, cancellationToken);
-            await stream.FlushAsync(cancellationToken);
+            if (sendResponse)
+            {
+                var responseBytes = Encoding.ASCII.GetBytes(upstreamResponse);
+                await stream.WriteAsync(responseBytes, cancellationToken);
+                await stream.FlushAsync(cancellationToken);
+            }
+
             await Task.Delay(300, cancellationToken);
             return requestText;
         }
@@ -436,5 +531,8 @@ internal static class ProxyIntegrationTests
         }
     }
 
-    private sealed record ProxyScenarioResult(string ClientResponse, string UpstreamRequest);
+    private sealed record ProxyScenarioResult(
+        string ClientResponse,
+        string UpstreamRequest,
+        ProxyMetricsSnapshot Metrics);
 }

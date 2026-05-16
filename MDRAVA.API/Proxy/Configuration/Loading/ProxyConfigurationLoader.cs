@@ -29,6 +29,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader
     public async ValueTask<ProxyConfigurationLoadResult> LoadAsync(CancellationToken cancellationToken)
     {
         var sourceDirectory = _dataDirectoryProvider.GetSitesConfigDirectory();
+        var operationalConfigPath = _dataDirectoryProvider.GetProxyOperationalConfigPath();
 
         if (!Directory.Exists(sourceDirectory))
         {
@@ -68,6 +69,22 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader
                 errors);
         }
 
+        var operationalOptions = await ReadOperationalOptionsAsync(operationalConfigPath, errors, cancellationToken);
+        if (errors.Count > 0)
+        {
+            return ProxyConfigurationLoadResult.Failure(
+                sourceDirectory,
+                errors);
+        }
+
+        var operationalFailures = ProxyOperationalOptionsValidator.Validate(operationalOptions);
+        if (operationalFailures.Count > 0)
+        {
+            return ProxyConfigurationLoadResult.Failure(
+                sourceDirectory,
+                operationalFailures);
+        }
+
         var options = SiteOptionsAggregator.ToProxyOptions(sites);
         var validation = _validator.Validate(null, options);
         if (validation.Failed)
@@ -80,12 +97,56 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader
         var version = Interlocked.Increment(ref _nextVersion);
         var snapshot = ProxyConfigurationMapper.ToRuntimeSnapshot(
             options,
+            operationalOptions,
             version,
             DateTimeOffset.UtcNow,
             sourceDirectory,
             siteFiles);
 
         return ProxyConfigurationLoadResult.Success(sourceDirectory, snapshot);
+    }
+
+    private static async ValueTask<ProxyOperationalOptions> ReadOperationalOptionsAsync(
+        string operationalConfigPath,
+        List<string> errors,
+        CancellationToken cancellationToken)
+    {
+        if (!File.Exists(operationalConfigPath))
+        {
+            return new ProxyOperationalOptions();
+        }
+
+        try
+        {
+            await using var stream = File.OpenRead(operationalConfigPath);
+            var options = await JsonSerializer.DeserializeAsync<ProxyOperationalOptions>(
+                stream,
+                JsonOptions,
+                cancellationToken);
+
+            if (options is null)
+            {
+                errors.Add($"{operationalConfigPath}: operational configuration did not contain a JSON object.");
+                return new ProxyOperationalOptions();
+            }
+
+            return options;
+        }
+        catch (JsonException exception)
+        {
+            errors.Add($"{operationalConfigPath}: JSON is invalid: {exception.Message}");
+            return new ProxyOperationalOptions();
+        }
+        catch (IOException exception)
+        {
+            errors.Add($"{operationalConfigPath}: file could not be read: {exception.Message}");
+            return new ProxyOperationalOptions();
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            errors.Add($"{operationalConfigPath}: file could not be accessed: {exception.Message}");
+            return new ProxyOperationalOptions();
+        }
     }
 
     private static async ValueTask<SiteOptions?> ReadSiteAsync(

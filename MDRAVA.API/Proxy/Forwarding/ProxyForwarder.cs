@@ -10,12 +10,6 @@ namespace MDRAVA.API.Proxy.Forwarding;
 
 public sealed class ProxyForwarder
 {
-    private static readonly byte[] BadGatewayResponse =
-        "HTTP/1.1 502 Bad Gateway\r\nConnection: close\r\nContent-Length: 11\r\nContent-Type: text/plain\r\n\r\nBad Gateway"u8.ToArray();
-
-    private static readonly byte[] BadRequestResponse =
-        "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 11\r\nContent-Type: text/plain\r\n\r\nBad Request"u8.ToArray();
-
     private readonly UpstreamConnectionFactory _upstreamConnections;
     private readonly ProxyMetrics _metrics;
     private readonly HopByHopHeaderPolicy _headerPolicy;
@@ -39,6 +33,7 @@ public sealed class ProxyForwarder
         Http1RequestHead requestHead,
         RuntimeUpstream upstream,
         RuntimeListener listener,
+        RuntimeTimeouts timeouts,
         CancellationToken cancellationToken)
     {
         var responseStarted = false;
@@ -50,7 +45,7 @@ public sealed class ProxyForwarder
 
             if (requestHead.Framing.Kind == Http1BodyKind.Chunked)
             {
-                preReadRequestBodyReader = new Http1BodyReader(clientStream, requestHeadRead.InitialBodyBytes, _metrics);
+                preReadRequestBodyReader = new Http1BodyReader(clientStream, requestHeadRead.InitialBodyBytes, _metrics, timeouts.ClientRequestBodyIdleTimeout, ProxyTimeoutKind.ClientRequestBodyIdle);
                 preReadChunkLine = await preReadRequestBodyReader.ReadLineWithCrlfAsync(listener.MaxChunkLineBytes, cancellationToken);
                 if (!TryParseChunkSize(preReadChunkLine.AsSpan(), out _))
                 {
@@ -58,16 +53,20 @@ public sealed class ProxyForwarder
                 }
             }
 
-            using var upstreamSocket = await _upstreamConnections.ConnectAsync(upstream, cancellationToken);
+            using var upstreamSocket = await _upstreamConnections.ConnectAsync(
+                upstream,
+                timeouts.UpstreamConnectTimeout,
+                cancellationToken);
             using var upstreamStream = new NetworkStream(upstreamSocket, ownsSocket: false);
 
-            await WriteRequestHeadAsync(upstreamStream, requestHead, cancellationToken);
+            await WriteRequestHeadAsync(upstreamStream, requestHead, timeouts, cancellationToken);
             await RelayRequestBodyAsync(
                 clientStream,
                 upstreamStream,
                 requestHeadRead.InitialBodyBytes,
                 requestHead,
                 listener,
+                timeouts,
                 preReadRequestBodyReader,
                 preReadChunkLine,
                 cancellationToken);
@@ -77,6 +76,7 @@ public sealed class ProxyForwarder
                 clientStream,
                 requestHead.Method,
                 listener,
+                timeouts,
                 cancellationToken);
 
             _metrics.UpstreamSucceeded();
@@ -90,6 +90,10 @@ public sealed class ProxyForwarder
         {
             throw;
         }
+        catch (ProxyTimeoutException exception)
+        {
+            await HandleTimeoutAsync(clientStream, requestHead, upstream, responseStarted, exception, timeouts, cancellationToken);
+        }
         catch (Http1ClientProtocolException exception)
         {
             _metrics.MalformedRequestRejected();
@@ -101,14 +105,22 @@ public sealed class ProxyForwarder
 
             if (!responseStarted)
             {
-                await clientStream.WriteAsync(BadRequestResponse, cancellationToken);
-                _metrics.AddBytesWritten(BadRequestResponse.Length);
+                await ProxyErrorResponses.WriteAsync(
+                    clientStream,
+                    ProxyErrorResponses.BadRequest,
+                    timeouts.DownstreamWriteTimeout,
+                    _metrics,
+                    cancellationToken);
             }
         }
         catch (Http1UpstreamProtocolException exception)
         {
             _metrics.UpstreamMalformedResponse();
             _metrics.UpstreamFailed();
+            if (!responseStarted)
+            {
+                _metrics.UpstreamConnectFailed();
+            }
             _logger.LogWarning(
                 exception,
                 "Upstream response framing failed for {Method} {Target} to upstream {UpstreamName}",
@@ -118,8 +130,13 @@ public sealed class ProxyForwarder
 
             if (!responseStarted)
             {
-                await clientStream.WriteAsync(BadGatewayResponse, cancellationToken);
-                _metrics.AddBytesWritten(BadGatewayResponse.Length);
+                _metrics.ProxyGenerated502();
+                await ProxyErrorResponses.WriteAsync(
+                    clientStream,
+                    ProxyErrorResponses.BadGateway,
+                    timeouts.DownstreamWriteTimeout,
+                    _metrics,
+                    cancellationToken);
             }
         }
         catch (Exception exception) when (exception is SocketException or IOException)
@@ -134,15 +151,72 @@ public sealed class ProxyForwarder
 
             if (!responseStarted)
             {
-                await clientStream.WriteAsync(BadGatewayResponse, cancellationToken);
-                _metrics.AddBytesWritten(BadGatewayResponse.Length);
+                _metrics.ProxyGenerated502();
+                await ProxyErrorResponses.WriteAsync(
+                    clientStream,
+                    ProxyErrorResponses.BadGateway,
+                    timeouts.DownstreamWriteTimeout,
+                    _metrics,
+                    cancellationToken);
             }
+        }
+    }
+
+    private async ValueTask HandleTimeoutAsync(
+        NetworkStream clientStream,
+        Http1RequestHead requestHead,
+        RuntimeUpstream upstream,
+        bool responseStarted,
+        ProxyTimeoutException exception,
+        RuntimeTimeouts timeouts,
+        CancellationToken cancellationToken)
+    {
+        switch (exception.Kind)
+        {
+            case ProxyTimeoutKind.ClientRequestBodyIdle:
+                _metrics.ClientRequestBodyTimedOut();
+                _logger.LogDebug(exception, "Client request body timed out for {Method} {Target}", requestHead.Method, requestHead.Target);
+                if (!responseStarted)
+                {
+                    await ProxyErrorResponses.WriteAsync(clientStream, ProxyErrorResponses.RequestTimeout, timeouts.DownstreamWriteTimeout, _metrics, cancellationToken);
+                }
+                break;
+            case ProxyTimeoutKind.UpstreamConnect:
+                _metrics.UpstreamConnectTimedOut();
+                _metrics.UpstreamFailed();
+                _logger.LogWarning(exception, "Timed out connecting to upstream {UpstreamName}", upstream.Name);
+                if (!responseStarted)
+                {
+                    _metrics.ProxyGenerated504();
+                    await ProxyErrorResponses.WriteAsync(clientStream, ProxyErrorResponses.GatewayTimeout, timeouts.DownstreamWriteTimeout, _metrics, cancellationToken);
+                }
+                break;
+            case ProxyTimeoutKind.UpstreamResponseHead:
+                _metrics.UpstreamResponseHeadTimedOut();
+                _metrics.UpstreamFailed();
+                _logger.LogWarning(exception, "Timed out waiting for upstream response head from {UpstreamName}", upstream.Name);
+                if (!responseStarted)
+                {
+                    _metrics.ProxyGenerated504();
+                    await ProxyErrorResponses.WriteAsync(clientStream, ProxyErrorResponses.GatewayTimeout, timeouts.DownstreamWriteTimeout, _metrics, cancellationToken);
+                }
+                break;
+            case ProxyTimeoutKind.UpstreamResponseBodyIdle:
+                _metrics.UpstreamResponseBodyTimedOut();
+                _metrics.UpstreamFailed();
+                _logger.LogWarning(exception, "Timed out relaying upstream response body from {UpstreamName}", upstream.Name);
+                break;
+            case ProxyTimeoutKind.DownstreamWrite:
+                _metrics.DownstreamWriteTimedOut();
+                _logger.LogDebug(exception, "Downstream write timed out for {Method} {Target}", requestHead.Method, requestHead.Target);
+                break;
         }
     }
 
     private async ValueTask WriteRequestHeadAsync(
         NetworkStream upstreamStream,
         Http1RequestHead requestHead,
+        RuntimeTimeouts timeouts,
         CancellationToken cancellationToken)
     {
         var builder = new StringBuilder();
@@ -176,7 +250,7 @@ public sealed class ProxyForwarder
 
         builder.Append("Connection: close\r\n\r\n");
         var bytes = Encoding.ASCII.GetBytes(builder.ToString());
-        await upstreamStream.WriteAsync(bytes, cancellationToken);
+        await WriteWithTimeoutAsync(upstreamStream, bytes, timeouts.DownstreamWriteTimeout, cancellationToken);
         _metrics.AddBytesWritten(bytes.Length);
     }
 
@@ -186,20 +260,21 @@ public sealed class ProxyForwarder
         ReadOnlyMemory<byte> initialBodyBytes,
         Http1RequestHead requestHead,
         RuntimeListener listener,
+        RuntimeTimeouts timeouts,
         Http1BodyReader? preReadReader,
         byte[]? preReadChunkLine,
         CancellationToken cancellationToken)
     {
-        var reader = preReadReader ?? new Http1BodyReader(clientStream, initialBodyBytes, _metrics);
+        var reader = preReadReader ?? new Http1BodyReader(clientStream, initialBodyBytes, _metrics, timeouts.ClientRequestBodyIdleTimeout, ProxyTimeoutKind.ClientRequestBodyIdle);
         try
         {
             if (requestHead.Framing.Kind == Http1BodyKind.ContentLength)
             {
-                await RelayFixedLengthBodyAsync(reader, upstreamStream, requestHead.Framing.ContentLength.GetValueOrDefault(), listener.ForwardingBufferBytes, cancellationToken);
+                await RelayFixedLengthBodyAsync(reader, upstreamStream, requestHead.Framing.ContentLength.GetValueOrDefault(), listener.ForwardingBufferBytes, timeouts.DownstreamWriteTimeout, cancellationToken);
             }
             else if (requestHead.Framing.Kind == Http1BodyKind.Chunked)
             {
-                await RelayChunkedBodyAsync(reader, upstreamStream, listener, preReadChunkLine, cancellationToken);
+                await RelayChunkedBodyAsync(reader, upstreamStream, listener, timeouts.DownstreamWriteTimeout, preReadChunkLine, cancellationToken);
             }
         }
         catch
@@ -214,6 +289,7 @@ public sealed class ProxyForwarder
         NetworkStream clientStream,
         string requestMethod,
         RuntimeListener listener,
+        RuntimeTimeouts timeouts,
         CancellationToken cancellationToken)
     {
         ReadOnlyMemory<byte> initialBodyBytes = ReadOnlyMemory<byte>.Empty;
@@ -221,7 +297,7 @@ public sealed class ProxyForwarder
 
         while (true)
         {
-            var responseHeadRead = await ReadResponseHeadAsync(upstreamStream, listener.MaxResponseHeadBytes, cancellationToken);
+            var responseHeadRead = await ReadResponseHeadAsync(upstreamStream, listener.MaxResponseHeadBytes, timeouts.UpstreamResponseHeadTimeout, cancellationToken);
             if (responseHeadRead.HeadLength <= 0)
             {
                 throw new Http1UpstreamProtocolException("Upstream closed before a complete response head was received.");
@@ -236,13 +312,13 @@ public sealed class ProxyForwarder
                 throw new Http1UpstreamProtocolException($"Upstream response head was invalid: {error}.");
             }
 
-            await WriteResponseHeadAsync(clientStream, responseHead, cancellationToken);
+            await WriteResponseHeadAsync(clientStream, responseHead, timeouts, cancellationToken);
             responseStarted = true;
             initialBodyBytes = responseHeadRead.InitialBodyBytes;
 
             if (!Http1ResponseParser.IsInformational(responseHead))
             {
-                await RelayResponseBodyAsync(upstreamStream, clientStream, initialBodyBytes, responseHead, listener, cancellationToken);
+                await RelayResponseBodyAsync(upstreamStream, clientStream, initialBodyBytes, responseHead, listener, timeouts, cancellationToken);
                 return responseStarted;
             }
         }
@@ -251,6 +327,7 @@ public sealed class ProxyForwarder
     private async ValueTask WriteResponseHeadAsync(
         NetworkStream clientStream,
         Http1ResponseHead responseHead,
+        RuntimeTimeouts timeouts,
         CancellationToken cancellationToken)
     {
         var builder = new StringBuilder();
@@ -284,7 +361,7 @@ public sealed class ProxyForwarder
 
         builder.Append("Connection: close\r\n\r\n");
         var bytes = Encoding.ASCII.GetBytes(builder.ToString());
-        await clientStream.WriteAsync(bytes, cancellationToken);
+        await WriteWithTimeoutAsync(clientStream, bytes, timeouts.DownstreamWriteTimeout, cancellationToken);
         _metrics.AddBytesWritten(bytes.Length);
     }
 
@@ -294,27 +371,29 @@ public sealed class ProxyForwarder
         ReadOnlyMemory<byte> initialBodyBytes,
         Http1ResponseHead responseHead,
         RuntimeListener listener,
+        RuntimeTimeouts timeouts,
         CancellationToken cancellationToken)
     {
-        var reader = new Http1BodyReader(upstreamStream, initialBodyBytes, _metrics);
+        var reader = new Http1BodyReader(upstreamStream, initialBodyBytes, _metrics, timeouts.UpstreamResponseBodyIdleTimeout, ProxyTimeoutKind.UpstreamResponseBodyIdle);
         try
         {
             if (responseHead.Framing.Kind == Http1BodyKind.ContentLength)
             {
-                await RelayFixedLengthBodyAsync(reader, clientStream, responseHead.Framing.ContentLength.GetValueOrDefault(), listener.ForwardingBufferBytes, cancellationToken);
+                await RelayFixedLengthBodyAsync(reader, clientStream, responseHead.Framing.ContentLength.GetValueOrDefault(), listener.ForwardingBufferBytes, timeouts.DownstreamWriteTimeout, cancellationToken);
             }
             else if (responseHead.Framing.Kind == Http1BodyKind.Chunked)
             {
-                await RelayChunkedBodyAsync(reader, clientStream, listener, initialChunkLine: null, cancellationToken);
+                await RelayChunkedBodyAsync(reader, clientStream, listener, timeouts.DownstreamWriteTimeout, null, cancellationToken);
             }
             else if (responseHead.Framing.Kind == Http1BodyKind.CloseDelimited)
             {
-                await RelayCloseDelimitedBodyAsync(reader, clientStream, listener.ForwardingBufferBytes, cancellationToken);
+                await RelayCloseDelimitedBodyAsync(reader, clientStream, listener.ForwardingBufferBytes, timeouts.DownstreamWriteTimeout, cancellationToken);
             }
         }
         catch
         {
             _metrics.UpstreamBodyRelayFailed();
+            _metrics.UpstreamPrematureDisconnect();
             throw;
         }
     }
@@ -324,6 +403,7 @@ public sealed class ProxyForwarder
         NetworkStream destination,
         long contentLength,
         int bufferSize,
+        TimeSpan writeTimeout,
         CancellationToken cancellationToken)
     {
         var remaining = contentLength;
@@ -339,7 +419,7 @@ public sealed class ProxyForwarder
                     throw new IOException("Source closed before the declared Content-Length body was complete.");
                 }
 
-                await destination.WriteAsync(buffer.AsMemory(0, bytesRead), cancellationToken);
+                await WriteWithTimeoutAsync(destination, buffer.AsMemory(0, bytesRead), writeTimeout, cancellationToken);
                 _metrics.AddBytesWritten(bytesRead);
                 remaining -= bytesRead;
             }
@@ -354,6 +434,7 @@ public sealed class ProxyForwarder
         Http1BodyReader reader,
         NetworkStream destination,
         int bufferSize,
+        TimeSpan writeTimeout,
         CancellationToken cancellationToken)
     {
         var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
@@ -367,7 +448,7 @@ public sealed class ProxyForwarder
                     break;
                 }
 
-                await destination.WriteAsync(buffer.AsMemory(0, bytesRead), cancellationToken);
+                await WriteWithTimeoutAsync(destination, buffer.AsMemory(0, bytesRead), writeTimeout, cancellationToken);
                 _metrics.AddBytesWritten(bytesRead);
             }
         }
@@ -381,6 +462,7 @@ public sealed class ProxyForwarder
         Http1BodyReader reader,
         NetworkStream destination,
         RuntimeListener listener,
+        TimeSpan writeTimeout,
         byte[]? initialChunkLine,
         CancellationToken cancellationToken)
     {
@@ -393,23 +475,23 @@ public sealed class ProxyForwarder
                 throw new Http1ClientProtocolException("Invalid chunk-size line.");
             }
 
-            await destination.WriteAsync(chunkLine, cancellationToken);
+            await WriteWithTimeoutAsync(destination, chunkLine, writeTimeout, cancellationToken);
             _metrics.AddBytesWritten(chunkLine.Length);
 
             if (chunkSize == 0)
             {
-                await RelayTrailerSectionAsync(reader, destination, listener.MaxChunkLineBytes, cancellationToken);
+                await RelayTrailerSectionAsync(reader, destination, listener.MaxChunkLineBytes, writeTimeout, cancellationToken);
                 return;
             }
 
-            await RelayFixedLengthBodyAsync(reader, destination, chunkSize, listener.ForwardingBufferBytes, cancellationToken);
+            await RelayFixedLengthBodyAsync(reader, destination, chunkSize, listener.ForwardingBufferBytes, writeTimeout, cancellationToken);
             var crlf = await reader.ReadExactAsync(2, cancellationToken);
             if (crlf.AsSpan()[0] != (byte)'\r' || crlf.AsSpan()[1] != (byte)'\n')
             {
                 throw new Http1ClientProtocolException("Chunk data was not followed by CRLF.");
             }
 
-            await destination.WriteAsync(crlf, cancellationToken);
+            await WriteWithTimeoutAsync(destination, crlf, writeTimeout, cancellationToken);
             _metrics.AddBytesWritten(crlf.Length);
             chunkLine = null;
         }
@@ -419,12 +501,13 @@ public sealed class ProxyForwarder
         Http1BodyReader reader,
         NetworkStream destination,
         int maxLineBytes,
+        TimeSpan writeTimeout,
         CancellationToken cancellationToken)
     {
         while (true)
         {
             var line = await reader.ReadLineWithCrlfAsync(maxLineBytes, cancellationToken);
-            await destination.WriteAsync(line, cancellationToken);
+            await WriteWithTimeoutAsync(destination, line, writeTimeout, cancellationToken);
             _metrics.AddBytesWritten(line.Length);
 
             if (line.Length == 2)
@@ -443,6 +526,7 @@ public sealed class ProxyForwarder
     private async ValueTask<Http1HeadReadResult> ReadResponseHeadAsync(
         NetworkStream upstreamStream,
         int maxResponseHeadBytes,
+        TimeSpan responseHeadTimeout,
         CancellationToken cancellationToken)
     {
         var buffer = ArrayPool<byte>.Shared.Rent(maxResponseHeadBytes);
@@ -452,8 +536,12 @@ public sealed class ProxyForwarder
         {
             while (totalBytesRead < maxResponseHeadBytes)
             {
-                var bytesRead = await upstreamStream.ReadAsync(
-                    buffer.AsMemory(totalBytesRead, maxResponseHeadBytes - totalBytesRead),
+                var bytesRead = await ProxyTimeoutPolicy.RunAsync(
+                    async timeoutToken => await upstreamStream.ReadAsync(
+                        buffer.AsMemory(totalBytesRead, maxResponseHeadBytes - totalBytesRead),
+                        timeoutToken),
+                    responseHeadTimeout,
+                    ProxyTimeoutKind.UpstreamResponseHead,
                     cancellationToken);
 
                 if (bytesRead == 0)
@@ -516,6 +604,22 @@ public sealed class ProxyForwarder
         return true;
     }
 
+    private static async ValueTask WriteWithTimeoutAsync(
+        Stream destination,
+        ReadOnlyMemory<byte> bytes,
+        TimeSpan timeout,
+        CancellationToken cancellationToken)
+    {
+        await ProxyTimeoutPolicy.RunAsync(
+            async timeoutToken =>
+            {
+                await destination.WriteAsync(bytes, timeoutToken);
+            },
+            timeout,
+            ProxyTimeoutKind.DownstreamWrite,
+            cancellationToken);
+    }
+
     private static int HexValue(byte value)
     {
         if (value is >= (byte)'0' and <= (byte)'9')
@@ -563,13 +667,22 @@ public sealed class ProxyForwarder
     {
         private readonly NetworkStream _stream;
         private readonly ProxyMetrics _metrics;
+        private readonly TimeSpan _readTimeout;
+        private readonly ProxyTimeoutKind _timeoutKind;
         private ReadOnlyMemory<byte> _initialBytes;
 
-        public Http1BodyReader(NetworkStream stream, ReadOnlyMemory<byte> initialBytes, ProxyMetrics metrics)
+        public Http1BodyReader(
+            NetworkStream stream,
+            ReadOnlyMemory<byte> initialBytes,
+            ProxyMetrics metrics,
+            TimeSpan readTimeout,
+            ProxyTimeoutKind timeoutKind)
         {
             _stream = stream;
             _initialBytes = initialBytes;
             _metrics = metrics;
+            _readTimeout = readTimeout;
+            _timeoutKind = timeoutKind;
         }
 
         public async ValueTask<int> ReadAsync(Memory<byte> destination, CancellationToken cancellationToken)
@@ -582,7 +695,11 @@ public sealed class ProxyForwarder
                 return bytesToCopy;
             }
 
-            var bytesRead = await _stream.ReadAsync(destination, cancellationToken);
+            var bytesRead = await ProxyTimeoutPolicy.RunAsync(
+                async timeoutToken => await _stream.ReadAsync(destination, timeoutToken),
+                _readTimeout,
+                _timeoutKind,
+                cancellationToken);
             _metrics.AddBytesRead(bytesRead);
             return bytesRead;
         }

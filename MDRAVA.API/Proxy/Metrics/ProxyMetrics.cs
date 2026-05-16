@@ -15,6 +15,17 @@ public sealed class ProxyMetrics
     private long _upstreamMalformedResponses;
     private long _clientBodyRelayFailures;
     private long _upstreamBodyRelayFailures;
+    private long _clientRequestHeadTimeouts;
+    private long _clientRequestBodyTimeouts;
+    private long _upstreamConnectFailures;
+    private long _upstreamConnectTimeouts;
+    private long _upstreamResponseHeadTimeouts;
+    private long _upstreamResponseBodyTimeouts;
+    private long _upstreamPrematureDisconnects;
+    private long _clientPrematureDisconnects;
+    private long _proxyGenerated502Responses;
+    private long _proxyGenerated504Responses;
+    private long _downstreamWriteTimeouts;
 
     public void ConnectionAccepted()
     {
@@ -40,6 +51,11 @@ public sealed class ProxyMetrics
     public void UpstreamFailed()
     {
         Interlocked.Increment(ref _upstreamFailures);
+    }
+
+    public void UpstreamConnectFailed()
+    {
+        Interlocked.Increment(ref _upstreamConnectFailures);
     }
 
     public void AddBytesRead(long bytes)
@@ -88,6 +104,26 @@ public sealed class ProxyMetrics
         Interlocked.Increment(ref _upstreamBodyRelayFailures);
     }
 
+    public void ClientRequestHeadTimedOut() => Interlocked.Increment(ref _clientRequestHeadTimeouts);
+
+    public void ClientRequestBodyTimedOut() => Interlocked.Increment(ref _clientRequestBodyTimeouts);
+
+    public void UpstreamConnectTimedOut() => Interlocked.Increment(ref _upstreamConnectTimeouts);
+
+    public void UpstreamResponseHeadTimedOut() => Interlocked.Increment(ref _upstreamResponseHeadTimeouts);
+
+    public void UpstreamResponseBodyTimedOut() => Interlocked.Increment(ref _upstreamResponseBodyTimeouts);
+
+    public void UpstreamPrematureDisconnect() => Interlocked.Increment(ref _upstreamPrematureDisconnects);
+
+    public void ClientPrematureDisconnect() => Interlocked.Increment(ref _clientPrematureDisconnects);
+
+    public void ProxyGenerated502() => Interlocked.Increment(ref _proxyGenerated502Responses);
+
+    public void ProxyGenerated504() => Interlocked.Increment(ref _proxyGenerated504Responses);
+
+    public void DownstreamWriteTimedOut() => Interlocked.Increment(ref _downstreamWriteTimeouts);
+
     public ProxyMetricsSnapshot Snapshot()
     {
         return new ProxyMetricsSnapshot(
@@ -103,6 +139,17 @@ public sealed class ProxyMetrics
             Interlocked.Read(ref _rejectedUnsupportedRequestFraming),
             Interlocked.Read(ref _upstreamMalformedResponses),
             Interlocked.Read(ref _clientBodyRelayFailures),
-            Interlocked.Read(ref _upstreamBodyRelayFailures));
+            Interlocked.Read(ref _upstreamBodyRelayFailures),
+            Interlocked.Read(ref _clientRequestHeadTimeouts),
+            Interlocked.Read(ref _clientRequestBodyTimeouts),
+            Interlocked.Read(ref _upstreamConnectFailures),
+            Interlocked.Read(ref _upstreamConnectTimeouts),
+            Interlocked.Read(ref _upstreamResponseHeadTimeouts),
+            Interlocked.Read(ref _upstreamResponseBodyTimeouts),
+            Interlocked.Read(ref _upstreamPrematureDisconnects),
+            Interlocked.Read(ref _clientPrematureDisconnects),
+            Interlocked.Read(ref _proxyGenerated502Responses),
+            Interlocked.Read(ref _proxyGenerated504Responses),
+            Interlocked.Read(ref _downstreamWriteTimeouts));
     }
 }

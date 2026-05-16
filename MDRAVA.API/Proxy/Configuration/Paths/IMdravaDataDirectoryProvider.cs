@@ -6,5 +6,7 @@ public interface IMdravaDataDirectoryProvider
 
     string GetProxyConfigDirectory();
 
+    string GetProxyOperationalConfigPath();
+
     string GetSitesConfigDirectory();
 }

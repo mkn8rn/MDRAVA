@@ -4,6 +4,7 @@ public static class ProxyConfigurationMapper
 {
     public static ProxyConfigurationSnapshot ToRuntimeSnapshot(
         ProxyOptions options,
+        ProxyOperationalOptions operationalOptions,
         int version,
         DateTimeOffset loadedAtUtc,
         string sourceDirectory,
@@ -35,7 +36,15 @@ public static class ProxyConfigurationMapper
                     .ToArray()))
             .ToArray();
 
-        return new ProxyConfigurationSnapshot(version, loadedAtUtc, sourceDirectory, sourceFiles, listeners, routes);
+        var timeouts = new RuntimeTimeouts(
+            TimeSpan.FromMilliseconds(operationalOptions.Timeouts.ClientRequestHeadTimeoutMs),
+            TimeSpan.FromMilliseconds(operationalOptions.Timeouts.ClientRequestBodyIdleTimeoutMs),
+            TimeSpan.FromMilliseconds(operationalOptions.Timeouts.UpstreamConnectTimeoutMs),
+            TimeSpan.FromMilliseconds(operationalOptions.Timeouts.UpstreamResponseHeadTimeoutMs),
+            TimeSpan.FromMilliseconds(operationalOptions.Timeouts.UpstreamResponseBodyIdleTimeoutMs),
+            TimeSpan.FromMilliseconds(operationalOptions.Timeouts.DownstreamWriteTimeoutMs));
+
+        return new ProxyConfigurationSnapshot(version, loadedAtUtc, sourceDirectory, sourceFiles, timeouts, listeners, routes);
     }
 
     public static ProxyConfigurationProjection ToProjection(ProxyConfigurationSnapshot snapshot)
@@ -45,6 +54,7 @@ public static class ProxyConfigurationMapper
             snapshot.LoadedAtUtc,
             snapshot.SourceDirectory,
             snapshot.SourceFiles,
+            snapshot.Timeouts,
             snapshot.Listeners,
             snapshot.Routes);
     }

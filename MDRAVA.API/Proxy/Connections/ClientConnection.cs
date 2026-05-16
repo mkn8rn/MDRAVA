@@ -20,9 +20,6 @@ public sealed class ClientConnection
     private static readonly byte[] RequestHeaderFieldsTooLargeResponse =
         "HTTP/1.1 431 Request Header Fields Too Large\r\nConnection: close\r\nContent-Length: 22\r\nContent-Type: text/plain\r\n\r\nRequest Head Too Large"u8.ToArray();
 
-    private static readonly byte[] MethodNotAllowedResponse =
-        "HTTP/1.1 405 Method Not Allowed\r\nConnection: close\r\nAllow: GET, HEAD\r\nContent-Length: 18\r\nContent-Type: text/plain\r\n\r\nMethod Not Allowed"u8.ToArray();
-
     private static readonly byte[] NotImplementedResponse =
         "HTTP/1.1 501 Not Implemented\r\nConnection: close\r\nContent-Length: 15\r\nContent-Type: text/plain\r\n\r\nNot Implemented"u8.ToArray();
 
@@ -64,7 +61,11 @@ public sealed class ClientConnection
 
         try
         {
-            var requestHeadRead = await ReadRequestHeadAsync(clientStream, requestHeadBuffer, cancellationToken);
+            var requestHeadRead = await ProxyTimeoutPolicy.RunAsync(
+                timeoutToken => ReadRequestHeadAsync(clientStream, requestHeadBuffer, timeoutToken),
+                _configurationSnapshot.Timeouts.ClientRequestHeadTimeout,
+                ProxyTimeoutKind.ClientRequestHead,
+                cancellationToken);
             if (requestHeadRead.HeadLength == EmptyRequestHead)
             {
                 return;
@@ -108,7 +109,7 @@ public sealed class ClientConnection
             if (IsUnsupportedConnectionMethod(requestHead.Method) || HasUpgradeRequest(requestHead.Headers))
             {
                 _metrics.UnsupportedRequestFramingRejected();
-                await WriteResponseAsync(clientStream, MethodNotAllowedResponse, cancellationToken);
+                await WriteResponseAsync(clientStream, NotImplementedResponse, cancellationToken);
                 return;
             }
 
@@ -125,7 +126,24 @@ public sealed class ClientConnection
                 requestHead,
                 routeMatch.Upstream,
                 _listener,
+                _configurationSnapshot.Timeouts,
                 cancellationToken);
+        }
+        catch (ProxyTimeoutException exception) when (exception.Kind == ProxyTimeoutKind.ClientRequestHead)
+        {
+            _metrics.ClientRequestHeadTimedOut();
+            _logger.LogDebug(exception, "Client timed out before sending a complete request head.");
+            await WriteResponseAsync(clientStream, ProxyErrorResponses.RequestTimeout, cancellationToken);
+        }
+        catch (ProxyTimeoutException exception) when (exception.Kind == ProxyTimeoutKind.DownstreamWrite)
+        {
+            _metrics.DownstreamWriteTimedOut();
+            _logger.LogDebug(exception, "Timed out while writing a generated response to the client.");
+        }
+        catch (IOException exception) when (IsClientDisconnect(exception))
+        {
+            _metrics.ClientPrematureDisconnect();
+            _logger.LogDebug(exception, "Client disconnected during request processing.");
         }
         finally
         {
@@ -174,8 +192,12 @@ public sealed class ClientConnection
         ReadOnlyMemory<byte> response,
         CancellationToken cancellationToken)
     {
-        await clientStream.WriteAsync(response, cancellationToken);
-        _metrics.AddBytesWritten(response.Length);
+        await ProxyErrorResponses.WriteAsync(
+            clientStream,
+            response,
+            _configurationSnapshot.Timeouts.DownstreamWriteTimeout,
+            _metrics,
+            cancellationToken);
     }
 
     private static bool IsUnsupportedConnectionMethod(string method)
@@ -202,5 +224,10 @@ public sealed class ClientConnection
         }
 
         return -1;
+    }
+
+    private static bool IsClientDisconnect(IOException exception)
+    {
+        return exception.InnerException is SocketException;
     }
 }

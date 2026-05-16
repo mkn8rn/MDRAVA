@@ -5,5 +5,6 @@ public sealed record ProxyConfigurationProjection(
     DateTimeOffset LoadedAtUtc,
     string SourceDirectory,
     IReadOnlyList<string> SourceFiles,
+    RuntimeTimeouts Timeouts,
     IReadOnlyList<RuntimeListener> Listeners,
     IReadOnlyList<RuntimeRoute> Routes);
