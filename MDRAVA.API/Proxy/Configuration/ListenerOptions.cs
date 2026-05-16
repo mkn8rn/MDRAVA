@@ -10,6 +10,12 @@ public sealed class ListenerOptions
 
     public bool Enabled { get; init; } = true;
 
+    public string Transport { get; init; } = "http";
+
+    public string? DefaultCertificateId { get; init; }
+
+    public List<SniCertificateOptions> SniCertificates { get; init; } = [];
+
     public int Backlog { get; init; } = 512;
 
     public int MaxRequestHeadBytes { get; init; } = 32 * 1024;

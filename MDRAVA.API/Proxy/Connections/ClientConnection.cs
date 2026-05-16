@@ -5,6 +5,7 @@ using MDRAVA.API.Proxy.Forwarding;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Protocol;
 using MDRAVA.API.Proxy.Routing;
+using MDRAVA.API.Proxy.Tls;
 
 namespace MDRAVA.API.Proxy.Connections;
 
@@ -31,6 +32,7 @@ public sealed class ClientConnection
     private readonly RuntimeListener _listener;
     private readonly IRouteMatcher _routeMatcher;
     private readonly ProxyForwarder _forwarder;
+    private readonly TlsConnectionAuthenticator _tlsAuthenticator;
     private readonly ProxyMetrics _metrics;
     private readonly ILogger<ClientConnection> _logger;
 
@@ -40,6 +42,7 @@ public sealed class ClientConnection
         RuntimeListener listener,
         IRouteMatcher routeMatcher,
         ProxyForwarder forwarder,
+        TlsConnectionAuthenticator tlsAuthenticator,
         ProxyMetrics metrics,
         ILogger<ClientConnection> logger)
     {
@@ -48,6 +51,7 @@ public sealed class ClientConnection
         _listener = listener;
         _routeMatcher = routeMatcher;
         _forwarder = forwarder;
+        _tlsAuthenticator = tlsAuthenticator;
         _metrics = metrics;
         _logger = logger;
     }
@@ -56,7 +60,24 @@ public sealed class ClientConnection
     {
         _socket.NoDelay = true;
 
-        using var clientStream = new NetworkStream(_socket, ownsSocket: true);
+        var transportStream = new NetworkStream(_socket, ownsSocket: true);
+        Stream clientStream = transportStream;
+        if (_listener.Transport == RuntimeListenerTransport.Https)
+        {
+            var tlsStream = await _tlsAuthenticator.AuthenticateAsync(
+                transportStream,
+                _configurationSnapshot,
+                _listener,
+                cancellationToken);
+            if (tlsStream is null)
+            {
+                return;
+            }
+
+            clientStream = tlsStream;
+        }
+
+        await using var ownedClientStream = clientStream;
         var requestHeadBuffer = ArrayPool<byte>.Shared.Rent(_listener.MaxRequestHeadBytes);
 
         try
@@ -152,7 +173,7 @@ public sealed class ClientConnection
     }
 
     private async ValueTask<Http1HeadReadResult> ReadRequestHeadAsync(
-        NetworkStream clientStream,
+        Stream clientStream,
         byte[] requestHeadBuffer,
         CancellationToken cancellationToken)
     {
@@ -188,7 +209,7 @@ public sealed class ClientConnection
     }
 
     private async ValueTask WriteResponseAsync(
-        NetworkStream clientStream,
+        Stream clientStream,
         ReadOnlyMemory<byte> response,
         CancellationToken cancellationToken)
     {

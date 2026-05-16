@@ -24,4 +24,9 @@ public sealed record ProxyMetricsSnapshot(
     long ClientPrematureDisconnects,
     long ProxyGenerated502Responses,
     long ProxyGenerated504Responses,
-    long DownstreamWriteTimeouts);
+    long DownstreamWriteTimeouts,
+    long TlsHandshakeAttempts,
+    long TlsHandshakeSuccesses,
+    long TlsHandshakeFailures,
+    long TlsHandshakeTimeouts,
+    long TlsNoCertificateForSniFailures);

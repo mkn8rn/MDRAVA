@@ -14,6 +14,8 @@ public static class ProxyOperationalOptionsValidator
         ValidateTimeout(failures, nameof(options.Timeouts.UpstreamResponseHeadTimeoutMs), options.Timeouts.UpstreamResponseHeadTimeoutMs);
         ValidateTimeout(failures, nameof(options.Timeouts.UpstreamResponseBodyIdleTimeoutMs), options.Timeouts.UpstreamResponseBodyIdleTimeoutMs);
         ValidateTimeout(failures, nameof(options.Timeouts.DownstreamWriteTimeoutMs), options.Timeouts.DownstreamWriteTimeoutMs);
+        ValidateTimeout(failures, nameof(options.Timeouts.TlsHandshakeTimeoutMs), options.Timeouts.TlsHandshakeTimeoutMs);
+        ValidateCertificates(failures, options.Certificates);
         return failures;
     }
 
@@ -22,6 +24,41 @@ public static class ProxyOperationalOptionsValidator
         if (value is < MinimumTimeoutMs or > MaximumTimeoutMs)
         {
             failures.Add($"Proxy operational timeout {name} must be between {MinimumTimeoutMs} and {MaximumTimeoutMs} milliseconds.");
+        }
+    }
+
+    private static void ValidateCertificates(List<string> failures, IReadOnlyList<CertificateOptions> certificates)
+    {
+        HashSet<string> ids = new(StringComparer.OrdinalIgnoreCase);
+        for (var index = 0; index < certificates.Count; index++)
+        {
+            var certificate = certificates[index];
+            var prefix = $"Proxy:Certificates:{index}";
+
+            if (string.IsNullOrWhiteSpace(certificate.Id))
+            {
+                failures.Add($"{prefix}:Id is required.");
+            }
+            else if (!ids.Add(certificate.Id))
+            {
+                failures.Add($"{prefix}:Id '{certificate.Id}' is duplicated.");
+            }
+
+            if (!string.Equals(certificate.Format, "pfx", StringComparison.OrdinalIgnoreCase))
+            {
+                failures.Add($"{prefix}:Format must be 'pfx' for Phase 5.");
+            }
+
+            if (string.IsNullOrWhiteSpace(certificate.Path))
+            {
+                failures.Add($"{prefix}:Path is required.");
+            }
+
+            if (!string.IsNullOrEmpty(certificate.Password)
+                && !string.IsNullOrWhiteSpace(certificate.PasswordEnvironmentVariable))
+            {
+                failures.Add($"{prefix} must not set both Password and PasswordEnvironmentVariable.");
+            }
         }
     }
 }

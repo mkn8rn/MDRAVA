@@ -13,4 +13,6 @@ public sealed class ProxyTimeoutOptions
     public int UpstreamResponseBodyIdleTimeoutMs { get; init; } = 30_000;
 
     public int DownstreamWriteTimeoutMs { get; init; } = 30_000;
+
+    public int TlsHandshakeTimeoutMs { get; init; } = 10_000;
 }

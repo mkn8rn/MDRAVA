@@ -28,7 +28,7 @@ public sealed class ProxyForwarder
     }
 
     public async ValueTask ForwardAsync(
-        NetworkStream clientStream,
+        Stream clientStream,
         Http1HeadReadResult requestHeadRead,
         Http1RequestHead requestHead,
         RuntimeUpstream upstream,
@@ -163,7 +163,7 @@ public sealed class ProxyForwarder
     }
 
     private async ValueTask HandleTimeoutAsync(
-        NetworkStream clientStream,
+        Stream clientStream,
         Http1RequestHead requestHead,
         RuntimeUpstream upstream,
         bool responseStarted,
@@ -214,7 +214,7 @@ public sealed class ProxyForwarder
     }
 
     private async ValueTask WriteRequestHeadAsync(
-        NetworkStream upstreamStream,
+        Stream upstreamStream,
         Http1RequestHead requestHead,
         RuntimeTimeouts timeouts,
         CancellationToken cancellationToken)
@@ -255,8 +255,8 @@ public sealed class ProxyForwarder
     }
 
     private async ValueTask RelayRequestBodyAsync(
-        NetworkStream clientStream,
-        NetworkStream upstreamStream,
+        Stream clientStream,
+        Stream upstreamStream,
         ReadOnlyMemory<byte> initialBodyBytes,
         Http1RequestHead requestHead,
         RuntimeListener listener,
@@ -285,8 +285,8 @@ public sealed class ProxyForwarder
     }
 
     private async ValueTask<bool> RelayResponseAsync(
-        NetworkStream upstreamStream,
-        NetworkStream clientStream,
+        Stream upstreamStream,
+        Stream clientStream,
         string requestMethod,
         RuntimeListener listener,
         RuntimeTimeouts timeouts,
@@ -325,7 +325,7 @@ public sealed class ProxyForwarder
     }
 
     private async ValueTask WriteResponseHeadAsync(
-        NetworkStream clientStream,
+        Stream clientStream,
         Http1ResponseHead responseHead,
         RuntimeTimeouts timeouts,
         CancellationToken cancellationToken)
@@ -366,8 +366,8 @@ public sealed class ProxyForwarder
     }
 
     private async ValueTask RelayResponseBodyAsync(
-        NetworkStream upstreamStream,
-        NetworkStream clientStream,
+        Stream upstreamStream,
+        Stream clientStream,
         ReadOnlyMemory<byte> initialBodyBytes,
         Http1ResponseHead responseHead,
         RuntimeListener listener,
@@ -400,7 +400,7 @@ public sealed class ProxyForwarder
 
     private async ValueTask RelayFixedLengthBodyAsync(
         Http1BodyReader reader,
-        NetworkStream destination,
+        Stream destination,
         long contentLength,
         int bufferSize,
         TimeSpan writeTimeout,
@@ -432,7 +432,7 @@ public sealed class ProxyForwarder
 
     private async ValueTask RelayCloseDelimitedBodyAsync(
         Http1BodyReader reader,
-        NetworkStream destination,
+        Stream destination,
         int bufferSize,
         TimeSpan writeTimeout,
         CancellationToken cancellationToken)
@@ -460,7 +460,7 @@ public sealed class ProxyForwarder
 
     private async ValueTask RelayChunkedBodyAsync(
         Http1BodyReader reader,
-        NetworkStream destination,
+        Stream destination,
         RuntimeListener listener,
         TimeSpan writeTimeout,
         byte[]? initialChunkLine,
@@ -499,7 +499,7 @@ public sealed class ProxyForwarder
 
     private async ValueTask RelayTrailerSectionAsync(
         Http1BodyReader reader,
-        NetworkStream destination,
+        Stream destination,
         int maxLineBytes,
         TimeSpan writeTimeout,
         CancellationToken cancellationToken)
@@ -524,7 +524,7 @@ public sealed class ProxyForwarder
     }
 
     private async ValueTask<Http1HeadReadResult> ReadResponseHeadAsync(
-        NetworkStream upstreamStream,
+        Stream upstreamStream,
         int maxResponseHeadBytes,
         TimeSpan responseHeadTimeout,
         CancellationToken cancellationToken)
@@ -665,14 +665,14 @@ public sealed class ProxyForwarder
 
     private sealed class Http1BodyReader
     {
-        private readonly NetworkStream _stream;
+        private readonly Stream _stream;
         private readonly ProxyMetrics _metrics;
         private readonly TimeSpan _readTimeout;
         private readonly ProxyTimeoutKind _timeoutKind;
         private ReadOnlyMemory<byte> _initialBytes;
 
         public Http1BodyReader(
-            NetworkStream stream,
+            Stream stream,
             ReadOnlyMemory<byte> initialBytes,
             ProxyMetrics metrics,
             TimeSpan readTimeout,

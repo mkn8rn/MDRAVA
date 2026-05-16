@@ -80,6 +80,7 @@ internal static class RouteMatcherTests
         return ProxyConfigurationMapper.ToRuntimeSnapshot(
             options,
             new ProxyOperationalOptions(),
+            new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),
             1,
             DateTimeOffset.UnixEpoch,
             "test",

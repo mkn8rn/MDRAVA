@@ -6,6 +6,7 @@ using MDRAVA.API.Proxy.Configuration.Storage;
 using MDRAVA.API.Proxy.Forwarding;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Routing;
+using MDRAVA.API.Proxy.Tls;
 
 namespace MDRAVA.API.Proxy.Hosting;
 
@@ -14,6 +15,7 @@ public sealed class ProxyListenerService : BackgroundService
     private readonly IProxyConfigurationStore _configurationStore;
     private readonly IRouteMatcher _routeMatcher;
     private readonly ProxyForwarder _forwarder;
+    private readonly TlsConnectionAuthenticator _tlsAuthenticator;
     private readonly ProxyMetrics _metrics;
     private readonly ProxyRuntimeState _runtimeState;
     private readonly ILogger<ProxyListenerService> _logger;
@@ -24,6 +26,7 @@ public sealed class ProxyListenerService : BackgroundService
         IProxyConfigurationStore configurationStore,
         IRouteMatcher routeMatcher,
         ProxyForwarder forwarder,
+        TlsConnectionAuthenticator tlsAuthenticator,
         ProxyMetrics metrics,
         ProxyRuntimeState runtimeState,
         ILogger<ProxyListenerService> logger,
@@ -32,6 +35,7 @@ public sealed class ProxyListenerService : BackgroundService
         _configurationStore = configurationStore;
         _routeMatcher = routeMatcher;
         _forwarder = forwarder;
+        _tlsAuthenticator = tlsAuthenticator;
         _metrics = metrics;
         _runtimeState = runtimeState;
         _logger = logger;
@@ -91,7 +95,8 @@ public sealed class ProxyListenerService : BackgroundService
 
                 _metrics.ConnectionAccepted();
                 var requestSnapshot = _configurationStore.Snapshot;
-                _ = RunConnectionAsync(clientSocket, requestSnapshot, listener, stoppingToken);
+                var requestListener = ResolveRequestListener(requestSnapshot, listener);
+                _ = RunConnectionAsync(clientSocket, requestSnapshot, requestListener, stoppingToken);
             }
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -130,10 +135,11 @@ public sealed class ProxyListenerService : BackgroundService
                 clientSocket,
                 snapshot,
                 listener,
-                _routeMatcher,
-                _forwarder,
-                _metrics,
-                _connectionLogger);
+            _routeMatcher,
+            _forwarder,
+            _tlsAuthenticator,
+            _metrics,
+            _connectionLogger);
 
             await connection.RunAsync(cancellationToken);
         }
@@ -152,5 +158,18 @@ public sealed class ProxyListenerService : BackgroundService
         {
             _metrics.ConnectionClosed();
         }
+    }
+
+    private static RuntimeListener ResolveRequestListener(
+        ProxyConfigurationSnapshot requestSnapshot,
+        RuntimeListener boundListener)
+    {
+        var current = requestSnapshot.Listeners.FirstOrDefault(listener =>
+            string.Equals(listener.Name, boundListener.Name, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(listener.Address, boundListener.Address, StringComparison.OrdinalIgnoreCase)
+            && listener.Port == boundListener.Port
+            && listener.Transport == boundListener.Transport);
+
+        return current ?? boundListener;
     }
 }

@@ -26,6 +26,11 @@ public sealed class ProxyMetrics
     private long _proxyGenerated502Responses;
     private long _proxyGenerated504Responses;
     private long _downstreamWriteTimeouts;
+    private long _tlsHandshakeAttempts;
+    private long _tlsHandshakeSuccesses;
+    private long _tlsHandshakeFailures;
+    private long _tlsHandshakeTimeouts;
+    private long _tlsNoCertificateForSniFailures;
 
     public void ConnectionAccepted()
     {
@@ -124,6 +129,16 @@ public sealed class ProxyMetrics
 
     public void DownstreamWriteTimedOut() => Interlocked.Increment(ref _downstreamWriteTimeouts);
 
+    public void TlsHandshakeAttempted() => Interlocked.Increment(ref _tlsHandshakeAttempts);
+
+    public void TlsHandshakeSucceeded() => Interlocked.Increment(ref _tlsHandshakeSuccesses);
+
+    public void TlsHandshakeFailed() => Interlocked.Increment(ref _tlsHandshakeFailures);
+
+    public void TlsHandshakeTimedOut() => Interlocked.Increment(ref _tlsHandshakeTimeouts);
+
+    public void TlsNoCertificateForSni() => Interlocked.Increment(ref _tlsNoCertificateForSniFailures);
+
     public ProxyMetricsSnapshot Snapshot()
     {
         return new ProxyMetricsSnapshot(
@@ -150,6 +165,11 @@ public sealed class ProxyMetrics
             Interlocked.Read(ref _clientPrematureDisconnects),
             Interlocked.Read(ref _proxyGenerated502Responses),
             Interlocked.Read(ref _proxyGenerated504Responses),
-            Interlocked.Read(ref _downstreamWriteTimeouts));
+            Interlocked.Read(ref _downstreamWriteTimeouts),
+            Interlocked.Read(ref _tlsHandshakeAttempts),
+            Interlocked.Read(ref _tlsHandshakeSuccesses),
+            Interlocked.Read(ref _tlsHandshakeFailures),
+            Interlocked.Read(ref _tlsHandshakeTimeouts),
+            Interlocked.Read(ref _tlsNoCertificateForSniFailures));
     }
 }

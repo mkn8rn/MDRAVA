@@ -1,5 +1,8 @@
 using System.Net;
+using System.Net.Security;
 using System.Net.Sockets;
+using System.Security.Authentication;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Hosting;
@@ -257,6 +260,136 @@ internal static class ProxyIntegrationTests
         AssertEx.Equal(1L, result.Metrics.UpstreamBodyRelayFailures);
     }
 
+    public static async Task HttpsListenerProxiesGetToUpstream()
+    {
+        var result = await RunTlsProxyScenarioAsync("home.test");
+
+        AssertEx.True(result.ClientResponse.Contains("200 OK", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.True(result.ClientResponse.EndsWith("proxied", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.True(result.UpstreamRequest.StartsWith("GET /secure HTTP/1.1", StringComparison.Ordinal), result.UpstreamRequest);
+        AssertEx.Equal(1L, result.Metrics.TlsHandshakeAttempts);
+        AssertEx.Equal(1L, result.Metrics.TlsHandshakeSuccesses);
+    }
+
+    public static async Task HttpsListenerSelectsCertificateBySni()
+    {
+        var result = await RunTlsProxyScenarioAsync("alt.test", configureAltSni: true);
+
+        AssertEx.True(result.RemoteCertificateSubject.Contains("CN=alt.test", StringComparison.Ordinal), result.RemoteCertificateSubject);
+        AssertEx.Equal(1L, result.Metrics.TlsHandshakeSuccesses);
+    }
+
+    public static async Task HttpsListenerUsesDefaultCertificateForUnmatchedSni()
+    {
+        var result = await RunTlsProxyScenarioAsync("unmatched.test", configureAltSni: true);
+
+        AssertEx.True(result.RemoteCertificateSubject.Contains("CN=home.test", StringComparison.Ordinal), result.RemoteCertificateSubject);
+        AssertEx.Equal(1L, result.Metrics.TlsHandshakeSuccesses);
+    }
+
+    public static async Task HttpsListenerUsesDefaultCertificateWithoutSni()
+    {
+        var result = await RunTlsProxyScenarioAsync("", configureAltSni: true);
+
+        AssertEx.True(result.RemoteCertificateSubject.Contains("CN=home.test", StringComparison.Ordinal), result.RemoteCertificateSubject);
+        AssertEx.Equal(1L, result.Metrics.TlsHandshakeSuccesses);
+    }
+
+    public static async Task HttpsListenerFailsHandshakeWhenNoCertificateMatches()
+    {
+        var proxyPort = GetFreeTcpPort();
+        var upstreamPort = GetFreeTcpPort();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var dataDirectory = Path.Combine(Path.GetTempPath(), $"mdrava-tls-{Guid.NewGuid():N}");
+
+        try
+        {
+            TestCertificates.WriteSelfSignedPfx(Path.Combine(dataDirectory, "certs", "home.pfx"), "home.test");
+            ConfigurationTests.WriteHttpsSite(
+                dataDirectory,
+                "tls.json",
+                proxyPort,
+                upstreamPort,
+                "home-cert",
+                includeDefault: false);
+            ConfigurationTests.WriteOperationalConfig(
+                dataDirectory,
+                certificateId: "home-cert",
+                certificatePath: "certs/home.pfx");
+
+            using var host = BuildProxyHost(dataDirectory);
+            await host.StartAsync(timeout.Token);
+
+            using var client = new TcpClient();
+            await client.ConnectAsync(IPAddress.Loopback, proxyPort, timeout.Token);
+            await using var tlsStream = new SslStream(client.GetStream(), false, (_, _, _, _) => true);
+
+            try
+            {
+                await tlsStream.AuthenticateAsClientAsync(new SslClientAuthenticationOptions
+                {
+                    TargetHost = "unmatched.test"
+                });
+                throw new InvalidOperationException("Expected TLS authentication to fail.");
+            }
+            catch (Exception exception) when (exception is AuthenticationException or IOException)
+            {
+            }
+
+            var metrics = await WaitForMetricsAsync(
+                host.Services.GetRequiredService<ProxyMetrics>(),
+                snapshot => snapshot.TlsNoCertificateForSniFailures == 1,
+                timeout.Token);
+
+            AssertEx.Equal(1L, metrics.TlsHandshakeAttempts);
+            AssertEx.Equal(1L, metrics.TlsNoCertificateForSniFailures);
+            AssertEx.Equal(1L, metrics.TlsHandshakeFailures);
+            await host.StopAsync(CancellationToken.None);
+        }
+        finally
+        {
+            DeleteDirectory(dataDirectory);
+        }
+    }
+
+    public static async Task HttpsListenerTimesOutIncompleteTlsHandshake()
+    {
+        var proxyPort = GetFreeTcpPort();
+        var upstreamPort = GetFreeTcpPort();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var dataDirectory = Path.Combine(Path.GetTempPath(), $"mdrava-tls-{Guid.NewGuid():N}");
+
+        try
+        {
+            TestCertificates.WriteSelfSignedPfx(Path.Combine(dataDirectory, "certs", "home.pfx"), "home.test");
+            ConfigurationTests.WriteHttpsSite(dataDirectory, "tls.json", proxyPort, upstreamPort, "home-cert");
+            ConfigurationTests.WriteOperationalConfig(
+                dataDirectory,
+                tlsHandshakeTimeoutMs: 150,
+                certificateId: "home-cert",
+                certificatePath: "certs/home.pfx");
+
+            using var host = BuildProxyHost(dataDirectory);
+            await host.StartAsync(timeout.Token);
+
+            using var client = new TcpClient();
+            await client.ConnectAsync(IPAddress.Loopback, proxyPort, timeout.Token);
+
+            var metrics = await WaitForMetricsAsync(
+                host.Services.GetRequiredService<ProxyMetrics>(),
+                snapshot => snapshot.TlsHandshakeTimeouts == 1,
+                timeout.Token);
+
+            AssertEx.Equal(1L, metrics.TlsHandshakeAttempts);
+            AssertEx.Equal(1L, metrics.TlsHandshakeTimeouts);
+            await host.StopAsync(CancellationToken.None);
+        }
+        finally
+        {
+            DeleteDirectory(dataDirectory);
+        }
+    }
+
     private static async Task<string> RunSingleResponseUpstreamAsync(
         int upstreamPort,
         CancellationToken cancellationToken)
@@ -361,6 +494,175 @@ internal static class ProxyIntegrationTests
             catch
             {
             }
+        }
+    }
+
+    private static async Task<TlsProxyScenarioResult> RunTlsProxyScenarioAsync(
+        string targetHost,
+        bool configureAltSni = false)
+    {
+        var proxyPort = GetFreeTcpPort();
+        var upstreamPort = GetFreeTcpPort();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var dataDirectory = Path.Combine(Path.GetTempPath(), $"mdrava-tls-{Guid.NewGuid():N}");
+
+        try
+        {
+            TestCertificates.WriteSelfSignedPfx(Path.Combine(dataDirectory, "certs", "home.pfx"), "home.test");
+            if (configureAltSni)
+            {
+                TestCertificates.WriteSelfSignedPfx(Path.Combine(dataDirectory, "certs", "alt.pfx"), "alt.test");
+                WriteDualCertificateOperationalConfig(dataDirectory);
+                WriteDualCertificateHttpsSite(dataDirectory, proxyPort, upstreamPort);
+            }
+            else
+            {
+                ConfigurationTests.WriteHttpsSite(dataDirectory, "tls.json", proxyPort, upstreamPort, "home-cert");
+                ConfigurationTests.WriteOperationalConfig(
+                    dataDirectory,
+                    certificateId: "home-cert",
+                    certificatePath: "certs/home.pfx");
+            }
+
+            var upstreamTask = RunSingleResponseUpstreamAsync(upstreamPort, timeout.Token);
+            using var host = BuildProxyHost(dataDirectory);
+            await host.StartAsync(timeout.Token);
+
+            try
+            {
+                using var client = new TcpClient();
+                await client.ConnectAsync(IPAddress.Loopback, proxyPort, timeout.Token);
+                await using var tlsStream = new SslStream(client.GetStream(), false, (_, _, _, _) => true);
+                await tlsStream.AuthenticateAsClientAsync(new SslClientAuthenticationOptions
+                {
+                    TargetHost = targetHost
+                }, timeout.Token);
+
+                var remoteCertificate = new X509Certificate2(tlsStream.RemoteCertificate!);
+                var requestBytes = Encoding.ASCII.GetBytes("GET /secure HTTP/1.1\r\nHost: home.test\r\n\r\n");
+                await tlsStream.WriteAsync(requestBytes, timeout.Token);
+                var clientResponse = await ReadToEndAsync(tlsStream, timeout.Token);
+                var upstreamRequest = await upstreamTask.WaitAsync(timeout.Token);
+                var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
+                return new TlsProxyScenarioResult(clientResponse, upstreamRequest, remoteCertificate.Subject, metrics);
+            }
+            finally
+            {
+                await host.StopAsync(CancellationToken.None);
+            }
+        }
+        finally
+        {
+            DeleteDirectory(dataDirectory);
+        }
+    }
+
+    private static IHost BuildProxyHost(string dataDirectory)
+    {
+        return Host.CreateDefaultBuilder()
+            .ConfigureAppConfiguration(builder =>
+            {
+                builder.Sources.Clear();
+                builder.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Mdrava:DataDirectory"] = dataDirectory
+                });
+            })
+            .ConfigureLogging(logging => logging.ClearProviders())
+            .ConfigureServices((context, services) =>
+            {
+                services.AddProxyDataPlane(context.Configuration);
+            })
+            .Build();
+    }
+
+    private static void WriteDualCertificateOperationalConfig(string dataDirectory)
+    {
+        var configDirectory = Directory.CreateDirectory(Path.Combine(dataDirectory, "config")).FullName;
+        File.WriteAllText(
+            Path.Combine(configDirectory, "proxy.json"),
+            """
+            {
+              "certificates": [
+                {
+                  "id": "home-cert",
+                  "format": "pfx",
+                  "path": "certs/home.pfx"
+                },
+                {
+                  "id": "alt-cert",
+                  "format": "pfx",
+                  "path": "certs/alt.pfx"
+                }
+              ]
+            }
+            """);
+    }
+
+    private static void WriteDualCertificateHttpsSite(string dataDirectory, int proxyPort, int upstreamPort)
+    {
+        var sites = Directory.CreateDirectory(Path.Combine(dataDirectory, "config", "sites")).FullName;
+        File.WriteAllText(
+            Path.Combine(sites, "tls.json"),
+            $$"""
+            {
+              "name": "tls",
+              "listeners": [
+                {
+                  "name": "main",
+                  "address": "127.0.0.1",
+                  "port": {{proxyPort}},
+                  "transport": "https",
+                  "defaultCertificateId": "home-cert",
+                  "sniCertificates": [
+                    {
+                      "hostName": "alt.test",
+                      "certificateId": "alt-cert"
+                    }
+                  ]
+                }
+              ],
+              "host": "*",
+              "pathPrefix": "/",
+              "upstreams": [
+                {
+                  "name": "local-test",
+                  "address": "127.0.0.1",
+                  "port": {{upstreamPort}}
+                }
+              ]
+            }
+            """);
+    }
+
+    private static async Task<ProxyMetricsSnapshot> WaitForMetricsAsync(
+        ProxyMetrics metrics,
+        Func<ProxyMetricsSnapshot, bool> predicate,
+        CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            var snapshot = metrics.Snapshot();
+            if (predicate(snapshot))
+            {
+                return snapshot;
+            }
+
+            await Task.Delay(10, cancellationToken);
+        }
+    }
+
+    private static void DeleteDirectory(string directory)
+    {
+        try
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+        catch
+        {
         }
     }
 
@@ -480,7 +782,7 @@ internal static class ProxyIntegrationTests
     }
 
     private static async Task<string> ReadToEndAsync(
-        NetworkStream stream,
+        Stream stream,
         CancellationToken cancellationToken)
     {
         var buffer = new byte[4096];
@@ -534,5 +836,11 @@ internal static class ProxyIntegrationTests
     private sealed record ProxyScenarioResult(
         string ClientResponse,
         string UpstreamRequest,
+        ProxyMetricsSnapshot Metrics);
+
+    private sealed record TlsProxyScenarioResult(
+        string ClientResponse,
+        string UpstreamRequest,
+        string RemoteCertificateSubject,
         ProxyMetricsSnapshot Metrics);
 }

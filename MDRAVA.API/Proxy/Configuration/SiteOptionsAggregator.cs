@@ -12,9 +12,13 @@ public static class SiteOptionsAggregator
             foreach (var listener in source.Site.Listeners)
             {
                 var key = GetListenerKey(listener);
-                if (!listenersByKey.TryAdd(key, listener))
+                if (listenersByKey.TryGetValue(key, out var existing))
                 {
-                    continue;
+                    listenersByKey[key] = MergeListeners(existing, listener);
+                }
+                else
+                {
+                    listenersByKey.Add(key, listener);
                 }
             }
 
@@ -36,6 +40,31 @@ public static class SiteOptionsAggregator
 
     private static string GetListenerKey(ListenerOptions listener)
     {
-        return $"{listener.Name}|{listener.Address}|{listener.Port}";
+        return $"{listener.Name}|{listener.Address}|{listener.Port}|{listener.Transport}";
+    }
+
+    private static ListenerOptions MergeListeners(ListenerOptions existing, ListenerOptions next)
+    {
+        var sniCertificates = existing.SniCertificates
+            .Concat(next.SniCertificates)
+            .ToList();
+
+        return new ListenerOptions
+        {
+            Name = existing.Name,
+            Address = existing.Address,
+            Port = existing.Port,
+            Enabled = existing.Enabled || next.Enabled,
+            Transport = existing.Transport,
+            DefaultCertificateId = !string.IsNullOrWhiteSpace(existing.DefaultCertificateId)
+                ? existing.DefaultCertificateId
+                : next.DefaultCertificateId,
+            SniCertificates = sniCertificates,
+            Backlog = existing.Backlog,
+            MaxRequestHeadBytes = existing.MaxRequestHeadBytes,
+            MaxResponseHeadBytes = existing.MaxResponseHeadBytes,
+            MaxChunkLineBytes = existing.MaxChunkLineBytes,
+            ForwardingBufferBytes = existing.ForwardingBufferBytes
+        };
     }
 }

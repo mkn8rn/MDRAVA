@@ -6,6 +6,7 @@ using MDRAVA.API.Proxy.Connections;
 using MDRAVA.API.Proxy.Forwarding;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Routing;
+using MDRAVA.API.Proxy.Tls;
 using Microsoft.Extensions.Options;
 
 namespace MDRAVA.API.Proxy.Hosting;
@@ -30,6 +31,7 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<UpstreamConnectionFactory>();
         services.AddSingleton<HopByHopHeaderPolicy>();
         services.AddSingleton<ProxyForwarder>();
+        services.AddSingleton<TlsConnectionAuthenticator>();
         services.AddHostedService<ProxyConfigurationStartupService>();
         services.AddHostedService<ProxyListenerService>();
 

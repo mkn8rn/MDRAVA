@@ -1,5 +1,6 @@
 using MDRAVA.API.Proxy.Configuration.Loading;
 using MDRAVA.API.Proxy.Configuration.Paths;
+using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Configuration.Storage;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -156,6 +157,106 @@ internal static class ConfigurationTests
         AssertEx.True(result.Errors.Count > 0);
     }
 
+    public static async Task LoaderLoadsHttpsListenerWithCertificate()
+    {
+        using var temp = TemporaryDirectory.Create();
+        var certificatePath = Path.Combine(temp.Path, "certs", "home.pfx");
+        TestCertificates.WriteSelfSignedPfx(certificatePath, "home.test", "secret");
+        WriteHttpsSite(temp.Path, "home.json", port: 18443, upstreamPort: 15000, certificateId: "home-cert");
+        WriteOperationalConfig(temp.Path, certificateId: "home-cert", certificatePath: "certs/home.pfx", certificatePassword: "secret");
+        var loader = CreateLoader(temp.Path);
+
+        var result = await loader.LoadAsync(CancellationToken.None);
+
+        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
+        var snapshot = AssertEx.NotNull(result.Snapshot);
+        AssertEx.Equal(RuntimeListenerTransport.Https, snapshot.Listeners[0].Transport);
+        AssertEx.Equal(1, snapshot.Certificates.Count);
+        var projection = ProxyConfigurationMapper.ToProjection(snapshot);
+        AssertEx.Equal(1, projection.Certificates.Count);
+        AssertEx.Equal(true, projection.Certificates[0].HasConfiguredPassword);
+    }
+
+    public static async Task LoaderRejectsHttpsListenerWithMissingCertificateReference()
+    {
+        using var temp = TemporaryDirectory.Create();
+        WriteHttpsSite(temp.Path, "home.json", port: 18443, upstreamPort: 15000, certificateId: "missing-cert");
+        var loader = CreateLoader(temp.Path);
+
+        var result = await loader.LoadAsync(CancellationToken.None);
+
+        AssertEx.False(result.Succeeded);
+        AssertEx.True(result.Errors.Any(static error => error.Contains("unknown certificate", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    public static async Task LoaderRejectsInvalidCertificatePath()
+    {
+        using var temp = TemporaryDirectory.Create();
+        WriteHttpsSite(temp.Path, "home.json", port: 18443, upstreamPort: 15000, certificateId: "home-cert");
+        WriteOperationalConfig(temp.Path, certificateId: "home-cert", certificatePath: "certs/missing.pfx");
+        var loader = CreateLoader(temp.Path);
+
+        var result = await loader.LoadAsync(CancellationToken.None);
+
+        AssertEx.False(result.Succeeded);
+        AssertEx.True(result.Errors.Any(static error => error.Contains("file does not exist", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    public static async Task LoaderRejectsInvalidCertificatePassword()
+    {
+        using var temp = TemporaryDirectory.Create();
+        var certificatePath = Path.Combine(temp.Path, "certs", "home.pfx");
+        TestCertificates.WriteSelfSignedPfx(certificatePath, "home.test", "correct");
+        WriteHttpsSite(temp.Path, "home.json", port: 18443, upstreamPort: 15000, certificateId: "home-cert");
+        WriteOperationalConfig(temp.Path, certificateId: "home-cert", certificatePath: "certs/home.pfx", certificatePassword: "wrong");
+        var loader = CreateLoader(temp.Path);
+
+        var result = await loader.LoadAsync(CancellationToken.None);
+
+        AssertEx.False(result.Succeeded);
+        AssertEx.True(result.Errors.Any(static error => error.Contains("could not be loaded", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    public static async Task LoaderRejectsDuplicateSniCertificateMapping()
+    {
+        using var temp = TemporaryDirectory.Create();
+        var certificatePath = Path.Combine(temp.Path, "certs", "home.pfx");
+        TestCertificates.WriteSelfSignedPfx(certificatePath, "home.test");
+        WriteHttpsSite(
+            temp.Path,
+            "home.json",
+            port: 18443,
+            upstreamPort: 15000,
+            certificateId: "home-cert",
+            duplicateSni: true);
+        WriteOperationalConfig(temp.Path, certificateId: "home-cert", certificatePath: "certs/home.pfx");
+        var loader = CreateLoader(temp.Path);
+
+        var result = await loader.LoadAsync(CancellationToken.None);
+
+        AssertEx.False(result.Succeeded);
+        AssertEx.True(result.Errors.Any(static error => error.Contains("duplicated", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    public static async Task LoaderMergesSniMappingsFromSharedHttpsListener()
+    {
+        using var temp = TemporaryDirectory.Create();
+        var certificatePath = Path.Combine(temp.Path, "certs", "home.pfx");
+        TestCertificates.WriteSelfSignedPfx(certificatePath, "home.test");
+        WriteHttpsSite(temp.Path, "home.json", port: 18443, upstreamPort: 15000, certificateId: "home-cert", sniHost: "home.test");
+        WriteHttpsSite(temp.Path, "alt.json", port: 18443, upstreamPort: 15001, certificateId: "home-cert", sniHost: "alt.test");
+        WriteOperationalConfig(temp.Path, certificateId: "home-cert", certificatePath: "certs/home.pfx");
+        var loader = CreateLoader(temp.Path);
+
+        var result = await loader.LoadAsync(CancellationToken.None);
+
+        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
+        var snapshot = AssertEx.NotNull(result.Snapshot);
+        AssertEx.Equal(1, snapshot.Listeners.Count);
+        AssertEx.Equal(2, snapshot.Listeners[0].SniCertificates.Count);
+        AssertEx.Equal(2, snapshot.Routes.Count);
+    }
+
     public static async Task LoaderRejectsInvalidSiteFile()
     {
         using var temp = TemporaryDirectory.Create();
@@ -254,6 +355,64 @@ internal static class ConfigurationTests
         File.WriteAllText(Path.Combine(sites, fileName), SiteJson(Path.GetFileNameWithoutExtension(fileName), port, upstreamPort));
     }
 
+    internal static void WriteHttpsSite(
+        string dataDirectory,
+        string fileName,
+        int port,
+        int upstreamPort,
+        string certificateId,
+        string host = "*",
+        string sniHost = "home.test",
+        bool includeDefault = true,
+        bool duplicateSni = false)
+    {
+        var sites = Directory.CreateDirectory(Path.Combine(dataDirectory, "config", "sites")).FullName;
+        var defaultCertificateLine = includeDefault
+            ? $"""              "defaultCertificateId": "{certificateId}","""
+            : "";
+        var duplicateSniBlock = duplicateSni
+            ? $$"""
+                    ,
+                    {
+                      "hostName": "{{sniHost}}",
+                      "certificateId": "{{certificateId}}"
+                    }
+            """
+            : "";
+
+        File.WriteAllText(
+            Path.Combine(sites, fileName),
+            $$"""
+            {
+              "name": "{{Path.GetFileNameWithoutExtension(fileName)}}",
+              "listeners": [
+                {
+                  "name": "main",
+                  "address": "127.0.0.1",
+                  "port": {{port}},
+                  "transport": "https",
+                  {{defaultCertificateLine}}
+                  "sniCertificates": [
+                    {
+                      "hostName": "{{sniHost}}",
+                      "certificateId": "{{certificateId}}"
+                    }{{duplicateSniBlock}}
+                  ]
+                }
+              ],
+              "host": "{{host}}",
+              "pathPrefix": "/",
+              "upstreams": [
+                {
+                  "name": "local-test",
+                  "address": "127.0.0.1",
+                  "port": {{upstreamPort}}
+                }
+              ]
+            }
+            """);
+    }
+
     internal static void WriteOperationalConfig(
         string dataDirectory,
         int clientRequestHeadTimeoutMs = 1000,
@@ -261,9 +420,28 @@ internal static class ConfigurationTests
         int upstreamConnectTimeoutMs = 1000,
         int upstreamResponseHeadTimeoutMs = 1000,
         int upstreamResponseBodyIdleTimeoutMs = 1000,
-        int downstreamWriteTimeoutMs = 1000)
+        int downstreamWriteTimeoutMs = 1000,
+        int tlsHandshakeTimeoutMs = 1000,
+        string? certificateId = null,
+        string? certificatePath = null,
+        string? certificatePassword = null,
+        string? certificatePasswordEnvironmentVariable = null)
     {
         var configDirectory = Directory.CreateDirectory(Path.Combine(dataDirectory, "config")).FullName;
+        var certificatesJson = certificateId is null
+            ? "[]"
+            : $$"""
+            [
+                {
+                  "id": "{{certificateId}}",
+                  "format": "pfx",
+                  "path": "{{certificatePath}}"
+                  {{(certificatePassword is null ? "" : $""","password": "{certificatePassword}" """)}}
+                  {{(certificatePasswordEnvironmentVariable is null ? "" : $""","passwordEnvironmentVariable": "{certificatePasswordEnvironmentVariable}" """)}}
+                }
+              ]
+            """;
+
         File.WriteAllText(
             Path.Combine(configDirectory, "proxy.json"),
             $$"""
@@ -274,8 +452,10 @@ internal static class ConfigurationTests
                 "upstreamConnectTimeoutMs": {{upstreamConnectTimeoutMs}},
                 "upstreamResponseHeadTimeoutMs": {{upstreamResponseHeadTimeoutMs}},
                 "upstreamResponseBodyIdleTimeoutMs": {{upstreamResponseBodyIdleTimeoutMs}},
-                "downstreamWriteTimeoutMs": {{downstreamWriteTimeoutMs}}
-              }
+                "downstreamWriteTimeoutMs": {{downstreamWriteTimeoutMs}},
+                "tlsHandshakeTimeoutMs": {{tlsHandshakeTimeoutMs}}
+              },
+              "certificates": {{certificatesJson}}
             }
             """);
     }

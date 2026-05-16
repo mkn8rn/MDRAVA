@@ -6,6 +6,7 @@ public sealed record ProxyConfigurationSnapshot(
     string SourceDirectory,
     IReadOnlyList<string> SourceFiles,
     RuntimeTimeouts Timeouts,
+    IReadOnlyDictionary<string, RuntimeCertificate> Certificates,
     IReadOnlyList<RuntimeListener> Listeners,
     IReadOnlyList<RuntimeRoute> Routes)
 {

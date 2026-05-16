@@ -29,6 +29,12 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Loader uses defaults when operational config is missing", ConfigurationTests.LoaderUsesDefaultsWhenOperationalConfigIsMissing),
     ("Loader loads explicit operational timeout settings", ConfigurationTests.LoaderLoadsExplicitOperationalTimeouts),
     ("Loader rejects invalid operational timeout settings", ConfigurationTests.LoaderRejectsInvalidOperationalTimeouts),
+    ("Loader loads HTTPS listener with certificate", ConfigurationTests.LoaderLoadsHttpsListenerWithCertificate),
+    ("Loader rejects HTTPS listener with missing certificate reference", ConfigurationTests.LoaderRejectsHttpsListenerWithMissingCertificateReference),
+    ("Loader rejects invalid certificate path", ConfigurationTests.LoaderRejectsInvalidCertificatePath),
+    ("Loader rejects invalid certificate password", ConfigurationTests.LoaderRejectsInvalidCertificatePassword),
+    ("Loader rejects duplicate SNI certificate mapping", ConfigurationTests.LoaderRejectsDuplicateSniCertificateMapping),
+    ("Loader merges SNI mappings from shared HTTPS listener", ConfigurationTests.LoaderMergesSniMappingsFromSharedHttpsListener),
     ("Loader rejects invalid per-site JSON config files", ConfigurationTests.LoaderRejectsInvalidSiteFile),
     ("Reload preserves active snapshot when load fails", ConfigurationTests.ReloadPreservesActiveSnapshotWhenLoadFails),
     ("Reload replaces active snapshot when load succeeds", ConfigurationTests.ReloadReplacesActiveSnapshotWhenLoadSucceeds),
@@ -52,7 +58,13 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Proxy dataplane times out incomplete chunked request body", ProxyIntegrationTests.TimesOutIncompleteChunkedRequestBody),
     ("Proxy dataplane maps unavailable upstream to 502", ProxyIntegrationTests.UnavailableUpstreamProducesBadGateway),
     ("Proxy dataplane maps upstream response-head timeout to 504", ProxyIntegrationTests.UpstreamResponseHeadTimeoutProducesGatewayTimeout),
-    ("Proxy dataplane closes after started response on upstream early close", ProxyIntegrationTests.UpstreamContentLengthEarlyCloseClosesAfterStartedResponse)
+    ("Proxy dataplane closes after started response on upstream early close", ProxyIntegrationTests.UpstreamContentLengthEarlyCloseClosesAfterStartedResponse),
+    ("HTTPS listener proxies GET to upstream", ProxyIntegrationTests.HttpsListenerProxiesGetToUpstream),
+    ("HTTPS listener selects certificate by SNI", ProxyIntegrationTests.HttpsListenerSelectsCertificateBySni),
+    ("HTTPS listener uses default certificate for unmatched SNI", ProxyIntegrationTests.HttpsListenerUsesDefaultCertificateForUnmatchedSni),
+    ("HTTPS listener uses default certificate without SNI", ProxyIntegrationTests.HttpsListenerUsesDefaultCertificateWithoutSni),
+    ("HTTPS listener fails handshake when no certificate matches", ProxyIntegrationTests.HttpsListenerFailsHandshakeWhenNoCertificateMatches),
+    ("HTTPS listener times out incomplete TLS handshake", ProxyIntegrationTests.HttpsListenerTimesOutIncompleteTlsHandshake)
 };
 
 var failures = 0;
