@@ -10,13 +10,13 @@ namespace MDRAVA.API.Proxy.Forwarding;
 
 public sealed class ProxyForwarder
 {
-    private readonly UpstreamConnectionFactory _upstreamConnections;
+    private readonly UpstreamConnectionPool _upstreamConnections;
     private readonly ProxyMetrics _metrics;
     private readonly HopByHopHeaderPolicy _headerPolicy;
     private readonly ILogger<ProxyForwarder> _logger;
 
     public ProxyForwarder(
-        UpstreamConnectionFactory upstreamConnections,
+        UpstreamConnectionPool upstreamConnections,
         ProxyMetrics metrics,
         HopByHopHeaderPolicy headerPolicy,
         ILogger<ProxyForwarder> logger)
@@ -27,13 +27,15 @@ public sealed class ProxyForwarder
         _logger = logger;
     }
 
-    public async ValueTask ForwardAsync(
+    public async ValueTask<ForwardingResult> ForwardAsync(
         Stream clientStream,
         Http1HeadReadResult requestHeadRead,
         Http1RequestHead requestHead,
         RuntimeUpstream upstream,
         RuntimeListener listener,
         RuntimeTimeouts timeouts,
+        RuntimeConnectionLimits connectionLimits,
+        bool preferClientKeepAlive,
         CancellationToken cancellationToken)
     {
         var responseStarted = false;
@@ -53,11 +55,12 @@ public sealed class ProxyForwarder
                 }
             }
 
-            using var upstreamSocket = await _upstreamConnections.ConnectAsync(
+            await using var upstreamLease = await _upstreamConnections.BorrowAsync(
                 upstream,
-                timeouts.UpstreamConnectTimeout,
+                timeouts,
+                connectionLimits,
                 cancellationToken);
-            using var upstreamStream = new NetworkStream(upstreamSocket, ownsSocket: false);
+            var upstreamStream = upstreamLease.Stream;
 
             await WriteRequestHeadAsync(upstreamStream, requestHead, timeouts, cancellationToken);
             await RelayRequestBodyAsync(
@@ -71,13 +74,20 @@ public sealed class ProxyForwarder
                 preReadChunkLine,
                 cancellationToken);
 
-            responseStarted = await RelayResponseAsync(
+            var responseResult = await RelayResponseAsync(
                 upstreamStream,
                 clientStream,
                 requestHead.Method,
                 listener,
                 timeouts,
+                preferClientKeepAlive,
                 cancellationToken);
+            responseStarted = responseResult.ResponseStarted;
+
+            if (responseResult.CanReuseUpstreamConnection)
+            {
+                upstreamLease.MarkReusable();
+            }
 
             _metrics.UpstreamSucceeded();
             _logger.LogDebug(
@@ -85,6 +95,7 @@ public sealed class ProxyForwarder
                 requestHead.Method,
                 requestHead.Target,
                 upstream.Name);
+            return new ForwardingResult(true, responseStarted, responseResult.KeepClientConnectionOpen);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -93,6 +104,7 @@ public sealed class ProxyForwarder
         catch (ProxyTimeoutException exception)
         {
             await HandleTimeoutAsync(clientStream, requestHead, upstream, responseStarted, exception, timeouts, cancellationToken);
+            return new ForwardingResult(false, responseStarted, false);
         }
         catch (Http1ClientProtocolException exception)
         {
@@ -112,6 +124,7 @@ public sealed class ProxyForwarder
                     _metrics,
                     cancellationToken);
             }
+            return new ForwardingResult(false, responseStarted, false);
         }
         catch (Http1UpstreamProtocolException exception)
         {
@@ -138,6 +151,7 @@ public sealed class ProxyForwarder
                     _metrics,
                     cancellationToken);
             }
+            return new ForwardingResult(false, responseStarted, false);
         }
         catch (Exception exception) when (exception is SocketException or IOException)
         {
@@ -159,6 +173,7 @@ public sealed class ProxyForwarder
                     _metrics,
                     cancellationToken);
             }
+            return new ForwardingResult(false, responseStarted, false);
         }
     }
 
@@ -222,7 +237,7 @@ public sealed class ProxyForwarder
         var builder = new StringBuilder();
         builder.Append(requestHead.Method).Append(' ')
             .Append(requestHead.Target).Append(' ')
-            .Append(requestHead.Version).Append("\r\n");
+            .Append("HTTP/1.1").Append("\r\n");
 
         var filtered = _headerPolicy.FilterForForwarding(
             requestHead.Headers,
@@ -248,7 +263,7 @@ public sealed class ProxyForwarder
             builder.Append("Transfer-Encoding: chunked\r\n");
         }
 
-        builder.Append("Connection: close\r\n\r\n");
+        builder.Append("Connection: keep-alive\r\n\r\n");
         var bytes = Encoding.ASCII.GetBytes(builder.ToString());
         await WriteWithTimeoutAsync(upstreamStream, bytes, timeouts.DownstreamWriteTimeout, cancellationToken);
         _metrics.AddBytesWritten(bytes.Length);
@@ -284,12 +299,13 @@ public sealed class ProxyForwarder
         }
     }
 
-    private async ValueTask<bool> RelayResponseAsync(
+    private async ValueTask<ResponseForwardingResult> RelayResponseAsync(
         Stream upstreamStream,
         Stream clientStream,
         string requestMethod,
         RuntimeListener listener,
         RuntimeTimeouts timeouts,
+        bool preferClientKeepAlive,
         CancellationToken cancellationToken)
     {
         ReadOnlyMemory<byte> initialBodyBytes = ReadOnlyMemory<byte>.Empty;
@@ -312,14 +328,19 @@ public sealed class ProxyForwarder
                 throw new Http1UpstreamProtocolException($"Upstream response head was invalid: {error}.");
             }
 
-            await WriteResponseHeadAsync(clientStream, responseHead, timeouts, cancellationToken);
+            var upstreamWantsClose = HasConnectionToken(responseHead.Headers, "close");
+            var keepClientConnectionOpen = preferClientKeepAlive
+                && responseHead.Framing.Kind != Http1BodyKind.CloseDelimited;
+            await WriteResponseHeadAsync(clientStream, responseHead, timeouts, keepClientConnectionOpen, cancellationToken);
             responseStarted = true;
             initialBodyBytes = responseHeadRead.InitialBodyBytes;
 
             if (!Http1ResponseParser.IsInformational(responseHead))
             {
                 await RelayResponseBodyAsync(upstreamStream, clientStream, initialBodyBytes, responseHead, listener, timeouts, cancellationToken);
-                return responseStarted;
+                var canReuseUpstream = !upstreamWantsClose
+                    && responseHead.Framing.Kind != Http1BodyKind.CloseDelimited;
+                return new ResponseForwardingResult(responseStarted, keepClientConnectionOpen, canReuseUpstream);
             }
         }
     }
@@ -328,6 +349,7 @@ public sealed class ProxyForwarder
         Stream clientStream,
         Http1ResponseHead responseHead,
         RuntimeTimeouts timeouts,
+        bool keepClientConnectionOpen,
         CancellationToken cancellationToken)
     {
         var builder = new StringBuilder();
@@ -359,7 +381,7 @@ public sealed class ProxyForwarder
             builder.Append("Transfer-Encoding: chunked\r\n");
         }
 
-        builder.Append("Connection: close\r\n\r\n");
+        builder.Append(keepClientConnectionOpen ? "Connection: keep-alive\r\n\r\n" : "Connection: close\r\n\r\n");
         var bytes = Encoding.ASCII.GetBytes(builder.ToString());
         await WriteWithTimeoutAsync(clientStream, bytes, timeouts.DownstreamWriteTimeout, cancellationToken);
         _metrics.AddBytesWritten(bytes.Length);
@@ -647,6 +669,27 @@ public sealed class ProxyForwarder
             || string.Equals(headerName, "Connection", StringComparison.OrdinalIgnoreCase);
     }
 
+    public static bool HasConnectionToken(IReadOnlyList<Http1HeaderField> headers, string token)
+    {
+        foreach (var header in headers)
+        {
+            if (!string.Equals(header.Name, "Connection", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            foreach (var value in header.Value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (string.Equals(value, token, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     private static int FindHeadLength(ReadOnlySpan<byte> bytes)
     {
         for (var index = 3; index < bytes.Length; index++)
@@ -745,6 +788,11 @@ public sealed class ProxyForwarder
             throw new IOException("HTTP line exceeded the configured maximum length.");
         }
     }
+
+    private sealed record ResponseForwardingResult(
+        bool ResponseStarted,
+        bool KeepClientConnectionOpen,
+        bool CanReuseUpstreamConnection);
 
     private sealed class Http1UpstreamProtocolException : IOException
     {

@@ -15,6 +15,9 @@ public static class ProxyOperationalOptionsValidator
         ValidateTimeout(failures, nameof(options.Timeouts.UpstreamResponseBodyIdleTimeoutMs), options.Timeouts.UpstreamResponseBodyIdleTimeoutMs);
         ValidateTimeout(failures, nameof(options.Timeouts.DownstreamWriteTimeoutMs), options.Timeouts.DownstreamWriteTimeoutMs);
         ValidateTimeout(failures, nameof(options.Timeouts.TlsHandshakeTimeoutMs), options.Timeouts.TlsHandshakeTimeoutMs);
+        ValidateTimeout(failures, nameof(options.Timeouts.ClientKeepAliveIdleTimeoutMs), options.Timeouts.ClientKeepAliveIdleTimeoutMs);
+        ValidateTimeout(failures, nameof(options.Timeouts.UpstreamIdleConnectionLifetimeMs), options.Timeouts.UpstreamIdleConnectionLifetimeMs);
+        ValidateConnectionLimits(failures, options.Connections);
         ValidateCertificates(failures, options.Certificates);
         return failures;
     }
@@ -59,6 +62,19 @@ public static class ProxyOperationalOptionsValidator
             {
                 failures.Add($"{prefix} must not set both Password and PasswordEnvironmentVariable.");
             }
+        }
+    }
+
+    private static void ValidateConnectionLimits(List<string> failures, ProxyConnectionOptions options)
+    {
+        if (options.MaxRequestsPerClientConnection is < 1 or > 100_000)
+        {
+            failures.Add("Proxy operational connection limit MaxRequestsPerClientConnection must be between 1 and 100000.");
+        }
+
+        if (options.MaxIdleUpstreamConnectionsPerUpstream is < 0 or > 10_000)
+        {
+            failures.Add("Proxy operational connection limit MaxIdleUpstreamConnectionsPerUpstream must be between 0 and 10000.");
         }
     }
 }

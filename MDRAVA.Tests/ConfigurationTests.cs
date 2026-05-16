@@ -422,6 +422,10 @@ internal static class ConfigurationTests
         int upstreamResponseBodyIdleTimeoutMs = 1000,
         int downstreamWriteTimeoutMs = 1000,
         int tlsHandshakeTimeoutMs = 1000,
+        int clientKeepAliveIdleTimeoutMs = 1000,
+        int upstreamIdleConnectionLifetimeMs = 1000,
+        int maxRequestsPerClientConnection = 100,
+        int maxIdleUpstreamConnectionsPerUpstream = 16,
         string? certificateId = null,
         string? certificatePath = null,
         string? certificatePassword = null,
@@ -453,7 +457,13 @@ internal static class ConfigurationTests
                 "upstreamResponseHeadTimeoutMs": {{upstreamResponseHeadTimeoutMs}},
                 "upstreamResponseBodyIdleTimeoutMs": {{upstreamResponseBodyIdleTimeoutMs}},
                 "downstreamWriteTimeoutMs": {{downstreamWriteTimeoutMs}},
-                "tlsHandshakeTimeoutMs": {{tlsHandshakeTimeoutMs}}
+                "tlsHandshakeTimeoutMs": {{tlsHandshakeTimeoutMs}},
+                "clientKeepAliveIdleTimeoutMs": {{clientKeepAliveIdleTimeoutMs}},
+                "upstreamIdleConnectionLifetimeMs": {{upstreamIdleConnectionLifetimeMs}}
+              },
+              "connections": {
+                "maxRequestsPerClientConnection": {{maxRequestsPerClientConnection}},
+                "maxIdleUpstreamConnectionsPerUpstream": {{maxIdleUpstreamConnectionsPerUpstream}}
               },
               "certificates": {{certificatesJson}}
             }

@@ -64,7 +64,18 @@ var tests = new (string Name, Func<Task> Run)[]
     ("HTTPS listener uses default certificate for unmatched SNI", ProxyIntegrationTests.HttpsListenerUsesDefaultCertificateForUnmatchedSni),
     ("HTTPS listener uses default certificate without SNI", ProxyIntegrationTests.HttpsListenerUsesDefaultCertificateWithoutSni),
     ("HTTPS listener fails handshake when no certificate matches", ProxyIntegrationTests.HttpsListenerFailsHandshakeWhenNoCertificateMatches),
-    ("HTTPS listener times out incomplete TLS handshake", ProxyIntegrationTests.HttpsListenerTimesOutIncompleteTlsHandshake)
+    ("HTTPS listener times out incomplete TLS handshake", ProxyIntegrationTests.HttpsListenerTimesOutIncompleteTlsHandshake),
+    ("Persistent client processes two sequential GETs and reuses upstream", ProxyIntegrationTests.PersistentClientProcessesTwoSequentialGetsAndReusesUpstream),
+    ("Client Connection close header closes after response", ProxyIntegrationTests.ClientConnectionCloseHeaderClosesAfterResponse),
+    ("HTTP/1.0 client closes by default", ProxyIntegrationTests.Http10ClientClosesByDefault),
+    ("Max requests per client connection is enforced", ProxyIntegrationTests.MaxRequestsPerClientConnectionIsEnforced),
+    ("Client keep-alive idle timeout closes connection", ProxyIntegrationTests.ClientKeepAliveIdleTimeoutClosesConnection),
+    ("Malformed second request closes connection", ProxyIntegrationTests.MalformedSecondRequestClosesConnection),
+    ("Persistent client proxies Content-Length POST", ProxyIntegrationTests.PersistentClientProxiesContentLengthPost),
+    ("Persistent client proxies chunked POST", ProxyIntegrationTests.PersistentClientProxiesChunkedPost),
+    ("Upstream connection is not reused after response Connection close", ProxyIntegrationTests.UpstreamConnectionIsNotReusedAfterResponseConnectionClose),
+    ("Upstream connection is not reused after premature disconnect", ProxyIntegrationTests.UpstreamConnectionIsNotReusedAfterPrematureDisconnect),
+    ("Upstream connection is not reused after framing error", ProxyIntegrationTests.UpstreamConnectionIsNotReusedAfterFramingError)
 };
 
 var failures = 0;

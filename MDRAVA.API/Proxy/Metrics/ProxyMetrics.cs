@@ -31,6 +31,13 @@ public sealed class ProxyMetrics
     private long _tlsHandshakeFailures;
     private long _tlsHandshakeTimeouts;
     private long _tlsNoCertificateForSniFailures;
+    private long _clientConnectionsClosedByIdleTimeout;
+    private long _clientConnectionsClosedByMaxRequests;
+    private long _upstreamConnectionsOpened;
+    private long _upstreamConnectionsReused;
+    private long _upstreamConnectionsDiscarded;
+    private long _upstreamPoolIdleConnections;
+    private long _upstreamPoolActiveConnections;
 
     public void ConnectionAccepted()
     {
@@ -139,6 +146,43 @@ public sealed class ProxyMetrics
 
     public void TlsNoCertificateForSni() => Interlocked.Increment(ref _tlsNoCertificateForSniFailures);
 
+    public void ClientConnectionClosedByIdleTimeout() => Interlocked.Increment(ref _clientConnectionsClosedByIdleTimeout);
+
+    public void ClientConnectionClosedByMaxRequests() => Interlocked.Increment(ref _clientConnectionsClosedByMaxRequests);
+
+    public void UpstreamConnectionOpened() => Interlocked.Increment(ref _upstreamConnectionsOpened);
+
+    public void UpstreamConnectionReused() => Interlocked.Increment(ref _upstreamConnectionsReused);
+
+    public void UpstreamConnectionDiscarded() => Interlocked.Increment(ref _upstreamConnectionsDiscarded);
+
+    public void UpstreamPoolConnectionBorrowed()
+    {
+        Interlocked.Increment(ref _upstreamPoolActiveConnections);
+    }
+
+    public void UpstreamPoolConnectionReturnedIdle()
+    {
+        Interlocked.Decrement(ref _upstreamPoolActiveConnections);
+        Interlocked.Increment(ref _upstreamPoolIdleConnections);
+    }
+
+    public void UpstreamPoolConnectionReusedFromIdle()
+    {
+        Interlocked.Decrement(ref _upstreamPoolIdleConnections);
+        Interlocked.Increment(ref _upstreamPoolActiveConnections);
+    }
+
+    public void UpstreamPoolConnectionClosedActive()
+    {
+        Interlocked.Decrement(ref _upstreamPoolActiveConnections);
+    }
+
+    public void UpstreamPoolIdleConnectionDiscarded()
+    {
+        Interlocked.Decrement(ref _upstreamPoolIdleConnections);
+    }
+
     public ProxyMetricsSnapshot Snapshot()
     {
         return new ProxyMetricsSnapshot(
@@ -170,6 +214,13 @@ public sealed class ProxyMetrics
             Interlocked.Read(ref _tlsHandshakeSuccesses),
             Interlocked.Read(ref _tlsHandshakeFailures),
             Interlocked.Read(ref _tlsHandshakeTimeouts),
-            Interlocked.Read(ref _tlsNoCertificateForSniFailures));
+            Interlocked.Read(ref _tlsNoCertificateForSniFailures),
+            Interlocked.Read(ref _clientConnectionsClosedByIdleTimeout),
+            Interlocked.Read(ref _clientConnectionsClosedByMaxRequests),
+            Interlocked.Read(ref _upstreamConnectionsOpened),
+            Interlocked.Read(ref _upstreamConnectionsReused),
+            Interlocked.Read(ref _upstreamConnectionsDiscarded),
+            Interlocked.Read(ref _upstreamPoolIdleConnections),
+            Interlocked.Read(ref _upstreamPoolActiveConnections));
     }
 }

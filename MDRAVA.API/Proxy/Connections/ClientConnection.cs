@@ -79,82 +79,114 @@ public sealed class ClientConnection
 
         await using var ownedClientStream = clientStream;
         var requestHeadBuffer = ArrayPool<byte>.Shared.Rent(_listener.MaxRequestHeadBytes);
+        var requestsProcessed = 0;
 
         try
         {
-            var requestHeadRead = await ProxyTimeoutPolicy.RunAsync(
-                timeoutToken => ReadRequestHeadAsync(clientStream, requestHeadBuffer, timeoutToken),
-                _configurationSnapshot.Timeouts.ClientRequestHeadTimeout,
-                ProxyTimeoutKind.ClientRequestHead,
-                cancellationToken);
-            if (requestHeadRead.HeadLength == EmptyRequestHead)
+            while (!cancellationToken.IsCancellationRequested)
             {
-                return;
-            }
+                var timeoutKind = requestsProcessed == 0
+                    ? ProxyTimeoutKind.ClientRequestHead
+                    : ProxyTimeoutKind.ClientKeepAliveIdle;
+                var timeout = requestsProcessed == 0
+                    ? _configurationSnapshot.Timeouts.ClientRequestHeadTimeout
+                    : _configurationSnapshot.Timeouts.ClientKeepAliveIdleTimeout;
+                var requestHeadRead = await ProxyTimeoutPolicy.RunAsync(
+                    timeoutToken => ReadRequestHeadAsync(clientStream, requestHeadBuffer, timeoutToken),
+                    timeout,
+                    timeoutKind,
+                    cancellationToken);
+                if (requestHeadRead.HeadLength == EmptyRequestHead)
+                {
+                    return;
+                }
 
-            if (requestHeadRead.HeadLength == RequestHeadTooLarge)
-            {
-                _metrics.ParseFailed();
-                _metrics.MalformedRequestRejected();
-                await WriteResponseAsync(clientStream, RequestHeaderFieldsTooLargeResponse, cancellationToken);
-                return;
-            }
+                if (requestHeadRead.HeadLength == RequestHeadTooLarge)
+                {
+                    _metrics.ParseFailed();
+                    _metrics.MalformedRequestRejected();
+                    await WriteResponseAsync(clientStream, RequestHeaderFieldsTooLargeResponse, cancellationToken);
+                    return;
+                }
 
-            if (requestHeadRead.HeadLength == IncompleteRequestHead)
-            {
-                _metrics.ParseFailed();
-                _metrics.MalformedRequestRejected();
-                await WriteResponseAsync(clientStream, BadRequestResponse, cancellationToken);
-                return;
-            }
+                if (requestHeadRead.HeadLength == IncompleteRequestHead)
+                {
+                    _metrics.ParseFailed();
+                    _metrics.MalformedRequestRejected();
+                    await WriteResponseAsync(clientStream, BadRequestResponse, cancellationToken);
+                    return;
+                }
 
-            var requestHeadBytes = requestHeadRead.HeadBytes;
-            if (!Http1RequestParser.TryParse(requestHeadBytes.Span, out var requestHead, out var parseError))
-            {
-                _metrics.ParseFailed();
-                if (parseError == Http1ParseError.UnsupportedTransferEncoding)
+                var requestHeadBytes = requestHeadRead.HeadBytes;
+                if (!Http1RequestParser.TryParse(requestHeadBytes.Span, out var requestHead, out var parseError))
+                {
+                    _metrics.ParseFailed();
+                    if (parseError == Http1ParseError.UnsupportedTransferEncoding)
+                    {
+                        _metrics.UnsupportedRequestFramingRejected();
+                        await WriteResponseAsync(clientStream, NotImplementedResponse, cancellationToken);
+                        return;
+                    }
+
+                    _metrics.MalformedRequestRejected();
+                    _logger.LogDebug("Rejected malformed request head with parse error {ParseError}", parseError);
+                    await WriteResponseAsync(clientStream, BadRequestResponse, cancellationToken);
+                    return;
+                }
+
+                _metrics.RequestReceived();
+
+                if (IsUnsupportedConnectionMethod(requestHead.Method) || HasUpgradeRequest(requestHead.Headers))
                 {
                     _metrics.UnsupportedRequestFramingRejected();
                     await WriteResponseAsync(clientStream, NotImplementedResponse, cancellationToken);
                     return;
                 }
 
-                _metrics.MalformedRequestRejected();
-                _logger.LogDebug("Rejected malformed request head with parse error {ParseError}", parseError);
-                await WriteResponseAsync(clientStream, BadRequestResponse, cancellationToken);
-                return;
+                var routeMatch = _routeMatcher.Match(_configurationSnapshot, requestHead);
+                if (routeMatch is null)
+                {
+                    await WriteResponseAsync(clientStream, NotFoundResponse, cancellationToken);
+                    return;
+                }
+
+                var nextRequestCount = requestsProcessed + 1;
+                var preferKeepAlive = ShouldKeepClientConnectionOpen(requestHead)
+                    && nextRequestCount < _configurationSnapshot.ConnectionLimits.MaxRequestsPerClientConnection;
+                var result = await _forwarder.ForwardAsync(
+                    clientStream,
+                    requestHeadRead,
+                    requestHead,
+                    routeMatch.Upstream,
+                    _listener,
+                    _configurationSnapshot.Timeouts,
+                    _configurationSnapshot.ConnectionLimits,
+                    preferKeepAlive,
+                    cancellationToken);
+
+                requestsProcessed = nextRequestCount;
+                if (requestsProcessed >= _configurationSnapshot.ConnectionLimits.MaxRequestsPerClientConnection)
+                {
+                    _metrics.ClientConnectionClosedByMaxRequests();
+                    return;
+                }
+
+                if (!result.Succeeded || !result.KeepClientConnectionOpen)
+                {
+                    return;
+                }
             }
-
-            _metrics.RequestReceived();
-
-            if (IsUnsupportedConnectionMethod(requestHead.Method) || HasUpgradeRequest(requestHead.Headers))
-            {
-                _metrics.UnsupportedRequestFramingRejected();
-                await WriteResponseAsync(clientStream, NotImplementedResponse, cancellationToken);
-                return;
-            }
-
-            var routeMatch = _routeMatcher.Match(_configurationSnapshot, requestHead);
-            if (routeMatch is null)
-            {
-                await WriteResponseAsync(clientStream, NotFoundResponse, cancellationToken);
-                return;
-            }
-
-            await _forwarder.ForwardAsync(
-                clientStream,
-                requestHeadRead,
-                requestHead,
-                routeMatch.Upstream,
-                _listener,
-                _configurationSnapshot.Timeouts,
-                cancellationToken);
         }
         catch (ProxyTimeoutException exception) when (exception.Kind == ProxyTimeoutKind.ClientRequestHead)
         {
             _metrics.ClientRequestHeadTimedOut();
             _logger.LogDebug(exception, "Client timed out before sending a complete request head.");
             await WriteResponseAsync(clientStream, ProxyErrorResponses.RequestTimeout, cancellationToken);
+        }
+        catch (ProxyTimeoutException exception) when (exception.Kind == ProxyTimeoutKind.ClientKeepAliveIdle)
+        {
+            _metrics.ClientConnectionClosedByIdleTimeout();
+            _logger.LogDebug(exception, "Client keep-alive idle timeout elapsed.");
         }
         catch (ProxyTimeoutException exception) when (exception.Kind == ProxyTimeoutKind.DownstreamWrite)
         {
@@ -182,7 +214,7 @@ public sealed class ClientConnection
         while (totalBytesRead < _listener.MaxRequestHeadBytes)
         {
             var bytesRead = await clientStream.ReadAsync(
-                requestHeadBuffer.AsMemory(totalBytesRead, _listener.MaxRequestHeadBytes - totalBytesRead),
+                requestHeadBuffer.AsMemory(totalBytesRead, 1),
                 cancellationToken);
 
             if (bytesRead == 0)
@@ -201,7 +233,7 @@ public sealed class ClientConnection
                     requestHeadLength,
                     totalBytesRead,
                     requestHeadBuffer.AsMemory(0, requestHeadLength),
-                    requestHeadBuffer.AsMemory(requestHeadLength, totalBytesRead - requestHeadLength));
+                    ReadOnlyMemory<byte>.Empty);
             }
         }
 
@@ -229,6 +261,16 @@ public sealed class ClientConnection
     private static bool HasUpgradeRequest(IReadOnlyList<Http1HeaderField> headers)
     {
         return headers.Any(static header => string.Equals(header.Name, "Upgrade", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool ShouldKeepClientConnectionOpen(Http1RequestHead requestHead)
+    {
+        if (ProxyForwarder.HasConnectionToken(requestHead.Headers, "close"))
+        {
+            return false;
+        }
+
+        return string.Equals(requestHead.Version, "HTTP/1.1", StringComparison.OrdinalIgnoreCase);
     }
 
     private static int FindRequestHeadLength(ReadOnlySpan<byte> bytes)

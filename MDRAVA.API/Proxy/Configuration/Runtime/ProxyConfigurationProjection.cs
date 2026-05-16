@@ -6,6 +6,7 @@ public sealed record ProxyConfigurationProjection(
     string SourceDirectory,
     IReadOnlyList<string> SourceFiles,
     RuntimeTimeouts Timeouts,
+    RuntimeConnectionLimits ConnectionLimits,
     IReadOnlyList<RuntimeCertificateProjection> Certificates,
     IReadOnlyList<RuntimeListener> Listeners,
     IReadOnlyList<RuntimeRoute> Routes);

@@ -29,6 +29,7 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<ProxyRuntimeState>();
         services.AddSingleton<IRouteMatcher, SingleUpstreamRouteMatcher>();
         services.AddSingleton<UpstreamConnectionFactory>();
+        services.AddSingleton<UpstreamConnectionPool>();
         services.AddSingleton<HopByHopHeaderPolicy>();
         services.AddSingleton<ProxyForwarder>();
         services.AddSingleton<TlsConnectionAuthenticator>();

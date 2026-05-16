@@ -47,7 +47,7 @@ public static class Http1RequestParser
         var targetBytes = requestLine[(firstSpace + 1)..secondSpace];
         var versionBytes = requestLine[(secondSpace + 1)..];
 
-        if (!AsciiEquals(versionBytes, "HTTP/1.1"))
+        if (!AsciiEquals(versionBytes, "HTTP/1.1") && !AsciiEquals(versionBytes, "HTTP/1.0"))
         {
             error = Http1ParseError.UnsupportedVersion;
             return false;

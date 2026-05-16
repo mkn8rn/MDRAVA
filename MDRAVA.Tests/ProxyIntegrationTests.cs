@@ -51,7 +51,7 @@ internal static class ProxyIntegrationTests
                 await client.ConnectAsync(IPAddress.Loopback, proxyPort, timeout.Token);
 
                 await using var stream = client.GetStream();
-                var requestBytes = Encoding.ASCII.GetBytes("GET /smoke HTTP/1.1\r\nHost: smoke.test\r\n\r\n");
+                var requestBytes = Encoding.ASCII.GetBytes("GET /smoke HTTP/1.1\r\nHost: smoke.test\r\nConnection: close\r\n\r\n");
                 await stream.WriteAsync(requestBytes, timeout.Token);
 
                 var responseText = await ReadToEndAsync(stream, timeout.Token);
@@ -61,7 +61,7 @@ internal static class ProxyIntegrationTests
 
                 var upstreamRequest = await upstreamTask.WaitAsync(timeout.Token);
                 AssertEx.True(upstreamRequest.StartsWith("GET /smoke HTTP/1.1", StringComparison.Ordinal), upstreamRequest);
-                AssertEx.True(upstreamRequest.Contains("Connection: close", StringComparison.OrdinalIgnoreCase), upstreamRequest);
+                AssertEx.True(upstreamRequest.Contains("Connection: keep-alive", StringComparison.OrdinalIgnoreCase), upstreamRequest);
             }
             finally
             {
@@ -167,12 +167,12 @@ internal static class ProxyIntegrationTests
     public static async Task FiltersHopByHopRequestHeaders()
     {
         var result = await RunProxyScenarioAsync(
-            "GET /headers HTTP/1.1\r\nHost: header.test\r\nConnection: x-private\r\nX-Private: secret\r\nKeep-Alive: timeout=5\r\n\r\n",
+            "GET /headers HTTP/1.1\r\nHost: header.test\r\nConnection: x-private, close\r\nX-Private: secret\r\nKeep-Alive: timeout=5\r\n\r\n",
             "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
             readBodyFromUpstreamRequest: false);
 
         AssertEx.False(result.UpstreamRequest.Contains("X-Private", StringComparison.OrdinalIgnoreCase), result.UpstreamRequest);
-        AssertEx.False(result.UpstreamRequest.Contains("Keep-Alive", StringComparison.OrdinalIgnoreCase), result.UpstreamRequest);
+        AssertEx.False(result.UpstreamRequest.Contains("\r\nKeep-Alive:", StringComparison.OrdinalIgnoreCase), result.UpstreamRequest);
     }
 
     public static async Task PreservesHostHeader()
@@ -390,6 +390,167 @@ internal static class ProxyIntegrationTests
         }
     }
 
+    public static async Task PersistentClientProcessesTwoSequentialGetsAndReusesUpstream()
+    {
+        var result = await RunPersistentClientScenarioAsync(
+            [
+                "GET /one HTTP/1.1\r\nHost: keep.test\r\n\r\n",
+                "GET /two HTTP/1.1\r\nHost: keep.test\r\nConnection: close\r\n\r\n"
+            ],
+            [
+                "HTTP/1.1 200 OK\r\nContent-Length: 3\r\n\r\none",
+                "HTTP/1.1 200 OK\r\nContent-Length: 3\r\n\r\ntwo"
+            ]);
+
+        AssertEx.True(result.ClientResponses[0].EndsWith("one", StringComparison.Ordinal), result.ClientResponses[0]);
+        AssertEx.True(result.ClientResponses[1].EndsWith("two", StringComparison.Ordinal), result.ClientResponses[1]);
+        AssertEx.Equal(1, result.UpstreamAcceptedConnections);
+        AssertEx.Equal(1L, result.Metrics.UpstreamConnectionsOpened);
+        AssertEx.Equal(1L, result.Metrics.UpstreamConnectionsReused);
+    }
+
+    public static async Task ClientConnectionCloseHeaderClosesAfterResponse()
+    {
+        var result = await RunPersistentClientScenarioAsync(
+            ["GET /close HTTP/1.1\r\nHost: close.test\r\nConnection: close\r\n\r\n"],
+            ["HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok"],
+            expectClientCloseAfterLastResponse: true);
+
+        AssertEx.True(result.ClientClosedAfterLastResponse);
+    }
+
+    public static async Task Http10ClientClosesByDefault()
+    {
+        var result = await RunPersistentClientScenarioAsync(
+            ["GET /old HTTP/1.0\r\nHost: old.test\r\n\r\n"],
+            ["HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok"],
+            expectClientCloseAfterLastResponse: true);
+
+        AssertEx.True(result.ClientClosedAfterLastResponse);
+    }
+
+    public static async Task MaxRequestsPerClientConnectionIsEnforced()
+    {
+        var result = await RunPersistentClientScenarioAsync(
+            ["GET /max HTTP/1.1\r\nHost: max.test\r\n\r\n"],
+            ["HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok"],
+            maxRequestsPerClientConnection: 1,
+            expectClientCloseAfterLastResponse: true);
+
+        AssertEx.True(result.ClientClosedAfterLastResponse);
+        AssertEx.Equal(1L, result.Metrics.ClientConnectionsClosedByMaxRequests);
+    }
+
+    public static async Task ClientKeepAliveIdleTimeoutClosesConnection()
+    {
+        var result = await RunPersistentClientScenarioAsync(
+            ["GET /idle HTTP/1.1\r\nHost: idle.test\r\n\r\n"],
+            ["HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok"],
+            clientKeepAliveIdleTimeoutMs: 150,
+            expectClientCloseAfterLastResponse: true);
+
+        AssertEx.True(result.ClientClosedAfterLastResponse);
+        AssertEx.Equal(1L, result.Metrics.ClientConnectionsClosedByIdleTimeout);
+    }
+
+    public static async Task MalformedSecondRequestClosesConnection()
+    {
+        var result = await RunPersistentClientScenarioAsync(
+            [
+                "GET /first HTTP/1.1\r\nHost: malformed.test\r\n\r\n",
+                "BAD\r\n\r\n"
+            ],
+            ["HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nfirst"],
+            readSecondAsRawClose: true);
+
+        AssertEx.True(result.ClientResponses[0].EndsWith("first", StringComparison.Ordinal), result.ClientResponses[0]);
+        AssertEx.True(result.ClientResponses[1].Contains("400 Bad Request", StringComparison.Ordinal), result.ClientResponses[1]);
+    }
+
+    public static async Task PersistentClientProxiesContentLengthPost()
+    {
+        var result = await RunPersistentClientScenarioAsync(
+            [
+                "POST /post HTTP/1.1\r\nHost: post.test\r\nContent-Length: 5\r\n\r\nhello",
+                "GET /done HTTP/1.1\r\nHost: post.test\r\nConnection: close\r\n\r\n"
+            ],
+            [
+                "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\npost",
+                "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\ndone"
+            ]);
+
+        AssertEx.True(result.UpstreamRequests[0].EndsWith("hello", StringComparison.Ordinal), result.UpstreamRequests[0]);
+        AssertEx.Equal(1, result.UpstreamAcceptedConnections);
+    }
+
+    public static async Task PersistentClientProxiesChunkedPost()
+    {
+        var result = await RunPersistentClientScenarioAsync(
+            [
+                "POST /chunk HTTP/1.1\r\nHost: chunk.test\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n0\r\n\r\n",
+                "GET /done HTTP/1.1\r\nHost: chunk.test\r\nConnection: close\r\n\r\n"
+            ],
+            [
+                "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nchunk",
+                "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\ndone"
+            ]);
+
+        AssertEx.True(result.UpstreamRequests[0].Contains("Transfer-Encoding: chunked", StringComparison.OrdinalIgnoreCase), result.UpstreamRequests[0]);
+        AssertEx.Equal(1, result.UpstreamAcceptedConnections);
+    }
+
+    public static async Task UpstreamConnectionIsNotReusedAfterResponseConnectionClose()
+    {
+        var result = await RunPersistentClientScenarioAsync(
+            [
+                "GET /first HTTP/1.1\r\nHost: upstream-close.test\r\n\r\n",
+                "GET /second HTTP/1.1\r\nHost: upstream-close.test\r\nConnection: close\r\n\r\n"
+            ],
+            [
+                "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 5\r\n\r\nfirst",
+                "HTTP/1.1 200 OK\r\nContent-Length: 6\r\n\r\nsecond"
+            ]);
+
+        AssertEx.Equal(2, result.UpstreamAcceptedConnections);
+        AssertEx.Equal(2L, result.Metrics.UpstreamConnectionsOpened);
+    }
+
+    public static async Task UpstreamConnectionIsNotReusedAfterPrematureDisconnect()
+    {
+        var result = await RunPersistentClientScenarioAsync(
+            [
+                "GET /short HTTP/1.1\r\nHost: short.test\r\nConnection: close\r\n\r\n",
+                "GET /next HTTP/1.1\r\nHost: short.test\r\nConnection: close\r\n\r\n"
+            ],
+            [
+                "HTTP/1.1 200 OK\r\nContent-Length: 10\r\n\r\nshort",
+                "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nnext"
+            ],
+            closeUpstreamAfterEachResponse: true,
+            useSeparateClients: true);
+
+        AssertEx.Equal(2, result.UpstreamAcceptedConnections);
+        AssertEx.True(result.Metrics.UpstreamConnectionsDiscarded >= 1);
+    }
+
+    public static async Task UpstreamConnectionIsNotReusedAfterFramingError()
+    {
+        var result = await RunPersistentClientScenarioAsync(
+            [
+                "GET /bad-upstream HTTP/1.1\r\nHost: bad-upstream.test\r\nConnection: close\r\n\r\n",
+                "GET /next HTTP/1.1\r\nHost: bad-upstream.test\r\nConnection: close\r\n\r\n"
+            ],
+            [
+                "NOT HTTP\r\n\r\n",
+                "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nnext"
+            ],
+            closeUpstreamAfterEachResponse: true,
+            useSeparateClients: true);
+
+        AssertEx.Equal(2, result.UpstreamAcceptedConnections);
+        AssertEx.True(result.Metrics.UpstreamConnectionsDiscarded >= 1);
+    }
+
     private static async Task<string> RunSingleResponseUpstreamAsync(
         int upstreamPort,
         CancellationToken cancellationToken)
@@ -469,7 +630,7 @@ internal static class ProxyIntegrationTests
                 using var client = new TcpClient();
                 await client.ConnectAsync(IPAddress.Loopback, proxyPort, timeout.Token);
                 await using var stream = client.GetStream();
-                var requestBytes = Encoding.ASCII.GetBytes(clientRequest);
+                var requestBytes = Encoding.ASCII.GetBytes(WithConnectionClose(clientRequest));
                 await stream.WriteAsync(requestBytes, timeout.Token);
 
                 var clientResponse = await ReadToEndAsync(stream, timeout.Token);
@@ -539,7 +700,7 @@ internal static class ProxyIntegrationTests
                 }, timeout.Token);
 
                 var remoteCertificate = new X509Certificate2(tlsStream.RemoteCertificate!);
-                var requestBytes = Encoding.ASCII.GetBytes("GET /secure HTTP/1.1\r\nHost: home.test\r\n\r\n");
+                var requestBytes = Encoding.ASCII.GetBytes("GET /secure HTTP/1.1\r\nHost: home.test\r\nConnection: close\r\n\r\n");
                 await tlsStream.WriteAsync(requestBytes, timeout.Token);
                 var clientResponse = await ReadToEndAsync(tlsStream, timeout.Token);
                 var upstreamRequest = await upstreamTask.WaitAsync(timeout.Token);
@@ -554,6 +715,172 @@ internal static class ProxyIntegrationTests
         finally
         {
             DeleteDirectory(dataDirectory);
+        }
+    }
+
+    private static async Task<PersistentClientScenarioResult> RunPersistentClientScenarioAsync(
+        IReadOnlyList<string> clientRequests,
+        IReadOnlyList<string> upstreamResponses,
+        int maxRequestsPerClientConnection = 100,
+        int clientKeepAliveIdleTimeoutMs = 1000,
+        bool expectClientCloseAfterLastResponse = false,
+        bool readSecondAsRawClose = false,
+        bool closeUpstreamAfterEachResponse = false,
+        bool useSeparateClients = false)
+    {
+        var proxyPort = GetFreeTcpPort();
+        var upstreamPort = GetFreeTcpPort();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var dataDirectory = Path.Combine(Path.GetTempPath(), $"mdrava-persistent-{Guid.NewGuid():N}");
+
+        try
+        {
+            ConfigurationTests.WriteSite(dataDirectory, "persistent.json", proxyPort, upstreamPort);
+            ConfigurationTests.WriteOperationalConfig(
+                dataDirectory,
+                clientKeepAliveIdleTimeoutMs: clientKeepAliveIdleTimeoutMs,
+                maxRequestsPerClientConnection: maxRequestsPerClientConnection);
+
+            var upstreamTask = RunPersistentScenarioUpstreamAsync(
+                upstreamPort,
+                upstreamResponses,
+                closeUpstreamAfterEachResponse,
+                timeout.Token);
+
+            using var host = BuildProxyHost(dataDirectory);
+            await host.StartAsync(timeout.Token);
+
+            List<string> clientResponses = [];
+            try
+            {
+                if (useSeparateClients)
+                {
+                    foreach (var request in clientRequests)
+                    {
+                        clientResponses.Add(await SendSingleRequestAsync(proxyPort, request, timeout.Token));
+                    }
+                }
+                else
+                {
+                    using var client = new TcpClient();
+                    await client.ConnectAsync(IPAddress.Loopback, proxyPort, timeout.Token);
+                    await using var stream = client.GetStream();
+
+                    for (var index = 0; index < clientRequests.Count; index++)
+                    {
+                        var requestBytes = Encoding.ASCII.GetBytes(clientRequests[index]);
+                        await stream.WriteAsync(requestBytes, timeout.Token);
+                        if (readSecondAsRawClose && index == 1)
+                        {
+                            clientResponses.Add(await ReadToEndAsync(stream, timeout.Token));
+                            break;
+                        }
+
+                        clientResponses.Add(await ReadHttpResponseAsync(stream, timeout.Token));
+                    }
+
+                    if (expectClientCloseAfterLastResponse)
+                    {
+                        await WaitForClientCloseAsync(stream, timeout.Token);
+                    }
+                }
+            }
+            finally
+            {
+                await host.StopAsync(CancellationToken.None);
+            }
+
+            var upstreamResult = await upstreamTask.WaitAsync(timeout.Token);
+            var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
+            return new PersistentClientScenarioResult(
+                clientResponses,
+                upstreamResult.Requests,
+                upstreamResult.AcceptedConnections,
+                expectClientCloseAfterLastResponse,
+                metrics);
+        }
+        finally
+        {
+            DeleteDirectory(dataDirectory);
+        }
+    }
+
+    private static async Task<string> SendSingleRequestAsync(
+        int proxyPort,
+        string request,
+        CancellationToken cancellationToken)
+    {
+        using var client = new TcpClient();
+        await client.ConnectAsync(IPAddress.Loopback, proxyPort, cancellationToken);
+        await using var stream = client.GetStream();
+        await stream.WriteAsync(Encoding.ASCII.GetBytes(request), cancellationToken);
+        return await ReadToEndAsync(stream, cancellationToken);
+    }
+
+    private static async Task WaitForClientCloseAsync(Stream stream, CancellationToken cancellationToken)
+    {
+        var buffer = new byte[1];
+        while (true)
+        {
+            try
+            {
+                var bytesRead = await stream.ReadAsync(buffer, cancellationToken);
+                if (bytesRead == 0)
+                {
+                    return;
+                }
+            }
+            catch (IOException)
+            {
+                return;
+            }
+        }
+    }
+
+    private static async Task<PersistentUpstreamResult> RunPersistentScenarioUpstreamAsync(
+        int upstreamPort,
+        IReadOnlyList<string> responses,
+        bool closeAfterEachResponse,
+        CancellationToken cancellationToken)
+    {
+        var listener = new TcpListener(IPAddress.Loopback, upstreamPort);
+        listener.Start();
+        List<string> requests = [];
+        var acceptedConnections = 0;
+
+        try
+        {
+            while (requests.Count < responses.Count)
+            {
+                using var client = await listener.AcceptTcpClientAsync(cancellationToken);
+                acceptedConnections++;
+                await using var stream = client.GetStream();
+
+                while (requests.Count < responses.Count)
+                {
+                    var requestText = await ReadHttpRequestAsync(stream, readBody: true, cancellationToken);
+                    if (string.IsNullOrEmpty(requestText))
+                    {
+                        break;
+                    }
+
+                    requests.Add(requestText);
+                    var response = responses[requests.Count - 1];
+                    await stream.WriteAsync(Encoding.ASCII.GetBytes(response), cancellationToken);
+                    await stream.FlushAsync(cancellationToken);
+
+                    if (closeAfterEachResponse || response.Contains("\r\nConnection: close", StringComparison.OrdinalIgnoreCase))
+                    {
+                        break;
+                    }
+                }
+            }
+
+            return new PersistentUpstreamResult(requests, acceptedConnections);
+        }
+        finally
+        {
+            listener.Stop();
         }
     }
 
@@ -697,6 +1024,17 @@ internal static class ProxyIntegrationTests
         }
     }
 
+    private static string WithConnectionClose(string request)
+    {
+        var separator = request.IndexOf("\r\n\r\n", StringComparison.Ordinal);
+        if (separator < 0 || request.Contains("\r\nConnection:", StringComparison.OrdinalIgnoreCase))
+        {
+            return request;
+        }
+
+        return request.Insert(separator, "\r\nConnection: close");
+    }
+
     private static async Task<string> ReadHttpRequestAsync(
         NetworkStream stream,
         bool readBody,
@@ -781,6 +1119,120 @@ internal static class ProxyIntegrationTests
         return Encoding.ASCII.GetString(buffer, 0, total);
     }
 
+    private static async Task<string> ReadHttpResponseAsync(
+        Stream stream,
+        CancellationToken cancellationToken)
+    {
+        var head = await ReadResponseHeadAsync(stream, cancellationToken);
+        if (TryGetContentLength(head, out var contentLength))
+        {
+            return head + await ReadExactTextAsync(stream, contentLength, cancellationToken);
+        }
+
+        if (head.Contains("Transfer-Encoding: chunked", StringComparison.OrdinalIgnoreCase))
+        {
+            var body = new StringBuilder();
+            while (true)
+            {
+                var line = await ReadLineAsync(stream, cancellationToken);
+                body.Append(line);
+                if (line == "0\r\n")
+                {
+                    while (true)
+                    {
+                        var trailerLine = await ReadLineAsync(stream, cancellationToken);
+                        body.Append(trailerLine);
+                        if (trailerLine == "\r\n")
+                        {
+                            return head + body;
+                        }
+                    }
+                }
+
+                var sizeText = line[..^2].Split(';')[0];
+                var size = Convert.ToInt32(sizeText, 16);
+                body.Append(await ReadExactTextAsync(stream, size + 2, cancellationToken));
+            }
+        }
+
+        return head;
+    }
+
+    private static async Task<string> ReadResponseHeadAsync(
+        Stream stream,
+        CancellationToken cancellationToken)
+    {
+        var buffer = new byte[4096];
+        var total = 0;
+
+        while (total < buffer.Length)
+        {
+            var bytesRead = await stream.ReadAsync(buffer.AsMemory(total, 1), cancellationToken);
+            if (bytesRead == 0)
+            {
+                break;
+            }
+
+            total += bytesRead;
+            if (ContainsRequestHeadTerminator(buffer.AsSpan(0, total)))
+            {
+                break;
+            }
+        }
+
+        return Encoding.ASCII.GetString(buffer, 0, total);
+    }
+
+    private static async Task<string> ReadLineAsync(
+        Stream stream,
+        CancellationToken cancellationToken)
+    {
+        List<byte> bytes = [];
+        var previous = (byte)0;
+        var buffer = new byte[1];
+
+        while (true)
+        {
+            var bytesRead = await stream.ReadAsync(buffer, cancellationToken);
+            if (bytesRead == 0)
+            {
+                break;
+            }
+
+            var current = buffer[0];
+            bytes.Add(current);
+            if (previous == (byte)'\r' && current == (byte)'\n')
+            {
+                break;
+            }
+
+            previous = current;
+        }
+
+        return Encoding.ASCII.GetString(bytes.ToArray());
+    }
+
+    private static async Task<string> ReadExactTextAsync(
+        Stream stream,
+        int length,
+        CancellationToken cancellationToken)
+    {
+        var buffer = new byte[length];
+        var total = 0;
+        while (total < length)
+        {
+            var bytesRead = await stream.ReadAsync(buffer.AsMemory(total, length - total), cancellationToken);
+            if (bytesRead == 0)
+            {
+                break;
+            }
+
+            total += bytesRead;
+        }
+
+        return Encoding.ASCII.GetString(buffer, 0, total);
+    }
+
     private static async Task<string> ReadToEndAsync(
         Stream stream,
         CancellationToken cancellationToken)
@@ -790,7 +1242,15 @@ internal static class ProxyIntegrationTests
 
         while (true)
         {
-            var bytesRead = await stream.ReadAsync(buffer, cancellationToken);
+            int bytesRead;
+            try
+            {
+                bytesRead = await stream.ReadAsync(buffer, cancellationToken);
+            }
+            catch (IOException)
+            {
+                break;
+            }
             if (bytesRead == 0)
             {
                 break;
@@ -842,5 +1302,16 @@ internal static class ProxyIntegrationTests
         string ClientResponse,
         string UpstreamRequest,
         string RemoteCertificateSubject,
+        ProxyMetricsSnapshot Metrics);
+
+    private sealed record PersistentUpstreamResult(
+        IReadOnlyList<string> Requests,
+        int AcceptedConnections);
+
+    private sealed record PersistentClientScenarioResult(
+        IReadOnlyList<string> ClientResponses,
+        IReadOnlyList<string> UpstreamRequests,
+        int UpstreamAcceptedConnections,
+        bool ClientClosedAfterLastResponse,
         ProxyMetricsSnapshot Metrics);
 }

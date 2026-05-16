@@ -7,4 +7,6 @@ public sealed record RuntimeTimeouts(
     TimeSpan UpstreamResponseHeadTimeout,
     TimeSpan UpstreamResponseBodyIdleTimeout,
     TimeSpan DownstreamWriteTimeout,
-    TimeSpan TlsHandshakeTimeout);
+    TimeSpan TlsHandshakeTimeout,
+    TimeSpan ClientKeepAliveIdleTimeout,
+    TimeSpan UpstreamIdleConnectionLifetime);

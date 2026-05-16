@@ -15,4 +15,8 @@ public sealed class ProxyTimeoutOptions
     public int DownstreamWriteTimeoutMs { get; init; } = 30_000;
 
     public int TlsHandshakeTimeoutMs { get; init; } = 10_000;
+
+    public int ClientKeepAliveIdleTimeoutMs { get; init; } = 30_000;
+
+    public int UpstreamIdleConnectionLifetimeMs { get; init; } = 60_000;
 }

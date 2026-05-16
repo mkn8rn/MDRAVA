@@ -1,0 +1,8 @@
+namespace MDRAVA.API.Proxy.Configuration;
+
+public sealed class ProxyConnectionOptions
+{
+    public int MaxRequestsPerClientConnection { get; init; } = 100;
+
+    public int MaxIdleUpstreamConnectionsPerUpstream { get; init; } = 16;
+}

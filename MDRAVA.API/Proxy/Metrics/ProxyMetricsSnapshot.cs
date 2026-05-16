@@ -29,4 +29,11 @@ public sealed record ProxyMetricsSnapshot(
     long TlsHandshakeSuccesses,
     long TlsHandshakeFailures,
     long TlsHandshakeTimeouts,
-    long TlsNoCertificateForSniFailures);
+    long TlsNoCertificateForSniFailures,
+    long ClientConnectionsClosedByIdleTimeout,
+    long ClientConnectionsClosedByMaxRequests,
+    long UpstreamConnectionsOpened,
+    long UpstreamConnectionsReused,
+    long UpstreamConnectionsDiscarded,
+    long UpstreamPoolIdleConnections,
+    long UpstreamPoolActiveConnections);
