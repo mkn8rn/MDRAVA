@@ -59,11 +59,11 @@ public sealed class UpstreamConnectionPool : IDisposable
             return new UpstreamConnectionLease(this, connection);
         }
 
-        var socket = await _connectionFactory.ConnectAsync(
+        var transport = await _connectionFactory.ConnectAsync(
             upstream,
             timeouts.UpstreamConnectTimeout,
             cancellationToken);
-        connection = new PooledUpstreamConnection(key, upstream, socket);
+        connection = new PooledUpstreamConnection(key, upstream, transport.Socket, transport.Stream);
         connection.MaxIdleConnections = limits.MaxIdleUpstreamConnectionsPerUpstream;
         _metrics.UpstreamConnectionOpened();
         _metrics.UpstreamPoolConnectionBorrowed();
@@ -169,9 +169,9 @@ public sealed class UpstreamConnectionPool : IDisposable
         return DateTimeOffset.UtcNow - connection.LastUsedUtc > idleLifetime;
     }
 
-    private static string GetKey(RuntimeUpstream upstream)
+    public static string GetKey(RuntimeUpstream upstream)
     {
-        return $"{upstream.Address}:{upstream.Port}";
+        return $"{upstream.Scheme}|{upstream.Address}|{upstream.Port}|sni={upstream.EffectiveSniHost}|validate={upstream.Tls.ValidateCertificate}";
     }
 
     private void ThrowIfDisposed()

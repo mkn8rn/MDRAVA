@@ -24,16 +24,15 @@ public sealed class UpstreamHealthCheckClient
         RuntimeUpstream upstream,
         CancellationToken cancellationToken)
     {
-        Socket? socket = null;
-        NetworkStream? stream = null;
+        UpstreamTransportConnection? connection = null;
 
         try
         {
-            socket = await _connectionFactory.ConnectAsync(
+            connection = await _connectionFactory.ConnectAsync(
                 upstream,
                 route.HealthCheck.Timeout,
                 cancellationToken);
-            stream = new NetworkStream(socket, ownsSocket: false);
+            var stream = connection.Stream;
 
             var requestBytes = Encoding.ASCII.GetBytes(
                 $"GET {route.HealthCheck.Path} HTTP/1.1\r\nHost: {upstream.Address}\r\nConnection: close\r\n\r\n");
@@ -67,8 +66,7 @@ public sealed class UpstreamHealthCheckClient
         }
         finally
         {
-            stream?.Dispose();
-            socket?.Dispose();
+            connection?.Dispose();
         }
     }
 

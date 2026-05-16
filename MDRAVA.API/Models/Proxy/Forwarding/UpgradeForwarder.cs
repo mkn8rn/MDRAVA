@@ -49,8 +49,7 @@ public sealed class UpgradeForwarder
         CancellationToken cancellationToken)
     {
         var responseStarted = false;
-        Socket? upstreamSocket = null;
-        NetworkStream? upstreamStream = null;
+        UpstreamTransportConnection? upstreamConnection = null;
 
         try
         {
@@ -68,11 +67,11 @@ public sealed class UpgradeForwarder
 
             try
             {
-                upstreamSocket = await _connectionFactory.ConnectAsync(
+                upstreamConnection = await _connectionFactory.ConnectAsync(
                     upstream,
                     timeouts.UpstreamConnectTimeout,
                     cancellationToken);
-                upstreamStream = new NetworkStream(upstreamSocket, ownsSocket: false);
+                var upstreamStream = upstreamConnection.Stream;
 
                 await WriteUpgradeRequestAsync(upstreamStream, requestHead, upgrade, route, upstreamTarget, forwardedHeaders, timeouts, cancellationToken);
                 var responseHeadRead = await ReadResponseHeadAsync(
@@ -198,8 +197,7 @@ public sealed class UpgradeForwarder
         }
         finally
         {
-            upstreamStream?.Dispose();
-            upstreamSocket?.Dispose();
+            upstreamConnection?.Dispose();
         }
     }
 

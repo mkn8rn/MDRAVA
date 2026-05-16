@@ -4,9 +4,13 @@ public sealed class UpstreamOptions
 {
     public string Name { get; init; } = "";
 
+    public string Scheme { get; init; } = "http";
+
     public string Address { get; init; } = "";
 
     public int Port { get; init; }
 
     public int Weight { get; init; } = 1;
+
+    public UpstreamTlsOptions UpstreamTls { get; init; } = new();
 }

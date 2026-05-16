@@ -170,7 +170,14 @@ internal static class HealthCheckTests
 
     private static RuntimeUpstream Upstream(int port)
     {
-        return new RuntimeUpstream("test", $"upstream-{port}", "127.0.0.1", port, 1);
+        return new RuntimeUpstream(
+            "test",
+            $"upstream-{port}",
+            "http",
+            "127.0.0.1",
+            port,
+            1,
+            RuntimeUpstreamTlsOptions.Default);
     }
 
     private static async Task ReadRequestHeadAsync(NetworkStream stream, CancellationToken cancellationToken)

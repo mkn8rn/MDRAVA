@@ -198,9 +198,13 @@ public static class ProxyConfigurationMapper
                 .Select(upstream => new RuntimeUpstream(
                     route.Name,
                     upstream.Name,
+                    string.IsNullOrWhiteSpace(upstream.Scheme) ? "http" : upstream.Scheme.ToLowerInvariant(),
                     upstream.Address,
                     upstream.Port,
-                    upstream.Weight))
+                    upstream.Weight,
+                    new RuntimeUpstreamTlsOptions(
+                        upstream.UpstreamTls.ValidateCertificate,
+                        string.IsNullOrWhiteSpace(upstream.UpstreamTls.SniHost) ? null : upstream.UpstreamTls.SniHost.Trim())))
                 .ToArray(),
             new RuntimeHttpsRedirectPolicy(
                 route.HttpsRedirect.Enabled ?? false,

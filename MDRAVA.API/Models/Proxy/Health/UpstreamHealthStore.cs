@@ -106,6 +106,12 @@ public sealed class UpstreamHealthStore
                         upstream.RouteName,
                         upstream.Name,
                         upstream.Endpoint,
+                        upstream.Scheme,
+                        string.Equals(upstream.Scheme, "https", StringComparison.OrdinalIgnoreCase)
+                            && upstream.Tls.ValidateCertificate,
+                        string.Equals(upstream.Scheme, "https", StringComparison.OrdinalIgnoreCase)
+                            ? upstream.EffectiveSniHost
+                            : null,
                         route.HealthCheck.Enabled,
                         state.State,
                         state.LastResult,
