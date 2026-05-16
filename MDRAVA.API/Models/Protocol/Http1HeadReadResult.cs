@@ -1,0 +1,7 @@
+namespace MDRAVA.API.Models.Protocol;
+
+public sealed record Http1HeadReadResult(
+    int HeadLength,
+    int TotalBytesRead,
+    ReadOnlyMemory<byte> HeadBytes,
+    ReadOnlyMemory<byte> InitialBodyBytes);
