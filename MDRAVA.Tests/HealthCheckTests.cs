@@ -175,6 +175,7 @@ internal static class HealthCheckTests
             "test",
             $"upstream-{port}",
             "http",
+            RuntimeUpstreamProtocol.Http1,
             "127.0.0.1",
             port,
             1,

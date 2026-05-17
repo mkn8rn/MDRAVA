@@ -6,6 +6,8 @@ public sealed class UpstreamOptions
 
     public string Scheme { get; init; } = "http";
 
+    public string Protocol { get; init; } = "http1";
+
     public string Address { get; init; } = "";
 
     public int Port { get; init; }

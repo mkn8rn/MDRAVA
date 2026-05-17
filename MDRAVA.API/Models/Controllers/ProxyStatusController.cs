@@ -53,6 +53,7 @@ public sealed class ProxyStatusController : ControllerBase
                 upstream.SelectedRequests,
                 upstream.RequestFailures)
             {
+                Protocol = upstream.Protocol,
                 Weight = upstream.Weight,
                 CircuitBreaker = upstream.CircuitBreaker
             })

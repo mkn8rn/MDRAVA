@@ -132,6 +132,7 @@ public sealed class UpstreamHealthStore
                         Interlocked.Read(ref state.SelectedRequests),
                         Interlocked.Read(ref state.RequestFailures))
                     {
+                        Protocol = upstream.Protocol,
                         Weight = upstream.Weight,
                         CircuitBreaker = _circuitBreakerStore?.Snapshot(upstream) ?? DisabledCircuitBreaker(upstream)
                     });

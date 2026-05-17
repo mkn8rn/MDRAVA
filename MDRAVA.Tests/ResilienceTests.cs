@@ -682,6 +682,7 @@ internal static class ResilienceTests
             "route",
             name,
             "http",
+            RuntimeUpstreamProtocol.Http1,
             "127.0.0.1",
             name == "first" ? 15000 : 15001,
             weight,

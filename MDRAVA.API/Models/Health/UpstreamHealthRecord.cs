@@ -16,6 +16,8 @@ public sealed record UpstreamHealthRecord(
     long SelectedRequests,
     long RequestFailures)
 {
+    public string Protocol { get; init; } = RuntimeUpstreamProtocol.Http1;
+
     public int Weight { get; init; } = 1;
 
     public CircuitBreakerStatus CircuitBreaker { get; init; } = new(

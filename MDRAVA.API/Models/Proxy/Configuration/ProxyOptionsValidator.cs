@@ -230,6 +230,17 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
                     failures.Add($"{upstreamPrefix}:Scheme must be 'http' or 'https'.");
                 }
 
+                var upstreamProtocol = string.IsNullOrWhiteSpace(upstream.Protocol) ? RuntimeUpstreamProtocol.Http1 : upstream.Protocol;
+                if (!IsSupportedUpstreamProtocol(upstreamProtocol))
+                {
+                    failures.Add($"{upstreamPrefix}:Protocol must be 'http1' or 'http2'.");
+                }
+                else if (string.Equals(upstreamProtocol, RuntimeUpstreamProtocol.Http2, StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(upstreamScheme, "https", StringComparison.OrdinalIgnoreCase))
+                {
+                    failures.Add($"{upstreamPrefix}:HTTP/2 upstreams require scheme 'https' with ALPN; h2c is not supported.");
+                }
+
                 if (upstream.Port is < 1 or > 65535)
                 {
                     failures.Add($"{upstreamPrefix}:Port must be between 1 and 65535.");
@@ -287,6 +298,12 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
     {
         return string.Equals(scheme, "http", StringComparison.OrdinalIgnoreCase)
             || string.Equals(scheme, "https", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsSupportedUpstreamProtocol(string protocol)
+    {
+        return string.Equals(protocol, RuntimeUpstreamProtocol.Http1, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(protocol, RuntimeUpstreamProtocol.Http2, StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsAmbiguousUpstreamAddress(string value)

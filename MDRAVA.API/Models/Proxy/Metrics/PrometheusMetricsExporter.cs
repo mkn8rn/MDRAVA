@@ -58,6 +58,7 @@ public sealed class PrometheusMetricsExporter
         AppendRequestRejectionCounters(builder, proxy);
 
         AppendCounter(builder, "mdrava_upstream_request_attempts_total", "Selected upstream request attempts.", proxy.UpstreamSelections);
+        AppendCounter(builder, "mdrava_upstream_http2_requests_total", "Upstream HTTP/2 request attempts.", proxy.UpstreamHttp2Requests);
         AppendUpstreamSelectionCounters(builder, snapshot.Metrics, proxy.UpstreamSelectionsByUpstream);
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", "Upstream failures by bounded reason.", proxy.UpstreamConnectFailures, new Label("reason", "connect_failure"));
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.UpstreamConnectTimeouts, new Label("reason", "connect_timeout"));
@@ -68,6 +69,8 @@ public sealed class PrometheusMetricsExporter
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.NoHealthyUpstreamFailures, new Label("reason", "no_healthy_upstream"));
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.NoAvailableUpstreamFailures, new Label("reason", "no_available_upstream"));
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.UpstreamRequestFailures, new Label("reason", "request_failure"));
+        AppendLabeledCounter(builder, "mdrava_upstream_http2_failures_total", "Upstream HTTP/2 failures by bounded reason.", proxy.UpstreamHttp2AlpnFailures, new Label("reason", "alpn_failure"));
+        AppendLabeledCounter(builder, "mdrava_upstream_http2_failures_total", null, proxy.UpstreamHttp2ProtocolErrors, new Label("reason", "protocol_error"));
 
         AppendCounter(builder, "mdrava_retry_attempts_total", "Retry attempts after an initial failed upstream attempt.", proxy.RetryAttempts);
         AppendCounter(builder, "mdrava_retry_exhausted_total", "Requests that exhausted their configured retry attempts.", proxy.RetryExhausted);
@@ -201,7 +204,8 @@ public sealed class PrometheusMetricsExporter
                 selection.Count,
                 new Label("route", selection.Route),
                 new Label("upstream", selection.Upstream),
-                new Label("scheme", selection.Scheme));
+                new Label("scheme", selection.Scheme),
+                new Label("protocol", selection.Protocol));
         }
     }
 
@@ -226,6 +230,7 @@ public sealed class PrometheusMetricsExporter
                 new Label("route", upstream.RouteName),
                 new Label("upstream", upstream.UpstreamName),
                 new Label("scheme", upstream.Scheme),
+                new Label("protocol", upstream.Protocol),
                 new Label("state", upstream.State.ToString()));
         }
     }

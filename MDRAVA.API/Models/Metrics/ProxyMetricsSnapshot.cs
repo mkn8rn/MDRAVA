@@ -95,4 +95,7 @@ public sealed record ProxyMetricsSnapshot(
     long Http2AcceptedConnections,
     long Http2Requests,
     long ActiveHttp2Streams,
-    IReadOnlyDictionary<string, long> Http2ProtocolErrors);
+    IReadOnlyDictionary<string, long> Http2ProtocolErrors,
+    long UpstreamHttp2Requests,
+    long UpstreamHttp2AlpnFailures,
+    long UpstreamHttp2ProtocolErrors);

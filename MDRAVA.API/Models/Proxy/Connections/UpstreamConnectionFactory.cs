@@ -3,6 +3,7 @@ using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Forwarding;
 
@@ -94,14 +95,28 @@ public sealed class UpstreamConnectionFactory
                         {
                             TargetHost = targetHost,
                             EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
-                            CertificateRevocationCheckMode = X509RevocationMode.NoCheck
+                            CertificateRevocationCheckMode = X509RevocationMode.NoCheck,
+                            ApplicationProtocols = BuildApplicationProtocols(upstream)
                         },
                         timeoutToken);
                 },
                 connectTimeout,
                 ProxyTimeoutKind.UpstreamConnect,
                 cancellationToken);
+            if (RuntimeUpstreamProtocol.IsHttp2(upstream.Protocol)
+                && tlsStream.NegotiatedApplicationProtocol != SslApplicationProtocol.Http2)
+            {
+                throw new UpstreamTlsException(
+                    $"TLS ALPN negotiation for upstream '{upstream.Name}' selected '{FormatNegotiatedProtocol(tlsStream.NegotiatedApplicationProtocol)}' instead of 'h2'.",
+                    new AuthenticationException("Upstream did not negotiate HTTP/2."));
+            }
+
             return tlsStream;
+        }
+        catch (UpstreamTlsException)
+        {
+            await tlsStream.DisposeAsync();
+            throw;
         }
         catch (Exception exception) when (exception is AuthenticationException or IOException)
         {
@@ -120,5 +135,29 @@ public sealed class UpstreamConnectionFactory
         }
 
         return await Dns.GetHostAddressesAsync(upstream.Address, cancellationToken);
+    }
+
+    private static List<SslApplicationProtocol>? BuildApplicationProtocols(RuntimeUpstream upstream)
+    {
+        return RuntimeUpstreamProtocol.IsHttp2(upstream.Protocol)
+            ? [SslApplicationProtocol.Http2]
+            : null;
+    }
+
+    private static string FormatNegotiatedProtocol(SslApplicationProtocol protocol)
+    {
+        if (protocol == SslApplicationProtocol.Http2)
+        {
+            return "h2";
+        }
+
+        if (protocol == SslApplicationProtocol.Http11)
+        {
+            return "http/1.1";
+        }
+
+        return protocol.Protocol.Length == 0
+            ? "none"
+            : Encoding.ASCII.GetString(protocol.Protocol.Span);
     }
 }

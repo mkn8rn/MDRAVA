@@ -287,6 +287,7 @@ internal static class UpstreamTlsTests
             "test",
             $"upstream-{port}",
             scheme,
+            RuntimeUpstreamProtocol.Http1,
             "127.0.0.1",
             port,
             1,

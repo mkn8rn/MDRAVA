@@ -171,7 +171,7 @@ public sealed class UpstreamConnectionPool : IDisposable
 
     public static string GetKey(RuntimeUpstream upstream)
     {
-        return $"{upstream.Scheme}|{upstream.Address}|{upstream.Port}|sni={upstream.EffectiveSniHost}|validate={upstream.Tls.ValidateCertificate}";
+        return $"{upstream.Protocol}|{upstream.Scheme}|{upstream.Address}|{upstream.Port}|sni={upstream.EffectiveSniHost}|validate={upstream.Tls.ValidateCertificate}";
     }
 
     private void ThrowIfDisposed()

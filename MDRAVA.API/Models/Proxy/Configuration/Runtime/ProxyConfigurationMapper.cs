@@ -224,6 +224,7 @@ public static class ProxyConfigurationMapper
                     route.Name,
                     upstream.Name,
                     string.IsNullOrWhiteSpace(upstream.Scheme) ? "http" : upstream.Scheme.ToLowerInvariant(),
+                    string.IsNullOrWhiteSpace(upstream.Protocol) ? RuntimeUpstreamProtocol.Http1 : upstream.Protocol.Trim().ToLowerInvariant(),
                     upstream.Address,
                     upstream.Port,
                     upstream.Weight,

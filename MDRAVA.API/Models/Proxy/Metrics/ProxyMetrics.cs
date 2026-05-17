@@ -98,6 +98,9 @@ public sealed class ProxyMetrics
     private long _http2AcceptedConnections;
     private long _http2Requests;
     private long _activeHttp2Streams;
+    private long _upstreamHttp2Requests;
+    private long _upstreamHttp2AlpnFailures;
+    private long _upstreamHttp2ProtocolErrors;
     private readonly long[] _requestFailuresByKind = new long[FailureKinds.Length];
     private readonly ConcurrentDictionary<RequestSeriesKey, RequestSeriesCounter> _requestsByRoute = new();
     private readonly ConcurrentDictionary<string, RequestSeriesCounter> _retrySkippedByReason = new(StringComparer.Ordinal);
@@ -305,7 +308,8 @@ public sealed class ProxyMetrics
             var key = new UpstreamSelectionKey(
                 NormalizeLabel(runtimeUpstream.RouteName),
                 NormalizeLabel(runtimeUpstream.Name),
-                NormalizeLabel(runtimeUpstream.Scheme));
+                NormalizeLabel(runtimeUpstream.Scheme),
+                NormalizeLabel(runtimeUpstream.Protocol));
             var counter = _upstreamSelectionsByUpstream.GetOrAdd(key, static _ => new RequestSeriesCounter());
             Interlocked.Increment(ref counter.Count);
         }
@@ -437,6 +441,16 @@ public sealed class ProxyMetrics
         Interlocked.Increment(ref counter.Count);
     }
 
+    public void UpstreamHttp2RequestAttempted() => Interlocked.Increment(ref _upstreamHttp2Requests);
+
+    public void UpstreamHttp2AlpnFailed() => Interlocked.Increment(ref _upstreamHttp2AlpnFailures);
+
+    public void UpstreamHttp2ProtocolError(string reason)
+    {
+        _ = reason;
+        Interlocked.Increment(ref _upstreamHttp2ProtocolErrors);
+    }
+
     public ProxyMetricsSnapshot Snapshot()
     {
         Dictionary<string, long> failuresByKind = new(StringComparer.Ordinal);
@@ -471,6 +485,7 @@ public sealed class ProxyMetrics
                 pair.Key.Route,
                 pair.Key.Upstream,
                 pair.Key.Scheme,
+                pair.Key.Protocol,
                 Interlocked.Read(ref pair.Value.Count)))
             .OrderBy(static item => item.Route, StringComparer.Ordinal)
             .ThenBy(static item => item.Upstream, StringComparer.Ordinal)
@@ -574,7 +589,10 @@ public sealed class ProxyMetrics
             Interlocked.Read(ref _http2AcceptedConnections),
             Interlocked.Read(ref _http2Requests),
             Interlocked.Read(ref _activeHttp2Streams),
-            http2ProtocolErrors);
+            http2ProtocolErrors,
+            Interlocked.Read(ref _upstreamHttp2Requests),
+            Interlocked.Read(ref _upstreamHttp2AlpnFailures),
+            Interlocked.Read(ref _upstreamHttp2ProtocolErrors));
     }
 
     private static string StatusClass(int? statusCode)
@@ -627,7 +645,8 @@ public sealed class ProxyMetrics
     private readonly record struct UpstreamSelectionKey(
         string Route,
         string Upstream,
-        string Scheme);
+        string Scheme,
+        string Protocol);
 
     private sealed class RequestSeriesCounter
     {

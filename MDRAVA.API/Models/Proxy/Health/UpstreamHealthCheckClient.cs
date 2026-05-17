@@ -4,6 +4,8 @@ using System.Text;
 using MDRAVA.API.Proxy.Connections;
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Forwarding;
+using MDRAVA.API.Proxy.Http2;
+using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Protocol;
 
 namespace MDRAVA.API.Proxy.Health;
@@ -13,10 +15,14 @@ public sealed class UpstreamHealthCheckClient
     private const int MaxHealthResponseHeadBytes = 16 * 1024;
 
     private readonly UpstreamConnectionFactory _connectionFactory;
+    private readonly ProxyMetrics _metrics;
 
-    public UpstreamHealthCheckClient(UpstreamConnectionFactory connectionFactory)
+    public UpstreamHealthCheckClient(
+        UpstreamConnectionFactory connectionFactory,
+        ProxyMetrics? metrics = null)
     {
         _connectionFactory = connectionFactory;
+        _metrics = metrics ?? new ProxyMetrics();
     }
 
     public async ValueTask<HealthCheckSample> CheckAsync(
@@ -33,6 +39,11 @@ public sealed class UpstreamHealthCheckClient
                 route.HealthCheck.Timeout,
                 cancellationToken);
             var stream = connection.Stream;
+
+            if (RuntimeUpstreamProtocol.IsHttp2(upstream.Protocol))
+            {
+                return await CheckHttp2Async(route, upstream, stream, cancellationToken);
+            }
 
             var requestBytes = Encoding.ASCII.GetBytes(
                 $"GET {route.HealthCheck.Path} HTTP/1.1\r\nHost: {upstream.Address}\r\nConnection: close\r\n\r\n");
@@ -68,6 +79,40 @@ public sealed class UpstreamHealthCheckClient
         {
             connection?.Dispose();
         }
+    }
+
+    private async ValueTask<HealthCheckSample> CheckHttp2Async(
+        RuntimeRoute route,
+        RuntimeUpstream upstream,
+        Stream stream,
+        CancellationToken cancellationToken)
+    {
+        var timeouts = new RuntimeTimeouts(
+            route.HealthCheck.Timeout,
+            route.HealthCheck.Timeout,
+            route.HealthCheck.Timeout,
+            route.HealthCheck.Timeout,
+            route.HealthCheck.Timeout,
+            route.HealthCheck.Timeout,
+            route.HealthCheck.Timeout,
+            route.HealthCheck.Timeout,
+            route.HealthCheck.Timeout,
+            route.HealthCheck.Timeout);
+        var http2 = new Http2UpstreamConnection(stream, _metrics, maxFrameSize: 16 * 1024);
+        await http2.InitializeAsync(timeouts, cancellationToken);
+        await http2.SendHeadersAsync(
+            [
+                new Http1HeaderField(":method", "GET"),
+                new Http1HeaderField(":scheme", upstream.Scheme),
+                new Http1HeaderField(":authority", upstream.Address),
+                new Http1HeaderField(":path", route.HealthCheck.Path)
+            ],
+            endStream: true,
+            timeouts,
+            cancellationToken);
+        var response = await http2.ReadResponseHeadAsync(MaxHealthResponseHeadBytes, timeouts, cancellationToken);
+        var healthy = response.StatusCode is >= 200 and <= 399;
+        return new HealthCheckSample(healthy, $"HTTP/2 {response.StatusCode}");
     }
 
     private static async ValueTask<ReadOnlyMemory<byte>> ReadResponseHeadAsync(

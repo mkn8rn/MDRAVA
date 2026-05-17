@@ -1434,7 +1434,7 @@ public sealed class Http2ClientConnection
         public override void SetLength(long value) => throw new NotSupportedException();
     }
 
-    private static class HpackCodec
+    internal static class HpackCodec
     {
         private static readonly HeaderField[] StaticTable =
         [
@@ -1616,6 +1616,29 @@ public sealed class Http2ClientConnection
 
             headers = decoded;
             return true;
+        }
+
+        public static byte[] EncodeRequestHeaders(IReadOnlyList<Http1HeaderField> headers)
+        {
+            using var memory = new MemoryStream();
+            foreach (var header in headers)
+            {
+                var name = header.Name.ToLowerInvariant();
+                if (IsHopByHopHeader(name))
+                {
+                    continue;
+                }
+
+                WriteInteger(memory, 0x00, 4, StaticNameIndex(name));
+                if (StaticNameIndex(name) == 0)
+                {
+                    WriteString(memory, name);
+                }
+
+                WriteString(memory, header.Value);
+            }
+
+            return memory.ToArray();
         }
 
         public static byte[] EncodeResponseHeaders(int statusCode, IReadOnlyList<Http1HeaderField> headers)

@@ -1,0 +1,1015 @@
+using System.Buffers.Binary;
+using System.Net;
+using System.Net.Security;
+using System.Net.Sockets;
+using System.Security.Authentication;
+using System.Security.Cryptography.X509Certificates;
+using System.Text;
+using MDRAVA.API.Proxy.Configuration;
+using MDRAVA.API.Proxy.Configuration.Loading;
+using MDRAVA.API.Proxy.Configuration.Paths;
+using MDRAVA.API.Proxy.Configuration.Runtime;
+using MDRAVA.API.Proxy.Connections;
+using MDRAVA.API.Proxy.Health;
+using MDRAVA.API.Proxy.Hosting;
+using MDRAVA.API.Proxy.Metrics;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+
+namespace MDRAVA.Tests;
+
+internal static class UpstreamHttp2Tests
+{
+    private static readonly byte[] ClientPreface = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"u8.ToArray();
+
+    public static async Task ExistingHttp1UpstreamProtocolRemainsDefault()
+    {
+        using var temp = TemporaryDirectory.Create();
+        ConfigurationTests.WriteSite(temp.Path, "home.json", 18080, 15000);
+
+        var result = await CreateLoader(temp.Path).LoadAsync(CancellationToken.None);
+
+        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
+        AssertEx.Equal(RuntimeUpstreamProtocol.Http1, AssertEx.NotNull(result.Snapshot).Routes[0].Upstreams[0].Protocol);
+    }
+
+    public static void Http2UpstreamRequiresHttps()
+    {
+        var validation = new ProxyOptionsValidator().Validate(
+            null,
+            new ProxyOptions
+            {
+                Listeners =
+                [
+                    new ListenerOptions
+                    {
+                        Name = "main",
+                        Address = "127.0.0.1",
+                        Port = 8080
+                    }
+                ],
+                Routes =
+                [
+                    new ProxyRouteOptions
+                    {
+                        Name = "proxy",
+                        Host = "*",
+                        PathPrefix = "/",
+                        Upstreams =
+                        [
+                            new UpstreamOptions
+                            {
+                                Name = "bad",
+                                Scheme = "http",
+                                Protocol = RuntimeUpstreamProtocol.Http2,
+                                Address = "127.0.0.1",
+                                Port = 5000
+                            }
+                        ]
+                    }
+                ]
+            });
+
+        AssertEx.True(validation.Failed);
+        AssertEx.True(AssertEx.NotNull(validation.Failures).Any(static failure =>
+            failure.Contains("HTTP/2 upstreams require scheme 'https'", StringComparison.Ordinal)));
+    }
+
+    public static void UnsupportedUpstreamProtocolIsRejected()
+    {
+        var validation = new ProxyOptionsValidator().Validate(
+            null,
+            new ProxyOptions
+            {
+                Listeners =
+                [
+                    new ListenerOptions
+                    {
+                        Name = "main",
+                        Address = "127.0.0.1",
+                        Port = 8080
+                    }
+                ],
+                Routes =
+                [
+                    new ProxyRouteOptions
+                    {
+                        Name = "proxy",
+                        Host = "*",
+                        PathPrefix = "/",
+                        Upstreams =
+                        [
+                            new UpstreamOptions
+                            {
+                                Name = "bad",
+                                Protocol = "spdy",
+                                Address = "127.0.0.1",
+                                Port = 5000
+                            }
+                        ]
+                    }
+                ]
+            });
+
+        AssertEx.True(validation.Failed);
+        AssertEx.True(AssertEx.NotNull(validation.Failures).Any(static failure =>
+            failure.Contains("Protocol must be 'http1' or 'http2'", StringComparison.Ordinal)));
+    }
+
+    public static void PoolKeyDiffersForHttp1AndHttp2()
+    {
+        var http1 = Upstream(5001, RuntimeUpstreamProtocol.Http1);
+        var http2 = Upstream(5001, RuntimeUpstreamProtocol.Http2);
+
+        AssertEx.False(string.Equals(
+            UpstreamConnectionPool.GetKey(http1),
+            UpstreamConnectionPool.GetKey(http2),
+            StringComparison.Ordinal));
+    }
+
+    public static async Task UpstreamAlpnAdvertisesHttp2()
+    {
+        var port = GetFreeTcpPort();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var serverTask = RunSingleHttp2UpstreamAsync(
+            port,
+            204,
+            [],
+            [],
+            timeout.Token,
+            readRequest: false);
+        var upstream = Upstream(port, RuntimeUpstreamProtocol.Http2);
+
+        using var transport = await new UpstreamConnectionFactory()
+            .ConnectAsync(upstream, TimeSpan.FromSeconds(2), timeout.Token);
+        transport.Dispose();
+        var observation = await serverTask.WaitAsync(timeout.Token);
+
+        AssertEx.Equal(SslApplicationProtocol.Http2, observation.NegotiatedProtocol);
+    }
+
+    public static async Task AlpnFailureDoesNotFallbackToHttp1()
+    {
+        var port = GetFreeTcpPort();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var serverTask = RunSingleHttp2UpstreamAsync(
+            port,
+            204,
+            [],
+            [],
+            timeout.Token,
+            applicationProtocols: [SslApplicationProtocol.Http11],
+            readRequest: false);
+        var upstream = Upstream(port, RuntimeUpstreamProtocol.Http2);
+
+        await AssertEx.ThrowsAsync<UpstreamTlsException>(async () =>
+        {
+            using var _ = await new UpstreamConnectionFactory()
+                .ConnectAsync(upstream, TimeSpan.FromSeconds(2), timeout.Token);
+        });
+        var observation = await serverTask.WaitAsync(timeout.Token);
+
+        AssertEx.False(observation.RequestHeaders.ContainsKey(":method"));
+    }
+
+    public static async Task Http2UpstreamProxyMapsHeadersQueryAndResponse()
+    {
+        var result = await RunProxyScenarioAsync(
+            "/api/users?id=1",
+            200,
+            [("content-length", "7"), ("x-upstream", "h2")],
+            Encoding.ASCII.GetBytes("h2-body"),
+            requestHeaders: "Connection: keep-alive\r\nKeep-Alive: timeout=5\r\n");
+
+        AssertEx.True(result.ClientResponse.Contains("200 OK", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.True(result.ClientResponse.EndsWith("h2-body", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.Equal("GET", result.Upstream.RequestHeaders[":method"]);
+        AssertEx.Equal("https", result.Upstream.RequestHeaders[":scheme"]);
+        AssertEx.Equal("/api/users?id=1", result.Upstream.RequestHeaders[":path"]);
+        AssertEx.False(result.Upstream.RequestHeaders.ContainsKey("connection"));
+        AssertEx.False(result.Upstream.RequestHeaders.ContainsKey("keep-alive"));
+    }
+
+    public static async Task CacheWorksWithHttp2Upstream()
+    {
+        var result = await RunProxyScenarioAsync(
+            "/cache",
+            200,
+            [("content-length", "8"), ("cache-control", "max-age=60")],
+            Encoding.ASCII.GetBytes("cache-h2"),
+            routeExtraJson:
+            """
+                  "cache": {
+                    "enabled": true,
+                    "maxEntryBytes": 4096,
+                    "maxTotalBytes": 8192,
+                    "defaultTtlSeconds": 60,
+                    "respectOriginCacheControl": true
+                  },
+            """,
+            sendSecondRequest: true);
+
+        AssertEx.True(result.ClientResponse.Contains("cache-h2", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.True(result.SecondClientResponse.Contains("cache-h2", StringComparison.Ordinal), result.SecondClientResponse);
+        AssertEx.True(result.Metrics.UpstreamHttp2Requests >= 1, result.Metrics.UpstreamHttp2Requests.ToString());
+    }
+
+    public static async Task Http2UpstreamForwardsRequestBody()
+    {
+        var result = await RunProxyScenarioAsync(
+            "/submit",
+            201,
+            [("content-length", "2")],
+            Encoding.ASCII.GetBytes("ok"),
+            method: "POST",
+            requestBody: "hello world");
+
+        AssertEx.True(result.ClientResponse.Contains("201 Created", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.Equal("POST", result.Upstream.RequestHeaders[":method"]);
+        AssertEx.Equal("11", result.Upstream.RequestHeaders["content-length"]);
+        AssertEx.Equal("hello world", Encoding.ASCII.GetString(result.Upstream.RequestBody));
+    }
+
+    public static async Task Http2UpstreamEndsZeroLengthRequestBody()
+    {
+        var result = await RunProxyScenarioAsync(
+            "/empty",
+            204,
+            [],
+            [],
+            method: "POST",
+            requestBody: "",
+            forceContentLength: true);
+
+        AssertEx.True(result.ClientResponse.Contains("204 No Content", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.Equal("POST", result.Upstream.RequestHeaders[":method"]);
+        AssertEx.Equal(0, result.Upstream.RequestBody.Length);
+    }
+
+    public static async Task Http2HealthCheckUsesH2AndRejectsWrongAlpn()
+    {
+        var healthyPort = GetFreeTcpPort();
+        var wrongAlpnPort = GetFreeTcpPort();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var healthyServer = RunSingleHttp2UpstreamAsync(
+            healthyPort,
+            204,
+            [],
+            [],
+            timeout.Token);
+        var wrongAlpnServer = RunSingleHttp2UpstreamAsync(
+            wrongAlpnPort,
+            204,
+            [],
+            [],
+            timeout.Token,
+            applicationProtocols: [SslApplicationProtocol.Http11],
+            readRequest: false);
+        var client = new UpstreamHealthCheckClient(new UpstreamConnectionFactory());
+
+        var healthy = await client.CheckAsync(Route([Upstream(healthyPort, RuntimeUpstreamProtocol.Http2)]), Upstream(healthyPort, RuntimeUpstreamProtocol.Http2), timeout.Token);
+        var unhealthy = await client.CheckAsync(Route([Upstream(wrongAlpnPort, RuntimeUpstreamProtocol.Http2)]), Upstream(wrongAlpnPort, RuntimeUpstreamProtocol.Http2), timeout.Token);
+        var observation = await healthyServer.WaitAsync(timeout.Token);
+        _ = await wrongAlpnServer.WaitAsync(timeout.Token);
+
+        AssertEx.True(healthy.Healthy, healthy.Result);
+        AssertEx.True(healthy.Result.Contains("HTTP/2 204", StringComparison.Ordinal), healthy.Result);
+        AssertEx.Equal("GET", observation.RequestHeaders[":method"]);
+        AssertEx.False(unhealthy.Healthy, unhealthy.Result);
+    }
+
+    public static async Task MetricsIncludeUpstreamHttp2Counters()
+    {
+        var result = await RunProxyScenarioAsync(
+            "/metrics",
+            200,
+            [("content-length", "2")],
+            Encoding.ASCII.GetBytes("ok"));
+
+        AssertEx.True(result.Metrics.UpstreamHttp2Requests >= 1, result.Metrics.UpstreamHttp2Requests.ToString());
+    }
+
+    private static async Task<ProxyScenarioResult> RunProxyScenarioAsync(
+        string target,
+        int statusCode,
+        IReadOnlyList<(string Name, string Value)> responseHeaders,
+        byte[] responseBody,
+        string requestHeaders = "",
+        string routeExtraJson = "",
+        bool sendSecondRequest = false,
+        string method = "GET",
+        string requestBody = "",
+        bool forceContentLength = false)
+    {
+        var proxyPort = GetFreeTcpPort();
+        var upstreamPort = GetFreeTcpPort();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var temp = TemporaryDirectory.Create();
+        WriteHttpProxyToHttp2UpstreamSite(temp.Path, proxyPort, upstreamPort, routeExtraJson);
+        var upstreamTask = RunSingleHttp2UpstreamAsync(
+            upstreamPort,
+            statusCode,
+            responseHeaders,
+            responseBody,
+            timeout.Token);
+        using var host = BuildProxyHost(temp.Path);
+        await host.StartAsync(timeout.Token);
+
+        try
+        {
+            var requestBodyBytes = Encoding.ASCII.GetBytes(requestBody);
+            var contentLengthHeader = requestBodyBytes.Length > 0 || forceContentLength
+                ? $"Content-Length: {requestBodyBytes.Length}\r\n"
+                : "";
+            var request = $"{method} {target} HTTP/1.1\r\nHost: home.test\r\n{requestHeaders}{contentLengthHeader}Connection: close\r\n\r\n{requestBody}";
+            var first = await SendSingleRequestAsync(proxyPort, request, timeout.Token);
+            var second = sendSecondRequest
+                ? await SendSingleRequestAsync(proxyPort, request, timeout.Token)
+                : "";
+            var upstream = await upstreamTask.WaitAsync(timeout.Token);
+            var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
+            return new ProxyScenarioResult(first, second, upstream, metrics);
+        }
+        finally
+        {
+            await host.StopAsync(CancellationToken.None);
+        }
+    }
+
+    private static void WriteHttpProxyToHttp2UpstreamSite(
+        string dataDirectory,
+        int proxyPort,
+        int upstreamPort,
+        string routeExtraJson)
+    {
+        ConfigurationTests.WriteCustomSite(
+            dataDirectory,
+            "upstream-h2.json",
+            $$"""
+            {
+              "name": "upstream-h2",
+              "listeners": [
+                {
+                  "name": "main",
+                  "address": "127.0.0.1",
+                  "port": {{proxyPort}}
+                }
+              ],
+              "host": "*",
+              "routes": [
+                {
+                  "name": "app",
+                  "pathPrefix": "/",
+                  "action": "proxy",
+                  {{routeExtraJson}}
+                  "upstreams": [
+                    {
+                      "name": "h2-upstream",
+                      "scheme": "https",
+                      "protocol": "http2",
+                      "address": "127.0.0.1",
+                      "port": {{upstreamPort}},
+                      "upstreamTls": {
+                        "validateCertificate": false,
+                        "sniHost": "upstream.test"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+            """);
+    }
+
+    private static async Task<Http2UpstreamObservation> RunSingleHttp2UpstreamAsync(
+        int port,
+        int statusCode,
+        IReadOnlyList<(string Name, string Value)> responseHeaders,
+        byte[] responseBody,
+        CancellationToken cancellationToken,
+        IReadOnlyList<SslApplicationProtocol>? applicationProtocols = null,
+        bool readRequest = true)
+    {
+        var listener = new TcpListener(IPAddress.Loopback, port);
+        listener.Start();
+        using var certificate = CreateServerCertificate("upstream.test");
+
+        try
+        {
+            using var client = await listener.AcceptTcpClientAsync(cancellationToken);
+            await using var stream = new SslStream(client.GetStream(), leaveInnerStreamOpen: false);
+            await stream.AuthenticateAsServerAsync(
+                new SslServerAuthenticationOptions
+                {
+                    ServerCertificate = certificate,
+                    EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
+                    ApplicationProtocols = applicationProtocols is null
+                        ? [SslApplicationProtocol.Http2]
+                        : applicationProtocols.ToList()
+                },
+                cancellationToken);
+
+            if (!readRequest || stream.NegotiatedApplicationProtocol != SslApplicationProtocol.Http2)
+            {
+                return new Http2UpstreamObservation(stream.NegotiatedApplicationProtocol, new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase), [], null);
+            }
+
+            var preface = await ReadExactAsync(stream, ClientPreface.Length, cancellationToken);
+            if (!preface.AsSpan().SequenceEqual(ClientPreface))
+            {
+                return new Http2UpstreamObservation(stream.NegotiatedApplicationProtocol, new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase), [], "bad preface");
+            }
+
+            var requestHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            using var requestBody = new MemoryStream();
+            var streamId = 1;
+            await WriteFrameAsync(stream, Http2FrameType.Settings, 0, 0, ReadOnlyMemory<byte>.Empty, cancellationToken);
+
+            while (true)
+            {
+                var frame = await ReadFrameAsync(stream, cancellationToken);
+                if (frame.Type == Http2FrameType.Settings)
+                {
+                    if ((frame.Flags & Http2Flags.Ack) == 0)
+                    {
+                        await WriteFrameAsync(stream, Http2FrameType.Settings, Http2Flags.Ack, 0, ReadOnlyMemory<byte>.Empty, cancellationToken);
+                    }
+
+                    continue;
+                }
+
+                if (frame.Type == Http2FrameType.Headers)
+                {
+                    streamId = frame.StreamId;
+                    foreach (var header in DecodeHeaders(frame.Payload.ToArray()))
+                    {
+                        requestHeaders[header.Name] = header.Value;
+                    }
+
+                    if ((frame.Flags & Http2Flags.EndStream) != 0)
+                    {
+                        break;
+                    }
+
+                    continue;
+                }
+
+                if (frame.Type == Http2FrameType.Data)
+                {
+                    requestBody.Write(frame.Payload.Span);
+                    if ((frame.Flags & Http2Flags.EndStream) != 0)
+                    {
+                        break;
+                    }
+                }
+            }
+
+            var block = EncodeResponseHeaders(statusCode, responseHeaders);
+            await WriteFrameAsync(
+                stream,
+                Http2FrameType.Headers,
+                responseBody.Length == 0 ? (byte)(Http2Flags.EndHeaders | Http2Flags.EndStream) : Http2Flags.EndHeaders,
+                streamId,
+                block,
+                cancellationToken);
+            if (responseBody.Length > 0)
+            {
+                await WriteFrameAsync(stream, Http2FrameType.Data, Http2Flags.EndStream, streamId, responseBody, cancellationToken);
+            }
+
+            await stream.FlushAsync(cancellationToken);
+            var closeBuffer = new byte[1];
+            try
+            {
+                _ = await stream.ReadAsync(closeBuffer, cancellationToken);
+            }
+            catch (IOException)
+            {
+            }
+
+            return new Http2UpstreamObservation(stream.NegotiatedApplicationProtocol, requestHeaders, requestBody.ToArray(), null);
+        }
+        catch (Exception exception) when (exception is AuthenticationException or IOException)
+        {
+            return new Http2UpstreamObservation(default, new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase), [], exception.GetType().Name);
+        }
+        finally
+        {
+            listener.Stop();
+        }
+    }
+
+    private static RuntimeRoute Route(IReadOnlyList<RuntimeUpstream> upstreams)
+    {
+        return new RuntimeRoute(
+            "test",
+            "*",
+            "/",
+            RuntimeRouteAction.Proxy,
+            "round-robin",
+            new RuntimeHealthCheckOptions(
+                true,
+                "/health",
+                TimeSpan.FromSeconds(1),
+                TimeSpan.FromSeconds(2),
+                1,
+                1),
+            upstreams,
+            new RuntimeHttpsRedirectPolicy(false, 308, null),
+            new RuntimeCanonicalHostPolicy(false, "", 308),
+            RuntimeHeaderPolicy.Empty,
+            new RuntimePathRewritePolicy("", "", ""),
+            new RuntimeRedirectPolicy(308, "", "", true),
+            new RuntimeStaticResponse(200, "text/plain; charset=utf-8", ""),
+            new RuntimeMaintenancePolicy(false, null, "text/plain; charset=utf-8", "Service Unavailable"),
+            RuntimeCachePolicy.Disabled,
+            new RuntimeRouteResolvedOptions(
+                100L * 1024 * 1024,
+                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(30),
+                true));
+    }
+
+    private static RuntimeUpstream Upstream(int port, string protocol)
+    {
+        return new RuntimeUpstream(
+            "test",
+            $"upstream-{port}",
+            "https",
+            protocol,
+            "127.0.0.1",
+            port,
+            1,
+            new RuntimeUpstreamTlsOptions(false, "upstream.test"));
+    }
+
+    private static ProxyConfigurationLoader CreateLoader(string dataDirectory)
+    {
+        var provider = new MdravaDataDirectoryProvider(Options.Create(new MdravaDataDirectoryOptions
+        {
+            DataDirectory = dataDirectory
+        }));
+
+        return new ProxyConfigurationLoader(
+            provider,
+            new ProxyOptionsValidator(),
+            new ProxyDataDirectoryBootstrapper(provider),
+            new SiteConfigurationParser(),
+            NullLogger<ProxyConfigurationLoader>.Instance);
+    }
+
+    private static IHost BuildProxyHost(string dataDirectory)
+    {
+        return Host.CreateDefaultBuilder()
+            .ConfigureAppConfiguration(builder =>
+            {
+                builder.Sources.Clear();
+                builder.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Mdrava:DataDirectory"] = dataDirectory
+                });
+            })
+            .ConfigureLogging(logging => logging.ClearProviders())
+            .ConfigureServices((context, services) =>
+            {
+                services.AddProxyDataPlane(context.Configuration);
+            })
+            .Build();
+    }
+
+    private static async Task<string> SendSingleRequestAsync(
+        int proxyPort,
+        string request,
+        CancellationToken cancellationToken)
+    {
+        using var client = new TcpClient();
+        await client.ConnectAsync(IPAddress.Loopback, proxyPort, cancellationToken);
+        await using var stream = client.GetStream();
+        await stream.WriteAsync(Encoding.ASCII.GetBytes(request), cancellationToken);
+        return await ReadToEndAsync(stream, cancellationToken);
+    }
+
+    private static async Task<string> ReadToEndAsync(
+        Stream stream,
+        CancellationToken cancellationToken)
+    {
+        using var buffer = new MemoryStream();
+        var chunk = new byte[1024];
+        while (true)
+        {
+            var bytesRead = await stream.ReadAsync(chunk, cancellationToken);
+            if (bytesRead == 0)
+            {
+                break;
+            }
+
+            buffer.Write(chunk, 0, bytesRead);
+        }
+
+        return Encoding.ASCII.GetString(buffer.ToArray());
+    }
+
+    private static async Task<Http2Frame> ReadFrameAsync(Stream stream, CancellationToken cancellationToken)
+    {
+        var header = await ReadExactAsync(stream, 9, cancellationToken);
+        var length = header[0] << 16 | header[1] << 8 | header[2];
+        var payload = length == 0 ? [] : await ReadExactAsync(stream, length, cancellationToken);
+        return new Http2Frame(
+            (Http2FrameType)header[3],
+            header[4],
+            (int)(BinaryPrimitives.ReadUInt32BigEndian(header.AsSpan(5, 4)) & 0x7fffffff),
+            payload);
+    }
+
+    private static async Task<byte[]> ReadExactAsync(
+        Stream stream,
+        int length,
+        CancellationToken cancellationToken)
+    {
+        var buffer = new byte[length];
+        var offset = 0;
+        while (offset < length)
+        {
+            var read = await stream.ReadAsync(buffer.AsMemory(offset, length - offset), cancellationToken);
+            if (read == 0)
+            {
+                throw new IOException("Connection closed while reading HTTP/2 data.");
+            }
+
+            offset += read;
+        }
+
+        return buffer;
+    }
+
+    private static async Task WriteFrameAsync(
+        Stream stream,
+        Http2FrameType type,
+        byte flags,
+        int streamId,
+        ReadOnlyMemory<byte> payload,
+        CancellationToken cancellationToken)
+    {
+        var header = new byte[9];
+        header[0] = (byte)((payload.Length >> 16) & 0xff);
+        header[1] = (byte)((payload.Length >> 8) & 0xff);
+        header[2] = (byte)(payload.Length & 0xff);
+        header[3] = (byte)type;
+        header[4] = flags;
+        BinaryPrimitives.WriteUInt32BigEndian(header.AsSpan(5, 4), (uint)streamId & 0x7fffffff);
+        await stream.WriteAsync(header, cancellationToken);
+        if (payload.Length > 0)
+        {
+            await stream.WriteAsync(payload, cancellationToken);
+        }
+    }
+
+    private static byte[] EncodeResponseHeaders(
+        int statusCode,
+        IReadOnlyList<(string Name, string Value)> headers)
+    {
+        using var memory = new MemoryStream();
+        var indexed = statusCode switch
+        {
+            200 => 8,
+            204 => 9,
+            400 => 12,
+            404 => 13,
+            500 => 14,
+            _ => 0
+        };
+
+        if (indexed > 0)
+        {
+            WriteInteger(memory, 0x80, 7, indexed);
+        }
+        else
+        {
+            WriteLiteralWithIndexedName(memory, 8, statusCode.ToString());
+        }
+
+        foreach (var header in headers)
+        {
+            var nameIndex = StaticNameIndex(header.Name);
+            if (nameIndex == 0)
+            {
+                memory.WriteByte(0);
+                WriteString(memory, header.Name.ToLowerInvariant());
+                WriteString(memory, header.Value);
+                continue;
+            }
+
+            WriteLiteralWithIndexedName(memory, nameIndex, header.Value);
+        }
+
+        return memory.ToArray();
+    }
+
+    private static IReadOnlyList<(string Name, string Value)> DecodeHeaders(byte[] block)
+    {
+        List<(string Name, string Value)> headers = [];
+        List<(string Name, string Value)> dynamicTable = [];
+        var offset = 0;
+        while (offset < block.Length)
+        {
+            var current = block[offset];
+            if ((current & 0x80) != 0)
+            {
+                var index = DecodeInteger(block, 7, ref offset);
+                headers.Add(GetHeader(index, dynamicTable));
+                continue;
+            }
+
+            if ((current & 0x40) != 0)
+            {
+                var literal = DecodeLiteral(block, 6, ref offset, dynamicTable);
+                dynamicTable.Insert(0, literal);
+                headers.Add(literal);
+                continue;
+            }
+
+            if ((current & 0x20) != 0)
+            {
+                _ = DecodeInteger(block, 5, ref offset);
+                continue;
+            }
+
+            headers.Add(DecodeLiteral(block, 4, ref offset, dynamicTable));
+        }
+
+        return headers;
+    }
+
+    private static (string Name, string Value) DecodeLiteral(
+        byte[] block,
+        int prefixBits,
+        ref int offset,
+        IReadOnlyList<(string Name, string Value)> dynamicTable)
+    {
+        var nameIndex = DecodeInteger(block, prefixBits, ref offset);
+        var name = nameIndex == 0 ? ReadString(block, ref offset) : GetHeader(nameIndex, dynamicTable).Name;
+        var value = ReadString(block, ref offset);
+        return (name, value);
+    }
+
+    private static string ReadString(byte[] block, ref int offset)
+    {
+        if ((block[offset] & 0x80) != 0)
+        {
+            throw new InvalidOperationException("The test HPACK decoder does not support Huffman strings.");
+        }
+
+        var length = DecodeInteger(block, 7, ref offset);
+        var value = Encoding.ASCII.GetString(block, offset, length);
+        offset += length;
+        return value;
+    }
+
+    private static int DecodeInteger(byte[] block, int prefixBits, ref int offset)
+    {
+        var mask = (1 << prefixBits) - 1;
+        var value = block[offset++] & mask;
+        if (value < mask)
+        {
+            return value;
+        }
+
+        var multiplier = 0;
+        while (offset < block.Length)
+        {
+            var next = block[offset++];
+            value += (next & 0x7f) << multiplier;
+            if ((next & 0x80) == 0)
+            {
+                break;
+            }
+
+            multiplier += 7;
+        }
+
+        return value;
+    }
+
+    private static (string Name, string Value) GetHeader(
+        int index,
+        IReadOnlyList<(string Name, string Value)> dynamicTable)
+    {
+        if (index > 0 && index < StaticTable.Length)
+        {
+            return StaticTable[index];
+        }
+
+        var dynamicIndex = index - StaticTable.Length;
+        return dynamicTable[dynamicIndex];
+    }
+
+    private static void WriteLiteralWithIndexedName(Stream stream, int nameIndex, string value)
+    {
+        WriteInteger(stream, 0, 4, nameIndex);
+        WriteString(stream, value);
+    }
+
+    private static void WriteString(Stream stream, string value)
+    {
+        var bytes = Encoding.ASCII.GetBytes(value);
+        WriteInteger(stream, 0, 7, bytes.Length);
+        stream.Write(bytes);
+    }
+
+    private static void WriteInteger(Stream stream, byte prefix, int prefixBits, int value)
+    {
+        var maxPrefix = (1 << prefixBits) - 1;
+        if (value < maxPrefix)
+        {
+            stream.WriteByte((byte)(prefix | value));
+            return;
+        }
+
+        stream.WriteByte((byte)(prefix | maxPrefix));
+        value -= maxPrefix;
+        while (value >= 128)
+        {
+            stream.WriteByte((byte)(value % 128 + 128));
+            value /= 128;
+        }
+
+        stream.WriteByte((byte)value);
+    }
+
+    private static int StaticNameIndex(string name)
+    {
+        for (var index = 1; index < StaticTable.Length; index++)
+        {
+            if (string.Equals(StaticTable[index].Name, name, StringComparison.OrdinalIgnoreCase))
+            {
+                return index;
+            }
+        }
+
+        return 0;
+    }
+
+    private static X509Certificate2 CreateServerCertificate(string subjectName)
+    {
+        var pfxBytes = TestCertificates.CreateSelfSignedPfxBytes(subjectName);
+        return X509CertificateLoader.LoadPkcs12(
+            pfxBytes,
+            ReadOnlySpan<char>.Empty,
+            X509KeyStorageFlags.UserKeySet);
+    }
+
+    private static int GetFreeTcpPort()
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+
+        try
+        {
+            return ((IPEndPoint)listener.LocalEndpoint).Port;
+        }
+        finally
+        {
+            listener.Stop();
+        }
+    }
+
+    private static readonly (string Name, string Value)[] StaticTable =
+    [
+        ("", ""),
+        (":authority", ""),
+        (":method", "GET"),
+        (":method", "POST"),
+        (":path", "/"),
+        (":path", "/index.html"),
+        (":scheme", "http"),
+        (":scheme", "https"),
+        (":status", "200"),
+        (":status", "204"),
+        (":status", "206"),
+        (":status", "304"),
+        (":status", "400"),
+        (":status", "404"),
+        (":status", "500"),
+        ("accept-charset", ""),
+        ("accept-encoding", "gzip, deflate"),
+        ("accept-language", ""),
+        ("accept-ranges", ""),
+        ("accept", ""),
+        ("access-control-allow-origin", ""),
+        ("age", ""),
+        ("allow", ""),
+        ("authorization", ""),
+        ("cache-control", ""),
+        ("content-disposition", ""),
+        ("content-encoding", ""),
+        ("content-language", ""),
+        ("content-length", ""),
+        ("content-location", ""),
+        ("content-range", ""),
+        ("content-type", ""),
+        ("cookie", ""),
+        ("date", ""),
+        ("etag", ""),
+        ("expect", ""),
+        ("expires", ""),
+        ("from", ""),
+        ("host", ""),
+        ("if-match", ""),
+        ("if-modified-since", ""),
+        ("if-none-match", ""),
+        ("if-range", ""),
+        ("if-unmodified-since", ""),
+        ("last-modified", ""),
+        ("link", ""),
+        ("location", ""),
+        ("max-forwards", ""),
+        ("proxy-authenticate", ""),
+        ("proxy-authorization", ""),
+        ("range", ""),
+        ("referer", ""),
+        ("refresh", ""),
+        ("retry-after", ""),
+        ("server", ""),
+        ("set-cookie", ""),
+        ("strict-transport-security", ""),
+        ("transfer-encoding", ""),
+        ("user-agent", ""),
+        ("vary", ""),
+        ("via", ""),
+        ("www-authenticate", "")
+    ];
+
+    private sealed record ProxyScenarioResult(
+        string ClientResponse,
+        string SecondClientResponse,
+        Http2UpstreamObservation Upstream,
+        ProxyMetricsSnapshot Metrics);
+
+    private sealed record Http2UpstreamObservation(
+        SslApplicationProtocol NegotiatedProtocol,
+        IReadOnlyDictionary<string, string> RequestHeaders,
+        byte[] RequestBody,
+        string? Error);
+
+    private readonly record struct Http2Frame(
+        Http2FrameType Type,
+        byte Flags,
+        int StreamId,
+        ReadOnlyMemory<byte> Payload);
+
+    private enum Http2FrameType : byte
+    {
+        Data = 0x0,
+        Headers = 0x1,
+        RstStream = 0x3,
+        Settings = 0x4,
+        Ping = 0x6,
+        GoAway = 0x7,
+        WindowUpdate = 0x8,
+        Continuation = 0x9
+    }
+
+    private static class Http2Flags
+    {
+        public const byte EndStream = 0x1;
+        public const byte Ack = 0x1;
+        public const byte EndHeaders = 0x4;
+    }
+
+    private sealed class TemporaryDirectory : IDisposable
+    {
+        private TemporaryDirectory(string path)
+        {
+            Path = path;
+        }
+
+        public string Path { get; }
+
+        public static TemporaryDirectory Create()
+        {
+            var path = System.IO.Path.Combine(
+                System.IO.Path.GetTempPath(),
+                $"mdrava-upstream-h2-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(path);
+            return new TemporaryDirectory(path);
+        }
+
+        public void Dispose()
+        {
+            try
+            {
+                if (Directory.Exists(Path))
+                {
+                    Directory.Delete(Path, recursive: true);
+                }
+            }
+            catch
+            {
+            }
+        }
+    }
+}
