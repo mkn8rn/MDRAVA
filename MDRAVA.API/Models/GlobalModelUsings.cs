@@ -10,4 +10,5 @@ global using MDRAVA.API.Models.Hosting;
 global using MDRAVA.API.Models.Metrics;
 global using MDRAVA.API.Models.Observability;
 global using MDRAVA.API.Models.Protocol;
+global using MDRAVA.API.Models.Resilience;
 global using MDRAVA.API.Models.Routing;

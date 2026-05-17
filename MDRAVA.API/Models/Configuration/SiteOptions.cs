@@ -26,6 +26,8 @@ public sealed class SiteOptions
 
     public ProxyCachePolicyOptions Cache { get; init; } = new();
 
+    public ProxyRetryPolicyOptions Retry { get; init; } = new();
+
     public ProxyRouteOverrideOptions Overrides { get; init; } = new();
 
     public List<ProxyRouteOptions> Routes { get; init; } = [];

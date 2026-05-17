@@ -19,4 +19,6 @@ public sealed record RuntimeRoute(
     RuntimeRouteResolvedOptions ResolvedOptions)
 {
     public string SiteName { get; init; } = "";
+
+    public RuntimeRetryPolicy Retry { get; init; } = RuntimeRetryPolicy.Disabled;
 }

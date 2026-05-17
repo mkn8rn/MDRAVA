@@ -13,4 +13,6 @@ public sealed class UpstreamOptions
     public int Weight { get; init; } = 1;
 
     public UpstreamTlsOptions UpstreamTls { get; init; } = new();
+
+    public ProxyCircuitBreakerOptions CircuitBreaker { get; init; } = new();
 }

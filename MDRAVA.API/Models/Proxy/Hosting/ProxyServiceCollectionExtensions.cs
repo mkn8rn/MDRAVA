@@ -11,6 +11,7 @@ using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Observability;
 using MDRAVA.API.Proxy.Routing;
 using MDRAVA.API.Proxy.Runtime;
+using MDRAVA.API.Proxy.Resilience;
 using MDRAVA.API.Proxy.Security;
 using MDRAVA.API.Proxy.Tls;
 using Microsoft.Extensions.Options;
@@ -48,6 +49,7 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<IAcmeCertificateIssuer, DisabledAcmeCertificateIssuer>();
         services.AddSingleton<AcmeCertificateManager>();
         services.AddSingleton<ProxyAdmissionController>();
+        services.AddSingleton<CircuitBreakerStore>();
         services.AddSingleton<ProxyShutdownCoordinator>();
         services.AddSingleton<ClientRateLimiter>();
         services.AddSingleton<ProxyRuntimeState>();

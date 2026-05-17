@@ -138,6 +138,7 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
             ValidatePathRewrite(failures, routePrefix, route.PathRewrite);
             ValidateMaintenance(failures, routePrefix, route.Maintenance);
             ValidateCachePolicy(failures, routePrefix, route.Cache, routeAction);
+            ValidateRetryPolicy(failures, routePrefix, route.Retry, routeAction);
             ValidateOverrides(failures, routePrefix, route.Overrides);
 
             if (IsProxyAction(routeAction) && route.Upstreams.Count == 0)
@@ -197,6 +198,7 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
                 }
 
                 ValidateUpstreamTls(failures, upstreamPrefix, upstream.UpstreamTls);
+                ValidateCircuitBreaker(failures, upstreamPrefix, upstream.CircuitBreaker);
             }
         }
 
@@ -647,6 +649,102 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
                 && !string.Equals(method, "HEAD", StringComparison.OrdinalIgnoreCase))
             {
                 failures.Add($"{routePrefix}:Cache:Methods:{index} must be GET or HEAD.");
+            }
+        }
+    }
+
+    private static void ValidateRetryPolicy(
+        List<string> failures,
+        string routePrefix,
+        ProxyRetryPolicyOptions retry,
+        string routeAction)
+    {
+        if (retry.MaxAttempts is < 1 or > 5)
+        {
+            failures.Add($"{routePrefix}:Retry:MaxAttempts must be between 1 and 5.");
+        }
+
+        if (retry.PerAttemptTimeoutMs is < 0 or > 10 * 60 * 1000)
+        {
+            failures.Add($"{routePrefix}:Retry:PerAttemptTimeoutMs must be between 0 and 600000 milliseconds when configured.");
+        }
+
+        if (retry.RetryBackoffMilliseconds is < 0 or > 60_000)
+        {
+            failures.Add($"{routePrefix}:Retry:RetryBackoffMilliseconds must be between 0 and 60000.");
+        }
+
+        if (!retry.Enabled)
+        {
+            return;
+        }
+
+        if (!IsProxyAction(routeAction))
+        {
+            failures.Add($"{routePrefix}:Retry can only be enabled for proxy routes.");
+        }
+
+        if (retry.MaxAttempts < 2)
+        {
+            failures.Add($"{routePrefix}:Retry:MaxAttempts must be at least 2 when retry is enabled.");
+        }
+
+        if (retry.RetryMethods.Count == 0)
+        {
+            failures.Add($"{routePrefix}:Retry:RetryMethods must contain GET, HEAD, or both.");
+        }
+
+        for (var index = 0; index < retry.RetryMethods.Count; index++)
+        {
+            var method = retry.RetryMethods[index];
+            if (!string.Equals(method, "GET", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(method, "HEAD", StringComparison.OrdinalIgnoreCase))
+            {
+                failures.Add($"{routePrefix}:Retry:RetryMethods:{index} must be GET or HEAD.");
+            }
+        }
+
+        for (var index = 0; index < retry.RetryOnStatusCodes.Count; index++)
+        {
+            var statusCode = retry.RetryOnStatusCodes[index];
+            if (statusCode is < 500 or > 599)
+            {
+                failures.Add($"{routePrefix}:Retry:RetryOnStatusCodes:{index} must be a 5xx HTTP response status code.");
+            }
+        }
+    }
+
+    private static void ValidateCircuitBreaker(
+        List<string> failures,
+        string upstreamPrefix,
+        ProxyCircuitBreakerOptions circuitBreaker)
+    {
+        if (circuitBreaker.FailureThreshold is < 1 or > 1000)
+        {
+            failures.Add($"{upstreamPrefix}:CircuitBreaker:FailureThreshold must be between 1 and 1000.");
+        }
+
+        if (circuitBreaker.SamplingWindowSeconds is < 1 or > 3600)
+        {
+            failures.Add($"{upstreamPrefix}:CircuitBreaker:SamplingWindowSeconds must be between 1 and 3600.");
+        }
+
+        if (circuitBreaker.OpenDurationSeconds is < 1 or > 3600)
+        {
+            failures.Add($"{upstreamPrefix}:CircuitBreaker:OpenDurationSeconds must be between 1 and 3600.");
+        }
+
+        if (circuitBreaker.HalfOpenMaxAttempts is < 1 or > 100)
+        {
+            failures.Add($"{upstreamPrefix}:CircuitBreaker:HalfOpenMaxAttempts must be between 1 and 100.");
+        }
+
+        for (var index = 0; index < circuitBreaker.FailureStatusCodes.Count; index++)
+        {
+            var statusCode = circuitBreaker.FailureStatusCodes[index];
+            if (statusCode is < 500 or > 599)
+            {
+                failures.Add($"{upstreamPrefix}:CircuitBreaker:FailureStatusCodes:{index} must be a 5xx HTTP response status code.");
             }
         }
     }

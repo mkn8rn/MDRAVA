@@ -46,6 +46,7 @@ public sealed class PrometheusMetricsExporter
         AppendRequestRejectionCounters(builder, proxy);
 
         AppendCounter(builder, "mdrava_upstream_request_attempts_total", "Selected upstream request attempts.", proxy.UpstreamSelections);
+        AppendUpstreamSelectionCounters(builder, snapshot.Metrics, proxy.UpstreamSelectionsByUpstream);
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", "Upstream failures by bounded reason.", proxy.UpstreamConnectFailures, new Label("reason", "connect_failure"));
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.UpstreamConnectTimeouts, new Label("reason", "connect_timeout"));
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.UpstreamResponseHeadTimeouts, new Label("reason", "response_head_timeout"));
@@ -53,7 +54,25 @@ public sealed class PrometheusMetricsExporter
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.UpstreamMalformedResponses, new Label("reason", "malformed_response"));
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.UpstreamPrematureDisconnects, new Label("reason", "premature_disconnect"));
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.NoHealthyUpstreamFailures, new Label("reason", "no_healthy_upstream"));
+        AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.NoAvailableUpstreamFailures, new Label("reason", "no_available_upstream"));
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.UpstreamRequestFailures, new Label("reason", "request_failure"));
+
+        AppendCounter(builder, "mdrava_retry_attempts_total", "Retry attempts after an initial failed upstream attempt.", proxy.RetryAttempts);
+        AppendCounter(builder, "mdrava_retry_exhausted_total", "Requests that exhausted their configured retry attempts.", proxy.RetryExhausted);
+        if (proxy.RetrySkipped.Count > 0)
+        {
+            AppendHelpAndType(builder, "mdrava_retry_skipped_total", "Retries skipped by bounded reason.", "counter");
+        }
+
+        foreach (var skipped in proxy.RetrySkipped)
+        {
+            AppendSample(builder, "mdrava_retry_skipped_total", skipped.Count, new Label("reason", skipped.Reason));
+        }
+
+        AppendLabeledCounter(builder, "mdrava_circuit_transitions_total", "Circuit breaker transitions by state.", proxy.CircuitOpened, new Label("state", "open"));
+        AppendLabeledCounter(builder, "mdrava_circuit_transitions_total", null, proxy.CircuitHalfOpened, new Label("state", "half_open"));
+        AppendLabeledCounter(builder, "mdrava_circuit_transitions_total", null, proxy.CircuitClosed, new Label("state", "closed"));
+        AppendCounter(builder, "mdrava_circuit_rejections_total", "Requests rejected by open or saturated half-open circuits.", proxy.CircuitRejections);
 
         AppendGauge(builder, "mdrava_upstream_connections_active", "Active borrowed upstream connections.", proxy.UpstreamPoolActiveConnections);
         AppendGauge(builder, "mdrava_upstream_connections_idle", "Idle reusable upstream connections.", proxy.UpstreamPoolIdleConnections);
@@ -139,6 +158,29 @@ public sealed class PrometheusMetricsExporter
         AppendLabeledCounter(builder, "mdrava_request_rejections_total", null, proxy.ParserLimitRejections, new Label("reason", "parser_limit"));
         AppendLabeledCounter(builder, "mdrava_request_rejections_total", null, proxy.RejectedMalformedRequests, new Label("reason", "malformed"));
         AppendLabeledCounter(builder, "mdrava_request_rejections_total", null, proxy.RejectedUnsupportedRequestFraming, new Label("reason", "unsupported_framing"));
+    }
+
+    private static void AppendUpstreamSelectionCounters(
+        StringBuilder builder,
+        RuntimeMetricsOptions options,
+        IReadOnlyList<ProxyUpstreamSelectionSnapshot> selections)
+    {
+        if (!options.IncludePerUpstreamLabels || selections.Count == 0)
+        {
+            return;
+        }
+
+        AppendHelpAndType(builder, "mdrava_upstream_selections_total", "Selected upstream count by bounded upstream labels.", "counter");
+        foreach (var selection in selections)
+        {
+            AppendSample(
+                builder,
+                "mdrava_upstream_selections_total",
+                selection.Count,
+                new Label("route", selection.Route),
+                new Label("upstream", selection.Upstream),
+                new Label("scheme", selection.Scheme));
+        }
     }
 
     private static void AppendUpstreamHealth(

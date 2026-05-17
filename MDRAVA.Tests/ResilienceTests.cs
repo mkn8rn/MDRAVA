@@ -1,0 +1,886 @@
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
+using MDRAVA.API.Controllers;
+using MDRAVA.API.Proxy.Acme;
+using MDRAVA.API.Proxy.Caching;
+using MDRAVA.API.Proxy.Configuration;
+using MDRAVA.API.Proxy.Configuration.Loading;
+using MDRAVA.API.Proxy.Configuration.Paths;
+using MDRAVA.API.Proxy.Configuration.Runtime;
+using MDRAVA.API.Proxy.Configuration.Storage;
+using MDRAVA.API.Proxy.Connections;
+using MDRAVA.API.Proxy.Health;
+using MDRAVA.API.Proxy.Hosting;
+using MDRAVA.API.Proxy.Metrics;
+using MDRAVA.API.Proxy.Protocol;
+using MDRAVA.API.Proxy.Resilience;
+using MDRAVA.API.Proxy.Routing;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+namespace MDRAVA.Tests;
+
+internal static class ResilienceTests
+{
+    public static async Task ExistingBehaviorUnchangedWhenResilienceDisabled()
+    {
+        var proxyPort = GetFreeTcpPort();
+        var upstreamPort = GetFreeTcpPort();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var temp = TemporaryDirectory.Create();
+        WriteResilienceSite(temp.Path, proxyPort, [new TestUpstream("first", upstreamPort)]);
+        var upstreamTask = RunCountingUpstreamAsync(
+            upstreamPort,
+            1,
+            _ => "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 7\r\n\r\ndefault",
+            timeout.Token);
+
+        using var host = BuildProxyHost(temp.Path);
+        await host.StartAsync(timeout.Token);
+
+        try
+        {
+            var response = await SendSingleRequestAsync(
+                proxyPort,
+                "GET /default HTTP/1.1\r\nHost: resilience.test\r\nConnection: close\r\n\r\n",
+                timeout.Token);
+            var requests = await upstreamTask.WaitAsync(timeout.Token);
+            var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
+
+            AssertEx.True(response.Contains("200 OK", StringComparison.Ordinal), response);
+            AssertEx.Equal(1, requests.Count);
+            AssertEx.Equal(0L, metrics.RetryAttempts);
+            AssertEx.Equal(0L, metrics.CircuitOpened);
+        }
+        finally
+        {
+            await host.StopAsync(CancellationToken.None);
+        }
+    }
+
+    public static async Task GetRetryOccursOnConnectFailureWhenEnabled()
+    {
+        var proxyPort = GetFreeTcpPort();
+        var closedPort = GetFreeTcpPort();
+        var upstreamPort = GetFreeTcpPort();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var temp = TemporaryDirectory.Create();
+        WriteResilienceSite(
+            temp.Path,
+            proxyPort,
+            [new TestUpstream("first", closedPort), new TestUpstream("second", upstreamPort)],
+            RetryJson(maxAttempts: 2, retryOnConnectFailure: true));
+        var upstreamTask = RunCountingUpstreamAsync(
+            upstreamPort,
+            1,
+            _ => "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 7\r\n\r\nretried",
+            timeout.Token);
+
+        using var host = BuildProxyHost(temp.Path);
+        await host.StartAsync(timeout.Token);
+
+        try
+        {
+            var response = await SendSingleRequestAsync(
+                proxyPort,
+                "GET /retry HTTP/1.1\r\nHost: resilience.test\r\nConnection: close\r\n\r\n",
+                timeout.Token);
+            var requests = await upstreamTask.WaitAsync(timeout.Token);
+            var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
+
+            AssertEx.True(response.Contains("200 OK", StringComparison.Ordinal), response);
+            AssertEx.Equal(1, requests.Count);
+            AssertEx.Equal(1L, metrics.RetryAttempts);
+        }
+        finally
+        {
+            await host.StopAsync(CancellationToken.None);
+        }
+    }
+
+    public static async Task GetRetryOccursOnConfiguredStatusWhenEnabled()
+    {
+        var proxyPort = GetFreeTcpPort();
+        var firstPort = GetFreeTcpPort();
+        var secondPort = GetFreeTcpPort();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var temp = TemporaryDirectory.Create();
+        WriteResilienceSite(
+            temp.Path,
+            proxyPort,
+            [new TestUpstream("first", firstPort), new TestUpstream("second", secondPort)],
+            RetryStatusJson(maxAttempts: 2, statusCode: 503));
+        var firstTask = RunCountingUpstreamAsync(
+            firstPort,
+            1,
+            _ => "HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\nContent-Length: 5\r\n\r\nerror",
+            timeout.Token);
+        var secondTask = RunCountingUpstreamAsync(
+            secondPort,
+            1,
+            _ => "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 7\r\n\r\nsuccess",
+            timeout.Token);
+
+        using var host = BuildProxyHost(temp.Path);
+        await host.StartAsync(timeout.Token);
+
+        try
+        {
+            var response = await SendSingleRequestAsync(
+                proxyPort,
+                "GET /status HTTP/1.1\r\nHost: resilience.test\r\nConnection: close\r\n\r\n",
+                timeout.Token);
+            var firstRequests = await firstTask.WaitAsync(timeout.Token);
+            var secondRequests = await secondTask.WaitAsync(timeout.Token);
+            var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
+
+            AssertEx.True(response.Contains("200 OK", StringComparison.Ordinal), response);
+            AssertEx.True(response.EndsWith("success", StringComparison.Ordinal), response);
+            AssertEx.Equal(1, firstRequests.Count);
+            AssertEx.Equal(1, secondRequests.Count);
+            AssertEx.Equal(1L, metrics.RetryAttempts);
+        }
+        finally
+        {
+            await host.StopAsync(CancellationToken.None);
+        }
+    }
+
+    public static async Task PostIsNotRetriedByDefault()
+    {
+        var result = await RunClosedUpstreamScenarioAsync(
+            "POST /retry HTTP/1.1\r\nHost: resilience.test\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+            RetryJson(maxAttempts: 2, retryOnConnectFailure: true));
+
+        AssertEx.True(result.Response.Contains("502 Bad Gateway", StringComparison.Ordinal), result.Response);
+        AssertEx.Equal(0L, result.Metrics.RetryAttempts);
+        AssertEx.True(result.Metrics.RetrySkipped.Any(static item => item.Reason == "method"));
+    }
+
+    public static async Task UpgradeIsNotRetried()
+    {
+        var result = await RunClosedUpstreamScenarioAsync(
+            "GET /chat HTTP/1.1\r\nHost: resilience.test\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n",
+            RetryJson(maxAttempts: 2, retryOnConnectFailure: true));
+
+        AssertEx.True(result.Response.Contains("502 Bad Gateway", StringComparison.Ordinal), result.Response);
+        AssertEx.Equal(0L, result.Metrics.RetryAttempts);
+    }
+
+    public static async Task RequestIsNotRetriedAfterResponseStreamingStarts()
+    {
+        var proxyPort = GetFreeTcpPort();
+        var upstreamPort = GetFreeTcpPort();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var temp = TemporaryDirectory.Create();
+        WriteResilienceSite(
+            temp.Path,
+            proxyPort,
+            [new TestUpstream("first", upstreamPort)],
+            RetryJson(maxAttempts: 2, retryOnConnectFailure: true));
+        var upstreamTask = RunCountingUpstreamAsync(
+            upstreamPort,
+            1,
+            _ => "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 10\r\n\r\npart",
+            timeout.Token);
+
+        using var host = BuildProxyHost(temp.Path);
+        await host.StartAsync(timeout.Token);
+
+        try
+        {
+            var response = await SendSingleRequestAsync(
+                proxyPort,
+                "GET /partial HTTP/1.1\r\nHost: resilience.test\r\nConnection: close\r\n\r\n",
+                timeout.Token);
+            var requests = await upstreamTask.WaitAsync(timeout.Token);
+            var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
+
+            AssertEx.True(response.Contains("200 OK", StringComparison.Ordinal), response);
+            AssertEx.True(response.EndsWith("part", StringComparison.Ordinal), response);
+            AssertEx.Equal(1, requests.Count);
+            AssertEx.Equal(0L, metrics.RetryAttempts);
+        }
+        finally
+        {
+            await host.StopAsync(CancellationToken.None);
+        }
+    }
+
+    public static async Task RetryMaxAttemptsIsEnforced()
+    {
+        var result = await RunClosedUpstreamScenarioAsync(
+            "GET /retry HTTP/1.1\r\nHost: resilience.test\r\nConnection: close\r\n\r\n",
+            RetryJson(maxAttempts: 3, retryOnConnectFailure: true));
+
+        AssertEx.True(result.Response.Contains("502 Bad Gateway", StringComparison.Ordinal), result.Response);
+        AssertEx.Equal(2L, result.Metrics.RetryAttempts);
+        AssertEx.Equal(1L, result.Metrics.RetryExhausted);
+    }
+
+    public static async Task RetryExhaustedReturnsClearFailure()
+    {
+        var result = await RunClosedUpstreamScenarioAsync(
+            "GET /retry HTTP/1.1\r\nHost: resilience.test\r\nConnection: close\r\n\r\n",
+            RetryJson(maxAttempts: 2, retryOnConnectFailure: true));
+
+        AssertEx.True(result.Response.Contains("HTTP/1.1 502 Bad Gateway", StringComparison.Ordinal), result.Response);
+        AssertEx.True(result.Response.EndsWith("Bad Gateway", StringComparison.Ordinal), result.Response);
+        AssertEx.Equal(1L, result.Metrics.RetryExhausted);
+    }
+
+    public static void CircuitOpensAfterThresholdFailures()
+    {
+        using var fixture = SelectorFixture.Create();
+        var route = Route([Upstream("first", weight: 1, circuit: Circuit(threshold: 2))]);
+
+        var first = AssertEx.NotNull(fixture.Selector.Select(route));
+        fixture.Circuit.RecordFailure(first.CircuitBreakerLease, "connect_failure");
+        var second = AssertEx.NotNull(fixture.Selector.Select(route));
+        fixture.Circuit.RecordFailure(second.CircuitBreakerLease, "connect_failure");
+
+        AssertEx.Equal(CircuitBreakerRuntimeState.Open, fixture.Circuit.Snapshot(route.Upstreams[0]).State);
+    }
+
+    public static void CircuitRejectsTrafficWhileOpen()
+    {
+        using var fixture = SelectorFixture.Create();
+        var route = Route([Upstream("first", weight: 1, circuit: Circuit(threshold: 1))]);
+        var first = AssertEx.NotNull(fixture.Selector.Select(route));
+        fixture.Circuit.RecordFailure(first.CircuitBreakerLease, "connect_failure");
+
+        var second = fixture.Selector.Select(route);
+
+        AssertEx.Equal(null, second);
+        AssertEx.Equal(1L, fixture.Metrics.Snapshot().CircuitRejections);
+    }
+
+    public static void CircuitTransitionsToHalfOpenAfterOpenDuration()
+    {
+        using var fixture = SelectorFixture.Create();
+        var route = Route([Upstream("first", weight: 1, circuit: Circuit(threshold: 1, openSeconds: 5))]);
+        var first = AssertEx.NotNull(fixture.Selector.Select(route));
+        fixture.Circuit.RecordFailure(first.CircuitBreakerLease, "connect_failure");
+
+        fixture.Clock.Advance(TimeSpan.FromSeconds(5));
+        var second = AssertEx.NotNull(fixture.Selector.Select(route));
+
+        AssertEx.True(AssertEx.NotNull(second.CircuitBreakerLease).HalfOpenProbe);
+        AssertEx.Equal(CircuitBreakerRuntimeState.HalfOpen, fixture.Circuit.Snapshot(route.Upstreams[0]).State);
+    }
+
+    public static void HalfOpenSuccessClosesCircuit()
+    {
+        using var fixture = SelectorFixture.Create();
+        var route = Route([Upstream("first", weight: 1, circuit: Circuit(threshold: 1, openSeconds: 1))]);
+        var first = AssertEx.NotNull(fixture.Selector.Select(route));
+        fixture.Circuit.RecordFailure(first.CircuitBreakerLease, "connect_failure");
+        fixture.Clock.Advance(TimeSpan.FromSeconds(1));
+        var probe = AssertEx.NotNull(fixture.Selector.Select(route));
+
+        fixture.Circuit.RecordSuccess(probe.CircuitBreakerLease);
+
+        AssertEx.Equal(CircuitBreakerRuntimeState.Closed, fixture.Circuit.Snapshot(route.Upstreams[0]).State);
+    }
+
+    public static void HalfOpenFailureReopensCircuit()
+    {
+        using var fixture = SelectorFixture.Create();
+        var route = Route([Upstream("first", weight: 1, circuit: Circuit(threshold: 1, openSeconds: 1))]);
+        var first = AssertEx.NotNull(fixture.Selector.Select(route));
+        fixture.Circuit.RecordFailure(first.CircuitBreakerLease, "connect_failure");
+        fixture.Clock.Advance(TimeSpan.FromSeconds(1));
+        var probe = AssertEx.NotNull(fixture.Selector.Select(route));
+
+        fixture.Circuit.RecordFailure(probe.CircuitBreakerLease, "connect_failure");
+
+        AssertEx.Equal(CircuitBreakerRuntimeState.Open, fixture.Circuit.Snapshot(route.Upstreams[0]).State);
+    }
+
+    public static void WeightedRoundRobinHonorsWeights()
+    {
+        using var fixture = SelectorFixture.Create();
+        var route = Route([Upstream("first", weight: 2), Upstream("second", weight: 1)]);
+
+        var selected = new[]
+        {
+            AssertEx.NotNull(fixture.Selector.Select(route)).Upstream.Name,
+            AssertEx.NotNull(fixture.Selector.Select(route)).Upstream.Name,
+            AssertEx.NotNull(fixture.Selector.Select(route)).Upstream.Name
+        };
+
+        AssertEx.Equal("first,first,second", string.Join(',', selected));
+    }
+
+    public static void EqualWeightRoundRobinPreservesExistingOrder()
+    {
+        using var fixture = SelectorFixture.Create();
+        var route = Route([Upstream("first", weight: 1), Upstream("second", weight: 1)]);
+
+        var selected = new[]
+        {
+            AssertEx.NotNull(fixture.Selector.Select(route)).Upstream.Name,
+            AssertEx.NotNull(fixture.Selector.Select(route)).Upstream.Name,
+            AssertEx.NotNull(fixture.Selector.Select(route)).Upstream.Name
+        };
+
+        AssertEx.Equal("first,second,first", string.Join(',', selected));
+    }
+
+    public static void UnhealthyAndOpenCircuitUpstreamsAreSkipped()
+    {
+        var first = Upstream("first", weight: 1, circuit: Circuit(threshold: 1));
+        var second = Upstream("second", weight: 1);
+
+        using var healthFixture = SelectorFixture.Create();
+        var route = Route([first, second], healthEnabled: true);
+        healthFixture.Health.RecordHealthCheckResult(route, first, new HealthCheckSample(false, "failed"), healthFixture.Clock.GetUtcNow());
+        var firstSelection = AssertEx.NotNull(healthFixture.Selector.Select(route));
+        AssertEx.Equal("second", firstSelection.Upstream.Name);
+
+        using var circuitFixture = SelectorFixture.Create();
+        var routeWithoutHealth = Route([first, second]);
+        var openSelection = AssertEx.NotNull(circuitFixture.Selector.Select(routeWithoutHealth));
+        circuitFixture.Circuit.RecordFailure(openSelection.CircuitBreakerLease, "connect_failure");
+        var afterOpen = AssertEx.NotNull(circuitFixture.Selector.Select(routeWithoutHealth));
+
+        AssertEx.Equal("second", afterOpen.Upstream.Name);
+    }
+
+    public static void AllUpstreamsUnavailableReturnsNoSelection()
+    {
+        using var fixture = SelectorFixture.Create();
+        var route = Route([Upstream("first", weight: 1, circuit: Circuit(threshold: 1))]);
+        var first = AssertEx.NotNull(fixture.Selector.Select(route));
+        fixture.Circuit.RecordFailure(first.CircuitBreakerLease, "connect_failure");
+
+        AssertEx.True(fixture.Selector.Select(route) is null);
+        AssertEx.Equal(1L, fixture.Metrics.Snapshot().NoAvailableUpstreamFailures);
+    }
+
+    public static async Task AllUnavailableUpstreamsReturnSafeFailure()
+    {
+        var proxyPort = GetFreeTcpPort();
+        var closedPort = GetFreeTcpPort();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var temp = TemporaryDirectory.Create();
+        WriteResilienceSite(
+            temp.Path,
+            proxyPort,
+            [new TestUpstream("first", closedPort, CircuitJson: CircuitJson(threshold: 1, openSeconds: 30))]);
+
+        using var host = BuildProxyHost(temp.Path);
+        await host.StartAsync(timeout.Token);
+
+        try
+        {
+            _ = await SendSingleRequestAsync(
+                proxyPort,
+                "GET /open HTTP/1.1\r\nHost: resilience.test\r\nConnection: close\r\n\r\n",
+                timeout.Token);
+            var second = await SendSingleRequestAsync(
+                proxyPort,
+                "GET /open HTTP/1.1\r\nHost: resilience.test\r\nConnection: close\r\n\r\n",
+                timeout.Token);
+
+            AssertEx.True(second.Contains("503 Service Unavailable", StringComparison.Ordinal), second);
+        }
+        finally
+        {
+            await host.StopAsync(CancellationToken.None);
+        }
+    }
+
+    public static void MetricsIncludeRetryCircuitAndBalancingCounters()
+    {
+        using var fixture = SelectorFixture.Create(includePerUpstreamLabels: true);
+        var route = Route([Upstream("first", weight: 1, circuit: Circuit(threshold: 1))]);
+        fixture.Metrics.RetryAttempted();
+        fixture.Metrics.RetryExhausted();
+        var selection = AssertEx.NotNull(fixture.Selector.Select(route));
+        fixture.Circuit.RecordFailure(selection.CircuitBreakerLease, "connect_failure");
+
+        var text = fixture.Exporter.Export(fixture.Store.Snapshot);
+
+        AssertEx.True(text.Contains("mdrava_retry_attempts_total 1", StringComparison.Ordinal), text);
+        AssertEx.True(text.Contains("mdrava_retry_exhausted_total 1", StringComparison.Ordinal), text);
+        AssertEx.True(text.Contains("mdrava_circuit_transitions_total{state=\"open\"} 1", StringComparison.Ordinal), text);
+        AssertEx.True(text.Contains("mdrava_upstream_selections_total", StringComparison.Ordinal), text);
+    }
+
+    public static void EffectiveAndStatusProjectionsShowSafeResilienceState()
+    {
+        using var fixture = SelectorFixture.Create();
+        var upstream = Upstream("first", weight: 2, circuit: Circuit(threshold: 1));
+        var route = Route([upstream]) with
+        {
+            Retry = new RuntimeRetryPolicy(true, 2, null, true, false, [], ["GET", "HEAD"], TimeSpan.Zero)
+        };
+        fixture.Store.Replace(fixture.Store.Snapshot with { Routes = [route] });
+        var selection = AssertEx.NotNull(fixture.Selector.Select(route));
+        fixture.Circuit.RecordFailure(selection.CircuitBreakerLease, "connect_failure");
+
+        var projection = ProxyConfigurationMapper.ToProjection(fixture.Store.Snapshot);
+        var statusController = new ProxyStatusController(
+            new ProxyRuntimeState(),
+            fixture.Metrics,
+            fixture.Store,
+            fixture.Health);
+        var status = statusController.Get();
+
+        AssertEx.True(projection.Routes[0].Retry.Enabled);
+        AssertEx.Equal(2, projection.Routes[0].Upstreams[0].Weight);
+        AssertEx.Equal(true, projection.Routes[0].Upstreams[0].CircuitBreaker.Enabled);
+        AssertEx.Equal(CircuitBreakerRuntimeState.Open, status.Upstreams[0].CircuitBreaker.State);
+        AssertEx.Equal(2, status.Upstreams[0].Weight);
+    }
+
+    private static async Task<ClosedUpstreamResult> RunClosedUpstreamScenarioAsync(
+        string request,
+        string retryJson)
+    {
+        var proxyPort = GetFreeTcpPort();
+        var closedPort = GetFreeTcpPort();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var temp = TemporaryDirectory.Create();
+        WriteResilienceSite(temp.Path, proxyPort, [new TestUpstream("first", closedPort)], retryJson);
+
+        using var host = BuildProxyHost(temp.Path);
+        await host.StartAsync(timeout.Token);
+
+        try
+        {
+            var response = await SendSingleRequestAsync(proxyPort, request, timeout.Token);
+            var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
+            return new ClosedUpstreamResult(response, metrics);
+        }
+        finally
+        {
+            await host.StopAsync(CancellationToken.None);
+        }
+    }
+
+    private static async Task<IReadOnlyList<string>> RunCountingUpstreamAsync(
+        int upstreamPort,
+        int expectedRequests,
+        Func<int, string> responseFactory,
+        CancellationToken cancellationToken)
+    {
+        var listener = new TcpListener(IPAddress.Loopback, upstreamPort);
+        listener.Start();
+        List<string> requests = [];
+
+        try
+        {
+            while (requests.Count < expectedRequests)
+            {
+                using var client = await listener.AcceptTcpClientAsync(cancellationToken);
+                await using var stream = client.GetStream();
+                var request = await ReadRequestHeadAsync(stream, cancellationToken);
+                requests.Add(request);
+                var response = Encoding.ASCII.GetBytes(responseFactory(requests.Count));
+                await stream.WriteAsync(response, cancellationToken);
+            }
+
+            return requests;
+        }
+        finally
+        {
+            listener.Stop();
+        }
+    }
+
+    private static async Task<string> SendSingleRequestAsync(
+        int proxyPort,
+        string request,
+        CancellationToken cancellationToken)
+    {
+        using var client = new TcpClient();
+        await client.ConnectAsync(IPAddress.Loopback, proxyPort, cancellationToken);
+        await using var stream = client.GetStream();
+        await stream.WriteAsync(Encoding.ASCII.GetBytes(request), cancellationToken);
+        return await ReadToEndAsync(stream, cancellationToken);
+    }
+
+    private static async Task<string> ReadToEndAsync(Stream stream, CancellationToken cancellationToken)
+    {
+        using var buffer = new MemoryStream();
+        var chunk = new byte[1024];
+        while (true)
+        {
+            var bytesRead = await stream.ReadAsync(chunk, cancellationToken);
+            if (bytesRead == 0)
+            {
+                break;
+            }
+
+            buffer.Write(chunk, 0, bytesRead);
+        }
+
+        return Encoding.ASCII.GetString(buffer.ToArray());
+    }
+
+    private static async Task<string> ReadRequestHeadAsync(Stream stream, CancellationToken cancellationToken)
+    {
+        var buffer = new byte[4096];
+        var total = 0;
+        while (total < buffer.Length)
+        {
+            var bytesRead = await stream.ReadAsync(buffer.AsMemory(total, 1), cancellationToken);
+            if (bytesRead == 0)
+            {
+                break;
+            }
+
+            total += bytesRead;
+            if (total >= 4
+                && buffer[total - 4] == '\r'
+                && buffer[total - 3] == '\n'
+                && buffer[total - 2] == '\r'
+                && buffer[total - 1] == '\n')
+            {
+                break;
+            }
+        }
+
+        return Encoding.ASCII.GetString(buffer, 0, total);
+    }
+
+    private static void WriteResilienceSite(
+        string dataDirectory,
+        int proxyPort,
+        IReadOnlyList<TestUpstream> upstreams,
+        string retryJson = "")
+    {
+        var upstreamJson = string.Join(
+            ",",
+            upstreams.Select(upstream => $$"""
+                {
+                  "name": "{{upstream.Name}}",
+                  "address": "127.0.0.1",
+                  "port": {{upstream.Port}},
+                  "weight": {{upstream.Weight}}
+                  {{upstream.CircuitJson}}
+                }
+            """));
+        ConfigurationTests.WriteCustomSite(
+            dataDirectory,
+            "resilience.json",
+            $$"""
+            {
+              "name": "resilience",
+              "listeners": [
+                {
+                  "name": "main",
+                  "address": "127.0.0.1",
+                  "port": {{proxyPort}}
+                }
+              ],
+              "host": "*",
+              "pathPrefix": "/",
+              {{retryJson}}
+              "upstreams": [
+                {{upstreamJson}}
+              ]
+            }
+            """);
+    }
+
+    private static string RetryJson(
+        int maxAttempts,
+        bool retryOnConnectFailure)
+    {
+        return $$"""
+              "retry": {
+                "enabled": true,
+                "maxAttempts": {{maxAttempts}},
+                "retryOnConnectFailure": {{retryOnConnectFailure.ToString().ToLowerInvariant()}},
+                "retryMethods": ["GET", "HEAD"],
+                "retryBackoffMilliseconds": 0
+              },
+        """;
+    }
+
+    private static string RetryStatusJson(int maxAttempts, int statusCode)
+    {
+        return $$"""
+              "retry": {
+                "enabled": true,
+                "maxAttempts": {{maxAttempts}},
+                "retryOnStatusCodes": [{{statusCode}}],
+                "retryMethods": ["GET", "HEAD"],
+                "retryBackoffMilliseconds": 0
+              },
+        """;
+    }
+
+    private static string CircuitJson(int threshold, int openSeconds)
+    {
+        return $$"""
+                  ,
+                  "circuitBreaker": {
+                    "enabled": true,
+                    "failureThreshold": {{threshold}},
+                    "samplingWindowSeconds": 60,
+                    "openDurationSeconds": {{openSeconds}},
+                    "halfOpenMaxAttempts": 1
+                  }
+        """;
+    }
+
+    private static IHost BuildProxyHost(string dataDirectory)
+    {
+        return Host.CreateDefaultBuilder()
+            .ConfigureAppConfiguration(builder =>
+            {
+                builder.Sources.Clear();
+                builder.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Mdrava:DataDirectory"] = dataDirectory
+                });
+            })
+            .ConfigureLogging(logging => logging.ClearProviders())
+            .ConfigureServices((context, services) => services.AddProxyDataPlane(context.Configuration))
+            .Build();
+    }
+
+    private static RuntimeRoute Route(IReadOnlyList<RuntimeUpstream> upstreams, bool healthEnabled = false)
+    {
+        return new RuntimeRoute(
+            "route",
+            "*",
+            "/",
+            RuntimeRouteAction.Proxy,
+            "round-robin",
+            new RuntimeHealthCheckOptions(healthEnabled, "/health", TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), 1, 1),
+            upstreams,
+            new RuntimeHttpsRedirectPolicy(false, 308, null),
+            new RuntimeCanonicalHostPolicy(false, "", 308),
+            RuntimeHeaderPolicy.Empty,
+            new RuntimePathRewritePolicy("", "", ""),
+            new RuntimeRedirectPolicy(308, "", "", true),
+            new RuntimeStaticResponse(200, "text/plain; charset=utf-8", ""),
+            new RuntimeMaintenancePolicy(false, null, "text/plain; charset=utf-8", "Service Unavailable"),
+            RuntimeCachePolicy.Disabled,
+            new RuntimeRouteResolvedOptions(104857600, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30), true))
+        {
+            SiteName = "site"
+        };
+    }
+
+    private static RuntimeUpstream Upstream(
+        string name,
+        int weight,
+        RuntimeCircuitBreakerPolicy? circuit = null)
+    {
+        return new RuntimeUpstream(
+            "route",
+            name,
+            "http",
+            "127.0.0.1",
+            name == "first" ? 15000 : 15001,
+            weight,
+            new RuntimeUpstreamTlsOptions(true, null))
+        {
+            CircuitBreaker = circuit ?? RuntimeCircuitBreakerPolicy.Disabled
+        };
+    }
+
+    private static RuntimeCircuitBreakerPolicy Circuit(int threshold, int openSeconds = 30)
+    {
+        return new RuntimeCircuitBreakerPolicy(
+            true,
+            threshold,
+            TimeSpan.FromSeconds(60),
+            TimeSpan.FromSeconds(openSeconds),
+            1,
+            []);
+    }
+
+    private static ProxyConfigurationStore CreateStore(
+        RuntimeMetricsOptions? metricsOptions = null,
+        IReadOnlyList<RuntimeRoute>? routes = null)
+    {
+        var store = new ProxyConfigurationStore();
+        store.Replace(new ProxyConfigurationSnapshot(
+            1,
+            DateTimeOffset.UtcNow,
+            "tests",
+            [],
+            new ProxyConfigurationDiscovery(
+                new ProxyFilesystemLayout("tests", "tests/config", "tests/config/sites", "tests/logs", "tests/certs", "tests/state", "tests/config/proxy.json"),
+                [],
+                [],
+                []),
+            new RuntimeAdminSecurityOptions([], false, false, null, "MDRAVA_ADMIN_TOKEN", "none", 100),
+            new RuntimeAcmeOptions(false, true, "", [], false, "acme", 30, 720, 60, []),
+            Timeouts(),
+            new RuntimeConnectionLimits(100, 16, 1024),
+            new RuntimeObservabilityOptions(true, 100),
+            new RuntimeLimits(4096, 128, 240, 30, 32768, 128, 8192, 104857600, 8192, TimeSpan.FromSeconds(15)),
+            new RuntimeForwardedHeadersOptions(true, []),
+            new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),
+            [],
+            routes ?? [])
+        {
+            Metrics = metricsOptions ?? RuntimeMetricsOptions.Default
+        });
+        return store;
+    }
+
+    private static RuntimeTimeouts Timeouts()
+    {
+        return new RuntimeTimeouts(
+            TimeSpan.FromSeconds(10),
+            TimeSpan.FromSeconds(10),
+            TimeSpan.FromSeconds(10),
+            TimeSpan.FromSeconds(10),
+            TimeSpan.FromSeconds(10),
+            TimeSpan.FromSeconds(10),
+            TimeSpan.FromSeconds(10),
+            TimeSpan.FromSeconds(10),
+            TimeSpan.FromSeconds(10),
+            TimeSpan.FromSeconds(10));
+    }
+
+    private static int GetFreeTcpPort()
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+
+        try
+        {
+            return ((IPEndPoint)listener.LocalEndpoint).Port;
+        }
+        finally
+        {
+            listener.Stop();
+        }
+    }
+
+    private sealed record TestUpstream(
+        string Name,
+        int Port,
+        int Weight = 1,
+        string CircuitJson = "");
+
+    private sealed record ClosedUpstreamResult(
+        string Response,
+        ProxyMetricsSnapshot Metrics);
+
+    private sealed class SelectorFixture : IDisposable
+    {
+        private readonly UpstreamConnectionPool _pool;
+
+        private SelectorFixture(
+            ProxyMetrics metrics,
+            ManualTimeProvider clock,
+            CircuitBreakerStore circuit,
+            UpstreamHealthStore health,
+            RoundRobinUpstreamSelector selector,
+            PrometheusMetricsExporter exporter,
+            ProxyConfigurationStore store,
+            UpstreamConnectionPool pool)
+        {
+            Metrics = metrics;
+            Clock = clock;
+            Circuit = circuit;
+            Health = health;
+            Selector = selector;
+            Exporter = exporter;
+            Store = store;
+            _pool = pool;
+        }
+
+        public ProxyMetrics Metrics { get; }
+
+        public ManualTimeProvider Clock { get; }
+
+        public CircuitBreakerStore Circuit { get; }
+
+        public UpstreamHealthStore Health { get; }
+
+        public RoundRobinUpstreamSelector Selector { get; }
+
+        public PrometheusMetricsExporter Exporter { get; }
+
+        public ProxyConfigurationStore Store { get; }
+
+        public static SelectorFixture Create(bool includePerUpstreamLabels = false)
+        {
+            var metrics = new ProxyMetrics();
+            var clock = new ManualTimeProvider(DateTimeOffset.UtcNow);
+            var circuit = new CircuitBreakerStore(metrics, clock);
+            var pool = new UpstreamConnectionPool(new UpstreamConnectionFactory(), metrics);
+            var health = new UpstreamHealthStore(metrics, pool, circuit);
+            var selector = new RoundRobinUpstreamSelector(health, circuit, metrics);
+            var cache = new ResponseCacheStore(clock);
+            var store = CreateStore(
+                RuntimeMetricsOptions.Default with { IncludePerUpstreamLabels = includePerUpstreamLabels },
+                [Route([Upstream("first", 1, Circuit(1))])]);
+            var exporter = new PrometheusMetricsExporter(metrics, cache, health, new AcmeCertificateStatusStore());
+            return new SelectorFixture(metrics, clock, circuit, health, selector, exporter, store, pool);
+        }
+
+        public void Dispose()
+        {
+            _pool.Dispose();
+        }
+    }
+
+    private sealed class ManualTimeProvider : TimeProvider
+    {
+        private DateTimeOffset _utcNow;
+
+        public ManualTimeProvider(DateTimeOffset utcNow)
+        {
+            _utcNow = utcNow;
+        }
+
+        public override DateTimeOffset GetUtcNow()
+        {
+            return _utcNow;
+        }
+
+        public void Advance(TimeSpan value)
+        {
+            _utcNow = _utcNow.Add(value);
+        }
+    }
+
+    private sealed class TemporaryDirectory : IDisposable
+    {
+        private TemporaryDirectory(string path)
+        {
+            Path = path;
+        }
+
+        public string Path { get; }
+
+        public static TemporaryDirectory Create()
+        {
+            var path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"mdrava-resilience-tests-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(path);
+            return new TemporaryDirectory(path);
+        }
+
+        public void Dispose()
+        {
+            try
+            {
+                if (Directory.Exists(Path))
+                {
+                    Directory.Delete(Path, recursive: true);
+                }
+            }
+            catch
+            {
+            }
+        }
+    }
+}

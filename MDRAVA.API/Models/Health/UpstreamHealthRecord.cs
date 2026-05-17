@@ -14,4 +14,18 @@ public sealed record UpstreamHealthRecord(
     int ConsecutiveSuccesses,
     int ConsecutiveFailures,
     long SelectedRequests,
-    long RequestFailures);
+    long RequestFailures)
+{
+    public int Weight { get; init; } = 1;
+
+    public CircuitBreakerStatus CircuitBreaker { get; init; } = new(
+        CircuitBreakerRuntimeState.Disabled,
+        false,
+        5,
+        1,
+        null,
+        null,
+        0,
+        0,
+        null);
+}

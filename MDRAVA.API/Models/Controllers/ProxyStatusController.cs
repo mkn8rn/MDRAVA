@@ -51,7 +51,11 @@ public sealed class ProxyStatusController : ControllerBase
                 upstream.ConsecutiveSuccesses,
                 upstream.ConsecutiveFailures,
                 upstream.SelectedRequests,
-                upstream.RequestFailures))
+                upstream.RequestFailures)
+            {
+                Weight = upstream.Weight,
+                CircuitBreaker = upstream.CircuitBreaker
+            })
             .ToArray();
 
         return new ProxyStatusResponse(

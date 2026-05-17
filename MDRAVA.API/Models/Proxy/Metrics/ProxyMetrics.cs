@@ -78,8 +78,17 @@ public sealed class ProxyMetrics
     private long _acmeRenewalAttempts;
     private long _acmeRenewalSuccesses;
     private long _acmeRenewalFailures;
+    private long _retryAttempts;
+    private long _retryExhausted;
+    private long _circuitOpened;
+    private long _circuitHalfOpened;
+    private long _circuitClosed;
+    private long _circuitRejections;
+    private long _noAvailableUpstreamFailures;
     private readonly long[] _requestFailuresByKind = new long[FailureKinds.Length];
     private readonly ConcurrentDictionary<RequestSeriesKey, RequestSeriesCounter> _requestsByRoute = new();
+    private readonly ConcurrentDictionary<string, RequestSeriesCounter> _retrySkippedByReason = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<UpstreamSelectionKey, RequestSeriesCounter> _upstreamSelectionsByUpstream = new();
 
     public void ConnectionAccepted()
     {
@@ -274,9 +283,23 @@ public sealed class ProxyMetrics
 
     public void TunnelRelayFailed() => Interlocked.Increment(ref _tunnelRelayFailures);
 
-    public void UpstreamSelected(object _) => Interlocked.Increment(ref _upstreamSelections);
+    public void UpstreamSelected(object upstream)
+    {
+        Interlocked.Increment(ref _upstreamSelections);
+        if (upstream is RuntimeUpstream runtimeUpstream)
+        {
+            var key = new UpstreamSelectionKey(
+                NormalizeLabel(runtimeUpstream.RouteName),
+                NormalizeLabel(runtimeUpstream.Name),
+                NormalizeLabel(runtimeUpstream.Scheme));
+            var counter = _upstreamSelectionsByUpstream.GetOrAdd(key, static _ => new RequestSeriesCounter());
+            Interlocked.Increment(ref counter.Count);
+        }
+    }
 
     public void NoHealthyUpstream() => Interlocked.Increment(ref _noHealthyUpstreamFailures);
+
+    public void NoAvailableUpstream() => Interlocked.Increment(ref _noAvailableUpstreamFailures);
 
     public void HealthCheckAttempted() => Interlocked.Increment(ref _healthChecksAttempted);
 
@@ -349,6 +372,24 @@ public sealed class ProxyMetrics
 
     public void AcmeRenewalFailed() => Interlocked.Increment(ref _acmeRenewalFailures);
 
+    public void RetryAttempted() => Interlocked.Increment(ref _retryAttempts);
+
+    public void RetryExhausted() => Interlocked.Increment(ref _retryExhausted);
+
+    public void RetrySkipped(string reason)
+    {
+        var counter = _retrySkippedByReason.GetOrAdd(NormalizeLabel(reason), static _ => new RequestSeriesCounter());
+        Interlocked.Increment(ref counter.Count);
+    }
+
+    public void CircuitOpened(object _) => Interlocked.Increment(ref _circuitOpened);
+
+    public void CircuitHalfOpened(object _) => Interlocked.Increment(ref _circuitHalfOpened);
+
+    public void CircuitClosed(object _) => Interlocked.Increment(ref _circuitClosed);
+
+    public void CircuitRejected(object _) => Interlocked.Increment(ref _circuitRejections);
+
     public ProxyMetricsSnapshot Snapshot()
     {
         Dictionary<string, long> failuresByKind = new(StringComparer.Ordinal);
@@ -373,6 +414,20 @@ public sealed class ProxyMetrics
             .ThenBy(static item => item.Route, StringComparer.Ordinal)
             .ThenBy(static item => item.Action, StringComparer.Ordinal)
             .ThenBy(static item => item.StatusClass, StringComparer.Ordinal)
+            .ToArray();
+        var retrySkipped = _retrySkippedByReason
+            .Select(static pair => new ProxyRetrySkippedSnapshot(pair.Key, Interlocked.Read(ref pair.Value.Count)))
+            .OrderBy(static item => item.Reason, StringComparer.Ordinal)
+            .ToArray();
+        var upstreamSelectionsByUpstream = _upstreamSelectionsByUpstream
+            .Select(static pair => new ProxyUpstreamSelectionSnapshot(
+                pair.Key.Route,
+                pair.Key.Upstream,
+                pair.Key.Scheme,
+                Interlocked.Read(ref pair.Value.Count)))
+            .OrderBy(static item => item.Route, StringComparer.Ordinal)
+            .ThenBy(static item => item.Upstream, StringComparer.Ordinal)
+            .ThenBy(static item => item.Scheme, StringComparer.Ordinal)
             .ToArray();
 
         return new ProxyMetricsSnapshot(
@@ -447,7 +502,16 @@ public sealed class ProxyMetrics
             Interlocked.Read(ref _adminAuthFailures),
             Interlocked.Read(ref _acmeRenewalAttempts),
             Interlocked.Read(ref _acmeRenewalSuccesses),
-            Interlocked.Read(ref _acmeRenewalFailures));
+            Interlocked.Read(ref _acmeRenewalFailures),
+            Interlocked.Read(ref _retryAttempts),
+            Interlocked.Read(ref _retryExhausted),
+            retrySkipped,
+            Interlocked.Read(ref _circuitOpened),
+            Interlocked.Read(ref _circuitHalfOpened),
+            Interlocked.Read(ref _circuitClosed),
+            Interlocked.Read(ref _circuitRejections),
+            Interlocked.Read(ref _noAvailableUpstreamFailures),
+            upstreamSelectionsByUpstream);
     }
 
     private static string StatusClass(int? statusCode)
@@ -496,6 +560,11 @@ public sealed class ProxyMetrics
         string Route,
         string Action,
         string StatusClass);
+
+    private readonly record struct UpstreamSelectionKey(
+        string Route,
+        string Upstream,
+        string Scheme);
 
     private sealed class RequestSeriesCounter
     {

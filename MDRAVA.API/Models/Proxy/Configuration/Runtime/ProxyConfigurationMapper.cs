@@ -222,7 +222,10 @@ public static class ProxyConfigurationMapper
                     upstream.Weight,
                     new RuntimeUpstreamTlsOptions(
                         upstream.UpstreamTls.ValidateCertificate,
-                        string.IsNullOrWhiteSpace(upstream.UpstreamTls.SniHost) ? null : upstream.UpstreamTls.SniHost.Trim())))
+                        string.IsNullOrWhiteSpace(upstream.UpstreamTls.SniHost) ? null : upstream.UpstreamTls.SniHost.Trim()))
+                    {
+                        CircuitBreaker = ToRuntimeCircuitBreaker(upstream.CircuitBreaker)
+                    })
                 .ToArray(),
             new RuntimeHttpsRedirectPolicy(
                 route.HttpsRedirect.Enabled ?? false,
@@ -285,8 +288,45 @@ public static class ProxyConfigurationMapper
                 TimeSpan.FromMilliseconds(route.Overrides.UpstreamResponseHeadTimeoutMs ?? operationalOptions.Timeouts.UpstreamResponseHeadTimeoutMs),
                 route.Overrides.AccessLogEnabled ?? operationalOptions.Observability.AccessLogEnabled))
         {
-            SiteName = route.SiteName
+            SiteName = route.SiteName,
+            Retry = ToRuntimeRetry(route.Retry)
         };
+    }
+
+    private static RuntimeRetryPolicy ToRuntimeRetry(ProxyRetryPolicyOptions retry)
+    {
+        return new RuntimeRetryPolicy(
+            retry.Enabled,
+            Math.Max(1, retry.MaxAttempts),
+            retry.PerAttemptTimeoutMs.HasValue && retry.PerAttemptTimeoutMs.Value > 0
+                ? TimeSpan.FromMilliseconds(retry.PerAttemptTimeoutMs.Value)
+                : null,
+            retry.RetryOnConnectFailure,
+            retry.RetryOnUpstreamResponseHeadTimeout,
+            retry.RetryOnStatusCodes
+                .Distinct()
+                .Order()
+                .ToArray(),
+            retry.RetryMethods
+                .Where(static method => !string.IsNullOrWhiteSpace(method))
+                .Select(static method => method.Trim().ToUpperInvariant())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray(),
+            TimeSpan.FromMilliseconds(Math.Max(0, retry.RetryBackoffMilliseconds)));
+    }
+
+    private static RuntimeCircuitBreakerPolicy ToRuntimeCircuitBreaker(ProxyCircuitBreakerOptions circuitBreaker)
+    {
+        return new RuntimeCircuitBreakerPolicy(
+            circuitBreaker.Enabled,
+            circuitBreaker.FailureThreshold,
+            TimeSpan.FromSeconds(circuitBreaker.SamplingWindowSeconds),
+            TimeSpan.FromSeconds(circuitBreaker.OpenDurationSeconds),
+            circuitBreaker.HalfOpenMaxAttempts,
+            circuitBreaker.FailureStatusCodes
+                .Distinct()
+                .Order()
+                .ToArray());
     }
 
     private static RuntimeRouteAction ParseAction(string action)

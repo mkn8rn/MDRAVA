@@ -72,4 +72,13 @@ public sealed record ProxyMetricsSnapshot(
     long AdminAuthFailures,
     long AcmeRenewalAttempts,
     long AcmeRenewalSuccesses,
-    long AcmeRenewalFailures);
+    long AcmeRenewalFailures,
+    long RetryAttempts,
+    long RetryExhausted,
+    IReadOnlyList<ProxyRetrySkippedSnapshot> RetrySkipped,
+    long CircuitOpened,
+    long CircuitHalfOpened,
+    long CircuitClosed,
+    long CircuitRejections,
+    long NoAvailableUpstreamFailures,
+    IReadOnlyList<ProxyUpstreamSelectionSnapshot> UpstreamSelectionsByUpstream);

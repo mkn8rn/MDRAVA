@@ -34,5 +34,7 @@ public sealed class ProxyRouteOptions
 
     public ProxyCachePolicyOptions Cache { get; init; } = new();
 
+    public ProxyRetryPolicyOptions Retry { get; init; } = new();
+
     public ProxyRouteOverrideOptions Overrides { get; init; } = new();
 }

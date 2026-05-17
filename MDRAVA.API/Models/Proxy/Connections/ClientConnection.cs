@@ -11,6 +11,7 @@ using MDRAVA.API.Proxy.Observability;
 using MDRAVA.API.Proxy.Protocol;
 using MDRAVA.API.Proxy.Routing;
 using MDRAVA.API.Proxy.Runtime;
+using MDRAVA.API.Proxy.Resilience;
 using MDRAVA.API.Proxy.Tls;
 using System.Net;
 
@@ -35,6 +36,7 @@ public sealed class ClientConnection
     private readonly ProxyRouteActionPolicy _routeActionPolicy;
     private readonly PathRewritePolicy _pathRewritePolicy;
     private readonly ResponseCacheStore _cacheStore;
+    private readonly CircuitBreakerStore _circuitBreakerStore;
     private readonly AcmeHttp01ChallengeResponder _acmeChallengeResponder;
     private readonly TlsConnectionAuthenticator _tlsAuthenticator;
     private readonly ProxyMetrics _metrics;
@@ -57,6 +59,7 @@ public sealed class ClientConnection
         ProxyRouteActionPolicy routeActionPolicy,
         PathRewritePolicy pathRewritePolicy,
         ResponseCacheStore cacheStore,
+        CircuitBreakerStore circuitBreakerStore,
         AcmeHttp01ChallengeResponder acmeChallengeResponder,
         TlsConnectionAuthenticator tlsAuthenticator,
         ProxyMetrics metrics,
@@ -78,6 +81,7 @@ public sealed class ClientConnection
         _routeActionPolicy = routeActionPolicy;
         _pathRewritePolicy = pathRewritePolicy;
         _cacheStore = cacheStore;
+        _circuitBreakerStore = circuitBreakerStore;
         _acmeChallengeResponder = acmeChallengeResponder;
         _tlsAuthenticator = tlsAuthenticator;
         _metrics = metrics;
@@ -386,28 +390,11 @@ public sealed class ClientConnection
                     continue;
                 }
 
-                var selection = _upstreamSelector.Select(routeMatch.Route);
-                if (selection is null)
-                {
-                    await WriteGeneratedResponseAsync(
-                        clientStream,
-                        503,
-                        "Service Unavailable",
-                        "Service Unavailable",
-                        currentContext,
-                        ProxyFailureKind.NoHealthyUpstream,
-                        cancellationToken);
-                    CompleteContext(ref currentContext);
-                    return;
-                }
-                currentContext.SetUpstream(selection.Upstream);
-
-                var result = await _forwarder.ForwardAsync(
+                var result = await ForwardWithRetriesAsync(
                     clientStream,
                     requestHeadRead,
                     requestHead,
                     routeMatch.Route,
-                    selection.Upstream,
                     _listener,
                     effectiveTimeouts,
                     _configurationSnapshot.ConnectionLimits,
@@ -415,13 +402,9 @@ public sealed class ClientConnection
                     upstreamTarget,
                     forwardedHeaders,
                     preferKeepAlive,
+                    currentContext,
                     currentContext.RequestId,
                     cancellationToken);
-
-                if (!result.Succeeded)
-                {
-                    _healthStore.RecordRequestFailure(selection.Upstream);
-                }
 
                 requestsProcessed = nextRequestCount;
                 ApplyForwardingResult(currentContext, result);
@@ -486,6 +469,111 @@ public sealed class ClientConnection
         {
             ArrayPool<byte>.Shared.Return(requestHeadBuffer);
         }
+    }
+
+    private async ValueTask<ForwardingResult> ForwardWithRetriesAsync(
+        Stream clientStream,
+        Http1HeadReadResult requestHeadRead,
+        Http1RequestHead requestHead,
+        RuntimeRoute route,
+        RuntimeListener listener,
+        RuntimeTimeouts timeouts,
+        RuntimeConnectionLimits connectionLimits,
+        RuntimeLimits limits,
+        string upstreamTarget,
+        ForwardedHeadersContext forwardedHeaders,
+        bool preferClientKeepAlive,
+        ProxyRequestContext context,
+        string requestId,
+        CancellationToken cancellationToken)
+    {
+        var retryAllowed = IsRetryAllowed(route, requestHead, out var skipReason);
+        if (!retryAllowed && skipReason is not null)
+        {
+            _metrics.RetrySkipped(skipReason);
+        }
+
+        var maxAttempts = retryAllowed ? route.Retry.MaxAttempts : 1;
+        ForwardingResult? lastResult = null;
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            var selection = _upstreamSelector.Select(route);
+            if (selection is null)
+            {
+                if (attempt > 1)
+                {
+                    _metrics.RetryExhausted();
+                }
+
+                await WriteGeneratedResponseAsync(
+                    clientStream,
+                    503,
+                    "Service Unavailable",
+                    "Service Unavailable",
+                    context,
+                    ProxyFailureKind.NoHealthyUpstream,
+                    cancellationToken);
+                return new ForwardingResult(false, true, false, 503, ProxyFailureKind.NoHealthyUpstream);
+            }
+
+            context.SetUpstream(selection.Upstream);
+            var suppressGeneratedFailureResponse = retryAllowed && attempt < maxAttempts;
+            var result = await _forwarder.ForwardAsync(
+                clientStream,
+                requestHeadRead,
+                requestHead,
+                route,
+                selection.Upstream,
+                listener,
+                ApplyRetryAttemptTimeout(route, timeouts),
+                connectionLimits,
+                limits,
+                upstreamTarget,
+                forwardedHeaders,
+                preferClientKeepAlive,
+                requestId,
+                cancellationToken,
+                suppressGeneratedFailureResponse);
+            lastResult = result;
+            RecordUpstreamAttemptResult(selection, result);
+
+            string? finalSkipReason = null;
+            if (retryAllowed
+                && ShouldRetry(route.Retry, requestHead, result, attempt, maxAttempts, out finalSkipReason))
+            {
+                _metrics.RetryAttempted();
+                if (route.Retry.RetryBackoff > TimeSpan.Zero)
+                {
+                    await Task.Delay(route.Retry.RetryBackoff, cancellationToken);
+                }
+
+                continue;
+            }
+
+            if (finalSkipReason is not null)
+            {
+                _metrics.RetrySkipped(finalSkipReason);
+            }
+
+            if (retryAllowed && attempt == maxAttempts && IsRetryableFailure(route.Retry, result))
+            {
+                _metrics.RetryExhausted();
+            }
+
+            if (suppressGeneratedFailureResponse && !result.Succeeded && !result.ResponseStarted)
+            {
+                return await WriteSuppressedFailureAsync(clientStream, result, context, cancellationToken);
+            }
+
+            return result;
+        }
+
+        if (lastResult is not null && !lastResult.ResponseStarted)
+        {
+            return await WriteSuppressedFailureAsync(clientStream, lastResult, context, cancellationToken);
+        }
+
+        return lastResult ?? new ForwardingResult(false, false, false, null, ProxyFailureKind.NoHealthyUpstream);
     }
 
     private async ValueTask<bool> HandleUpgradeAsync(
@@ -598,10 +686,179 @@ public sealed class ClientConnection
         if (!upgradeResult.Succeeded)
         {
             _healthStore.RecordRequestFailure(upgradeSelection.Upstream);
+            _circuitBreakerStore.RecordFailure(upgradeSelection.CircuitBreakerLease, CircuitFailureReason(upgradeResult.FailureKind));
+        }
+        else
+        {
+            _circuitBreakerStore.RecordSuccess(upgradeSelection.CircuitBreakerLease);
         }
 
         ApplyForwardingResult(context, upgradeResult);
         return false;
+    }
+
+    private void RecordUpstreamAttemptResult(UpstreamSelection selection, ForwardingResult result)
+    {
+        if (result.ResponseStatusCode.HasValue
+            && selection.Upstream.CircuitBreaker.FailureStatusCodes.Any(code => code == result.ResponseStatusCode.Value))
+        {
+            _circuitBreakerStore.RecordFailure(selection.CircuitBreakerLease, "status_code", result.ResponseStatusCode);
+            return;
+        }
+
+        if (!result.Succeeded)
+        {
+            _healthStore.RecordRequestFailure(selection.Upstream);
+            if (IsCircuitFailure(result.FailureKind))
+            {
+                _circuitBreakerStore.RecordFailure(selection.CircuitBreakerLease, CircuitFailureReason(result.FailureKind));
+            }
+            else
+            {
+                selection.CircuitBreakerLease?.Dispose();
+            }
+
+            return;
+        }
+
+        _circuitBreakerStore.RecordSuccess(selection.CircuitBreakerLease);
+    }
+
+    private async ValueTask<ForwardingResult> WriteSuppressedFailureAsync(
+        Stream clientStream,
+        ForwardingResult result,
+        ProxyRequestContext context,
+        CancellationToken cancellationToken)
+    {
+        var statusCode = result.ResponseStatusCode ?? StatusCodeForFailure(result.FailureKind);
+        if (statusCode == 502)
+        {
+            _metrics.ProxyGenerated502();
+        }
+        else if (statusCode == 504)
+        {
+            _metrics.ProxyGenerated504();
+        }
+
+        var reason = ProxyRouteActionPolicy.ReasonPhrase(statusCode);
+        await WriteGeneratedResponseAsync(
+            clientStream,
+            statusCode,
+            reason,
+            reason,
+            context,
+            result.FailureKind,
+            cancellationToken);
+        return result with
+        {
+            ResponseStarted = true,
+            KeepClientConnectionOpen = false,
+            ResponseStatusCode = statusCode
+        };
+    }
+
+    private static bool IsRetryAllowed(RuntimeRoute route, Http1RequestHead requestHead, out string? skipReason)
+    {
+        skipReason = null;
+        if (!route.Retry.Enabled)
+        {
+            return false;
+        }
+
+        if (!route.Retry.RetryMethods.Any(method => string.Equals(method, requestHead.Method, StringComparison.OrdinalIgnoreCase)))
+        {
+            skipReason = "method";
+            return false;
+        }
+
+        if (requestHead.Framing.Kind != Http1BodyKind.None)
+        {
+            skipReason = "request_body";
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool ShouldRetry(
+        RuntimeRetryPolicy retry,
+        Http1RequestHead requestHead,
+        ForwardingResult result,
+        int attempt,
+        int maxAttempts,
+        out string? skipReason)
+    {
+        _ = requestHead;
+        skipReason = null;
+        if (!IsRetryableFailure(retry, result))
+        {
+            return false;
+        }
+
+        if (result.ResponseStarted)
+        {
+            skipReason = "response_started";
+            return false;
+        }
+
+        if (attempt >= maxAttempts)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool IsRetryableFailure(RuntimeRetryPolicy retry, ForwardingResult result)
+    {
+        if (result.ResponseStatusCode.HasValue
+            && retry.RetryOnStatusCodes.Any(code => code == result.ResponseStatusCode.Value))
+        {
+            return true;
+        }
+
+        if (!result.Succeeded)
+        {
+            return result.FailureKind switch
+            {
+                ProxyFailureKind.UpstreamConnectFailed => retry.RetryOnConnectFailure,
+                ProxyFailureKind.UpstreamConnectTimeout => retry.RetryOnConnectFailure,
+                ProxyFailureKind.UpstreamResponseHeadTimeout => retry.RetryOnUpstreamResponseHeadTimeout,
+                _ => false
+            };
+        }
+
+        return false;
+    }
+
+    private static bool IsCircuitFailure(ProxyFailureKind failureKind)
+    {
+        return failureKind is ProxyFailureKind.UpstreamConnectFailed
+            or ProxyFailureKind.UpstreamConnectTimeout
+            or ProxyFailureKind.UpstreamResponseHeadTimeout;
+    }
+
+    private static string CircuitFailureReason(ProxyFailureKind failureKind)
+    {
+        return failureKind switch
+        {
+            ProxyFailureKind.UpstreamConnectFailed => "connect_failure",
+            ProxyFailureKind.UpstreamConnectTimeout => "connect_timeout",
+            ProxyFailureKind.UpstreamResponseHeadTimeout => "response_head_timeout",
+            _ => "other"
+        };
+    }
+
+    private static int StatusCodeForFailure(ProxyFailureKind failureKind)
+    {
+        return failureKind switch
+        {
+            ProxyFailureKind.UpstreamConnectTimeout => 504,
+            ProxyFailureKind.UpstreamResponseHeadTimeout => 504,
+            ProxyFailureKind.RequestPayloadTooLarge => 413,
+            ProxyFailureKind.ClientMalformedRequest => 400,
+            _ => 502
+        };
     }
 
     private async ValueTask<Http1HeadReadResult> ReadRequestHeadAsync(
@@ -777,6 +1034,20 @@ public sealed class ClientConnection
         return timeouts with
         {
             UpstreamResponseHeadTimeout = route.ResolvedOptions.UpstreamResponseHeadTimeout
+        };
+    }
+
+    private static RuntimeTimeouts ApplyRetryAttemptTimeout(RuntimeRoute route, RuntimeTimeouts timeouts)
+    {
+        if (route.Retry.PerAttemptTimeout is not { } perAttemptTimeout)
+        {
+            return timeouts;
+        }
+
+        return timeouts with
+        {
+            UpstreamConnectTimeout = perAttemptTimeout,
+            UpstreamResponseHeadTimeout = perAttemptTimeout
         };
     }
 

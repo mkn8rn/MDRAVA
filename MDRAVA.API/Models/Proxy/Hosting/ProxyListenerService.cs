@@ -12,6 +12,7 @@ using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Observability;
 using MDRAVA.API.Proxy.Routing;
 using MDRAVA.API.Proxy.Runtime;
+using MDRAVA.API.Proxy.Resilience;
 using MDRAVA.API.Proxy.Tls;
 
 namespace MDRAVA.API.Proxy.Hosting;
@@ -29,6 +30,7 @@ public sealed class ProxyListenerService : BackgroundService
     private readonly ProxyRouteActionPolicy _routeActionPolicy;
     private readonly PathRewritePolicy _pathRewritePolicy;
     private readonly ResponseCacheStore _cacheStore;
+    private readonly CircuitBreakerStore _circuitBreakerStore;
     private readonly AcmeHttp01ChallengeResponder _acmeChallengeResponder;
     private readonly TlsConnectionAuthenticator _tlsAuthenticator;
     private readonly ProxyMetrics _metrics;
@@ -56,6 +58,7 @@ public sealed class ProxyListenerService : BackgroundService
         ProxyRouteActionPolicy routeActionPolicy,
         PathRewritePolicy pathRewritePolicy,
         ResponseCacheStore cacheStore,
+        CircuitBreakerStore circuitBreakerStore,
         AcmeHttp01ChallengeResponder acmeChallengeResponder,
         TlsConnectionAuthenticator tlsAuthenticator,
         ProxyMetrics metrics,
@@ -80,6 +83,7 @@ public sealed class ProxyListenerService : BackgroundService
         _routeActionPolicy = routeActionPolicy;
         _pathRewritePolicy = pathRewritePolicy;
         _cacheStore = cacheStore;
+        _circuitBreakerStore = circuitBreakerStore;
         _acmeChallengeResponder = acmeChallengeResponder;
         _tlsAuthenticator = tlsAuthenticator;
         _metrics = metrics;
@@ -234,6 +238,7 @@ public sealed class ProxyListenerService : BackgroundService
                 _routeActionPolicy,
                 _pathRewritePolicy,
                 _cacheStore,
+                _circuitBreakerStore,
                 _acmeChallengeResponder,
                 _tlsAuthenticator,
                 _metrics,

@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Connections;
 using MDRAVA.API.Proxy.Metrics;
+using MDRAVA.API.Proxy.Resilience;
 
 namespace MDRAVA.API.Proxy.Health;
 
@@ -10,13 +11,23 @@ public sealed class UpstreamHealthStore
     private readonly ConcurrentDictionary<string, MutableUpstreamHealth> _states = new(StringComparer.OrdinalIgnoreCase);
     private readonly ProxyMetrics _metrics;
     private readonly UpstreamConnectionPool _connectionPool;
+    private readonly CircuitBreakerStore? _circuitBreakerStore;
+
+    public UpstreamHealthStore(
+        ProxyMetrics metrics,
+        UpstreamConnectionPool connectionPool,
+        CircuitBreakerStore? circuitBreakerStore)
+    {
+        _metrics = metrics;
+        _connectionPool = connectionPool;
+        _circuitBreakerStore = circuitBreakerStore;
+    }
 
     public UpstreamHealthStore(
         ProxyMetrics metrics,
         UpstreamConnectionPool connectionPool)
+        : this(metrics, connectionPool, null)
     {
-        _metrics = metrics;
-        _connectionPool = connectionPool;
     }
 
     public bool IsUsable(RuntimeUpstream upstream)
@@ -119,12 +130,30 @@ public sealed class UpstreamHealthStore
                         state.ConsecutiveSuccesses,
                         state.ConsecutiveFailures,
                         Interlocked.Read(ref state.SelectedRequests),
-                        Interlocked.Read(ref state.RequestFailures)));
+                        Interlocked.Read(ref state.RequestFailures))
+                    {
+                        Weight = upstream.Weight,
+                        CircuitBreaker = _circuitBreakerStore?.Snapshot(upstream) ?? DisabledCircuitBreaker(upstream)
+                    });
                 }
             }
         }
 
         return records;
+    }
+
+    private static CircuitBreakerStatus DisabledCircuitBreaker(RuntimeUpstream upstream)
+    {
+        return new CircuitBreakerStatus(
+            upstream.CircuitBreaker.Enabled ? CircuitBreakerRuntimeState.Closed : CircuitBreakerRuntimeState.Disabled,
+            upstream.CircuitBreaker.Enabled,
+            upstream.CircuitBreaker.FailureThreshold,
+            upstream.CircuitBreaker.HalfOpenMaxAttempts,
+            null,
+            null,
+            0,
+            0,
+            null);
     }
 
     private MutableUpstreamHealth GetOrCreate(RuntimeUpstream upstream)

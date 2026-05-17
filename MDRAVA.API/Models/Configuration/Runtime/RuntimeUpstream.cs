@@ -16,4 +16,6 @@ public sealed record RuntimeUpstream(
     public string EffectiveSniHost => string.IsNullOrWhiteSpace(Tls.SniHost) ? Address : Tls.SniHost!;
 
     public string Identity => $"{RouteName}|{Name}|{Scheme}|{Address}|{Port}|{EffectiveSniHost}|{Tls.ValidateCertificate}";
+
+    public RuntimeCircuitBreakerPolicy CircuitBreaker { get; init; } = RuntimeCircuitBreakerPolicy.Disabled;
 }
