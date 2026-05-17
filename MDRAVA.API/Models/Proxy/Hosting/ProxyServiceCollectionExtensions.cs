@@ -67,6 +67,7 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<UpgradeRequestPolicy>();
         services.AddSingleton<ProxyRouteActionPolicy>();
         services.AddSingleton<PathRewritePolicy>();
+        services.AddSingleton<Http3AltSvcPolicy>();
         services.AddSingleton<TunnelRelay>();
         services.AddSingleton<ProxyForwarder>();
         services.AddSingleton<UpgradeForwarder>();

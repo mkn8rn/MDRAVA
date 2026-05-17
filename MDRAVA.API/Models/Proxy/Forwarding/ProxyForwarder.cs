@@ -5,6 +5,7 @@ using System.Text;
 using MDRAVA.API.Proxy.Caching;
 using MDRAVA.API.Proxy.Connections;
 using MDRAVA.API.Proxy.Configuration.Runtime;
+using MDRAVA.API.Proxy.Http3;
 using MDRAVA.API.Proxy.Http2;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Observability;
@@ -19,6 +20,7 @@ public sealed class ProxyForwarder
     private readonly ProxyMetrics _metrics;
     private readonly HopByHopHeaderPolicy _headerPolicy;
     private readonly ResponseCacheStore _cacheStore;
+    private readonly Http3AltSvcPolicy _altSvcPolicy;
     private readonly ILogger<ProxyForwarder> _logger;
 
     public ProxyForwarder(
@@ -26,12 +28,14 @@ public sealed class ProxyForwarder
         ProxyMetrics metrics,
         HopByHopHeaderPolicy headerPolicy,
         ResponseCacheStore cacheStore,
+        Http3AltSvcPolicy altSvcPolicy,
         ILogger<ProxyForwarder> logger)
     {
         _upstreamConnections = upstreamConnections;
         _metrics = metrics;
         _headerPolicy = headerPolicy;
         _cacheStore = cacheStore;
+        _altSvcPolicy = altSvcPolicy;
         _logger = logger;
     }
 
@@ -431,6 +435,7 @@ public sealed class ProxyForwarder
                 body,
                 keepClientConnectionOpen,
                 requestId,
+                listener,
                 timeouts,
                 cancellationToken);
             markResponseStarted();
@@ -446,6 +451,7 @@ public sealed class ProxyForwarder
                 timeouts,
                 keepClientConnectionOpen,
                 requestId,
+                listener,
                 cancellationToken);
             markResponseStarted();
             await RelayHttp2ResponseBodyAsync(
@@ -1030,6 +1036,7 @@ public sealed class ProxyForwarder
                         body,
                         keepClientConnectionOpen,
                         requestId,
+                        listener,
                         timeouts,
                         cancellationToken);
                     responseStarted = true;
@@ -1039,7 +1046,7 @@ public sealed class ProxyForwarder
                 else
                 {
                     RecordUncacheableFraming(route, responseHead);
-                    await WriteResponseHeadAsync(clientStream, responseHead, responseHeaders, timeouts, keepClientConnectionOpen, requestId, cancellationToken);
+                    await WriteResponseHeadAsync(clientStream, responseHead, responseHeaders, timeouts, keepClientConnectionOpen, requestId, listener, cancellationToken);
                     responseStarted = true;
                     markResponseStarted();
                     await RelayResponseBodyAsync(upstreamStream, clientStream, initialBodyBytes, responseHead, listener, timeouts, cancellationToken);
@@ -1051,7 +1058,7 @@ public sealed class ProxyForwarder
             }
 
             var informationalHeaders = BuildResponseHeaders(responseHead, route);
-            await WriteResponseHeadAsync(clientStream, responseHead, informationalHeaders, timeouts, keepClientConnectionOpen, requestId, cancellationToken);
+            await WriteResponseHeadAsync(clientStream, responseHead, informationalHeaders, timeouts, keepClientConnectionOpen, requestId, listener, cancellationToken);
             responseStarted = true;
             markResponseStarted();
         }
@@ -1064,6 +1071,7 @@ public sealed class ProxyForwarder
         RuntimeTimeouts timeouts,
         bool keepClientConnectionOpen,
         string requestId,
+        RuntimeListener listener,
         CancellationToken cancellationToken)
     {
         var builder = new StringBuilder();
@@ -1079,6 +1087,11 @@ public sealed class ProxyForwarder
             }
 
             builder.Append(header.Name).Append(": ").Append(header.Value).Append("\r\n");
+        }
+
+        if (_altSvcPolicy.TryCreateHeader(listener, out var altSvc))
+        {
+            builder.Append(altSvc.Name).Append(": ").Append(altSvc.Value).Append("\r\n");
         }
 
         builder.Append("X-Request-Id: ").Append(requestId).Append("\r\n");
@@ -1105,6 +1118,7 @@ public sealed class ProxyForwarder
         byte[] body,
         bool keepClientConnectionOpen,
         string requestId,
+        RuntimeListener listener,
         RuntimeTimeouts timeouts,
         CancellationToken cancellationToken)
     {
@@ -1121,6 +1135,11 @@ public sealed class ProxyForwarder
             }
 
             builder.Append(header.Name).Append(": ").Append(header.Value).Append("\r\n");
+        }
+
+        if (_altSvcPolicy.TryCreateHeader(listener, out var altSvc))
+        {
+            builder.Append(altSvc.Name).Append(": ").Append(altSvc.Value).Append("\r\n");
         }
 
         builder.Append("X-Request-Id: ").Append(requestId).Append("\r\n");

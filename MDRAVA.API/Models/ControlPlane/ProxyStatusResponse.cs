@@ -28,7 +28,13 @@ public sealed record ProxyStatusResponse(
         QuicListenerSupported: false,
         QuicConnectionSupported: false,
         "disabled",
+        "disabled",
         EnabledForTraffic: false,
+        QuicListenerReady: false,
+        AltSvcConfigured: false,
+        AltSvcActive: false,
+        AltSvcMaxAgeSeconds: null,
         "not_configured",
-        UdpQuicListenerIdentityModeled: true);
+        UdpQuicListenerIdentityModeled: true,
+        "preview_only");
 }

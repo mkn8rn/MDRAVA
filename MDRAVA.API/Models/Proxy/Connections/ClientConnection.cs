@@ -8,6 +8,7 @@ using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Forwarding;
 using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Http2;
+using MDRAVA.API.Proxy.Http3;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Observability;
 using MDRAVA.API.Proxy.Protocol;
@@ -38,6 +39,7 @@ public sealed class ClientConnection
     private readonly ProxyRouteActionPolicy _routeActionPolicy;
     private readonly PathRewritePolicy _pathRewritePolicy;
     private readonly ResponseCacheStore _cacheStore;
+    private readonly Http3AltSvcPolicy _altSvcPolicy;
     private readonly CircuitBreakerStore _circuitBreakerStore;
     private readonly AcmeHttp01ChallengeResponder _acmeChallengeResponder;
     private readonly TlsConnectionAuthenticator _tlsAuthenticator;
@@ -61,6 +63,7 @@ public sealed class ClientConnection
         ProxyRouteActionPolicy routeActionPolicy,
         PathRewritePolicy pathRewritePolicy,
         ResponseCacheStore cacheStore,
+        Http3AltSvcPolicy altSvcPolicy,
         CircuitBreakerStore circuitBreakerStore,
         AcmeHttp01ChallengeResponder acmeChallengeResponder,
         TlsConnectionAuthenticator tlsAuthenticator,
@@ -83,6 +86,7 @@ public sealed class ClientConnection
         _routeActionPolicy = routeActionPolicy;
         _pathRewritePolicy = pathRewritePolicy;
         _cacheStore = cacheStore;
+        _altSvcPolicy = altSvcPolicy;
         _circuitBreakerStore = circuitBreakerStore;
         _acmeChallengeResponder = acmeChallengeResponder;
         _tlsAuthenticator = tlsAuthenticator;
@@ -131,6 +135,7 @@ public sealed class ClientConnection
                 _routeActionPolicy,
                 _pathRewritePolicy,
                 _cacheStore,
+                _altSvcPolicy,
                 _circuitBreakerStore,
                 _acmeChallengeResponder,
                 _metrics,
@@ -949,7 +954,8 @@ public sealed class ClientConnection
             context.RequestId,
             _configurationSnapshot.Timeouts.DownstreamWriteTimeout,
             _metrics,
-            cancellationToken);
+            cancellationToken,
+            headers: WithAltSvc());
 
         context.ResponseStarted = true;
         context.ResponseStatusCode = statusCode;
@@ -980,6 +986,11 @@ public sealed class ClientConnection
         foreach (var header in response.Headers)
         {
             builder.Append(header.Name).Append(": ").Append(header.Value).Append("\r\n");
+        }
+
+        if (_altSvcPolicy.TryCreateHeader(_listener, out var altSvc))
+        {
+            builder.Append(altSvc.Name).Append(": ").Append(altSvc.Value).Append("\r\n");
         }
 
         builder.Append("Age: ").Append(ageSeconds).Append("\r\n");
@@ -1027,11 +1038,24 @@ public sealed class ClientConnection
             _metrics,
             cancellationToken,
             response.ContentType,
-            response.Headers);
+            WithAltSvc(response.Headers));
 
         context.ResponseStarted = true;
         context.ResponseStatusCode = response.StatusCode;
         context.KeepClientConnectionOpen = false;
+    }
+
+    private IReadOnlyList<Http1HeaderField> WithAltSvc(IReadOnlyList<Http1HeaderField>? headers = null)
+    {
+        List<Http1HeaderField> result = headers is null
+            ? []
+            : headers.Where(static header => !string.Equals(header.Name, "alt-svc", StringComparison.OrdinalIgnoreCase)).ToList();
+        if (_altSvcPolicy.TryCreateHeader(_listener, out var altSvc))
+        {
+            result.Add(altSvc);
+        }
+
+        return result;
     }
 
     private ProxyRequestContext CreateRequestContext()

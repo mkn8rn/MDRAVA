@@ -9,6 +9,7 @@ using MDRAVA.API.Proxy.Caching;
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Forwarding;
 using MDRAVA.API.Proxy.Health;
+using MDRAVA.API.Proxy.Http3;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Observability;
 using MDRAVA.API.Proxy.Protocol;
@@ -33,6 +34,7 @@ public sealed class Http2ClientConnection
     private readonly ProxyRouteActionPolicy _routeActionPolicy;
     private readonly PathRewritePolicy _pathRewritePolicy;
     private readonly ResponseCacheStore _cacheStore;
+    private readonly Http3AltSvcPolicy _altSvcPolicy;
     private readonly CircuitBreakerStore _circuitBreakerStore;
     private readonly AcmeHttp01ChallengeResponder _acmeChallengeResponder;
     private readonly ProxyMetrics _metrics;
@@ -56,6 +58,7 @@ public sealed class Http2ClientConnection
         ProxyRouteActionPolicy routeActionPolicy,
         PathRewritePolicy pathRewritePolicy,
         ResponseCacheStore cacheStore,
+        Http3AltSvcPolicy altSvcPolicy,
         CircuitBreakerStore circuitBreakerStore,
         AcmeHttp01ChallengeResponder acmeChallengeResponder,
         ProxyMetrics metrics,
@@ -76,6 +79,7 @@ public sealed class Http2ClientConnection
         _routeActionPolicy = routeActionPolicy;
         _pathRewritePolicy = pathRewritePolicy;
         _cacheStore = cacheStore;
+        _altSvcPolicy = altSvcPolicy;
         _circuitBreakerStore = circuitBreakerStore;
         _acmeChallengeResponder = acmeChallengeResponder;
         _metrics = metrics;
@@ -765,7 +769,8 @@ public sealed class Http2ClientConnection
             .Append(new Http1HeaderField("age", ageSeconds.ToString(CultureInfo.InvariantCulture)))
             .Append(new Http1HeaderField("x-request-id", context.RequestId))
             .Append(new Http1HeaderField("content-length", response.Body.Length.ToString(CultureInfo.InvariantCulture)))
-            .ToArray();
+            .ToList();
+        AddAltSvcHeader(headers);
         var includeBody = !string.Equals(requestHead.Method, "HEAD", StringComparison.OrdinalIgnoreCase);
         await WriteHeadersAndBodyAsync(streamId, response.StatusCode, headers, includeBody ? response.Body : [], cancellationToken);
         context.ResponseStarted = true;
@@ -791,6 +796,7 @@ public sealed class Http2ClientConnection
         headers.AddRange(response.Headers.Where(static header => !IsHopByHopHeader(header.Name)));
         var body = Encoding.UTF8.GetBytes(response.Body);
         headers.Add(new Http1HeaderField("content-length", body.Length.ToString(CultureInfo.InvariantCulture)));
+        AddAltSvcHeader(headers);
         await WriteHeadersAndBodyAsync(
             streamId,
             response.StatusCode,
@@ -814,12 +820,13 @@ public sealed class Http2ClientConnection
     {
         _ = reasonPhrase;
         var bodyBytes = Encoding.UTF8.GetBytes(body);
-        var headers = new[]
-        {
+        List<Http1HeaderField> headers =
+        [
             new Http1HeaderField("content-type", "text/plain"),
             new Http1HeaderField("x-request-id", context.RequestId),
             new Http1HeaderField("content-length", bodyBytes.Length.ToString(CultureInfo.InvariantCulture))
-        };
+        ];
+        AddAltSvcHeader(headers);
         await WriteHeadersAndBodyAsync(
             streamId,
             statusCode,
@@ -849,6 +856,15 @@ public sealed class Http2ClientConnection
         if (body.Length > 0)
         {
             await WriteDataAsync(streamId, body, endStream: true, cancellationToken);
+        }
+    }
+
+    private void AddAltSvcHeader(List<Http1HeaderField> headers)
+    {
+        if (_altSvcPolicy.TryCreateHeader(_listener, out var altSvc))
+        {
+            headers.RemoveAll(static header => string.Equals(header.Name, "alt-svc", StringComparison.OrdinalIgnoreCase));
+            headers.Add(altSvc);
         }
     }
 

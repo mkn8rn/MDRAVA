@@ -4,19 +4,38 @@ namespace MDRAVA.API.Proxy.Http3;
 
 public static class Http3RuntimeSupport
 {
-    public static RuntimeHttp3SupportProjection Project(IReadOnlyList<RuntimeListener> listeners)
+    public static RuntimeHttp3SupportProjection Project(
+        IReadOnlyList<RuntimeListener> listeners,
+        IReadOnlyList<ProxyListenerStatus>? runtimeListeners = null)
     {
         var previewConfigured = listeners.Any(static listener => listener.Http3PreviewConfigured);
         var previewEnabled = listeners.Any(static listener => listener.Http3.EnabledForTraffic);
+        var quicReady = runtimeListeners?.Any(static listener =>
+            string.Equals(listener.Kind, "quic", StringComparison.OrdinalIgnoreCase)
+            && listener.State == ProxyListenerState.Active) ?? false;
+        var altSvcConfigured = listeners.Any(static listener => listener.Http3AltSvc.Enabled);
+        var altSvcActive = altSvcConfigured
+            && runtimeListeners is not null
+            && listeners.Any(listener => listener.Http3AltSvc.Enabled && Http3AltSvcPolicy.HasActiveQuicListener(listener, runtimeListeners));
+        var maxAge = listeners
+            .Where(static listener => listener.Http3AltSvc.Enabled)
+            .Select(static listener => (int?)listener.Http3AltSvc.MaxAgeSeconds)
+            .FirstOrDefault();
         var support = Check();
         return new RuntimeHttp3SupportProjection(
             support.RuntimeSupport,
             support.QuicListenerSupported,
             support.QuicConnectionSupported,
             previewConfigured ? "preview" : "disabled",
+            EnablementLevel(listeners),
             previewEnabled,
-            previewEnabled ? "preview_enabled" : previewConfigured ? "preview_configured_but_inactive" : "not_configured",
-            UdpQuicListenerIdentityModeled: true);
+            quicReady,
+            altSvcConfigured,
+            altSvcActive,
+            maxAge,
+            DisabledReason(previewConfigured, previewEnabled, quicReady, runtimeListeners is not null),
+            UdpQuicListenerIdentityModeled: true,
+            "preview_only");
     }
 
     private static RuntimeHttp3RuntimeSupport Check()
@@ -43,4 +62,36 @@ public static class Http3RuntimeSupport
         string RuntimeSupport,
         bool QuicListenerSupported,
         bool QuicConnectionSupported);
+
+    private static string EnablementLevel(IReadOnlyList<RuntimeListener> listeners)
+    {
+        if (listeners.Any(static listener => listener.Http3.EnablementLevel == "beta"))
+        {
+            return "beta";
+        }
+
+        return listeners.Any(static listener => listener.Http3.EnablementLevel == "preview")
+            ? "preview"
+            : "disabled";
+    }
+
+    private static string DisabledReason(bool configured, bool enabled, bool ready, bool hasRuntimeState)
+    {
+        if (ready)
+        {
+            return "quic_listener_ready";
+        }
+
+        if (enabled && !hasRuntimeState)
+        {
+            return "preview_enabled";
+        }
+
+        if (enabled)
+        {
+            return "configured_but_listener_not_ready";
+        }
+
+        return configured ? "preview_configured_but_inactive" : "not_configured";
+    }
 }

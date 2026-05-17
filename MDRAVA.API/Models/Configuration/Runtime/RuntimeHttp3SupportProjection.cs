@@ -5,6 +5,12 @@ public sealed record RuntimeHttp3SupportProjection(
     bool QuicListenerSupported,
     bool QuicConnectionSupported,
     string Configured,
+    string EnablementLevel,
     bool EnabledForTraffic,
+    bool QuicListenerReady,
+    bool AltSvcConfigured,
+    bool AltSvcActive,
+    int? AltSvcMaxAgeSeconds,
     string DisabledReason,
-    bool UdpQuicListenerIdentityModeled);
+    bool UdpQuicListenerIdentityModeled,
+    string ReadinessConclusion);

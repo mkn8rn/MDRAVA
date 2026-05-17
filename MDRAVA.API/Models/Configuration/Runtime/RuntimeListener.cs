@@ -20,6 +20,10 @@ public sealed record RuntimeListener(
 
     public bool ExperimentalHttp3 { get; init; }
 
+    public RuntimeHttp3Enablement Http3Enablement { get; init; } = RuntimeHttp3Enablement.Disabled;
+
+    public RuntimeHttp3AltSvcOptions Http3AltSvc { get; init; } = RuntimeHttp3AltSvcOptions.Disabled;
+
     public RuntimeHttp2Limits Http2Limits { get; init; } = RuntimeHttp2Limits.Default;
 
     public bool TcpTrafficEnabled => Protocols.HasTcpProtocols();

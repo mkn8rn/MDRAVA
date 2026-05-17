@@ -36,6 +36,10 @@ public static class ProxyConfigurationMapper
             {
                 Protocols = ParseProtocols(listener.Protocols),
                 ExperimentalHttp3 = listener.ExperimentalHttp3,
+                Http3Enablement = ResolveHttp3Enablement(listener),
+                Http3AltSvc = new RuntimeHttp3AltSvcOptions(
+                    listener.Http3AltSvcEnabled,
+                    listener.Http3AltSvcMaxAgeSeconds),
                 Http2Limits = new RuntimeHttp2Limits(
                     listener.Http2MaxConcurrentStreams,
                     listener.Http2MaxHeaderListBytes,
@@ -374,5 +378,22 @@ public static class ProxyConfigurationMapper
             "http1andhttp2andhttp3preview" => RuntimeListenerProtocols.Http1AndHttp2AndHttp3Preview,
             _ => RuntimeListenerProtocols.Http1
         };
+    }
+
+    private static RuntimeHttp3Enablement ResolveHttp3Enablement(ListenerOptions listener)
+    {
+        if (!string.IsNullOrWhiteSpace(listener.Http3Enablement))
+        {
+            return listener.Http3Enablement.Trim().ToLowerInvariant() switch
+            {
+                "preview" => RuntimeHttp3Enablement.Preview,
+                "beta" => RuntimeHttp3Enablement.Beta,
+                _ => RuntimeHttp3Enablement.Disabled
+            };
+        }
+
+        return ParseProtocols(listener.Protocols).HasHttp3Preview() && listener.ExperimentalHttp3
+            ? RuntimeHttp3Enablement.Preview
+            : RuntimeHttp3Enablement.Disabled;
     }
 }

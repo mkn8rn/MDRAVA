@@ -79,7 +79,7 @@ public sealed class ProxyStatusController : ControllerBase
         {
             Listeners = runtime.Listeners,
             LastListenerReload = runtime.LastListenerReload,
-            Http3 = Http3RuntimeSupport.Project(snapshot?.Listeners ?? [])
+            Http3 = Http3RuntimeSupport.Project(snapshot?.Listeners ?? [], runtime.Listeners)
         };
     }
 }

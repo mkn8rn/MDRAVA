@@ -16,6 +16,12 @@ public sealed class ListenerOptions
 
     public bool ExperimentalHttp3 { get; init; }
 
+    public string Http3Enablement { get; init; } = "";
+
+    public bool Http3AltSvcEnabled { get; init; }
+
+    public int Http3AltSvcMaxAgeSeconds { get; init; } = 86400;
+
     public string? DefaultCertificateId { get; init; }
 
     public List<SniCertificateOptions> SniCertificates { get; init; } = [];

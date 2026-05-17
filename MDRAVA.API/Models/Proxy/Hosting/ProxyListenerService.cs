@@ -33,6 +33,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
     private readonly ProxyRouteActionPolicy _routeActionPolicy;
     private readonly PathRewritePolicy _pathRewritePolicy;
     private readonly ResponseCacheStore _cacheStore;
+    private readonly Http3AltSvcPolicy _altSvcPolicy;
     private readonly CircuitBreakerStore _circuitBreakerStore;
     private readonly AcmeHttp01ChallengeResponder _acmeChallengeResponder;
     private readonly TlsConnectionAuthenticator _tlsAuthenticator;
@@ -64,6 +65,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
         ProxyRouteActionPolicy routeActionPolicy,
         PathRewritePolicy pathRewritePolicy,
         ResponseCacheStore cacheStore,
+        Http3AltSvcPolicy altSvcPolicy,
         CircuitBreakerStore circuitBreakerStore,
         AcmeHttp01ChallengeResponder acmeChallengeResponder,
         TlsConnectionAuthenticator tlsAuthenticator,
@@ -90,6 +92,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
         _routeActionPolicy = routeActionPolicy;
         _pathRewritePolicy = pathRewritePolicy;
         _cacheStore = cacheStore;
+        _altSvcPolicy = altSvcPolicy;
         _circuitBreakerStore = circuitBreakerStore;
         _acmeChallengeResponder = acmeChallengeResponder;
         _tlsAuthenticator = tlsAuthenticator;
@@ -727,6 +730,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
                 _routeActionPolicy,
                 _pathRewritePolicy,
                 _cacheStore,
+                _altSvcPolicy,
                 _circuitBreakerStore,
                 _acmeChallengeResponder,
                 _tlsAuthenticator,
