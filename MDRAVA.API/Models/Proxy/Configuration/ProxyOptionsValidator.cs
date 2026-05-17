@@ -276,12 +276,17 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
                 var upstreamProtocol = string.IsNullOrWhiteSpace(upstream.Protocol) ? RuntimeUpstreamProtocol.Http1 : upstream.Protocol;
                 if (!IsSupportedUpstreamProtocol(upstreamProtocol))
                 {
-                    failures.Add($"{upstreamPrefix}:Protocol must be 'http1' or 'http2'.");
+                    failures.Add($"{upstreamPrefix}:Protocol must be 'http1', 'http2', or 'http3'.");
                 }
                 else if (string.Equals(upstreamProtocol, RuntimeUpstreamProtocol.Http2, StringComparison.OrdinalIgnoreCase)
                     && !string.Equals(upstreamScheme, "https", StringComparison.OrdinalIgnoreCase))
                 {
                     failures.Add($"{upstreamPrefix}:HTTP/2 upstreams require scheme 'https' with ALPN; h2c is not supported.");
+                }
+                else if (string.Equals(upstreamProtocol, RuntimeUpstreamProtocol.Http3, StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(upstreamScheme, "https", StringComparison.OrdinalIgnoreCase))
+                {
+                    failures.Add($"{upstreamPrefix}:HTTP/3 upstreams require scheme 'https' with QUIC and ALPN; h3c is not supported.");
                 }
 
                 if (upstream.Port is < 1 or > 65535)
@@ -388,7 +393,8 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
     private static bool IsSupportedUpstreamProtocol(string protocol)
     {
         return string.Equals(protocol, RuntimeUpstreamProtocol.Http1, StringComparison.OrdinalIgnoreCase)
-            || string.Equals(protocol, RuntimeUpstreamProtocol.Http2, StringComparison.OrdinalIgnoreCase);
+            || string.Equals(protocol, RuntimeUpstreamProtocol.Http2, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(protocol, RuntimeUpstreamProtocol.Http3, StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsAmbiguousUpstreamAddress(string value)

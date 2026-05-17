@@ -286,6 +286,25 @@ public sealed class ConfigLintService
                     findings.Add(Error("upstream_http2_without_https", $"Upstream '{upstream.Name}' uses HTTP/2 without HTTPS.", sourceName, upstreamPath, "Set scheme to https or use upstream protocol http1."));
                 }
 
+                if (string.Equals(upstream.Protocol, RuntimeUpstreamProtocol.Http3, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!string.Equals(upstream.Scheme, "https", StringComparison.OrdinalIgnoreCase))
+                    {
+                        findings.Add(Error("upstream_http3_without_https", $"Upstream '{upstream.Name}' uses HTTP/3 without HTTPS.", sourceName, upstreamPath, "Set scheme to https because h3c is not supported."));
+                    }
+
+                    if (!Http3RuntimeSupport.Project(snapshot.Listeners).QuicConnectionSupported)
+                    {
+                        findings.Add(Warning("upstream_http3_runtime_unavailable", $"Upstream '{upstream.Name}' uses HTTP/3 but this runtime does not report QUIC client support.", sourceName, upstreamPath, "Use HTTP/1.1 or HTTP/2 for this upstream on runtimes without System.Net.Quic client support."));
+                    }
+
+                    if (route.Retry.Enabled
+                        && route.Retry.RetryMethods.Any(static method => !IsSafeRetryMethod(method)))
+                    {
+                        findings.Add(Warning("upstream_http3_retry_body_safety", $"Route '{route.Name}' combines HTTP/3 upstreams with retry methods beyond GET/HEAD.", sourceName, upstreamPath, "Keep HTTP/3 upstream retries limited to methods without request bodies unless replay is explicitly safe."));
+                    }
+                }
+
                 if (string.Equals(upstream.Scheme, "https", StringComparison.OrdinalIgnoreCase)
                     && !upstream.Tls.ValidateCertificate)
                 {

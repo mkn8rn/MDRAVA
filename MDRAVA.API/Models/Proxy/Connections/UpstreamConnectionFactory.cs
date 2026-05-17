@@ -139,6 +139,11 @@ public sealed class UpstreamConnectionFactory
 
     private static List<SslApplicationProtocol>? BuildApplicationProtocols(RuntimeUpstream upstream)
     {
+        if (RuntimeUpstreamProtocol.IsHttp3(upstream.Protocol))
+        {
+            throw new InvalidOperationException("HTTP/3 upstreams use the QUIC upstream transport, not the TCP upstream connection factory.");
+        }
+
         return RuntimeUpstreamProtocol.IsHttp2(upstream.Protocol)
             ? [SslApplicationProtocol.Http2]
             : null;

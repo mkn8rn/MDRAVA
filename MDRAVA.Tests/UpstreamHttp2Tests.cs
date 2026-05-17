@@ -117,7 +117,7 @@ internal static class UpstreamHttp2Tests
 
         AssertEx.True(validation.Failed);
         AssertEx.True(AssertEx.NotNull(validation.Failures).Any(static failure =>
-            failure.Contains("Protocol must be 'http1' or 'http2'", StringComparison.Ordinal)));
+            failure.Contains("Protocol must be 'http1', 'http2', or 'http3'", StringComparison.Ordinal)));
     }
 
     public static void PoolKeyDiffersForHttp1AndHttp2()

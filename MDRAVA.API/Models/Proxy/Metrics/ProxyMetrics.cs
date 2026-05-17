@@ -101,6 +101,12 @@ public sealed class ProxyMetrics
     private long _upstreamHttp2Requests;
     private long _upstreamHttp2AlpnFailures;
     private long _upstreamHttp2ProtocolErrors;
+    private long _upstreamHttp3Requests;
+    private long _upstreamHttp3ConnectionAttempts;
+    private long _upstreamHttp3ConnectionSuccesses;
+    private long _upstreamHttp3ConnectionFailures;
+    private long _activeUpstreamHttp3Connections;
+    private long _activeUpstreamHttp3Streams;
     private long _http3AcceptedConnections;
     private long _activeHttp3Connections;
     private long _http3Requests;
@@ -125,6 +131,7 @@ public sealed class ProxyMetrics
     private readonly ConcurrentDictionary<string, RequestSeriesCounter> _retrySkippedByReason = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<UpstreamSelectionKey, RequestSeriesCounter> _upstreamSelectionsByUpstream = new();
     private readonly ConcurrentDictionary<string, RequestSeriesCounter> _http2ProtocolErrors = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, RequestSeriesCounter> _upstreamHttp3ProtocolErrors = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<Http3OutcomeKey, RequestSeriesCounter> _http3RequestsByOutcome = new();
     private readonly ConcurrentDictionary<string, RequestSeriesCounter> _http3RejectedRequests = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, RequestSeriesCounter> _http3ProtocolErrors = new(StringComparer.Ordinal);
@@ -475,6 +482,28 @@ public sealed class ProxyMetrics
         Interlocked.Increment(ref _upstreamHttp2ProtocolErrors);
     }
 
+    public void UpstreamHttp3RequestAttempted() => Interlocked.Increment(ref _upstreamHttp3Requests);
+
+    public void UpstreamHttp3ConnectionAttempted() => Interlocked.Increment(ref _upstreamHttp3ConnectionAttempts);
+
+    public void UpstreamHttp3ConnectionSucceeded() => Interlocked.Increment(ref _upstreamHttp3ConnectionSuccesses);
+
+    public void UpstreamHttp3ConnectionFailed() => Interlocked.Increment(ref _upstreamHttp3ConnectionFailures);
+
+    public void UpstreamHttp3ConnectionOpened() => Interlocked.Increment(ref _activeUpstreamHttp3Connections);
+
+    public void UpstreamHttp3ConnectionClosed() => Interlocked.Decrement(ref _activeUpstreamHttp3Connections);
+
+    public void UpstreamHttp3StreamStarted() => Interlocked.Increment(ref _activeUpstreamHttp3Streams);
+
+    public void UpstreamHttp3StreamEnded() => Interlocked.Decrement(ref _activeUpstreamHttp3Streams);
+
+    public void UpstreamHttp3ProtocolError(string reason)
+    {
+        var counter = _upstreamHttp3ProtocolErrors.GetOrAdd(NormalizeLabel(reason), static _ => new RequestSeriesCounter());
+        Interlocked.Increment(ref counter.Count);
+    }
+
     public void Http3ConnectionAccepted()
     {
         Interlocked.Increment(ref _http3AcceptedConnections);
@@ -618,6 +647,8 @@ public sealed class ProxyMetrics
             .ToArray();
         var http2ProtocolErrors = _http2ProtocolErrors
             .ToDictionary(static pair => pair.Key, static pair => Interlocked.Read(ref pair.Value.Count), StringComparer.Ordinal);
+        var upstreamHttp3ProtocolErrors = _upstreamHttp3ProtocolErrors
+            .ToDictionary(static pair => pair.Key, static pair => Interlocked.Read(ref pair.Value.Count), StringComparer.Ordinal);
         var http3RequestsByOutcome = _http3RequestsByOutcome
             .Select(static pair => new ProxyHttp3RequestOutcomeSnapshot(
                 pair.Key.Method,
@@ -744,6 +775,13 @@ public sealed class ProxyMetrics
             Interlocked.Read(ref _upstreamHttp2Requests),
             Interlocked.Read(ref _upstreamHttp2AlpnFailures),
             Interlocked.Read(ref _upstreamHttp2ProtocolErrors),
+            Interlocked.Read(ref _upstreamHttp3Requests),
+            Interlocked.Read(ref _upstreamHttp3ConnectionAttempts),
+            Interlocked.Read(ref _upstreamHttp3ConnectionSuccesses),
+            Interlocked.Read(ref _upstreamHttp3ConnectionFailures),
+            Interlocked.Read(ref _activeUpstreamHttp3Connections),
+            Interlocked.Read(ref _activeUpstreamHttp3Streams),
+            upstreamHttp3ProtocolErrors,
             Interlocked.Read(ref _http3AcceptedConnections),
             Interlocked.Read(ref _activeHttp3Connections),
             Interlocked.Read(ref _http3Requests),

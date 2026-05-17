@@ -57,6 +57,7 @@ public sealed class ProxyForwarder
         bool suppressGeneratedFailureResponse = false)
     {
         var responseStarted = false;
+        UpstreamConnectionLease? upstreamLease = null;
 
         try
         {
@@ -73,16 +74,10 @@ public sealed class ProxyForwarder
                 }
             }
 
-            await using var upstreamLease = await _upstreamConnections.BorrowAsync(
-                upstream,
-                timeouts,
-                connectionLimits,
-                cancellationToken);
-            var upstreamStream = upstreamLease.Stream;
-
-            var responseResult = RuntimeUpstreamProtocol.IsHttp2(upstream.Protocol)
-                ? await ForwardHttp2Async(
-                    upstreamStream,
+            ResponseForwardingResult responseResult;
+            if (RuntimeUpstreamProtocol.IsHttp3(upstream.Protocol))
+            {
+                responseResult = await ForwardHttp3Async(
                     clientStream,
                     requestHeadRead,
                     requestHead,
@@ -98,24 +93,55 @@ public sealed class ProxyForwarder
                     preReadRequestBodyReader,
                     preReadChunkLine,
                     () => responseStarted = true,
-                    cancellationToken)
-                : await ForwardHttp1Async(
-                    upstreamStream,
-                    clientStream,
-                    requestHeadRead,
-                    requestHead,
-                    route,
-                    listener,
-                    timeouts,
-                    upstreamTarget,
-                    forwardedHeaders,
-                    preferClientKeepAlive,
-                    requestId,
-                    suppressGeneratedFailureResponse,
-                    preReadRequestBodyReader,
-                    preReadChunkLine,
-                    () => responseStarted = true,
                     cancellationToken);
+            }
+            else
+            {
+                upstreamLease = await _upstreamConnections.BorrowAsync(
+                    upstream,
+                    timeouts,
+                    connectionLimits,
+                    cancellationToken);
+                var upstreamStream = upstreamLease.Stream;
+
+                responseResult = RuntimeUpstreamProtocol.IsHttp2(upstream.Protocol)
+                    ? await ForwardHttp2Async(
+                        upstreamStream,
+                        clientStream,
+                        requestHeadRead,
+                        requestHead,
+                        route,
+                        upstream,
+                        listener,
+                        timeouts,
+                        upstreamTarget,
+                        forwardedHeaders,
+                        preferClientKeepAlive,
+                        requestId,
+                        suppressGeneratedFailureResponse,
+                        preReadRequestBodyReader,
+                        preReadChunkLine,
+                        () => responseStarted = true,
+                        cancellationToken)
+                    : await ForwardHttp1Async(
+                        upstreamStream,
+                        clientStream,
+                        requestHeadRead,
+                        requestHead,
+                        route,
+                        listener,
+                        timeouts,
+                        upstreamTarget,
+                        forwardedHeaders,
+                        preferClientKeepAlive,
+                        requestId,
+                        suppressGeneratedFailureResponse,
+                        preReadRequestBodyReader,
+                        preReadChunkLine,
+                        () => responseStarted = true,
+                        cancellationToken);
+            }
+
             responseStarted = responseResult.ResponseStarted;
 
             if (responseResult.SuppressedForRetry)
@@ -129,7 +155,7 @@ public sealed class ProxyForwarder
                     ProxyFailureKind.UpstreamUnavailable);
             }
 
-            if (responseResult.CanReuseUpstreamConnection)
+            if (responseResult.CanReuseUpstreamConnection && upstreamLease is not null)
             {
                 upstreamLease.MarkReusable();
             }
@@ -248,6 +274,46 @@ public sealed class ProxyForwarder
             }
             return new ForwardingResult(false, responseStarted, false, responseStarted ? null : 502, ProxyFailureKind.UpstreamMalformedResponse);
         }
+        catch (Http3UpstreamProtocolException exception)
+        {
+            _metrics.UpstreamHttp3ProtocolError(
+                exception.FailureKind == Http3UpstreamFailureKind.ConnectFailure ? "connect_failure" : "protocol_failure");
+            _metrics.UpstreamFailed();
+            var failureKind = exception.FailureKind == Http3UpstreamFailureKind.ConnectFailure && !responseStarted
+                ? ProxyFailureKind.UpstreamConnectFailed
+                : responseStarted
+                    ? ProxyFailureKind.UpstreamPrematureDisconnect
+                    : ProxyFailureKind.UpstreamMalformedResponse;
+            if (failureKind == ProxyFailureKind.UpstreamMalformedResponse)
+            {
+                _metrics.UpstreamMalformedResponse();
+            }
+
+            if (!responseStarted && !suppressGeneratedFailureResponse)
+            {
+                _metrics.UpstreamConnectFailed();
+            }
+
+            _logger.LogWarning(
+                exception,
+                "Upstream HTTP/3 forwarding failed for {Method} {Target} to upstream {UpstreamName}",
+                requestHead.Method,
+                requestHead.Target,
+                upstream.Name);
+
+            if (!responseStarted && !suppressGeneratedFailureResponse)
+            {
+                _metrics.ProxyGenerated502();
+                await ProxyErrorResponses.WriteAsync(
+                    clientStream,
+                    BuildGeneratedBadGateway(requestId),
+                    timeouts.DownstreamWriteTimeout,
+                    _metrics,
+                    cancellationToken);
+            }
+
+            return new ForwardingResult(false, responseStarted, false, responseStarted ? null : 502, failureKind);
+        }
         catch (UpstreamTlsException exception)
         {
             _metrics.UpstreamFailed();
@@ -308,6 +374,13 @@ public sealed class ProxyForwarder
                 false,
                 responseStarted ? null : 502,
                 responseStarted ? ProxyFailureKind.UpstreamPrematureDisconnect : ProxyFailureKind.UpstreamConnectFailed);
+        }
+        finally
+        {
+            if (upstreamLease is not null)
+            {
+                await upstreamLease.DisposeAsync();
+            }
         }
     }
 
@@ -458,6 +531,118 @@ public sealed class ProxyForwarder
                 upstreamHttp2,
                 clientStream,
                 upstreamResponse.EndStream,
+                responseHead,
+                listener,
+                timeouts,
+                cancellationToken);
+        }
+
+        return new ResponseForwardingResult(
+            true,
+            keepClientConnectionOpen,
+            false,
+            responseHead.StatusCode);
+    }
+
+    private async ValueTask<ResponseForwardingResult> ForwardHttp3Async(
+        Stream clientStream,
+        Http1HeadReadResult requestHeadRead,
+        Http1RequestHead requestHead,
+        RuntimeRoute route,
+        RuntimeUpstream upstream,
+        RuntimeListener listener,
+        RuntimeTimeouts timeouts,
+        string upstreamTarget,
+        ForwardedHeadersContext forwardedHeaders,
+        bool preferClientKeepAlive,
+        string requestId,
+        bool suppressRetryableStatusResponse,
+        Http1BodyReader? preReadRequestBodyReader,
+        byte[]? preReadChunkLine,
+        Action markResponseStarted,
+        CancellationToken cancellationToken)
+    {
+        _metrics.UpstreamHttp3RequestAttempted();
+        await using var upstreamHttp3 = await Http3UpstreamConnection.ConnectAsync(
+            upstream,
+            timeouts,
+            _metrics,
+            Math.Max(16 * 1024, listener.Http2Limits.MaxFrameSize),
+            cancellationToken);
+
+        var requestHeaders = BuildHttp2RequestHeaders(requestHead, route, upstream, upstreamTarget, forwardedHeaders);
+        var endRequestStream = !HasHttp2RequestBody(requestHead);
+        await upstreamHttp3.SendHeadersAsync(requestHeaders, endRequestStream, timeouts, cancellationToken);
+        if (!endRequestStream)
+        {
+            await RelayHttp3RequestBodyAsync(
+                upstreamHttp3,
+                clientStream,
+                requestHeadRead.InitialBodyBytes,
+                requestHead,
+                listener,
+                timeouts,
+                route.ResolvedOptions.MaxRequestBodyBytes,
+                preReadRequestBodyReader,
+                preReadChunkLine,
+                cancellationToken);
+        }
+
+        var upstreamResponse = await upstreamHttp3.ReadResponseHeadAsync(
+            listener.MaxResponseHeadBytes,
+            timeouts,
+            cancellationToken);
+        var responseHead = BuildHttp3ResponseHead(requestHead, upstreamResponse);
+        if (suppressRetryableStatusResponse
+            && ContainsStatus(route.Retry.RetryOnStatusCodes, responseHead.StatusCode))
+        {
+            return new ResponseForwardingResult(
+                false,
+                false,
+                false,
+                responseHead.StatusCode,
+                SuppressedForRetry: true);
+        }
+
+        var keepClientConnectionOpen = preferClientKeepAlive;
+        var responseHeaders = BuildResponseHeaders(responseHead, route);
+        if (ShouldBufferForCache(route, requestHead, responseHead))
+        {
+            var body = await ReadHttp3CacheCandidateBodyAsync(
+                upstreamHttp3,
+                responseHead,
+                listener,
+                timeouts,
+                cancellationToken);
+            await WriteBufferedResponseAsync(
+                clientStream,
+                responseHead,
+                responseHeaders,
+                body,
+                keepClientConnectionOpen,
+                requestId,
+                listener,
+                timeouts,
+                cancellationToken);
+            markResponseStarted();
+            _cacheStore.Store(route, listener, requestHead, upstreamTarget, responseHead, responseHeaders, body);
+        }
+        else
+        {
+            RecordUncacheableFraming(route, responseHead);
+            await WriteResponseHeadAsync(
+                clientStream,
+                responseHead,
+                responseHeaders,
+                timeouts,
+                keepClientConnectionOpen,
+                requestId,
+                listener,
+                cancellationToken);
+            markResponseStarted();
+            await RelayHttp3ResponseBodyAsync(
+                upstreamHttp3,
+                clientStream,
                 responseHead,
                 listener,
                 timeouts,
@@ -721,6 +906,149 @@ public sealed class ProxyForwarder
         }
     }
 
+    private async ValueTask RelayHttp3RequestBodyAsync(
+        Http3UpstreamConnection upstreamHttp3,
+        Stream clientStream,
+        ReadOnlyMemory<byte> initialBodyBytes,
+        Http1RequestHead requestHead,
+        RuntimeListener listener,
+        RuntimeTimeouts timeouts,
+        long maxRequestBodyBytes,
+        Http1BodyReader? preReadReader,
+        byte[]? preReadChunkLine,
+        CancellationToken cancellationToken)
+    {
+        var reader = preReadReader ?? new Http1BodyReader(clientStream, initialBodyBytes, _metrics, timeouts.ClientRequestBodyIdleTimeout, ProxyTimeoutKind.ClientRequestBodyIdle);
+        try
+        {
+            if (requestHead.Framing.Kind == Http1BodyKind.ContentLength)
+            {
+                await RelayFixedLengthBodyToHttp3Async(
+                    reader,
+                    upstreamHttp3,
+                    requestHead.Framing.ContentLength.GetValueOrDefault(),
+                    listener.ForwardingBufferBytes,
+                    timeouts,
+                    cancellationToken);
+            }
+            else if (requestHead.Framing.Kind == Http1BodyKind.Chunked)
+            {
+                await RelayChunkedBodyToHttp3Async(
+                    reader,
+                    upstreamHttp3,
+                    listener,
+                    timeouts,
+                    preReadChunkLine,
+                    maxRequestBodyBytes,
+                    cancellationToken);
+            }
+        }
+        catch
+        {
+            _metrics.ClientBodyRelayFailed();
+            throw;
+        }
+    }
+
+    private async ValueTask RelayFixedLengthBodyToHttp3Async(
+        Http1BodyReader reader,
+        Http3UpstreamConnection upstreamHttp3,
+        long contentLength,
+        int bufferSize,
+        RuntimeTimeouts timeouts,
+        CancellationToken cancellationToken)
+    {
+        var remaining = contentLength;
+        var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+        try
+        {
+            while (remaining > 0)
+            {
+                var readLength = (int)Math.Min(buffer.Length, remaining);
+                var bytesRead = await reader.ReadAsync(buffer.AsMemory(0, readLength), cancellationToken);
+                if (bytesRead == 0)
+                {
+                    throw new IOException("Source closed before the declared Content-Length body was complete.");
+                }
+
+                remaining -= bytesRead;
+                await upstreamHttp3.SendDataAsync(
+                    buffer.AsMemory(0, bytesRead),
+                    remaining == 0,
+                    timeouts,
+                    cancellationToken);
+            }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
+    }
+
+    private async ValueTask RelayChunkedBodyToHttp3Async(
+        Http1BodyReader reader,
+        Http3UpstreamConnection upstreamHttp3,
+        RuntimeListener listener,
+        RuntimeTimeouts timeouts,
+        byte[]? initialChunkLine,
+        long maxPayloadBytes,
+        CancellationToken cancellationToken)
+    {
+        var chunkLine = initialChunkLine;
+        var relayedPayloadBytes = 0L;
+        var buffer = ArrayPool<byte>.Shared.Rent(listener.ForwardingBufferBytes);
+        try
+        {
+            while (true)
+            {
+                chunkLine ??= await reader.ReadLineWithCrlfAsync(listener.MaxChunkLineBytes, cancellationToken);
+                if (!TryParseChunkSize(chunkLine.AsSpan(), out var chunkSize))
+                {
+                    throw new Http1ClientProtocolException("Invalid chunk-size line.");
+                }
+
+                if (chunkSize == 0)
+                {
+                    await DiscardTrailerSectionAsync(reader, listener.MaxChunkLineBytes, cancellationToken);
+                    await upstreamHttp3.SendDataAsync(ReadOnlyMemory<byte>.Empty, endStream: true, timeouts, cancellationToken);
+                    return;
+                }
+
+                relayedPayloadBytes += chunkSize;
+                if (relayedPayloadBytes > maxPayloadBytes)
+                {
+                    throw new Http1PayloadTooLargeException("Chunked request body exceeded the configured maximum request body size.");
+                }
+
+                var remaining = chunkSize;
+                while (remaining > 0)
+                {
+                    var readLength = (int)Math.Min(buffer.Length, remaining);
+                    var bytesRead = await reader.ReadAsync(buffer.AsMemory(0, readLength), cancellationToken);
+                    if (bytesRead == 0)
+                    {
+                        throw new IOException("Source closed before the declared chunk body was complete.");
+                    }
+
+                    remaining -= bytesRead;
+                    await upstreamHttp3.SendDataAsync(buffer.AsMemory(0, bytesRead), endStream: false, timeouts, cancellationToken);
+                }
+
+                var crlf = await reader.ReadExactAsync(2, cancellationToken);
+                if (crlf.AsSpan()[0] != (byte)'\r' || crlf.AsSpan()[1] != (byte)'\n')
+                {
+                    throw new Http1ClientProtocolException("Chunk data was not followed by CRLF.");
+                }
+
+                chunkLine = null;
+            }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
+    }
+
     private static async ValueTask DiscardTrailerSectionAsync(
         Http1BodyReader reader,
         int maxLineBytes,
@@ -748,6 +1076,25 @@ public sealed class ProxyForwarder
     {
         var noBody = upstreamResponse.EndStream
             || string.Equals(requestHead.Method, "HEAD", StringComparison.OrdinalIgnoreCase)
+            || upstreamResponse.StatusCode is 204 or 304;
+        var framing = noBody
+            ? Http1ResponseFraming.None
+            : TryGetContentLength(upstreamResponse.Headers, out var contentLength)
+                ? Http1ResponseFraming.FromContentLength(contentLength)
+                : Http1ResponseFraming.Chunked;
+        return new Http1ResponseHead(
+            "HTTP/1.1",
+            upstreamResponse.StatusCode,
+            ProxyRouteActionPolicy.ReasonPhrase(upstreamResponse.StatusCode),
+            framing,
+            upstreamResponse.Headers);
+    }
+
+    private static Http1ResponseHead BuildHttp3ResponseHead(
+        Http1RequestHead requestHead,
+        Http3UpstreamResponseHead upstreamResponse)
+    {
+        var noBody = string.Equals(requestHead.Method, "HEAD", StringComparison.OrdinalIgnoreCase)
             || upstreamResponse.StatusCode is 204 or 304;
         var framing = noBody
             ? Http1ResponseFraming.None
@@ -793,6 +1140,35 @@ public sealed class ProxyForwarder
         }
     }
 
+    private async ValueTask<byte[]> ReadHttp3CacheCandidateBodyAsync(
+        Http3UpstreamConnection upstreamHttp3,
+        Http1ResponseHead responseHead,
+        RuntimeListener listener,
+        RuntimeTimeouts timeouts,
+        CancellationToken cancellationToken)
+    {
+        _ = listener;
+        if (responseHead.Framing.Kind == Http1BodyKind.None)
+        {
+            return [];
+        }
+
+        using var body = new MemoryStream();
+        while (true)
+        {
+            var chunk = await upstreamHttp3.ReadDataAsync(timeouts, cancellationToken);
+            if (chunk.Data.Length > 0)
+            {
+                body.Write(chunk.Data);
+            }
+
+            if (chunk.EndStream)
+            {
+                return body.ToArray();
+            }
+        }
+    }
+
     private async ValueTask RelayHttp2ResponseBodyAsync(
         Http2UpstreamConnection upstreamHttp2,
         Stream clientStream,
@@ -813,6 +1189,58 @@ public sealed class ProxyForwarder
             while (true)
             {
                 var chunk = await upstreamHttp2.ReadDataAsync(timeouts, cancellationToken);
+                if (chunk.Data.Length > 0)
+                {
+                    if (responseHead.Framing.Kind == Http1BodyKind.Chunked)
+                    {
+                        await WriteHttp1ChunkAsync(clientStream, chunk.Data, timeouts.DownstreamWriteTimeout, cancellationToken);
+                    }
+                    else
+                    {
+                        await WriteWithTimeoutAsync(clientStream, chunk.Data, timeouts.DownstreamWriteTimeout, cancellationToken);
+                        _metrics.AddBytesWritten(chunk.Data.Length);
+                    }
+                }
+
+                if (chunk.EndStream)
+                {
+                    if (responseHead.Framing.Kind == Http1BodyKind.Chunked)
+                    {
+                        await WriteWithTimeoutAsync(clientStream, "0\r\n\r\n"u8.ToArray(), timeouts.DownstreamWriteTimeout, cancellationToken);
+                        _metrics.AddBytesWritten(5);
+                    }
+
+                    return;
+                }
+            }
+        }
+        catch
+        {
+            _metrics.UpstreamBodyRelayFailed();
+            _metrics.UpstreamPrematureDisconnect();
+            throw;
+        }
+    }
+
+    private async ValueTask RelayHttp3ResponseBodyAsync(
+        Http3UpstreamConnection upstreamHttp3,
+        Stream clientStream,
+        Http1ResponseHead responseHead,
+        RuntimeListener listener,
+        RuntimeTimeouts timeouts,
+        CancellationToken cancellationToken)
+    {
+        _ = listener;
+        if (responseHead.Framing.Kind == Http1BodyKind.None)
+        {
+            return;
+        }
+
+        try
+        {
+            while (true)
+            {
+                var chunk = await upstreamHttp3.ReadDataAsync(timeouts, cancellationToken);
                 if (chunk.Data.Length > 0)
                 {
                     if (responseHead.Framing.Kind == Http1BodyKind.Chunked)

@@ -5,6 +5,7 @@ using MDRAVA.API.Proxy.Connections;
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Forwarding;
 using MDRAVA.API.Proxy.Http2;
+using MDRAVA.API.Proxy.Http3;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Protocol;
 
@@ -30,6 +31,11 @@ public sealed class UpstreamHealthCheckClient
         RuntimeUpstream upstream,
         CancellationToken cancellationToken)
     {
+        if (RuntimeUpstreamProtocol.IsHttp3(upstream.Protocol))
+        {
+            return await CheckHttp3Async(route, upstream, cancellationToken);
+        }
+
         UpstreamTransportConnection? connection = null;
 
         try
@@ -81,23 +87,55 @@ public sealed class UpstreamHealthCheckClient
         }
     }
 
+    private async ValueTask<HealthCheckSample> CheckHttp3Async(
+        RuntimeRoute route,
+        RuntimeUpstream upstream,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var timeouts = HealthCheckTimeouts(route.HealthCheck.Timeout);
+            await using var http3 = await Http3UpstreamConnection.ConnectAsync(
+                upstream,
+                timeouts,
+                _metrics,
+                maxFramePayloadBytes: 16 * 1024,
+                cancellationToken);
+            await http3.SendHeadersAsync(
+                [
+                    new Http1HeaderField(":method", "GET"),
+                    new Http1HeaderField(":scheme", upstream.Scheme),
+                    new Http1HeaderField(":authority", upstream.Address),
+                    new Http1HeaderField(":path", route.HealthCheck.Path)
+                ],
+                endStream: true,
+                timeouts,
+                cancellationToken);
+            var response = await http3.ReadResponseHeadAsync(MaxHealthResponseHeadBytes, timeouts, cancellationToken);
+            var healthy = response.StatusCode is >= 200 and <= 399;
+            return new HealthCheckSample(healthy, $"HTTP/3 {response.StatusCode}");
+        }
+        catch (ProxyTimeoutException)
+        {
+            return new HealthCheckSample(false, "timeout");
+        }
+        catch (Http3UpstreamProtocolException)
+        {
+            return new HealthCheckSample(false, "HTTP/3 protocol error");
+        }
+        catch (Exception exception) when (exception is SocketException or IOException)
+        {
+            return new HealthCheckSample(false, exception.GetType().Name);
+        }
+    }
+
     private async ValueTask<HealthCheckSample> CheckHttp2Async(
         RuntimeRoute route,
         RuntimeUpstream upstream,
         Stream stream,
         CancellationToken cancellationToken)
     {
-        var timeouts = new RuntimeTimeouts(
-            route.HealthCheck.Timeout,
-            route.HealthCheck.Timeout,
-            route.HealthCheck.Timeout,
-            route.HealthCheck.Timeout,
-            route.HealthCheck.Timeout,
-            route.HealthCheck.Timeout,
-            route.HealthCheck.Timeout,
-            route.HealthCheck.Timeout,
-            route.HealthCheck.Timeout,
-            route.HealthCheck.Timeout);
+        var timeouts = HealthCheckTimeouts(route.HealthCheck.Timeout);
         var http2 = new Http2UpstreamConnection(stream, _metrics, maxFrameSize: 16 * 1024);
         await http2.InitializeAsync(timeouts, cancellationToken);
         await http2.SendHeadersAsync(
@@ -113,6 +151,21 @@ public sealed class UpstreamHealthCheckClient
         var response = await http2.ReadResponseHeadAsync(MaxHealthResponseHeadBytes, timeouts, cancellationToken);
         var healthy = response.StatusCode is >= 200 and <= 399;
         return new HealthCheckSample(healthy, $"HTTP/2 {response.StatusCode}");
+    }
+
+    private static RuntimeTimeouts HealthCheckTimeouts(TimeSpan timeout)
+    {
+        return new RuntimeTimeouts(
+            timeout,
+            timeout,
+            timeout,
+            timeout,
+            timeout,
+            timeout,
+            timeout,
+            timeout,
+            timeout,
+            timeout);
     }
 
     private static async ValueTask<ReadOnlyMemory<byte>> ReadResponseHeadAsync(

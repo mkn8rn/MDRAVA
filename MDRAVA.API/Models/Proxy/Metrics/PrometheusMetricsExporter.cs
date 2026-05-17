@@ -113,6 +113,12 @@ public sealed class PrometheusMetricsExporter
 
         AppendCounter(builder, "mdrava_upstream_request_attempts_total", "Selected upstream request attempts.", proxy.UpstreamSelections);
         AppendCounter(builder, "mdrava_upstream_http2_requests_total", "Upstream HTTP/2 request attempts.", proxy.UpstreamHttp2Requests);
+        AppendCounter(builder, "mdrava_upstream_http3_requests_total", "Upstream HTTP/3 request attempts.", proxy.UpstreamHttp3Requests);
+        AppendCounter(builder, "mdrava_upstream_http3_connection_attempts_total", "Upstream HTTP/3 QUIC connection attempts.", proxy.UpstreamHttp3ConnectionAttempts);
+        AppendCounter(builder, "mdrava_upstream_http3_connection_successes_total", "Successful upstream HTTP/3 QUIC connections.", proxy.UpstreamHttp3ConnectionSuccesses);
+        AppendCounter(builder, "mdrava_upstream_http3_connection_failures_total", "Failed upstream HTTP/3 QUIC connections.", proxy.UpstreamHttp3ConnectionFailures);
+        AppendGauge(builder, "mdrava_upstream_http3_connections_active", "Active upstream HTTP/3 QUIC connections.", proxy.ActiveUpstreamHttp3Connections);
+        AppendGauge(builder, "mdrava_upstream_http3_streams_active", "Active upstream HTTP/3 streams.", proxy.ActiveUpstreamHttp3Streams);
         AppendUpstreamSelectionCounters(builder, snapshot.Metrics, proxy.UpstreamSelectionsByUpstream);
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", "Upstream failures by bounded reason.", proxy.UpstreamConnectFailures, new Label("reason", "connect_failure"));
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.UpstreamConnectTimeouts, new Label("reason", "connect_timeout"));
@@ -125,6 +131,14 @@ public sealed class PrometheusMetricsExporter
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.UpstreamRequestFailures, new Label("reason", "request_failure"));
         AppendLabeledCounter(builder, "mdrava_upstream_http2_failures_total", "Upstream HTTP/2 failures by bounded reason.", proxy.UpstreamHttp2AlpnFailures, new Label("reason", "alpn_failure"));
         AppendLabeledCounter(builder, "mdrava_upstream_http2_failures_total", null, proxy.UpstreamHttp2ProtocolErrors, new Label("reason", "protocol_error"));
+        if (proxy.UpstreamHttp3ProtocolErrors.Count > 0)
+        {
+            AppendHelpAndType(builder, "mdrava_upstream_http3_protocol_errors_total", "Upstream HTTP/3 protocol errors by bounded reason.", "counter");
+            foreach (var error in proxy.UpstreamHttp3ProtocolErrors.OrderBy(static item => item.Key, StringComparer.Ordinal))
+            {
+                AppendSample(builder, "mdrava_upstream_http3_protocol_errors_total", error.Value, new Label("reason", error.Key));
+            }
+        }
 
         AppendCounter(builder, "mdrava_retry_attempts_total", "Retry attempts after an initial failed upstream attempt.", proxy.RetryAttempts);
         AppendCounter(builder, "mdrava_retry_exhausted_total", "Requests that exhausted their configured retry attempts.", proxy.RetryExhausted);

@@ -202,7 +202,7 @@ internal static class Http3InfrastructureTests
         AssertEx.Equal("streaming", statusProjection.RequestBodyMode);
     }
 
-    public static void UpstreamProtocolStillRejectsHttp3()
+    public static void UpstreamProtocolAcceptsExplicitHttp3()
     {
         var options = ValidProxyOptions(
             new ListenerOptions
@@ -224,11 +224,7 @@ internal static class Http3InfrastructureTests
 
         var validation = new ProxyOptionsValidator().Validate(null, options);
 
-        AssertEx.True(validation.Failed);
-        var failures = AssertEx.NotNull(validation.Failures);
-        AssertEx.True(
-            failures.Any(static failure => failure.Contains("Protocol must be 'http1' or 'http2'", StringComparison.Ordinal)),
-            string.Join("; ", failures));
+        AssertEx.False(validation.Failed, string.Join("; ", validation.Failures ?? []));
     }
 
     private static ListenerOptions Http3Listener(string name, string protocols, bool experimental)
