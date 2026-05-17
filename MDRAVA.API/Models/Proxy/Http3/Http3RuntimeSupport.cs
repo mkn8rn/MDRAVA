@@ -22,6 +22,17 @@ public static class Http3RuntimeSupport
             .Select(static listener => (int?)listener.Http3AltSvc.MaxAgeSeconds)
             .FirstOrDefault();
         var support = Check();
+        var blockers = DefaultReadinessBlockers(listeners, support);
+        var defaultState = !previewConfigured
+            ? "disabled"
+            : blockers.Count == 0 && previewEnabled
+                ? "default-capable"
+                : "explicit";
+        var readinessConclusion = defaultState == "default-capable"
+            ? "default_capable_when_config_default_flips"
+            : defaultState == "disabled"
+                ? "disabled"
+                : "explicit_only";
         return new RuntimeHttp3SupportProjection(
             support.RuntimeSupport,
             support.QuicListenerSupported,
@@ -35,7 +46,12 @@ public static class Http3RuntimeSupport
             maxAge,
             DisabledReason(previewConfigured, previewEnabled, quicReady, runtimeListeners is not null),
             UdpQuicListenerIdentityModeled: true,
-            "preview_only");
+            readinessConclusion)
+        {
+            DefaultEnablementState = defaultState,
+            DefaultReadinessBlockers = blockers,
+            AltSvcStateReason = AltSvcReason(altSvcConfigured, altSvcActive, previewEnabled, quicReady, runtimeListeners is not null)
+        };
     }
 
     private static RuntimeHttp3RuntimeSupport Check()
@@ -93,5 +109,59 @@ public static class Http3RuntimeSupport
         }
 
         return configured ? "preview_configured_but_inactive" : "not_configured";
+    }
+
+    private static IReadOnlyList<string> DefaultReadinessBlockers(
+        IReadOnlyList<RuntimeListener> listeners,
+        RuntimeHttp3RuntimeSupport support)
+    {
+        List<string> blockers = [];
+        if (!support.QuicListenerSupported || !support.QuicConnectionSupported)
+        {
+            blockers.Add("runtime_quic_unsupported");
+        }
+
+        if (!listeners.Any(static listener => listener.Http3.EnabledForTraffic))
+        {
+            blockers.Add("no_http3_enabled_listener");
+        }
+
+        if (listeners.Any(static listener => listener.Http3.EnabledForTraffic && listener.Http3MaxBufferedRequestBodyBytes > 0))
+        {
+            blockers.Add("request_body_buffered_not_streamed");
+        }
+
+        blockers.Add("qpack_dynamic_table_unsupported");
+        return blockers.Distinct(StringComparer.Ordinal).ToArray();
+    }
+
+    private static string AltSvcReason(
+        bool configured,
+        bool active,
+        bool enabled,
+        bool ready,
+        bool hasRuntimeState)
+    {
+        if (active)
+        {
+            return "active";
+        }
+
+        if (!configured)
+        {
+            return "not_configured";
+        }
+
+        if (!enabled)
+        {
+            return "http3_not_enabled";
+        }
+
+        if (!hasRuntimeState)
+        {
+            return "runtime_state_unavailable";
+        }
+
+        return ready ? "listener_not_matched" : "quic_listener_not_ready";
     }
 }

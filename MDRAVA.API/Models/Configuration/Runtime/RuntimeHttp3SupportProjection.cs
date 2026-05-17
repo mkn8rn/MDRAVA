@@ -13,4 +13,11 @@ public sealed record RuntimeHttp3SupportProjection(
     int? AltSvcMaxAgeSeconds,
     string DisabledReason,
     bool UdpQuicListenerIdentityModeled,
-    string ReadinessConclusion);
+    string ReadinessConclusion)
+{
+    public string DefaultEnablementState { get; init; } = "disabled";
+
+    public IReadOnlyList<string> DefaultReadinessBlockers { get; init; } = [];
+
+    public string AltSvcStateReason { get; init; } = "not_configured";
+}

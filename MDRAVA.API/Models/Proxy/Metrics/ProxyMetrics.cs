@@ -102,6 +102,7 @@ public sealed class ProxyMetrics
     private long _upstreamHttp2AlpnFailures;
     private long _upstreamHttp2ProtocolErrors;
     private long _http3AcceptedConnections;
+    private long _activeHttp3Connections;
     private long _http3Requests;
     private long _http3ProxiedRequests;
     private long _http3GeneratedResponses;
@@ -122,6 +123,7 @@ public sealed class ProxyMetrics
     private readonly ConcurrentDictionary<string, RequestSeriesCounter> _retrySkippedByReason = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<UpstreamSelectionKey, RequestSeriesCounter> _upstreamSelectionsByUpstream = new();
     private readonly ConcurrentDictionary<string, RequestSeriesCounter> _http2ProtocolErrors = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<Http3OutcomeKey, RequestSeriesCounter> _http3RequestsByOutcome = new();
     private readonly ConcurrentDictionary<string, RequestSeriesCounter> _http3RejectedRequests = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, RequestSeriesCounter> _http3ProtocolErrors = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<ConfigLintFindingKey, RequestSeriesCounter> _configLintFindings = new();
@@ -471,9 +473,25 @@ public sealed class ProxyMetrics
         Interlocked.Increment(ref _upstreamHttp2ProtocolErrors);
     }
 
-    public void Http3ConnectionAccepted() => Interlocked.Increment(ref _http3AcceptedConnections);
+    public void Http3ConnectionAccepted()
+    {
+        Interlocked.Increment(ref _http3AcceptedConnections);
+        Interlocked.Increment(ref _activeHttp3Connections);
+    }
+
+    public void Http3ConnectionClosed() => Interlocked.Decrement(ref _activeHttp3Connections);
 
     public void Http3RequestReceived() => Interlocked.Increment(ref _http3Requests);
+
+    public void Http3RequestCompleted(string? method, int? statusCode, string? outcome)
+    {
+        var key = new Http3OutcomeKey(
+            NormalizeLabel(method),
+            NormalizeLabel(outcome),
+            StatusClass(statusCode));
+        var counter = _http3RequestsByOutcome.GetOrAdd(key, static _ => new RequestSeriesCounter());
+        Interlocked.Increment(ref counter.Count);
+    }
 
     public void Http3ProxiedRequest() => Interlocked.Increment(ref _http3ProxiedRequests);
 
@@ -594,6 +612,16 @@ public sealed class ProxyMetrics
             .ToArray();
         var http2ProtocolErrors = _http2ProtocolErrors
             .ToDictionary(static pair => pair.Key, static pair => Interlocked.Read(ref pair.Value.Count), StringComparer.Ordinal);
+        var http3RequestsByOutcome = _http3RequestsByOutcome
+            .Select(static pair => new ProxyHttp3RequestOutcomeSnapshot(
+                pair.Key.Method,
+                pair.Key.Outcome,
+                pair.Key.StatusClass,
+                Interlocked.Read(ref pair.Value.Count)))
+            .OrderBy(static item => item.Method, StringComparer.Ordinal)
+            .ThenBy(static item => item.Outcome, StringComparer.Ordinal)
+            .ThenBy(static item => item.StatusClass, StringComparer.Ordinal)
+            .ToArray();
         var http3RejectedRequests = _http3RejectedRequests
             .ToDictionary(static pair => pair.Key, static pair => Interlocked.Read(ref pair.Value.Count), StringComparer.Ordinal);
         var http3ProtocolErrors = _http3ProtocolErrors
@@ -711,6 +739,7 @@ public sealed class ProxyMetrics
             Interlocked.Read(ref _upstreamHttp2AlpnFailures),
             Interlocked.Read(ref _upstreamHttp2ProtocolErrors),
             Interlocked.Read(ref _http3AcceptedConnections),
+            Interlocked.Read(ref _activeHttp3Connections),
             Interlocked.Read(ref _http3Requests),
             Interlocked.Read(ref _http3ProxiedRequests),
             Interlocked.Read(ref _http3GeneratedResponses),
@@ -721,6 +750,7 @@ public sealed class ProxyMetrics
             Interlocked.Read(ref _http3ResponseBytesSent),
             Interlocked.Read(ref _http3RequestBodyBytesReceived),
             Interlocked.Read(ref _http3ResponseStreamResets),
+            http3RequestsByOutcome,
             http3RejectedRequests,
             http3ProtocolErrors,
             Interlocked.Read(ref _quicListenerStartSuccesses),
@@ -784,6 +814,11 @@ public sealed class ProxyMetrics
         string Upstream,
         string Scheme,
         string Protocol);
+
+    private readonly record struct Http3OutcomeKey(
+        string Method,
+        string Outcome,
+        string StatusClass);
 
     private readonly record struct ConfigLintFindingKey(
         string Severity,

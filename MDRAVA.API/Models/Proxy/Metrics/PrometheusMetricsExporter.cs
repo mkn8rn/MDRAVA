@@ -55,7 +55,23 @@ public sealed class PrometheusMetricsExporter
         }
 
         AppendCounter(builder, "mdrava_http3_connections_accepted_total", "Accepted HTTP/3 preview downstream client connections.", proxy.Http3AcceptedConnections);
+        AppendGauge(builder, "mdrava_http3_connections_active", "Currently active HTTP/3 preview client connections.", proxy.ActiveHttp3Connections);
         AppendCounter(builder, "mdrava_http3_requests_total", "HTTP/3 preview requests received by the dataplane.", proxy.Http3Requests);
+        if (proxy.Http3RequestsByOutcome.Count > 0)
+        {
+            AppendHelpAndType(builder, "mdrava_http3_requests_by_outcome_total", "HTTP/3 preview requests by bounded method, outcome, and status class.", "counter");
+            foreach (var request in proxy.Http3RequestsByOutcome)
+            {
+                AppendSample(
+                    builder,
+                    "mdrava_http3_requests_by_outcome_total",
+                    request.Count,
+                    new Label("method", request.Method),
+                    new Label("outcome", request.Outcome),
+                    new Label("status_class", request.StatusClass));
+            }
+        }
+
         AppendCounter(builder, "mdrava_http3_proxied_requests_total", "HTTP/3 preview requests sent through proxy routes.", proxy.Http3ProxiedRequests);
         AppendCounter(builder, "mdrava_http3_generated_responses_total", "HTTP/3 preview generated route or control responses.", proxy.Http3GeneratedResponses);
         AppendGauge(builder, "mdrava_http3_streams_active", "Currently active HTTP/3 preview request streams.", proxy.ActiveHttp3Streams);

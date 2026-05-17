@@ -82,7 +82,13 @@ public static class Http3PreviewRequestTranslator
             return false;
         }
 
-        if (string.IsNullOrWhiteSpace(authority) || string.IsNullOrWhiteSpace(target) || !target.StartsWith('/'))
+        if (!IsValidMethod(method))
+        {
+            rejectionReason = "invalid_method";
+            return false;
+        }
+
+        if (!IsValidAuthority(authority) || !IsValidTarget(target))
         {
             rejectionReason = "invalid_target";
             return false;
@@ -137,6 +143,29 @@ public static class Http3PreviewRequestTranslator
     private static bool IsAllowedPseudoHeader(string name)
     {
         return name is ":method" or ":scheme" or ":authority" or ":path";
+    }
+
+    private static bool IsValidMethod(string method)
+    {
+        return !string.IsNullOrWhiteSpace(method)
+            && method.All(static character => character is '!' or '#' or '$' or '%' or '&' or '\'' or '*' or '+'
+                or '-' or '.' or '^' or '_' or '`' or '|' or '~'
+                || character is >= 'A' and <= 'Z'
+                || character is >= 'a' and <= 'z'
+                || character is >= '0' and <= '9');
+    }
+
+    private static bool IsValidAuthority(string authority)
+    {
+        return !string.IsNullOrWhiteSpace(authority)
+            && authority.All(static character => character > 0x20 && character != 0x7f && character != '/');
+    }
+
+    private static bool IsValidTarget(string target)
+    {
+        return !string.IsNullOrWhiteSpace(target)
+            && target.StartsWith("/", StringComparison.Ordinal)
+            && target.All(static character => character > 0x20 && character != 0x7f);
     }
 
     private static bool TryValidateContentLength(

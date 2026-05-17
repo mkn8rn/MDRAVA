@@ -6,11 +6,13 @@ using System.Net.Sockets;
 using System.Security.Authentication;
 using System.Text;
 using MDRAVA.API.Controllers;
+using MDRAVA.API.Models.Diagnostics;
 using MDRAVA.API.Proxy.Configuration.Loading;
 using MDRAVA.API.Proxy.Configuration.Paths;
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Configuration.Storage;
 using MDRAVA.API.Proxy.Configuration;
+using MDRAVA.API.Proxy.Diagnostics;
 using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Hosting;
 using MDRAVA.API.Proxy.Http3;
@@ -241,6 +243,9 @@ internal static class ClientHttp3PreviewTests
         AssertEx.Equal("preview", projection.Http3.Configured);
         AssertEx.True(projection.Http3.EnabledForTraffic);
         AssertEx.Equal("preview_enabled", projection.Http3.DisabledReason);
+        AssertEx.Equal("explicit", projection.Http3.DefaultEnablementState);
+        AssertEx.True(projection.Http3.DefaultReadinessBlockers.Contains("qpack_dynamic_table_unsupported"));
+        AssertEx.True(projection.Http3.DefaultReadinessBlockers.Contains("request_body_buffered_not_streamed"));
         AssertEx.True(snapshot.Listeners[0].Http3.ExperimentalGateEnabled);
     }
 
@@ -360,7 +365,8 @@ internal static class ClientHttp3PreviewTests
             AssertEx.True(response.Contains($"Alt-Svc: h3=\":{port}\"; ma=60", StringComparison.Ordinal), response);
             AssertEx.True(status.Http3.QuicListenerReady);
             AssertEx.True(status.Http3.AltSvcActive);
-            AssertEx.Equal("preview_only", status.Http3.ReadinessConclusion);
+            AssertEx.Equal("explicit_only", status.Http3.ReadinessConclusion);
+            AssertEx.Equal("active", status.Http3.AltSvcStateReason);
         }
         finally
         {
@@ -884,6 +890,80 @@ internal static class ClientHttp3PreviewTests
         AssertEx.True(result.UpstreamRequest.EndsWith("hello=world", StringComparison.Ordinal), result.UpstreamRequest);
     }
 
+    public static async Task Http3PutPatchAndDeleteBodiesReachUpstream()
+    {
+        if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
+        {
+            return;
+        }
+
+        var temp = TemporaryDirectory.Create();
+        var proxyPort = GetFreeTcpUdpPort();
+        var upstreamPort = GetFreeTcpPort();
+        WriteCertificateConfig(temp.Path);
+        WriteHttp3ProxySite(temp.Path, proxyPort, upstreamPort);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var upstreamTask = RunSequentialResponseUpstreamAsync(
+            upstreamPort,
+            [
+                "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 3\r\n\r\nput",
+                "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 5\r\n\r\npatch",
+                "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 6\r\n\r\ndelete"
+            ],
+            timeout.Token);
+        var host = BuildProxyHost(temp.Path);
+        await host.StartAsync(timeout.Token);
+
+        try
+        {
+            var runtime = host.Services.GetRequiredService<ProxyRuntimeState>();
+            await WaitForListenerAsync(runtime, "main", "quic", ProxyListenerState.Active, timeout.Token);
+            var put = await SendHttp3RequestAsync(proxyPort, "PUT", "/items/1", timeout.Token, body: "put-body");
+            var patch = await SendHttp3RequestAsync(proxyPort, "PATCH", "/items/1", timeout.Token, body: "patch-body");
+            var delete = await SendHttp3RequestAsync(proxyPort, "DELETE", "/items/1", timeout.Token, body: "delete-body");
+            var upstreamRequests = await upstreamTask.WaitAsync(timeout.Token);
+
+            AssertEx.Equal("put", put.Body);
+            AssertEx.Equal("patch", patch.Body);
+            AssertEx.Equal("delete", delete.Body);
+            AssertEx.True(upstreamRequests[0].StartsWith("PUT /items/1 HTTP/1.1", StringComparison.Ordinal), upstreamRequests[0]);
+            AssertEx.True(upstreamRequests[0].EndsWith("put-body", StringComparison.Ordinal), upstreamRequests[0]);
+            AssertEx.True(upstreamRequests[1].StartsWith("PATCH /items/1 HTTP/1.1", StringComparison.Ordinal), upstreamRequests[1]);
+            AssertEx.True(upstreamRequests[1].EndsWith("patch-body", StringComparison.Ordinal), upstreamRequests[1]);
+            AssertEx.True(upstreamRequests[2].StartsWith("DELETE /items/1 HTTP/1.1", StringComparison.Ordinal), upstreamRequests[2]);
+            AssertEx.True(upstreamRequests[2].EndsWith("delete-body", StringComparison.Ordinal), upstreamRequests[2]);
+        }
+        finally
+        {
+            await host.StopAsync(CancellationToken.None);
+            host.Dispose();
+            temp.Dispose();
+        }
+    }
+
+    public static async Task Http3PathRewriteAppliesToProxyRoute()
+    {
+        if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
+        {
+            return;
+        }
+
+        using var result = await RunHttp3ProxyRouteScenarioAsync(
+            "GET",
+            "/public/api/users?id=1",
+            "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 2\r\n\r\nok",
+            routeExtraJson:
+            """
+                  "pathRewrite": {
+                    "stripPrefix": "/public"
+                  },
+            """);
+
+        AssertEx.True(
+            result.UpstreamRequest.StartsWith("GET /api/users?id=1 HTTP/1.1", StringComparison.Ordinal),
+            result.UpstreamRequest);
+    }
+
     public static async Task Http3BodySizeLimitApplies()
     {
         if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
@@ -980,6 +1060,23 @@ internal static class ClientHttp3PreviewTests
         AssertEx.True(result.Metrics.Http3ProtocolErrors.ContainsKey("unexpected_data"));
     }
 
+    public static async Task UnexpectedControlFrameOnRequestStreamIsRejected()
+    {
+        if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
+        {
+            return;
+        }
+
+        using var result = await RunHttp3GeneratedRouteScenarioAsync(
+            "GET",
+            "/control",
+            "unused",
+            settingsAfterHeaders: true);
+
+        AssertEx.Equal("400", HeaderValue(result.Headers, ":status"));
+        AssertEx.True(result.Metrics.Http3ProtocolErrors.ContainsKey("unexpected_control_frame"));
+    }
+
     public static async Task ProtocolErrorBudgetClosesAbusiveConnection()
     {
         if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
@@ -1056,6 +1153,20 @@ internal static class ClientHttp3PreviewTests
         AssertEx.Equal("unsupported_qpack_index", reason);
     }
 
+    public static void UnsupportedQpackDynamicTablePrefixIsRejected()
+    {
+        var block = new byte[] { 1, 0 };
+
+        var ok = Http3PreviewCodec.TryDecodeHeaderBlock(
+            block,
+            maxHeaderBytes: 32,
+            out _,
+            out var reason);
+
+        AssertEx.False(ok);
+        AssertEx.Equal("unsupported_qpack_dynamic_table", reason);
+    }
+
     public static void MalformedPseudoHeadersAreRejected()
     {
         var headers = new[]
@@ -1077,12 +1188,74 @@ internal static class ClientHttp3PreviewTests
         AssertEx.Equal("invalid_pseudo_header", reason);
     }
 
+    public static void MissingPseudoHeadersAreRejected()
+    {
+        var headers = new[]
+        {
+            new Http1HeaderField(":method", "GET"),
+            new Http1HeaderField(":scheme", "https"),
+            new Http1HeaderField(":authority", "localhost")
+        };
+
+        var ok = Http3PreviewRequestTranslator.TryBuildRequest(
+            headers,
+            PreviewListener("http3Preview", experimental: true),
+            out _,
+            out var reason);
+
+        AssertEx.False(ok);
+        AssertEx.Equal("missing_pseudo_header", reason);
+    }
+
+    public static void ForbiddenConnectionHeadersAreRejected()
+    {
+        var headers = new[]
+        {
+            new Http1HeaderField(":method", "GET"),
+            new Http1HeaderField(":scheme", "https"),
+            new Http1HeaderField(":authority", "localhost"),
+            new Http1HeaderField(":path", "/"),
+            new Http1HeaderField("connection", "close")
+        };
+
+        var ok = Http3PreviewRequestTranslator.TryBuildRequest(
+            headers,
+            PreviewListener("http3Preview", experimental: true),
+            out _,
+            out var reason);
+
+        AssertEx.False(ok);
+        AssertEx.Equal("forbidden_header", reason);
+    }
+
+    public static void InvalidPseudoHeaderValuesAreRejected()
+    {
+        var headers = new[]
+        {
+            new Http1HeaderField(":method", "GE T"),
+            new Http1HeaderField(":scheme", "https"),
+            new Http1HeaderField(":authority", "local/host"),
+            new Http1HeaderField(":path", "/")
+        };
+
+        var ok = Http3PreviewRequestTranslator.TryBuildRequest(
+            headers,
+            PreviewListener("http3Preview", experimental: true),
+            out _,
+            out var reason);
+
+        AssertEx.False(ok);
+        AssertEx.Equal("invalid_method", reason);
+    }
+
     public static void MetricsIncludeHttp3PreviewCounters()
     {
         var metrics = new ProxyMetrics();
         metrics.QuicListenerStarted();
         metrics.Http3ConnectionAccepted();
+        metrics.Http3ConnectionClosed();
         metrics.Http3RequestReceived();
+        metrics.Http3RequestCompleted("GET", 200, "success");
         metrics.Http3ProxiedRequest();
         metrics.Http3GeneratedResponse();
         metrics.Http3StreamStarted();
@@ -1101,7 +1274,9 @@ internal static class ClientHttp3PreviewTests
 
         AssertEx.Equal(1L, snapshot.QuicListenerStartSuccesses);
         AssertEx.Equal(1L, snapshot.Http3AcceptedConnections);
+        AssertEx.Equal(0L, snapshot.ActiveHttp3Connections);
         AssertEx.Equal(1L, snapshot.Http3Requests);
+        AssertEx.Equal(1L, snapshot.Http3RequestsByOutcome.Single(static item => item.Method == "GET" && item.Outcome == "success" && item.StatusClass == "2xx").Count);
         AssertEx.Equal(1L, snapshot.Http3ProxiedRequests);
         AssertEx.Equal(1L, snapshot.Http3GeneratedResponses);
         AssertEx.Equal(0L, snapshot.ActiveHttp3Streams);
@@ -1116,12 +1291,61 @@ internal static class ClientHttp3PreviewTests
         AssertEx.Equal(1L, snapshot.ActiveQuicListeners);
     }
 
+    public static void ConfigLintReportsHttp3DefaultReadinessIssues()
+    {
+        var service = new ConfigLintService(
+            new ProxyConfigurationStore(),
+            new ProxyRuntimeState(),
+            new SiteConfigurationParser(),
+            new ProxyOptionsValidator(),
+            new ProxyMetrics(),
+            TimeProvider.System);
+        var result = service.LintSubmitted(new ConfigLintRequest(
+            "json",
+            """
+            {
+              "name": "http3",
+              "listeners": [
+                {
+                  "name": "main",
+                  "address": "127.0.0.1",
+                  "port": 8443,
+                  "transport": "https",
+                  "protocols": "http3Preview",
+                  "experimentalHttp3": true,
+                  "http3Enablement": "preview",
+                  "defaultCertificateId": "home-cert"
+                }
+              ],
+              "host": "localhost",
+              "routes": [
+                {
+                  "name": "static",
+                  "pathPrefix": "/",
+                  "action": "staticResponse",
+                  "staticResponse": {
+                    "statusCode": 200,
+                    "contentType": "text/plain",
+                    "body": "ok"
+                  }
+                }
+              ]
+            }
+            """));
+        var codes = result.Findings.Select(static finding => finding.Code).ToArray();
+
+        AssertEx.True(codes.Contains("http3_alt_svc_disabled"));
+        AssertEx.True(codes.Contains("http3_default_readiness_buffered_body"));
+        AssertEx.True(codes.Contains("http3_default_readiness_qpack_static_only"));
+    }
+
     private static async Task<Http3ScenarioResult> RunHttp3GeneratedRouteScenarioAsync(
         string method,
         string target,
         string body,
         bool includeBodyData = false,
         bool dataBeforeHeaders = false,
+        bool settingsAfterHeaders = false,
         string? routeJson = null)
     {
         var temp = TemporaryDirectory.Create();
@@ -1134,7 +1358,14 @@ internal static class ClientHttp3PreviewTests
 
         var runtime = host.Services.GetRequiredService<ProxyRuntimeState>();
         await WaitForListenerAsync(runtime, "main", "quic", ProxyListenerState.Active, timeout.Token);
-        var response = await SendHttp3RequestAsync(port, method, target, timeout.Token, includeBodyData: includeBodyData, dataBeforeHeaders: dataBeforeHeaders);
+        var response = await SendHttp3RequestAsync(
+            port,
+            method,
+            target,
+            timeout.Token,
+            includeBodyData: includeBodyData,
+            dataBeforeHeaders: dataBeforeHeaders,
+            settingsAfterHeaders: settingsAfterHeaders);
         var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
         return new Http3ScenarioResult(temp, host, response.Headers, response.Body, metrics, "");
     }
@@ -1174,12 +1405,20 @@ internal static class ClientHttp3PreviewTests
         CancellationToken cancellationToken,
         bool includeBodyData = false,
         bool dataBeforeHeaders = false,
-        string? body = null)
+        string? body = null,
+        bool settingsAfterHeaders = false)
     {
         await using var connection = await ConnectHttp3Async(port, cancellationToken);
 
         await using var stream = await connection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional, cancellationToken);
-        await WriteHttp3RequestAsync(stream, method, target, body ?? (includeBodyData ? "body" : null), cancellationToken, dataBeforeHeaders);
+        await WriteHttp3RequestAsync(
+            stream,
+            method,
+            target,
+            body ?? (includeBodyData ? "body" : null),
+            cancellationToken,
+            dataBeforeHeaders,
+            settingsAfterHeaders);
 
         var responseBytes = await ReadToEndAsync(stream, cancellationToken);
         var response = DecodeHttp3Response(responseBytes);
@@ -1193,7 +1432,8 @@ internal static class ClientHttp3PreviewTests
         string target,
         string? body,
         CancellationToken cancellationToken,
-        bool dataBeforeHeaders = false)
+        bool dataBeforeHeaders = false,
+        bool settingsAfterHeaders = false)
     {
         var headerBlock = Http3PreviewCodec.EncodeHeaderBlock(
         [
@@ -1209,6 +1449,11 @@ internal static class ClientHttp3PreviewTests
         }
 
         Http3PreviewCodec.WriteFrame(request, Http3PreviewCodec.HeadersFrame, headerBlock);
+        if (settingsAfterHeaders)
+        {
+            Http3PreviewCodec.WriteFrame(request, Http3PreviewCodec.SettingsFrame, ReadOnlySpan<byte>.Empty);
+        }
+
         if (body is not null)
         {
             var bodyBytes = Encoding.UTF8.GetBytes(body);

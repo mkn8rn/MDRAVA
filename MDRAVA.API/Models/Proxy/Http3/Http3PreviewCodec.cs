@@ -72,13 +72,25 @@ public static class Http3PreviewCodec
         }
 
         var offset = 0;
-        if (!TryReadPrefixedInteger(block, 8, ref offset, out _)
-            || !TryReadPrefixedInteger(block, 7, ref offset, out _))
+        if (!TryReadPrefixedInteger(block, 8, ref offset, out var requiredInsertCount))
         {
             return false;
         }
 
+        var deltaBaseOffset = offset;
+        if (!TryReadPrefixedInteger(block, 7, ref offset, out var deltaBase))
+        {
+            return false;
+        }
+
+        if (requiredInsertCount != 0 || deltaBase != 0 || (block[deltaBaseOffset] & 0x80) != 0)
+        {
+            reason = "unsupported_qpack_dynamic_table";
+            return false;
+        }
+
         List<Http1HeaderField> decoded = [];
+        var decodedHeaderBytes = 0;
         while (offset < block.Length)
         {
             var first = block[offset];
@@ -93,7 +105,16 @@ public static class Http3PreviewCodec
                     return false;
                 }
 
-                decoded.Add(new Http1HeaderField(field.Name, field.Value));
+                if (!TryAddDecodedHeader(
+                        decoded,
+                        new Http1HeaderField(field.Name, field.Value),
+                        maxHeaderBytes,
+                        ref decodedHeaderBytes,
+                        out reason))
+                {
+                    return false;
+                }
+
                 continue;
             }
 
@@ -109,7 +130,16 @@ public static class Http3PreviewCodec
                     return false;
                 }
 
-                decoded.Add(new Http1HeaderField(namedField.Name, value));
+                if (!TryAddDecodedHeader(
+                        decoded,
+                        new Http1HeaderField(namedField.Name, value),
+                        maxHeaderBytes,
+                        ref decodedHeaderBytes,
+                        out reason))
+                {
+                    return false;
+                }
+
                 continue;
             }
 
@@ -120,7 +150,11 @@ public static class Http3PreviewCodec
                     return false;
                 }
 
-                decoded.Add(literal);
+                if (!TryAddDecodedHeader(decoded, literal, maxHeaderBytes, ref decodedHeaderBytes, out reason))
+                {
+                    return false;
+                }
+
                 continue;
             }
 
@@ -129,6 +163,25 @@ public static class Http3PreviewCodec
         }
 
         headers = decoded;
+        return true;
+    }
+
+    private static bool TryAddDecodedHeader(
+        List<Http1HeaderField> headers,
+        Http1HeaderField header,
+        int maxHeaderBytes,
+        ref int decodedHeaderBytes,
+        out string reason)
+    {
+        decodedHeaderBytes += header.Name.Length + header.Value.Length;
+        if (decodedHeaderBytes > maxHeaderBytes)
+        {
+            reason = "header_list_too_large";
+            return false;
+        }
+
+        headers.Add(header);
+        reason = "";
         return true;
     }
 

@@ -116,6 +116,10 @@ public sealed class Http3PreviewConnection
         {
             _logger.LogDebug(exception, "HTTP/3 preview connection ended with I/O failure.");
         }
+        finally
+        {
+            _metrics.Http3ConnectionClosed();
+        }
     }
 
     private async ValueTask<bool> ProcessRequestStreamAsync(
@@ -355,6 +359,12 @@ public sealed class Http3PreviewConnection
                 bodyBuffer.Write(payload.Span);
                 _metrics.AddHttp3RequestBodyBytesReceived(payload.Length);
                 continue;
+            }
+
+            if (frameType == Http3PreviewCodec.SettingsFrame)
+            {
+                rejectionReason = "unexpected_control_frame";
+                return false;
             }
 
             if (frameType != Http3PreviewCodec.HeadersFrame)
@@ -785,6 +795,11 @@ public sealed class Http3PreviewConnection
             context,
             context.AccessLogEnabled ?? _configurationSnapshot.Observability.AccessLogEnabled,
             _configurationSnapshot.Observability.RecentDiagnosticsCapacity);
+        if (context.ResponseStatusCode.HasValue)
+        {
+            _metrics.Http3RequestCompleted(context.Method, context.ResponseStatusCode, Http3Outcome(context));
+        }
+
         context = null;
     }
 
@@ -792,6 +807,21 @@ public sealed class Http3PreviewConnection
     {
         _metrics.Http3ProtocolError(reason);
         return Interlocked.Increment(ref _protocolErrors) >= MaxProtocolErrorsPerConnection;
+    }
+
+    private static string Http3Outcome(ProxyRequestContext context)
+    {
+        if (context.FailureKind != ProxyFailureKind.None)
+        {
+            return "failure";
+        }
+
+        if (!context.ResponseStatusCode.HasValue)
+        {
+            return "aborted";
+        }
+
+        return context.ResponseStatusCode.Value < 400 ? "success" : "error";
     }
 
     private static bool IsRetryAllowed(RuntimeRoute route, Http1RequestHead requestHead, out string? skipReason)
