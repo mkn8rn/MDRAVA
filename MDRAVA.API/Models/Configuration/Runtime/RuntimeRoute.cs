@@ -15,4 +15,5 @@ public sealed record RuntimeRoute(
     RuntimeRedirectPolicy Redirect,
     RuntimeStaticResponse StaticResponse,
     RuntimeMaintenancePolicy Maintenance,
+    RuntimeCachePolicy Cache,
     RuntimeRouteResolvedOptions ResolvedOptions);

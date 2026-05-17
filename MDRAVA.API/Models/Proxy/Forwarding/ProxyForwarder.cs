@@ -1,6 +1,7 @@
 using System.Buffers;
 using System.Net.Sockets;
 using System.Text;
+using MDRAVA.API.Proxy.Caching;
 using MDRAVA.API.Proxy.Connections;
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Metrics;
@@ -14,17 +15,20 @@ public sealed class ProxyForwarder
     private readonly UpstreamConnectionPool _upstreamConnections;
     private readonly ProxyMetrics _metrics;
     private readonly HopByHopHeaderPolicy _headerPolicy;
+    private readonly ResponseCacheStore _cacheStore;
     private readonly ILogger<ProxyForwarder> _logger;
 
     public ProxyForwarder(
         UpstreamConnectionPool upstreamConnections,
         ProxyMetrics metrics,
         HopByHopHeaderPolicy headerPolicy,
+        ResponseCacheStore cacheStore,
         ILogger<ProxyForwarder> logger)
     {
         _upstreamConnections = upstreamConnections;
         _metrics = metrics;
         _headerPolicy = headerPolicy;
+        _cacheStore = cacheStore;
         _logger = logger;
     }
 
@@ -84,11 +88,12 @@ public sealed class ProxyForwarder
             var responseResult = await RelayResponseAsync(
                 upstreamStream,
                 clientStream,
-                requestHead.Method,
+                requestHead,
                 route,
                 listener,
                 timeouts,
                 preferClientKeepAlive,
+                upstreamTarget,
                 requestId,
                 cancellationToken);
             responseStarted = responseResult.ResponseStarted;
@@ -344,11 +349,12 @@ public sealed class ProxyForwarder
     private async ValueTask<ResponseForwardingResult> RelayResponseAsync(
         Stream upstreamStream,
         Stream clientStream,
-        string requestMethod,
+        Http1RequestHead requestHead,
         RuntimeRoute route,
         RuntimeListener listener,
         RuntimeTimeouts timeouts,
         bool preferClientKeepAlive,
+        string upstreamTarget,
         string requestId,
         CancellationToken cancellationToken)
     {
@@ -365,7 +371,7 @@ public sealed class ProxyForwarder
 
             if (!Http1ResponseParser.TryParse(
                     responseHeadRead.HeadBytes.Span,
-                    requestMethod,
+                    requestHead.Method,
                     out var responseHead,
                     out var error))
             {
@@ -375,24 +381,55 @@ public sealed class ProxyForwarder
             var upstreamWantsClose = HasConnectionToken(responseHead.Headers, "close");
             var keepClientConnectionOpen = preferClientKeepAlive
                 && responseHead.Framing.Kind != Http1BodyKind.CloseDelimited;
-            await WriteResponseHeadAsync(clientStream, responseHead, route, timeouts, keepClientConnectionOpen, requestId, cancellationToken);
-            responseStarted = true;
             initialBodyBytes = responseHeadRead.InitialBodyBytes;
 
             if (!Http1ResponseParser.IsInformational(responseHead))
             {
-                await RelayResponseBodyAsync(upstreamStream, clientStream, initialBodyBytes, responseHead, listener, timeouts, cancellationToken);
+                var responseHeaders = BuildResponseHeaders(responseHead, route);
+                if (ShouldBufferForCache(route, requestHead, responseHead))
+                {
+                    var body = await ReadCacheCandidateBodyAsync(
+                        upstreamStream,
+                        initialBodyBytes,
+                        responseHead,
+                        listener,
+                        timeouts,
+                        cancellationToken);
+                    await WriteBufferedResponseAsync(
+                        clientStream,
+                        responseHead,
+                        responseHeaders,
+                        body,
+                        keepClientConnectionOpen,
+                        requestId,
+                        timeouts,
+                        cancellationToken);
+                    responseStarted = true;
+                    _cacheStore.Store(route, listener, requestHead, upstreamTarget, responseHead, responseHeaders, body);
+                }
+                else
+                {
+                    RecordUncacheableFraming(route, responseHead);
+                    await WriteResponseHeadAsync(clientStream, responseHead, responseHeaders, timeouts, keepClientConnectionOpen, requestId, cancellationToken);
+                    responseStarted = true;
+                    await RelayResponseBodyAsync(upstreamStream, clientStream, initialBodyBytes, responseHead, listener, timeouts, cancellationToken);
+                }
+
                 var canReuseUpstream = !upstreamWantsClose
                     && responseHead.Framing.Kind != Http1BodyKind.CloseDelimited;
                 return new ResponseForwardingResult(responseStarted, keepClientConnectionOpen, canReuseUpstream, responseHead.StatusCode);
             }
+
+            var informationalHeaders = BuildResponseHeaders(responseHead, route);
+            await WriteResponseHeadAsync(clientStream, responseHead, informationalHeaders, timeouts, keepClientConnectionOpen, requestId, cancellationToken);
+            responseStarted = true;
         }
     }
 
     private async ValueTask WriteResponseHeadAsync(
         Stream clientStream,
         Http1ResponseHead responseHead,
-        RuntimeRoute route,
+        IReadOnlyList<Http1HeaderField> responseHeaders,
         RuntimeTimeouts timeouts,
         bool keepClientConnectionOpen,
         string requestId,
@@ -403,12 +440,6 @@ public sealed class ProxyForwarder
             .Append(responseHead.StatusCode).Append(' ')
             .Append(responseHead.ReasonPhrase).Append("\r\n");
 
-        var filtered = _headerPolicy.FilterForForwarding(
-            responseHead.Headers,
-            preserveTransferEncoding: false,
-            preserveTrailer: responseHead.Framing.Kind == Http1BodyKind.Chunked);
-
-        var responseHeaders = ApplyResponseHeaderPolicy(filtered, route.HeaderPolicy);
         foreach (var header in responseHeaders)
         {
             if (IsManagedFramingHeader(header.Name))
@@ -434,6 +465,141 @@ public sealed class ProxyForwarder
         var bytes = Encoding.ASCII.GetBytes(builder.ToString());
         await WriteWithTimeoutAsync(clientStream, bytes, timeouts.DownstreamWriteTimeout, cancellationToken);
         _metrics.AddBytesWritten(bytes.Length);
+    }
+
+    private async ValueTask WriteBufferedResponseAsync(
+        Stream clientStream,
+        Http1ResponseHead responseHead,
+        IReadOnlyList<Http1HeaderField> responseHeaders,
+        byte[] body,
+        bool keepClientConnectionOpen,
+        string requestId,
+        RuntimeTimeouts timeouts,
+        CancellationToken cancellationToken)
+    {
+        var builder = new StringBuilder();
+        builder.Append(responseHead.Version).Append(' ')
+            .Append(responseHead.StatusCode).Append(' ')
+            .Append(responseHead.ReasonPhrase).Append("\r\n");
+
+        foreach (var header in responseHeaders)
+        {
+            if (IsManagedFramingHeader(header.Name))
+            {
+                continue;
+            }
+
+            builder.Append(header.Name).Append(": ").Append(header.Value).Append("\r\n");
+        }
+
+        builder.Append("X-Request-Id: ").Append(requestId).Append("\r\n");
+        builder.Append("Content-Length: ").Append(body.Length).Append("\r\n");
+        builder.Append(keepClientConnectionOpen ? "Connection: keep-alive\r\n\r\n" : "Connection: close\r\n\r\n");
+        var bytes = Encoding.ASCII.GetBytes(builder.ToString());
+        await WriteWithTimeoutAsync(clientStream, bytes, timeouts.DownstreamWriteTimeout, cancellationToken);
+        _metrics.AddBytesWritten(bytes.Length);
+
+        if (body.Length > 0)
+        {
+            await WriteWithTimeoutAsync(clientStream, body, timeouts.DownstreamWriteTimeout, cancellationToken);
+            _metrics.AddBytesWritten(body.Length);
+        }
+    }
+
+    private IReadOnlyList<Http1HeaderField> BuildResponseHeaders(
+        Http1ResponseHead responseHead,
+        RuntimeRoute route)
+    {
+        var filtered = _headerPolicy.FilterForForwarding(
+            responseHead.Headers,
+            preserveTransferEncoding: false,
+            preserveTrailer: responseHead.Framing.Kind == Http1BodyKind.Chunked);
+
+        return ApplyResponseHeaderPolicy(filtered, route.HeaderPolicy);
+    }
+
+    private static bool ShouldBufferForCache(
+        RuntimeRoute route,
+        Http1RequestHead requestHead,
+        Http1ResponseHead responseHead)
+    {
+        if (!route.Cache.Enabled
+            || !ContainsMethod(route.Cache.Methods, requestHead.Method)
+            || requestHead.Framing.Kind != Http1BodyKind.None
+            || ContainsHeader(requestHead.Headers, "Authorization")
+            || !ContainsStatus(route.Cache.CacheableStatusCodes, responseHead.StatusCode)
+            || ContainsHeader(responseHead.Headers, "Set-Cookie")
+            || (route.Cache.RespectOriginCacheControl && HasUncacheableCacheControl(responseHead.Headers)))
+        {
+            return false;
+        }
+
+        if (responseHead.Framing.Kind == Http1BodyKind.None)
+        {
+            return true;
+        }
+
+        return responseHead.Framing.Kind == Http1BodyKind.ContentLength
+            && responseHead.Framing.ContentLength.GetValueOrDefault() <= route.Cache.MaxEntryBytes;
+    }
+
+    private void RecordUncacheableFraming(RuntimeRoute route, Http1ResponseHead responseHead)
+    {
+        if (!route.Cache.Enabled)
+        {
+            return;
+        }
+
+        if (responseHead.Framing.Kind is Http1BodyKind.Chunked or Http1BodyKind.CloseDelimited)
+        {
+            _cacheStore.RecordUncacheable(route, "framing");
+        }
+        else if (responseHead.Framing.Kind == Http1BodyKind.ContentLength
+            && responseHead.Framing.ContentLength.GetValueOrDefault() > route.Cache.MaxEntryBytes)
+        {
+            _cacheStore.RecordUncacheable(route, "oversized");
+        }
+    }
+
+    private async ValueTask<byte[]> ReadCacheCandidateBodyAsync(
+        Stream upstreamStream,
+        ReadOnlyMemory<byte> initialBodyBytes,
+        Http1ResponseHead responseHead,
+        RuntimeListener listener,
+        RuntimeTimeouts timeouts,
+        CancellationToken cancellationToken)
+    {
+        if (responseHead.Framing.Kind == Http1BodyKind.None)
+        {
+            return [];
+        }
+
+        var contentLength = responseHead.Framing.ContentLength.GetValueOrDefault();
+        var reader = new Http1BodyReader(upstreamStream, initialBodyBytes, _metrics, timeouts.UpstreamResponseBodyIdleTimeout, ProxyTimeoutKind.UpstreamResponseBodyIdle);
+        using var body = new MemoryStream((int)Math.Min(contentLength, int.MaxValue));
+        var remaining = contentLength;
+        var buffer = ArrayPool<byte>.Shared.Rent(listener.ForwardingBufferBytes);
+        try
+        {
+            while (remaining > 0)
+            {
+                var readLength = (int)Math.Min(buffer.Length, remaining);
+                var bytesRead = await reader.ReadAsync(buffer.AsMemory(0, readLength), cancellationToken);
+                if (bytesRead == 0)
+                {
+                    throw new IOException("Source closed before the declared Content-Length body was complete.");
+                }
+
+                body.Write(buffer, 0, bytesRead);
+                remaining -= bytesRead;
+            }
+
+            return body.ToArray();
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
     }
 
     private async ValueTask RelayResponseBodyAsync(
@@ -764,6 +930,46 @@ public sealed class ProxyForwarder
     private static bool ContainsHeaderName(IEnumerable<string> headerNames, string headerName)
     {
         return headerNames.Any(name => string.Equals(name, headerName, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool ContainsHeader(IReadOnlyList<Http1HeaderField> headers, string headerName)
+    {
+        return headers.Any(header => string.Equals(header.Name, headerName, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool ContainsStatus(IReadOnlyList<int> statusCodes, int statusCode)
+    {
+        return statusCodes.Any(code => code == statusCode);
+    }
+
+    private static bool ContainsMethod(IReadOnlyList<string> methods, string method)
+    {
+        return methods.Any(value => string.Equals(value, method, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool HasUncacheableCacheControl(IReadOnlyList<Http1HeaderField> headers)
+    {
+        foreach (var header in headers)
+        {
+            if (!string.Equals(header.Name, "Cache-Control", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            foreach (var directive in header.Value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+            {
+                var name = directive.Split('=', 2)[0].Trim();
+                if (string.Equals(name, "no-store", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(name, "private", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(name, "no-cache", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(name, "must-revalidate", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private static ReadOnlyMemory<byte> BuildGeneratedBadRequest(string requestId)

@@ -241,6 +241,26 @@ public static class ProxyConfigurationMapper
                 route.Maintenance.RetryAfterSeconds,
                 route.Maintenance.ContentType,
                 route.Maintenance.Body),
+            new RuntimeCachePolicy(
+                route.Cache.Enabled,
+                route.Cache.MaxEntryBytes,
+                route.Cache.MaxTotalBytes,
+                TimeSpan.FromSeconds(route.Cache.DefaultTtlSeconds),
+                route.Cache.RespectOriginCacheControl,
+                route.Cache.VaryByHeaders
+                    .Where(static header => !string.IsNullOrWhiteSpace(header))
+                    .Select(static header => header.Trim())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray(),
+                route.Cache.CacheableStatusCodes
+                    .Distinct()
+                    .Order()
+                    .ToArray(),
+                route.Cache.Methods
+                    .Where(static method => !string.IsNullOrWhiteSpace(method))
+                    .Select(static method => method.Trim().ToUpperInvariant())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray()),
             new RuntimeRouteResolvedOptions(
                 route.Overrides.MaxRequestBodyBytes ?? operationalOptions.Limits.MaxRequestBodyBytes,
                 TimeSpan.FromMilliseconds(route.Overrides.ClientRequestHeadTimeoutMs ?? operationalOptions.Timeouts.ClientRequestHeadTimeoutMs),

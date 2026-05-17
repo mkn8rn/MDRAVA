@@ -7,6 +7,8 @@ namespace MDRAVA.API.Proxy.Configuration;
 public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
 {
     private const int MaxGeneratedBodyBytes = 64 * 1024;
+    private const long MaximumCacheEntryBytes = 64L * 1024 * 1024;
+    private const long MaximumCacheTotalBytes = 512L * 1024 * 1024;
     private static readonly HashSet<int> RedirectStatusCodes = [301, 302, 303, 307, 308];
     private static readonly HashSet<string> RestrictedHeaderNames = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -135,6 +137,7 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
             ValidateHeaderPolicy(failures, routePrefix, route.HeaderPolicy);
             ValidatePathRewrite(failures, routePrefix, route.PathRewrite);
             ValidateMaintenance(failures, routePrefix, route.Maintenance);
+            ValidateCachePolicy(failures, routePrefix, route.Cache, routeAction);
             ValidateOverrides(failures, routePrefix, route.Overrides);
 
             if (IsProxyAction(routeAction) && route.Upstreams.Count == 0)
@@ -424,6 +427,15 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
             return;
         }
 
+        if (!IsValidHttpFieldName(headerName))
+        {
+            failures.Add($"{prefix} '{headerName}' is not a valid HTTP field name.");
+            return;
+        }
+    }
+
+    private static bool IsValidHttpFieldName(string headerName)
+    {
         foreach (var character in headerName)
         {
             var valid = character is >= '!' and <= '~'
@@ -433,10 +445,11 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
                 && character is not '{' and not '}';
             if (!valid)
             {
-                failures.Add($"{prefix} '{headerName}' is not a valid HTTP field name.");
-                return;
+                return false;
             }
         }
+
+        return true;
     }
 
     private static void ValidatePathRewrite(
@@ -543,6 +556,98 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
         if (Encoding.UTF8.GetByteCount(maintenance.Body) > MaxGeneratedBodyBytes)
         {
             failures.Add($"{routePrefix}:Maintenance:Body must not exceed {MaxGeneratedBodyBytes} UTF-8 bytes.");
+        }
+    }
+
+    private static void ValidateCachePolicy(
+        List<string> failures,
+        string routePrefix,
+        ProxyCachePolicyOptions cache,
+        string routeAction)
+    {
+        if (cache.MaxEntryBytes < 0)
+        {
+            failures.Add($"{routePrefix}:Cache:MaxEntryBytes must not be negative.");
+        }
+
+        if (cache.MaxTotalBytes < 0)
+        {
+            failures.Add($"{routePrefix}:Cache:MaxTotalBytes must not be negative.");
+        }
+
+        if (cache.DefaultTtlSeconds < 0)
+        {
+            failures.Add($"{routePrefix}:Cache:DefaultTtlSeconds must not be negative.");
+        }
+
+        if (!cache.Enabled)
+        {
+            return;
+        }
+
+        if (!IsProxyAction(routeAction))
+        {
+            failures.Add($"{routePrefix}:Cache can only be enabled for proxy routes.");
+        }
+
+        if (cache.MaxEntryBytes is <= 0 or > MaximumCacheEntryBytes)
+        {
+            failures.Add($"{routePrefix}:Cache:MaxEntryBytes must be between 1 and {MaximumCacheEntryBytes}.");
+        }
+
+        if (cache.MaxTotalBytes is <= 0 or > MaximumCacheTotalBytes)
+        {
+            failures.Add($"{routePrefix}:Cache:MaxTotalBytes must be between 1 and {MaximumCacheTotalBytes}.");
+        }
+
+        if (cache.MaxEntryBytes > 0
+            && cache.MaxTotalBytes > 0
+            && cache.MaxEntryBytes > cache.MaxTotalBytes)
+        {
+            failures.Add($"{routePrefix}:Cache:MaxEntryBytes must not exceed Cache:MaxTotalBytes.");
+        }
+
+        if (cache.DefaultTtlSeconds <= 0)
+        {
+            failures.Add($"{routePrefix}:Cache:DefaultTtlSeconds must be greater than 0.");
+        }
+
+        for (var index = 0; index < cache.VaryByHeaders.Count; index++)
+        {
+            var headerName = cache.VaryByHeaders[index];
+            if (string.IsNullOrWhiteSpace(headerName) || !IsValidHttpFieldName(headerName))
+            {
+                failures.Add($"{routePrefix}:Cache:VaryByHeaders:{index} '{headerName}' is not a valid HTTP field name.");
+            }
+        }
+
+        if (cache.CacheableStatusCodes.Count == 0)
+        {
+            failures.Add($"{routePrefix}:Cache:CacheableStatusCodes must contain at least one status code.");
+        }
+
+        for (var index = 0; index < cache.CacheableStatusCodes.Count; index++)
+        {
+            var statusCode = cache.CacheableStatusCodes[index];
+            if (statusCode is < 200 or > 599)
+            {
+                failures.Add($"{routePrefix}:Cache:CacheableStatusCodes:{index} must be an HTTP response status code.");
+            }
+        }
+
+        if (cache.Methods.Count == 0)
+        {
+            failures.Add($"{routePrefix}:Cache:Methods must contain GET, HEAD, or both.");
+        }
+
+        for (var index = 0; index < cache.Methods.Count; index++)
+        {
+            var method = cache.Methods[index];
+            if (!string.Equals(method, "GET", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(method, "HEAD", StringComparison.OrdinalIgnoreCase))
+            {
+                failures.Add($"{routePrefix}:Cache:Methods:{index} must be GET or HEAD.");
+            }
         }
     }
 

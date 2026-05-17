@@ -37,6 +37,7 @@ public static class SiteOptionsAggregator
                     CanonicalHost = source.Site.CanonicalHost,
                     HeaderPolicy = source.Site.HeaderPolicy,
                     Maintenance = source.Site.Maintenance,
+                    Cache = source.Site.Cache,
                     Overrides = source.Site.Overrides
                 });
                 continue;
@@ -64,6 +65,7 @@ public static class SiteOptionsAggregator
                     Redirect = route.Redirect,
                     StaticResponse = route.StaticResponse,
                     Maintenance = MergeMaintenance(source.Site.Maintenance, route.Maintenance),
+                    Cache = MergeCache(source.Site.Cache, route.Cache),
                     Overrides = MergeOverrides(source.Site.Overrides, route.Overrides)
                 });
             }
@@ -158,6 +160,13 @@ public static class SiteOptionsAggregator
                 ? site.Body
                 : route.Body
         };
+    }
+
+    private static ProxyCachePolicyOptions MergeCache(
+        ProxyCachePolicyOptions site,
+        ProxyCachePolicyOptions route)
+    {
+        return route.Enabled ? route : site;
     }
 
     private static ProxyRouteOverrideOptions MergeOverrides(

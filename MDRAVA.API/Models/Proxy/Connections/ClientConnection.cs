@@ -1,6 +1,8 @@
 using System.Buffers;
 using System.Net.Sockets;
+using System.Text;
 using MDRAVA.API.Proxy.Acme;
+using MDRAVA.API.Proxy.Caching;
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Forwarding;
 using MDRAVA.API.Proxy.Health;
@@ -32,6 +34,7 @@ public sealed class ClientConnection
     private readonly ForwardedHeadersPolicy _forwardedHeadersPolicy;
     private readonly ProxyRouteActionPolicy _routeActionPolicy;
     private readonly PathRewritePolicy _pathRewritePolicy;
+    private readonly ResponseCacheStore _cacheStore;
     private readonly AcmeHttp01ChallengeResponder _acmeChallengeResponder;
     private readonly TlsConnectionAuthenticator _tlsAuthenticator;
     private readonly ProxyMetrics _metrics;
@@ -53,6 +56,7 @@ public sealed class ClientConnection
         ForwardedHeadersPolicy forwardedHeadersPolicy,
         ProxyRouteActionPolicy routeActionPolicy,
         PathRewritePolicy pathRewritePolicy,
+        ResponseCacheStore cacheStore,
         AcmeHttp01ChallengeResponder acmeChallengeResponder,
         TlsConnectionAuthenticator tlsAuthenticator,
         ProxyMetrics metrics,
@@ -73,6 +77,7 @@ public sealed class ClientConnection
         _forwardedHeadersPolicy = forwardedHeadersPolicy;
         _routeActionPolicy = routeActionPolicy;
         _pathRewritePolicy = pathRewritePolicy;
+        _cacheStore = cacheStore;
         _acmeChallengeResponder = acmeChallengeResponder;
         _tlsAuthenticator = tlsAuthenticator;
         _metrics = metrics;
@@ -340,6 +345,47 @@ public sealed class ClientConnection
                     return;
                 }
 
+                var nextRequestCount = requestsProcessed + 1;
+                var preferKeepAlive = ShouldKeepClientConnectionOpen(requestHead)
+                    && nextRequestCount < _configurationSnapshot.ConnectionLimits.MaxRequestsPerClientConnection;
+                var upstreamTarget = _pathRewritePolicy.Apply(routeMatch.Route, requestHead.Target, requestHead.Path);
+                var effectiveTimeouts = ApplyRouteTimeouts(routeMatch.Route, _configurationSnapshot.Timeouts);
+
+                if (_cacheStore.TryGet(
+                        routeMatch.Route,
+                        _listener,
+                        requestHead,
+                        upstreamTarget,
+                        out var cachedResponse)
+                    && cachedResponse is not null)
+                {
+                    await WriteCachedResponseAsync(
+                        clientStream,
+                        requestHead,
+                        cachedResponse,
+                        preferKeepAlive,
+                        currentContext,
+                        effectiveTimeouts,
+                        cancellationToken);
+
+                    requestsProcessed = nextRequestCount;
+                    if (requestsProcessed >= _configurationSnapshot.ConnectionLimits.MaxRequestsPerClientConnection)
+                    {
+                        _metrics.ClientConnectionClosedByMaxRequests();
+                        currentContext.KeepClientConnectionOpen = false;
+                        CompleteContext(ref currentContext);
+                        return;
+                    }
+
+                    CompleteContext(ref currentContext);
+                    if (!preferKeepAlive)
+                    {
+                        return;
+                    }
+
+                    continue;
+                }
+
                 var selection = _upstreamSelector.Select(routeMatch.Route);
                 if (selection is null)
                 {
@@ -356,11 +402,6 @@ public sealed class ClientConnection
                 }
                 currentContext.SetUpstream(selection.Upstream);
 
-                var nextRequestCount = requestsProcessed + 1;
-                var preferKeepAlive = ShouldKeepClientConnectionOpen(requestHead)
-                    && nextRequestCount < _configurationSnapshot.ConnectionLimits.MaxRequestsPerClientConnection;
-                var upstreamTarget = _pathRewritePolicy.Apply(routeMatch.Route, requestHead.Target, requestHead.Path);
-                var effectiveTimeouts = ApplyRouteTimeouts(routeMatch.Route, _configurationSnapshot.Timeouts);
                 var result = await _forwarder.ForwardAsync(
                     clientStream,
                     requestHeadRead,
@@ -623,6 +664,59 @@ public sealed class ClientConnection
         context.ResponseStatusCode = statusCode;
         context.FailureKind = failureKind;
         context.KeepClientConnectionOpen = false;
+    }
+
+    private async ValueTask WriteCachedResponseAsync(
+        Stream clientStream,
+        Http1RequestHead requestHead,
+        CachedProxyResponse response,
+        bool keepClientConnectionOpen,
+        ProxyRequestContext context,
+        RuntimeTimeouts timeouts,
+        CancellationToken cancellationToken)
+    {
+        var includeBody = !string.Equals(requestHead.Method, "HEAD", StringComparison.OrdinalIgnoreCase);
+        var ageSeconds = Math.Max(
+            0,
+            (long)Math.Floor((DateTimeOffset.UtcNow - response.StoredAtUtc).TotalSeconds));
+        var builder = new StringBuilder();
+        builder.Append("HTTP/1.1 ")
+            .Append(response.StatusCode)
+            .Append(' ')
+            .Append(response.ReasonPhrase)
+            .Append("\r\n");
+
+        foreach (var header in response.Headers)
+        {
+            builder.Append(header.Name).Append(": ").Append(header.Value).Append("\r\n");
+        }
+
+        builder.Append("Age: ").Append(ageSeconds).Append("\r\n");
+        builder.Append("X-Request-Id: ").Append(context.RequestId).Append("\r\n");
+        builder.Append("Content-Length: ").Append(response.Body.Length).Append("\r\n");
+        builder.Append(keepClientConnectionOpen ? "Connection: keep-alive\r\n\r\n" : "Connection: close\r\n\r\n");
+
+        var headBytes = Encoding.ASCII.GetBytes(builder.ToString());
+        await ProxyTimeoutPolicy.RunAsync(
+            async timeoutToken => await clientStream.WriteAsync(headBytes, timeoutToken),
+            timeouts.DownstreamWriteTimeout,
+            ProxyTimeoutKind.DownstreamWrite,
+            cancellationToken);
+        _metrics.AddBytesWritten(headBytes.Length);
+
+        if (includeBody && response.Body.Length > 0)
+        {
+            await ProxyTimeoutPolicy.RunAsync(
+                async timeoutToken => await clientStream.WriteAsync(response.Body, timeoutToken),
+                timeouts.DownstreamWriteTimeout,
+                ProxyTimeoutKind.DownstreamWrite,
+                cancellationToken);
+            _metrics.AddBytesWritten(response.Body.Length);
+        }
+
+        context.ResponseStarted = true;
+        context.ResponseStatusCode = response.StatusCode;
+        context.KeepClientConnectionOpen = keepClientConnectionOpen;
     }
 
     private async ValueTask WriteGeneratedRouteResponseAsync(

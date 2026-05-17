@@ -1,5 +1,6 @@
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Configuration.Storage;
+using MDRAVA.API.Proxy.Caching;
 
 namespace MDRAVA.API.Proxy.Configuration.Loading;
 
@@ -7,16 +8,27 @@ public sealed class ProxyConfigurationReloadService : IProxyConfigurationReloadS
 {
     private readonly IProxyConfigurationLoader _loader;
     private readonly IProxyConfigurationStore _store;
+    private readonly ResponseCacheStore? _cacheStore;
     private readonly ILogger<ProxyConfigurationReloadService> _logger;
 
     public ProxyConfigurationReloadService(
         IProxyConfigurationLoader loader,
         IProxyConfigurationStore store,
+        ResponseCacheStore? cacheStore,
         ILogger<ProxyConfigurationReloadService> logger)
     {
         _loader = loader;
         _store = store;
+        _cacheStore = cacheStore;
         _logger = logger;
+    }
+
+    public ProxyConfigurationReloadService(
+        IProxyConfigurationLoader loader,
+        IProxyConfigurationStore store,
+        ILogger<ProxyConfigurationReloadService> logger)
+        : this(loader, store, null, logger)
+    {
     }
 
     public async ValueTask<ProxyConfigurationReloadResult> ReloadAsync(CancellationToken cancellationToken)
@@ -44,6 +56,7 @@ public sealed class ProxyConfigurationReloadService : IProxyConfigurationReloadS
         }
 
         var snapshot = _store.Replace(loadResult.Snapshot);
+        _cacheStore?.Clear("reload");
         _logger.LogInformation(
             "Proxy configuration version {Version} loaded from {SourcePath}",
             snapshot.Version,

@@ -161,6 +161,7 @@ internal static class HealthCheckTests
             new RuntimeRedirectPolicy(308, "", "", true),
             new RuntimeStaticResponse(200, "text/plain; charset=utf-8", ""),
             new RuntimeMaintenancePolicy(false, null, "text/plain; charset=utf-8", "Service Unavailable"),
+            RuntimeCachePolicy.Disabled,
             new RuntimeRouteResolvedOptions(
                 100L * 1024 * 1024,
                 TimeSpan.FromSeconds(10),
