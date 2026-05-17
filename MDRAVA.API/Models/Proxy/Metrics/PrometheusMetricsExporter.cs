@@ -54,6 +54,29 @@ public sealed class PrometheusMetricsExporter
             }
         }
 
+        AppendCounter(builder, "mdrava_http3_connections_accepted_total", "Accepted HTTP/3 preview downstream client connections.", proxy.Http3AcceptedConnections);
+        AppendCounter(builder, "mdrava_http3_requests_total", "HTTP/3 preview requests received by the dataplane.", proxy.Http3Requests);
+        AppendGauge(builder, "mdrava_quic_listeners_active", "Currently active HTTP/3 preview QUIC listeners.", proxy.ActiveQuicListeners);
+        AppendLabeledCounter(builder, "mdrava_quic_listener_starts_total", "HTTP/3 preview QUIC listener starts by result.", proxy.QuicListenerStartSuccesses, new Label("result", "success"));
+        AppendLabeledCounter(builder, "mdrava_quic_listener_starts_total", null, proxy.QuicListenerStartFailures, new Label("result", "failure"));
+        if (proxy.Http3RejectedRequests.Count > 0)
+        {
+            AppendHelpAndType(builder, "mdrava_http3_rejected_requests_total", "HTTP/3 preview request rejections by bounded reason.", "counter");
+            foreach (var rejection in proxy.Http3RejectedRequests.OrderBy(static item => item.Key, StringComparer.Ordinal))
+            {
+                AppendSample(builder, "mdrava_http3_rejected_requests_total", rejection.Value, new Label("reason", rejection.Key));
+            }
+        }
+
+        if (proxy.Http3ProtocolErrors.Count > 0)
+        {
+            AppendHelpAndType(builder, "mdrava_http3_protocol_errors_total", "HTTP/3 preview protocol errors by bounded reason.", "counter");
+            foreach (var error in proxy.Http3ProtocolErrors.OrderBy(static item => item.Key, StringComparer.Ordinal))
+            {
+                AppendSample(builder, "mdrava_http3_protocol_errors_total", error.Value, new Label("reason", error.Key));
+            }
+        }
+
         AppendRouteRequestCounters(builder, snapshot.Metrics, proxy.RequestsByRoute);
         AppendRequestRejectionCounters(builder, proxy);
 

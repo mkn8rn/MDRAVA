@@ -314,7 +314,9 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
     private static bool EnablesHttp2(string protocols)
     {
         return string.Equals(protocols, "http2", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(protocols, "http1AndHttp2", StringComparison.OrdinalIgnoreCase);
+            || string.Equals(protocols, "http1AndHttp2", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(protocols, "http2AndHttp3Preview", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(protocols, "http1AndHttp2AndHttp3Preview", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool EnablesHttp3Preview(string protocols)

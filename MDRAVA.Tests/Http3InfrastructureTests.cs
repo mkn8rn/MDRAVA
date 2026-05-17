@@ -94,7 +94,7 @@ internal static class Http3InfrastructureTests
             string.Join("; ", failures));
     }
 
-    public static void Http3PreviewConfigIsAcceptedWithExplicitGateButTrafficDisabled()
+    public static void Http3PreviewConfigIsAcceptedWithExplicitGateAndEnablesPreviewTraffic()
     {
         var listener = Http3Listener("preview", "http1AndHttp2AndHttp3Preview", experimental: true);
         var validation = new ProxyOptionsValidator().Validate(null, ValidProxyOptions(listener));
@@ -103,8 +103,8 @@ internal static class Http3InfrastructureTests
         AssertEx.False(validation.Failed, string.Join("; ", validation.Failures ?? []));
         AssertEx.True(runtime.Http3PreviewConfigured);
         AssertEx.True(runtime.TcpTrafficEnabled);
-        AssertEx.False(runtime.Http3.EnabledForTraffic);
-        AssertEx.Equal("request_handling_not_implemented", runtime.Http3.DisabledReason);
+        AssertEx.True(runtime.Http3.EnabledForTraffic);
+        AssertEx.Equal("preview_enabled", runtime.Http3.DisabledReason);
     }
 
     public static void Http3OnlyPreviewDoesNotEnableTcpTraffic()
@@ -116,7 +116,7 @@ internal static class Http3InfrastructureTests
         AssertEx.False(validation.Failed, string.Join("; ", validation.Failures ?? []));
         AssertEx.True(runtime.Http3PreviewConfigured);
         AssertEx.False(runtime.TcpTrafficEnabled);
-        AssertEx.False(runtime.Http3.EnabledForTraffic);
+        AssertEx.True(runtime.Http3.EnabledForTraffic);
     }
 
     public static void TcpListenerIdentityRemainsUnchanged()
@@ -151,7 +151,7 @@ internal static class Http3InfrastructureTests
         AssertEx.True(futureQuicAlpn.Any(static protocol => protocol.Protocol.Span.SequenceEqual("h3"u8)));
     }
 
-    public static void StatusAndEffectiveProjectionReportHttp3ScaffoldedAndDisabled()
+    public static void StatusAndEffectiveProjectionReportHttp3PreviewEnabled()
     {
         var snapshot = ProxyConfigurationMapper.ToRuntimeSnapshot(
             ValidProxyOptions(Http3Listener("preview", "http1AndHttp2AndHttp3Preview", experimental: true)),
@@ -165,13 +165,13 @@ internal static class Http3InfrastructureTests
         var projection = ProxyConfigurationMapper.ToProjection(snapshot);
 
         AssertEx.Equal("preview", projection.Http3.Configured);
-        AssertEx.False(projection.Http3.EnabledForTraffic);
-        AssertEx.Equal("request_handling_not_implemented", projection.Http3.DisabledReason);
+        AssertEx.True(projection.Http3.EnabledForTraffic);
+        AssertEx.Equal("preview_enabled", projection.Http3.DisabledReason);
         AssertEx.True(projection.Http3.UdpQuicListenerIdentityModeled);
         var statusProjection = Http3RuntimeSupport.Project(snapshot.Listeners);
         AssertEx.Equal("preview", statusProjection.Configured);
-        AssertEx.False(statusProjection.EnabledForTraffic);
-        AssertEx.Equal("request_handling_not_implemented", statusProjection.DisabledReason);
+        AssertEx.True(statusProjection.EnabledForTraffic);
+        AssertEx.Equal("preview_enabled", statusProjection.DisabledReason);
     }
 
     public static void UpstreamProtocolStillRejectsHttp3()

@@ -7,14 +7,15 @@ public static class Http3RuntimeSupport
     public static RuntimeHttp3SupportProjection Project(IReadOnlyList<RuntimeListener> listeners)
     {
         var previewConfigured = listeners.Any(static listener => listener.Http3PreviewConfigured);
+        var previewEnabled = listeners.Any(static listener => listener.Http3.EnabledForTraffic);
         var support = Check();
         return new RuntimeHttp3SupportProjection(
             support.RuntimeSupport,
             support.QuicListenerSupported,
             support.QuicConnectionSupported,
             previewConfigured ? "preview" : "disabled",
-            EnabledForTraffic: false,
-            previewConfigured ? "request_handling_not_implemented" : "not_configured",
+            previewEnabled,
+            previewEnabled ? "preview_enabled" : previewConfigured ? "preview_configured_but_inactive" : "not_configured",
             UdpQuicListenerIdentityModeled: true);
     }
 

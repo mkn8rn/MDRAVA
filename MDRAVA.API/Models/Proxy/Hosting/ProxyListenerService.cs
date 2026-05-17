@@ -1,5 +1,7 @@
+#pragma warning disable CA1416
 using System.Collections.Concurrent;
 using System.Net;
+using System.Net.Quic;
 using System.Net.Sockets;
 using MDRAVA.API.Proxy.Acme;
 using MDRAVA.API.Proxy.Caching;
@@ -8,6 +10,7 @@ using MDRAVA.API.Proxy.Configuration.Storage;
 using MDRAVA.API.Proxy.Connections;
 using MDRAVA.API.Proxy.Forwarding;
 using MDRAVA.API.Proxy.Health;
+using MDRAVA.API.Proxy.Http3;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Observability;
 using MDRAVA.API.Proxy.Resilience;
@@ -33,6 +36,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
     private readonly CircuitBreakerStore _circuitBreakerStore;
     private readonly AcmeHttp01ChallengeResponder _acmeChallengeResponder;
     private readonly TlsConnectionAuthenticator _tlsAuthenticator;
+    private readonly IHttp3QuicListenerFactory _quicListenerFactory;
     private readonly ProxyMetrics _metrics;
     private readonly RequestIdGenerator _requestIdGenerator;
     private readonly AccessLogEmitter _accessLogEmitter;
@@ -46,6 +50,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
     private readonly SemaphoreSlim _reloadGate = new(1, 1);
     private readonly CancellationTokenSource _serviceStopping = new();
     private readonly Dictionary<string, ManagedListener> _listeners = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, ManagedQuicListener> _quicListeners = new(StringComparer.OrdinalIgnoreCase);
 
     public ProxyListenerService(
         IProxyConfigurationStore configurationStore,
@@ -62,6 +67,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
         CircuitBreakerStore circuitBreakerStore,
         AcmeHttp01ChallengeResponder acmeChallengeResponder,
         TlsConnectionAuthenticator tlsAuthenticator,
+        IHttp3QuicListenerFactory quicListenerFactory,
         ProxyMetrics metrics,
         RequestIdGenerator requestIdGenerator,
         AccessLogEmitter accessLogEmitter,
@@ -87,6 +93,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
         _circuitBreakerStore = circuitBreakerStore;
         _acmeChallengeResponder = acmeChallengeResponder;
         _tlsAuthenticator = tlsAuthenticator;
+        _quicListenerFactory = quicListenerFactory;
         _metrics = metrics;
         _requestIdGenerator = requestIdGenerator;
         _accessLogEmitter = accessLogEmitter;
@@ -112,8 +119,14 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
             var nextListeners = snapshot.Listeners
                 .Where(static listener => listener.Enabled && listener.TcpTrafficEnabled)
                 .ToDictionary(static listener => RuntimeListenerIdentity.From(listener).Key, StringComparer.OrdinalIgnoreCase);
+            var nextQuicListeners = snapshot.Listeners
+                .Where(static listener => listener.Enabled && listener.Http3.EnabledForTraffic)
+                .ToDictionary(static listener => listener.QuicIdentity!.Key, StringComparer.OrdinalIgnoreCase);
             var diff = DiffListeners(nextListeners);
+            var quicDiff = DiffQuicListeners(nextQuicListeners);
             Dictionary<string, ManagedListener> pending = new(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, ManagedQuicListener> pendingQuic = new(StringComparer.OrdinalIgnoreCase);
+            List<string> listenerErrors = [];
 
             try
             {
@@ -142,18 +155,54 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
                     false,
                     attemptedAt,
                     diff,
+                    quicDiff,
                     pending,
+                    pendingQuic,
                     [SafeError(exception)]);
                 UpdateRuntimeState(result);
                 _logger.LogWarning(exception, "Proxy listener reload failed while preparing new listeners.");
                 return result;
             }
 
+            foreach (var key in quicDiff.Added.Concat(quicDiff.Changed))
+            {
+                var listener = nextQuicListeners[key];
+                try
+                {
+                    var handle = await ManagedQuicListener.BindAsync(
+                        listener,
+                        snapshot,
+                        _quicListenerFactory,
+                        cancellationToken);
+                    pendingQuic.Add(key, handle);
+                    _metrics.QuicListenerStarted();
+                    _logger.LogInformation(
+                        "HTTP/3 preview QUIC listener {ListenerName} prepared on {Address}:{Port}",
+                        listener.Name,
+                        listener.Address,
+                        listener.Port);
+                }
+                catch (Exception exception) when (exception is QuicException or SocketException or IOException or InvalidOperationException or PlatformNotSupportedException)
+                {
+                    _metrics.QuicListenerStartFailed();
+                    _metrics.ListenerStartFailed();
+                    var error = $"quic:{listener.Name}:{SafeError(exception)}";
+                    listenerErrors.Add(error);
+                    pendingQuic.Add(key, ManagedQuicListener.Failed(listener, SafeError(exception)));
+                    _logger.LogWarning(exception, "HTTP/3 preview QUIC listener {ListenerName} failed to start.", listener.Name);
+                }
+            }
+
             ProxyConfigurationSnapshot activeSnapshot;
             Dictionary<string, ManagedListener> existingForResult;
+            Dictionary<string, ManagedQuicListener> existingQuicForResult;
             lock (_listeners)
             {
                 existingForResult = new Dictionary<string, ManagedListener>(_listeners, StringComparer.OrdinalIgnoreCase);
+            }
+            lock (_quicListeners)
+            {
+                existingQuicForResult = new Dictionary<string, ManagedQuicListener>(_quicListeners, StringComparer.OrdinalIgnoreCase);
             }
 
             try
@@ -166,19 +215,26 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
                 {
                     await handle.DisposeWithoutDrainAsync();
                 }
+                foreach (var handle in pendingQuic.Values)
+                {
+                    await handle.DisposeWithoutDrainAsync();
+                }
 
                 _metrics.ListenerReloadFailed();
                 var result = BuildReloadResult(
                     false,
                     attemptedAt,
                     diff,
+                    quicDiff,
                     pending,
+                    pendingQuic,
                     [SafeError(exception)]);
                 UpdateRuntimeState(result);
                 return result;
             }
 
             List<ManagedListener> oldHandles = [];
+            List<ManagedQuicListener> oldQuicHandles = [];
             lock (_listeners)
             {
                 foreach (var key in diff.Unchanged)
@@ -209,10 +265,44 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
                     }
                 }
             }
+            lock (_quicListeners)
+            {
+                foreach (var key in quicDiff.Unchanged)
+                {
+                    _quicListeners[key].Update(nextQuicListeners[key]);
+                }
+
+                foreach (var key in quicDiff.Changed)
+                {
+                    if (_quicListeners.TryGetValue(key, out var old))
+                    {
+                        oldQuicHandles.Add(old);
+                    }
+
+                    _quicListeners[key] = pendingQuic[key];
+                }
+
+                foreach (var key in quicDiff.Added)
+                {
+                    _quicListeners[key] = pendingQuic[key];
+                }
+
+                foreach (var key in quicDiff.Removed)
+                {
+                    if (_quicListeners.Remove(key, out var old))
+                    {
+                        oldQuicHandles.Add(old);
+                    }
+                }
+            }
 
             foreach (var key in diff.Added.Concat(diff.Changed))
             {
                 pending[key].Activate(this, _serviceStopping.Token);
+            }
+            foreach (var key in quicDiff.Added.Concat(quicDiff.Changed))
+            {
+                pendingQuic[key].Activate(this, _serviceStopping.Token);
             }
 
             foreach (var old in oldHandles)
@@ -220,16 +310,34 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
                 await old.StopAcceptingAsync(activeSnapshot.Limits.ShutdownGracePeriod, cancellationToken);
                 _metrics.ListenerDrained();
             }
+            foreach (var old in oldQuicHandles)
+            {
+                await old.StopAcceptingAsync(activeSnapshot.Limits.ShutdownGracePeriod, cancellationToken);
+                _metrics.ListenerDrained();
+            }
 
-            var success = BuildReloadResult(true, attemptedAt, diff, pending, [], existingForResult);
-            _metrics.ListenerReloadSucceeded(diff.Added.Count, diff.Removed.Count, diff.Changed.Count, diff.Unchanged.Count);
+            var success = BuildReloadResult(
+                true,
+                attemptedAt,
+                diff,
+                quicDiff,
+                pending,
+                pendingQuic,
+                listenerErrors,
+                existingForResult,
+                existingQuicForResult);
+            _metrics.ListenerReloadSucceeded(
+                diff.Added.Count + quicDiff.Added.Count,
+                diff.Removed.Count + quicDiff.Removed.Count,
+                diff.Changed.Count + quicDiff.Changed.Count,
+                diff.Unchanged.Count + quicDiff.Unchanged.Count);
             UpdateRuntimeState(success);
             _logger.LogInformation(
                 "Proxy listener reload applied: added={Added} removed={Removed} changed={Changed} unchanged={Unchanged}",
-                diff.Added.Count,
-                diff.Removed.Count,
-                diff.Changed.Count,
-                diff.Unchanged.Count);
+                diff.Added.Count + quicDiff.Added.Count,
+                diff.Removed.Count + quicDiff.Removed.Count,
+                diff.Changed.Count + quicDiff.Changed.Count,
+                diff.Unchanged.Count + quicDiff.Unchanged.Count);
             return success;
         }
         finally
@@ -240,13 +348,21 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
 
     public IReadOnlyList<ProxyListenerStatus> Snapshot()
     {
+        List<ProxyListenerStatus> statuses = [];
         lock (_listeners)
         {
-            return _listeners.Values
-                .Select(static listener => listener.Snapshot())
-                .OrderBy(static listener => listener.Name, StringComparer.OrdinalIgnoreCase)
-                .ToArray();
+            statuses.AddRange(_listeners.Values.Select(static listener => listener.Snapshot()));
         }
+
+        lock (_quicListeners)
+        {
+            statuses.AddRange(_quicListeners.Values.Select(static listener => listener.Snapshot()));
+        }
+
+        return statuses
+            .OrderBy(static listener => listener.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(static listener => listener.Kind, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -271,6 +387,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
         }
 
         ManagedListener[] listeners;
+        ManagedQuicListener[] quicListeners;
         await _reloadGate.WaitAsync(cancellationToken);
         try
         {
@@ -279,6 +396,11 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
                 listeners = _listeners.Values.ToArray();
                 _listeners.Clear();
             }
+            lock (_quicListeners)
+            {
+                quicListeners = _quicListeners.Values.ToArray();
+                _quicListeners.Clear();
+            }
         }
         finally
         {
@@ -286,6 +408,10 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
         }
 
         foreach (var listener in listeners)
+        {
+            await listener.StopAcceptingAsync(snapshot.Limits.ShutdownGracePeriod, shutdownToken);
+        }
+        foreach (var listener in quicListeners)
         {
             await listener.StopAcceptingAsync(snapshot.Limits.ShutdownGracePeriod, shutdownToken);
         }
@@ -338,28 +464,79 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
             unchanged.Order(StringComparer.OrdinalIgnoreCase).ToArray());
     }
 
+    private ListenerDiff DiffQuicListeners(IReadOnlyDictionary<string, RuntimeListener> nextListeners)
+    {
+        List<string> added = [];
+        List<string> removed = [];
+        List<string> changed = [];
+        List<string> unchanged = [];
+
+        lock (_quicListeners)
+        {
+            foreach (var key in nextListeners.Keys)
+            {
+                if (!_quicListeners.TryGetValue(key, out var existing))
+                {
+                    added.Add(key);
+                    continue;
+                }
+
+                if (existing.State != ProxyListenerState.Failed && CanReuseQuic(existing.Listener, nextListeners[key]))
+                {
+                    unchanged.Add(key);
+                }
+                else
+                {
+                    changed.Add(key);
+                }
+            }
+
+            foreach (var key in _quicListeners.Keys)
+            {
+                if (!nextListeners.ContainsKey(key))
+                {
+                    removed.Add(key);
+                }
+            }
+        }
+
+        return new ListenerDiff(
+            added.Order(StringComparer.OrdinalIgnoreCase).ToArray(),
+            removed.Order(StringComparer.OrdinalIgnoreCase).ToArray(),
+            changed.Order(StringComparer.OrdinalIgnoreCase).ToArray(),
+            unchanged.Order(StringComparer.OrdinalIgnoreCase).ToArray());
+    }
+
     private ProxyListenerReloadResult BuildReloadResult(
         bool succeeded,
         DateTimeOffset attemptedAt,
         ListenerDiff diff,
+        ListenerDiff quicDiff,
         IReadOnlyDictionary<string, ManagedListener> pending,
+        IReadOnlyDictionary<string, ManagedQuicListener> pendingQuic,
         IReadOnlyList<string> errors,
-        IReadOnlyDictionary<string, ManagedListener>? existing = null)
+        IReadOnlyDictionary<string, ManagedListener>? existing = null,
+        IReadOnlyDictionary<string, ManagedQuicListener>? existingQuic = null)
     {
         List<ProxyListenerReloadChange> changes = [];
         existing ??= _listeners;
+        existingQuic ??= _quicListeners;
         AddChanges(changes, "added", diff.Added, pending);
         AddChanges(changes, "removed", diff.Removed, existing);
         AddChanges(changes, "changed", diff.Changed, pending.Count == 0 ? _listeners : pending);
         AddChanges(changes, "unchanged", diff.Unchanged, existing);
+        AddQuicChanges(changes, "added", quicDiff.Added, pendingQuic);
+        AddQuicChanges(changes, "removed", quicDiff.Removed, existingQuic);
+        AddQuicChanges(changes, "changed", quicDiff.Changed, pendingQuic.Count == 0 ? _quicListeners : pendingQuic);
+        AddQuicChanges(changes, "unchanged", quicDiff.Unchanged, existingQuic);
 
         return new ProxyListenerReloadResult(
             succeeded,
             attemptedAt,
-            diff.Added.Count,
-            diff.Removed.Count,
-            diff.Changed.Count,
-            diff.Unchanged.Count,
+            diff.Added.Count + quicDiff.Added.Count,
+            diff.Removed.Count + quicDiff.Removed.Count,
+            diff.Changed.Count + quicDiff.Changed.Count,
+            diff.Unchanged.Count + quicDiff.Unchanged.Count,
             changes.OrderBy(static change => change.Name, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(static change => change.Action, StringComparer.OrdinalIgnoreCase)
                 .ToArray(),
@@ -390,10 +567,35 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
         }
     }
 
+    private static void AddQuicChanges(
+        List<ProxyListenerReloadChange> changes,
+        string action,
+        IReadOnlyList<string> keys,
+        IReadOnlyDictionary<string, ManagedQuicListener> handles)
+    {
+        foreach (var key in keys)
+        {
+            if (!handles.TryGetValue(key, out var handle))
+            {
+                continue;
+            }
+
+            var status = handle.Snapshot();
+            changes.Add(new ProxyListenerReloadChange(
+                action,
+                status.Name,
+                status.Identity,
+                status.BindKey,
+                status.State.ToString(),
+                status.LastError));
+        }
+    }
+
     private void UpdateRuntimeState(ProxyListenerReloadResult? lastReload)
     {
         var listeners = Snapshot();
         _metrics.SetActiveListeners(listeners.Count(static listener => listener.State == ProxyListenerState.Active));
+        _metrics.SetActiveQuicListeners(listeners.Count(static listener => listener.Kind == "quic" && listener.State == ProxyListenerState.Active));
         _runtimeState.ReplaceListeners(listeners, lastReload);
     }
 
@@ -442,6 +644,58 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
         {
             handle.MarkFailed(SafeError(exception));
             _logger.LogError(exception, "Proxy listener {ListenerName} stopped unexpectedly.", handle.Listener.Name);
+        }
+        finally
+        {
+            UpdateRuntimeState(null);
+        }
+    }
+
+    private async Task AcceptQuicLoopAsync(ManagedQuicListener handle, CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested && handle.ListenerHandle is not null)
+            {
+                QuicConnection connection;
+                try
+                {
+                    connection = await handle.ListenerHandle.AcceptConnectionAsync(cancellationToken);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (ObjectDisposedException)
+                {
+                    break;
+                }
+
+                _metrics.ConnectionAccepted();
+                var requestSnapshot = _configurationStore.Snapshot;
+                var requestListener = ResolveRequestListener(requestSnapshot, handle.Listener);
+                var admissionLease = _admission.TryAcquireClientConnection(requestSnapshot.Limits.MaxActiveClientConnections);
+                if (admissionLease is null)
+                {
+                    _metrics.ConnectionClosed();
+                    await connection.CloseAsync(0x100, CancellationToken.None);
+                    await connection.DisposeAsync();
+                    continue;
+                }
+
+                var connectionTask = RunQuicConnectionAsync(connection, requestSnapshot, requestListener, admissionLease, _shutdown.Token);
+                handle.AddConnectionTask(connectionTask);
+            }
+        }
+        catch (Exception exception) when (exception is QuicException or SocketException or IOException)
+        {
+            handle.MarkFailed(SafeError(exception));
+            _logger.LogWarning(exception, "HTTP/3 preview QUIC listener {ListenerName} stopped after transport failure.", handle.Listener.Name);
+        }
+        catch (Exception exception)
+        {
+            handle.MarkFailed(SafeError(exception));
+            _logger.LogError(exception, "HTTP/3 preview QUIC listener {ListenerName} stopped unexpectedly.", handle.Listener.Name);
         }
         finally
         {
@@ -501,11 +755,61 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
         }
     }
 
+    private async Task RunQuicConnectionAsync(
+        QuicConnection connection,
+        ProxyConfigurationSnapshot snapshot,
+        RuntimeListener listener,
+        AdmissionLease admissionLease,
+        CancellationToken cancellationToken)
+    {
+        using var ownedAdmission = admissionLease;
+        try
+        {
+            var http3Connection = new Http3PreviewConnection(
+                connection,
+                snapshot,
+                listener,
+                _routeMatcher,
+                _forwardedHeadersPolicy,
+                _routeActionPolicy,
+                _metrics,
+                _requestIdGenerator,
+                _accessLogEmitter,
+                _rateLimiter,
+                _connectionLogger);
+
+            await http3Connection.RunAsync(cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception) when (exception is QuicException or IOException)
+        {
+            _logger.LogDebug(exception, "HTTP/3 preview client connection ended with an I/O error.");
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "HTTP/3 preview client connection failed unexpectedly.");
+        }
+        finally
+        {
+            _metrics.ConnectionClosed();
+        }
+    }
+
     private static bool CanReuse(RuntimeListener current, RuntimeListener next)
     {
         return string.Equals(current.Address, next.Address, StringComparison.OrdinalIgnoreCase)
             && current.Port == next.Port
             && current.Transport == next.Transport;
+    }
+
+    private static bool CanReuseQuic(RuntimeListener current, RuntimeListener next)
+    {
+        return string.Equals(current.Address, next.Address, StringComparison.OrdinalIgnoreCase)
+            && current.Port == next.Port
+            && current.Transport == next.Transport
+            && current.ExperimentalHttp3 == next.ExperimentalHttp3;
     }
 
     private static RuntimeListener ResolveRequestListener(
@@ -526,7 +830,9 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
         return exception switch
         {
             SocketException socket => socket.SocketErrorCode.ToString(),
+            QuicException => "quic_error",
             IOException => "io_error",
+            PlatformNotSupportedException => "platform_not_supported",
             InvalidOperationException => "invalid_operation",
             _ => exception.GetType().Name
         };
@@ -698,9 +1004,202 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
                     _listener.Name,
                     identity.Key,
                     identity.BindKey,
+                    "tcp",
                     _listener.Address,
                     _listener.Port,
                     _listener.Transport.ToString().ToLowerInvariant(),
+                    identity.TlsEnabled,
+                    ListenerProtocolAdvertisement.ToConfigText(_listener.Protocols),
+                    _listener.Http3,
+                    _listener.Http2Limits.MaxConcurrentStreams,
+                    _listener.Http2Limits.MaxHeaderListBytes,
+                    _listener.Http2Limits.MaxFrameSize,
+                    _state,
+                    _connectionTasks.Count,
+                    _startedAtUtc,
+                    _stoppedAtUtc,
+                    _lastError);
+            }
+        }
+    }
+
+    private sealed class ManagedQuicListener
+    {
+        private readonly ConcurrentDictionary<Task, byte> _connectionTasks = new();
+        private readonly object _gate = new();
+        private RuntimeListener _listener;
+        private ProxyListenerState _state = ProxyListenerState.Starting;
+        private DateTimeOffset? _startedAtUtc;
+        private DateTimeOffset? _stoppedAtUtc;
+        private string? _lastError;
+        private Task? _acceptTask;
+
+        private ManagedQuicListener(RuntimeListener listener, QuicListener? listenerHandle)
+        {
+            _listener = listener;
+            ListenerHandle = listenerHandle;
+        }
+
+        public RuntimeListener Listener
+        {
+            get
+            {
+                lock (_gate)
+                {
+                    return _listener;
+                }
+            }
+        }
+
+        public ProxyListenerState State
+        {
+            get
+            {
+                lock (_gate)
+                {
+                    return _state;
+                }
+            }
+        }
+
+        public QuicListener? ListenerHandle { get; }
+
+        public static async ValueTask<ManagedQuicListener> BindAsync(
+            RuntimeListener listener,
+            ProxyConfigurationSnapshot snapshot,
+            IHttp3QuicListenerFactory factory,
+            CancellationToken cancellationToken)
+        {
+            var listenerHandle = await factory.ListenAsync(listener, snapshot, cancellationToken);
+            return new ManagedQuicListener(listener, listenerHandle);
+        }
+
+        public static ManagedQuicListener Failed(RuntimeListener listener, string error)
+        {
+            return new ManagedQuicListener(listener, null)
+            {
+                _state = ProxyListenerState.Failed,
+                _stoppedAtUtc = DateTimeOffset.UtcNow,
+                _lastError = error
+            };
+        }
+
+        public void Activate(ProxyListenerService owner, CancellationToken cancellationToken)
+        {
+            lock (_gate)
+            {
+                if (_acceptTask is not null || ListenerHandle is null || _state == ProxyListenerState.Failed)
+                {
+                    return;
+                }
+
+                _state = ProxyListenerState.Active;
+                _startedAtUtc = DateTimeOffset.UtcNow;
+                _stoppedAtUtc = null;
+                _lastError = null;
+                _acceptTask = Task.Run(() => owner.AcceptQuicLoopAsync(this, cancellationToken), CancellationToken.None);
+            }
+        }
+
+        public void Update(RuntimeListener listener)
+        {
+            lock (_gate)
+            {
+                _listener = listener;
+            }
+        }
+
+        public void AddConnectionTask(Task task)
+        {
+            _connectionTasks.TryAdd(task, 0);
+            _ = task.ContinueWith(
+                completed => _connectionTasks.TryRemove(completed, out _),
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+        }
+
+        public async ValueTask StopAcceptingAsync(TimeSpan drainGracePeriod, CancellationToken cancellationToken)
+        {
+            Task? acceptTask;
+            lock (_gate)
+            {
+                if (_state is not ProxyListenerState.Stopped and not ProxyListenerState.Failed)
+                {
+                    _state = ProxyListenerState.Draining;
+                }
+
+                acceptTask = _acceptTask;
+            }
+
+            if (ListenerHandle is not null)
+            {
+                await ListenerHandle.DisposeAsync();
+            }
+
+            if (acceptTask is not null)
+            {
+                try
+                {
+                    await acceptTask.WaitAsync(cancellationToken);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                }
+            }
+
+            var activeTasks = _connectionTasks.Keys.ToArray();
+            if (activeTasks.Length > 0)
+            {
+                var allConnections = Task.WhenAll(activeTasks);
+                var timeout = Task.Delay(drainGracePeriod, cancellationToken);
+                await Task.WhenAny(allConnections, timeout);
+            }
+
+            lock (_gate)
+            {
+                _state = ProxyListenerState.Stopped;
+                _stoppedAtUtc = DateTimeOffset.UtcNow;
+            }
+        }
+
+        public async ValueTask DisposeWithoutDrainAsync()
+        {
+            if (ListenerHandle is not null)
+            {
+                await ListenerHandle.DisposeAsync();
+            }
+
+            lock (_gate)
+            {
+                _state = ProxyListenerState.Stopped;
+                _stoppedAtUtc = DateTimeOffset.UtcNow;
+            }
+        }
+
+        public void MarkFailed(string error)
+        {
+            lock (_gate)
+            {
+                _state = ProxyListenerState.Failed;
+                _stoppedAtUtc = DateTimeOffset.UtcNow;
+                _lastError = error;
+            }
+        }
+
+        public ProxyListenerStatus Snapshot()
+        {
+            lock (_gate)
+            {
+                var identity = RuntimeQuicListenerIdentity.From(_listener);
+                return new ProxyListenerStatus(
+                    _listener.Name,
+                    identity.Key,
+                    identity.BindKey,
+                    "quic",
+                    _listener.Address,
+                    _listener.Port,
+                    "udp/quic",
                     identity.TlsEnabled,
                     ListenerProtocolAdvertisement.ToConfigText(_listener.Protocols),
                     _listener.Http3,

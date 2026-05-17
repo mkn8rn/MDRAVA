@@ -98,4 +98,11 @@ public sealed record ProxyMetricsSnapshot(
     IReadOnlyDictionary<string, long> Http2ProtocolErrors,
     long UpstreamHttp2Requests,
     long UpstreamHttp2AlpnFailures,
-    long UpstreamHttp2ProtocolErrors);
+    long UpstreamHttp2ProtocolErrors,
+    long Http3AcceptedConnections,
+    long Http3Requests,
+    IReadOnlyDictionary<string, long> Http3RejectedRequests,
+    IReadOnlyDictionary<string, long> Http3ProtocolErrors,
+    long QuicListenerStartSuccesses,
+    long QuicListenerStartFailures,
+    long ActiveQuicListeners);

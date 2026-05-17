@@ -4,6 +4,7 @@ public sealed record ProxyListenerStatus(
     string Name,
     string Identity,
     string BindKey,
+    string Kind,
     string Address,
     int Port,
     string Transport,

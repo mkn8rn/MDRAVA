@@ -101,11 +101,18 @@ public sealed class ProxyMetrics
     private long _upstreamHttp2Requests;
     private long _upstreamHttp2AlpnFailures;
     private long _upstreamHttp2ProtocolErrors;
+    private long _http3AcceptedConnections;
+    private long _http3Requests;
+    private long _quicListenerStartSuccesses;
+    private long _quicListenerStartFailures;
+    private long _activeQuicListeners;
     private readonly long[] _requestFailuresByKind = new long[FailureKinds.Length];
     private readonly ConcurrentDictionary<RequestSeriesKey, RequestSeriesCounter> _requestsByRoute = new();
     private readonly ConcurrentDictionary<string, RequestSeriesCounter> _retrySkippedByReason = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<UpstreamSelectionKey, RequestSeriesCounter> _upstreamSelectionsByUpstream = new();
     private readonly ConcurrentDictionary<string, RequestSeriesCounter> _http2ProtocolErrors = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, RequestSeriesCounter> _http3RejectedRequests = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, RequestSeriesCounter> _http3ProtocolErrors = new(StringComparer.Ordinal);
 
     public void ConnectionAccepted()
     {
@@ -451,6 +458,28 @@ public sealed class ProxyMetrics
         Interlocked.Increment(ref _upstreamHttp2ProtocolErrors);
     }
 
+    public void Http3ConnectionAccepted() => Interlocked.Increment(ref _http3AcceptedConnections);
+
+    public void Http3RequestReceived() => Interlocked.Increment(ref _http3Requests);
+
+    public void Http3RequestRejected(string reason)
+    {
+        var counter = _http3RejectedRequests.GetOrAdd(NormalizeLabel(reason), static _ => new RequestSeriesCounter());
+        Interlocked.Increment(ref counter.Count);
+    }
+
+    public void Http3ProtocolError(string reason)
+    {
+        var counter = _http3ProtocolErrors.GetOrAdd(NormalizeLabel(reason), static _ => new RequestSeriesCounter());
+        Interlocked.Increment(ref counter.Count);
+    }
+
+    public void QuicListenerStarted() => Interlocked.Increment(ref _quicListenerStartSuccesses);
+
+    public void QuicListenerStartFailed() => Interlocked.Increment(ref _quicListenerStartFailures);
+
+    public void SetActiveQuicListeners(long count) => Interlocked.Exchange(ref _activeQuicListeners, count);
+
     public ProxyMetricsSnapshot Snapshot()
     {
         Dictionary<string, long> failuresByKind = new(StringComparer.Ordinal);
@@ -492,6 +521,10 @@ public sealed class ProxyMetrics
             .ThenBy(static item => item.Scheme, StringComparer.Ordinal)
             .ToArray();
         var http2ProtocolErrors = _http2ProtocolErrors
+            .ToDictionary(static pair => pair.Key, static pair => Interlocked.Read(ref pair.Value.Count), StringComparer.Ordinal);
+        var http3RejectedRequests = _http3RejectedRequests
+            .ToDictionary(static pair => pair.Key, static pair => Interlocked.Read(ref pair.Value.Count), StringComparer.Ordinal);
+        var http3ProtocolErrors = _http3ProtocolErrors
             .ToDictionary(static pair => pair.Key, static pair => Interlocked.Read(ref pair.Value.Count), StringComparer.Ordinal);
 
         return new ProxyMetricsSnapshot(
@@ -592,7 +625,14 @@ public sealed class ProxyMetrics
             http2ProtocolErrors,
             Interlocked.Read(ref _upstreamHttp2Requests),
             Interlocked.Read(ref _upstreamHttp2AlpnFailures),
-            Interlocked.Read(ref _upstreamHttp2ProtocolErrors));
+            Interlocked.Read(ref _upstreamHttp2ProtocolErrors),
+            Interlocked.Read(ref _http3AcceptedConnections),
+            Interlocked.Read(ref _http3Requests),
+            http3RejectedRequests,
+            http3ProtocolErrors,
+            Interlocked.Read(ref _quicListenerStartSuccesses),
+            Interlocked.Read(ref _quicListenerStartFailures),
+            Interlocked.Read(ref _activeQuicListeners));
     }
 
     private static string StatusClass(int? statusCode)

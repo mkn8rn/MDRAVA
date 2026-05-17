@@ -46,7 +46,7 @@ public sealed class TlsConnectionAuthenticator
             CertificateRevocationCheckMode = X509RevocationMode.NoCheck,
             ApplicationProtocols = ListenerProtocolAdvertisement.BuildTcpAlpn(listener.Protocols),
             ServerCertificateSelectionCallback = (_, hostName) =>
-                SelectCertificate(snapshot, listener, hostName) ?? null!
+                SelectCertificateForHandshake(snapshot, listener, hostName) ?? null!
         };
 
         try
@@ -92,34 +92,26 @@ public sealed class TlsConnectionAuthenticator
         }
     }
 
-    private X509Certificate2? SelectCertificate(
+    private System.Security.Cryptography.X509Certificates.X509Certificate2? SelectCertificateForHandshake(
         ProxyConfigurationSnapshot snapshot,
         RuntimeListener listener,
         string? hostName)
     {
-        if (!string.IsNullOrWhiteSpace(hostName))
+        var certificate = TlsCertificateSelector.SelectCertificate(snapshot, listener, hostName);
+        if (certificate is null)
         {
-            foreach (var binding in listener.SniCertificates)
-            {
-                if (string.Equals(binding.HostName, hostName, StringComparison.OrdinalIgnoreCase)
-                    && snapshot.Certificates.TryGetValue(binding.CertificateId, out var certificate))
-                {
-                    return certificate.Certificate;
-                }
-            }
+            RecordNoCertificate(listener, hostName);
         }
 
-        if (!string.IsNullOrWhiteSpace(listener.DefaultCertificateId)
-            && snapshot.Certificates.TryGetValue(listener.DefaultCertificateId, out var defaultCertificate))
-        {
-            return defaultCertificate.Certificate;
-        }
+        return certificate;
+    }
 
+    private void RecordNoCertificate(RuntimeListener listener, string? hostName)
+    {
         _metrics.TlsNoCertificateForSni();
         _logger.LogDebug(
             "No TLS certificate matched SNI host {HostName} for listener {ListenerName}.",
             hostName ?? "<none>",
             listener.Name);
-        return null;
     }
 }

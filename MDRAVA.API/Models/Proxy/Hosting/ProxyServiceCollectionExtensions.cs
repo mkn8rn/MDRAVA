@@ -7,6 +7,7 @@ using MDRAVA.API.Proxy.Configuration.Storage;
 using MDRAVA.API.Proxy.Connections;
 using MDRAVA.API.Proxy.Forwarding;
 using MDRAVA.API.Proxy.Health;
+using MDRAVA.API.Proxy.Http3;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Observability;
 using MDRAVA.API.Proxy.Routing;
@@ -70,6 +71,7 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<ProxyForwarder>();
         services.AddSingleton<UpgradeForwarder>();
         services.AddSingleton<TlsConnectionAuthenticator>();
+        services.AddSingleton<IHttp3QuicListenerFactory, SystemHttp3QuicListenerFactory>();
         services.AddHostedService<ProxyConfigurationStartupService>();
         services.AddHostedService<AcmeRenewalService>();
         services.AddHostedService<UpstreamHealthCheckService>();

@@ -27,6 +27,13 @@ public static class ListenerProtocolAdvertisement
             : [];
     }
 
+    public static List<SslApplicationProtocol> BuildHttp3PreviewAlpn(RuntimeListenerProtocols protocols)
+    {
+        return protocols.HasHttp3Preview()
+            ? [new SslApplicationProtocol("h3")]
+            : [];
+    }
+
     public static string ToConfigText(RuntimeListenerProtocols protocols)
     {
         return protocols switch
