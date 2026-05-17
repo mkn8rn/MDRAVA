@@ -95,10 +95,14 @@ public sealed class ProxyMetrics
     private long _listenerStartFailures;
     private long _listenerDrainCount;
     private long _activeListeners;
+    private long _http2AcceptedConnections;
+    private long _http2Requests;
+    private long _activeHttp2Streams;
     private readonly long[] _requestFailuresByKind = new long[FailureKinds.Length];
     private readonly ConcurrentDictionary<RequestSeriesKey, RequestSeriesCounter> _requestsByRoute = new();
     private readonly ConcurrentDictionary<string, RequestSeriesCounter> _retrySkippedByReason = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<UpstreamSelectionKey, RequestSeriesCounter> _upstreamSelectionsByUpstream = new();
+    private readonly ConcurrentDictionary<string, RequestSeriesCounter> _http2ProtocolErrors = new(StringComparer.Ordinal);
 
     public void ConnectionAccepted()
     {
@@ -419,6 +423,20 @@ public sealed class ProxyMetrics
 
     public void SetActiveListeners(long count) => Interlocked.Exchange(ref _activeListeners, count);
 
+    public void Http2ConnectionAccepted() => Interlocked.Increment(ref _http2AcceptedConnections);
+
+    public void Http2RequestReceived() => Interlocked.Increment(ref _http2Requests);
+
+    public void Http2StreamStarted() => Interlocked.Increment(ref _activeHttp2Streams);
+
+    public void Http2StreamEnded() => Interlocked.Decrement(ref _activeHttp2Streams);
+
+    public void Http2ProtocolError(string reason)
+    {
+        var counter = _http2ProtocolErrors.GetOrAdd(NormalizeLabel(reason), static _ => new RequestSeriesCounter());
+        Interlocked.Increment(ref counter.Count);
+    }
+
     public ProxyMetricsSnapshot Snapshot()
     {
         Dictionary<string, long> failuresByKind = new(StringComparer.Ordinal);
@@ -458,6 +476,8 @@ public sealed class ProxyMetrics
             .ThenBy(static item => item.Upstream, StringComparer.Ordinal)
             .ThenBy(static item => item.Scheme, StringComparer.Ordinal)
             .ToArray();
+        var http2ProtocolErrors = _http2ProtocolErrors
+            .ToDictionary(static pair => pair.Key, static pair => Interlocked.Read(ref pair.Value.Count), StringComparer.Ordinal);
 
         return new ProxyMetricsSnapshot(
             Interlocked.Read(ref _acceptedConnections),
@@ -550,7 +570,11 @@ public sealed class ProxyMetrics
             Interlocked.Read(ref _listenerReloadUnchanged),
             Interlocked.Read(ref _listenerStartFailures),
             Interlocked.Read(ref _listenerDrainCount),
-            Interlocked.Read(ref _activeListeners));
+            Interlocked.Read(ref _activeListeners),
+            Interlocked.Read(ref _http2AcceptedConnections),
+            Interlocked.Read(ref _http2Requests),
+            Interlocked.Read(ref _activeHttp2Streams),
+            http2ProtocolErrors);
     }
 
     private static string StatusClass(int? statusCode)

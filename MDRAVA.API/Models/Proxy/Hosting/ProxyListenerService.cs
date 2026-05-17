@@ -702,12 +702,25 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
                     _listener.Port,
                     _listener.Transport.ToString().ToLowerInvariant(),
                     identity.TlsEnabled,
+                    ProtocolsText(_listener.Protocols),
+                    _listener.Http2Limits.MaxConcurrentStreams,
+                    _listener.Http2Limits.MaxHeaderListBytes,
+                    _listener.Http2Limits.MaxFrameSize,
                     _state,
                     _connectionTasks.Count,
                     _startedAtUtc,
                     _stoppedAtUtc,
                     _lastError);
             }
+        }
+
+        private static string ProtocolsText(RuntimeListenerProtocols protocols)
+        {
+            return protocols == RuntimeListenerProtocols.Http1AndHttp2
+                ? "http1AndHttp2"
+                : protocols == RuntimeListenerProtocols.Http2
+                    ? "http2"
+                    : "http1";
         }
     }
 }

@@ -15,4 +15,8 @@ public sealed record RuntimeListener(
     int ForwardingBufferBytes)
 {
     public RuntimeListenerIdentity Identity => RuntimeListenerIdentity.From(this);
+
+    public RuntimeListenerProtocols Protocols { get; init; } = RuntimeListenerProtocols.Http1;
+
+    public RuntimeHttp2Limits Http2Limits { get; init; } = RuntimeHttp2Limits.Default;
 }

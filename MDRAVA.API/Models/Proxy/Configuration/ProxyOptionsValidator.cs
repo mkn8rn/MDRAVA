@@ -55,6 +55,22 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
                 failures.Add($"{prefix}:Address must be an IP address for Phase 1.");
             }
 
+            var isHttp = string.Equals(listener.Transport, "http", StringComparison.OrdinalIgnoreCase);
+            var isHttps = string.Equals(listener.Transport, "https", StringComparison.OrdinalIgnoreCase);
+            if (!isHttp && !isHttps)
+            {
+                failures.Add($"{prefix}:Transport must be 'http' or 'https'.");
+            }
+
+            if (!IsListenerProtocols(listener.Protocols))
+            {
+                failures.Add($"{prefix}:Protocols must be 'http1', 'http2', or 'http1AndHttp2'.");
+            }
+            else if (EnablesHttp2(listener.Protocols) && !isHttps)
+            {
+                failures.Add($"{prefix}:HTTP/2 requires an HTTPS listener with ALPN; h2c is not supported.");
+            }
+
             if (listener.Port is < 1 or > 65535)
             {
                 failures.Add($"{prefix}:Port must be between 1 and 65535.");
@@ -83,6 +99,21 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
             if (listener.MaxChunkLineBytes is < 64 or > 16 * 1024)
             {
                 failures.Add($"{prefix}:MaxChunkLineBytes must be between 64 and 16384.");
+            }
+
+            if (listener.Http2MaxConcurrentStreams is < 1 or > 1000)
+            {
+                failures.Add($"{prefix}:Http2MaxConcurrentStreams must be between 1 and 1000.");
+            }
+
+            if (listener.Http2MaxHeaderListBytes is < 1024 or > 1024 * 1024)
+            {
+                failures.Add($"{prefix}:Http2MaxHeaderListBytes must be between 1024 and 1048576.");
+            }
+
+            if (listener.Http2MaxFrameSize is < 16 * 1024 or > 16 * 1024 * 1024 - 1)
+            {
+                failures.Add($"{prefix}:Http2MaxFrameSize must be between 16384 and 16777215.");
             }
 
             var bindKey = $"{listener.Address.Trim().ToLowerInvariant()}|{listener.Port}|{listener.Transport.Trim().ToLowerInvariant()}";
@@ -237,6 +268,19 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
     private static bool IsStaticResponseAction(string action)
     {
         return string.Equals(action, "staticResponse", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsListenerProtocols(string protocols)
+    {
+        return string.Equals(protocols, "http1", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(protocols, "http2", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(protocols, "http1AndHttp2", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool EnablesHttp2(string protocols)
+    {
+        return string.Equals(protocols, "http2", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(protocols, "http1AndHttp2", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsSupportedUpstreamScheme(string scheme)

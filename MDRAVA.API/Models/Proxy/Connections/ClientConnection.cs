@@ -1,11 +1,13 @@
 using System.Buffers;
 using System.Net.Sockets;
+using System.Net.Security;
 using System.Text;
 using MDRAVA.API.Proxy.Acme;
 using MDRAVA.API.Proxy.Caching;
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Forwarding;
 using MDRAVA.API.Proxy.Health;
+using MDRAVA.API.Proxy.Http2;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Observability;
 using MDRAVA.API.Proxy.Protocol;
@@ -97,22 +99,54 @@ public sealed class ClientConnection
 
         var transportStream = new NetworkStream(_socket, ownsSocket: true);
         Stream clientStream = transportStream;
+        TlsAuthenticationResult? tlsResult = null;
         if (_listener.Transport == RuntimeListenerTransport.Https)
         {
-            var tlsStream = await _tlsAuthenticator.AuthenticateAsync(
+            tlsResult = await _tlsAuthenticator.AuthenticateAsync(
                 transportStream,
                 _configurationSnapshot,
                 _listener,
                 cancellationToken);
-            if (tlsStream is null)
+            if (tlsResult is null)
             {
                 return;
             }
 
-            clientStream = tlsStream;
+            clientStream = tlsResult.Stream;
         }
 
         await using var ownedClientStream = clientStream;
+        if (tlsResult?.NegotiatedProtocol == SslApplicationProtocol.Http2)
+        {
+            var http2Connection = new Http2ClientConnection(
+                clientStream,
+                GetRemoteEndPoint(),
+                _configurationSnapshot,
+                _listener,
+                _routeMatcher,
+                _upstreamSelector,
+                _healthStore,
+                _forwarder,
+                _forwardedHeadersPolicy,
+                _routeActionPolicy,
+                _pathRewritePolicy,
+                _cacheStore,
+                _circuitBreakerStore,
+                _acmeChallengeResponder,
+                _metrics,
+                _requestIdGenerator,
+                _accessLogEmitter,
+                _rateLimiter,
+                _logger);
+            await http2Connection.RunAsync(cancellationToken);
+            return;
+        }
+
+        if (!_listener.Protocols.HasFlag(RuntimeListenerProtocols.Http1))
+        {
+            return;
+        }
+
         var maxRequestHeadBytes = Math.Min(_listener.MaxRequestHeadBytes, _configurationSnapshot.Limits.MaxRequestHeadBytes);
         var requestHeadBuffer = ArrayPool<byte>.Shared.Rent(maxRequestHeadBytes);
         var requestsProcessed = 0;

@@ -12,3 +12,4 @@ global using MDRAVA.API.Models.Observability;
 global using MDRAVA.API.Models.Protocol;
 global using MDRAVA.API.Models.Resilience;
 global using MDRAVA.API.Models.Routing;
+global using MDRAVA.API.Models.Tls;

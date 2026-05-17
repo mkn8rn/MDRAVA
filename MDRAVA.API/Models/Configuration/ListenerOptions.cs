@@ -12,6 +12,8 @@ public sealed class ListenerOptions
 
     public string Transport { get; init; } = "http";
 
+    public string Protocols { get; init; } = "http1";
+
     public string? DefaultCertificateId { get; init; }
 
     public List<SniCertificateOptions> SniCertificates { get; init; } = [];
@@ -25,4 +27,10 @@ public sealed class ListenerOptions
     public int MaxChunkLineBytes { get; init; } = 1024;
 
     public int ForwardingBufferBytes { get; init; } = 64 * 1024;
+
+    public int Http2MaxConcurrentStreams { get; init; } = 100;
+
+    public int Http2MaxHeaderListBytes { get; init; } = 32 * 1024;
+
+    public int Http2MaxFrameSize { get; init; } = 16 * 1024;
 }

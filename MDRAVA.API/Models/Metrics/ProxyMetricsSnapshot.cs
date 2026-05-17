@@ -91,4 +91,8 @@ public sealed record ProxyMetricsSnapshot(
     long ListenerReloadUnchanged,
     long ListenerStartFailures,
     long ListenerDrainCount,
-    long ActiveListeners);
+    long ActiveListeners,
+    long Http2AcceptedConnections,
+    long Http2Requests,
+    long ActiveHttp2Streams,
+    IReadOnlyDictionary<string, long> Http2ProtocolErrors);

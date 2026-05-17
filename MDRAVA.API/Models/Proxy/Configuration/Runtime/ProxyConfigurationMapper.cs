@@ -31,7 +31,14 @@ public static class ProxyConfigurationMapper
                 listener.MaxRequestHeadBytes,
                 listener.MaxResponseHeadBytes,
                 listener.MaxChunkLineBytes,
-                listener.ForwardingBufferBytes))
+                listener.ForwardingBufferBytes)
+            {
+                Protocols = ParseProtocols(listener.Protocols),
+                Http2Limits = new RuntimeHttp2Limits(
+                    listener.Http2MaxConcurrentStreams,
+                    listener.Http2MaxHeaderListBytes,
+                    listener.Http2MaxFrameSize)
+            })
             .ToArray();
 
         var routes = options.Routes
@@ -349,5 +356,15 @@ public static class ProxyConfigurationMapper
         return string.Equals(transport, "https", StringComparison.OrdinalIgnoreCase)
             ? RuntimeListenerTransport.Https
             : RuntimeListenerTransport.Http;
+    }
+
+    private static RuntimeListenerProtocols ParseProtocols(string protocols)
+    {
+        return protocols.Trim().ToLowerInvariant() switch
+        {
+            "http2" => RuntimeListenerProtocols.Http2,
+            "http1andhttp2" => RuntimeListenerProtocols.Http1AndHttp2,
+            _ => RuntimeListenerProtocols.Http1
+        };
     }
 }

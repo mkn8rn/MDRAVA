@@ -42,6 +42,18 @@ public sealed class PrometheusMetricsExporter
         AppendLabeledCounter(builder, "mdrava_client_connections_rejected_total", "Rejected downstream client connections by bounded reason.", proxy.ConnectionAdmissionRejections, new Label("reason", "admission_limit"));
 
         AppendCounter(builder, "mdrava_requests_total", "HTTP requests received by the dataplane.", proxy.TotalRequests);
+        AppendCounter(builder, "mdrava_http2_connections_accepted_total", "Accepted HTTP/2 downstream client connections.", proxy.Http2AcceptedConnections);
+        AppendCounter(builder, "mdrava_http2_requests_total", "HTTP/2 requests received by the dataplane.", proxy.Http2Requests);
+        AppendGauge(builder, "mdrava_http2_streams_active", "Currently active HTTP/2 streams.", proxy.ActiveHttp2Streams);
+        if (proxy.Http2ProtocolErrors.Count > 0)
+        {
+            AppendHelpAndType(builder, "mdrava_http2_protocol_errors_total", "HTTP/2 protocol errors by bounded reason.", "counter");
+            foreach (var error in proxy.Http2ProtocolErrors.OrderBy(static item => item.Key, StringComparer.Ordinal))
+            {
+                AppendSample(builder, "mdrava_http2_protocol_errors_total", error.Value, new Label("reason", error.Key));
+            }
+        }
+
         AppendRouteRequestCounters(builder, snapshot.Metrics, proxy.RequestsByRoute);
         AppendRequestRejectionCounters(builder, proxy);
 
