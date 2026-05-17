@@ -288,6 +288,21 @@ internal static class RouteDiagnosticsTests
         AssertFinding(result, "unsafe_upstream_tls_validation_disabled", "warning");
     }
 
+    public static void LintReportsUpstreamHttp3FinalLimitations()
+    {
+        var route = ProxyRoute(
+            "h3",
+            "diag.test",
+            "/h3",
+            scheme: "https",
+            upstreamProtocol: RuntimeUpstreamProtocol.Http3);
+        var service = CreateLintService(BaseOptions([route]));
+
+        var result = service.LintActive();
+
+        AssertFinding(result, "upstream_http3_one_request_per_connection", "info");
+    }
+
     public static void LintHandlesJsonAndYamlSubmittedConfigWithoutApplying()
     {
         var service = CreateLintService(BaseOptions([ProxyRoute("active", "active.test", "/")]), out var store);
@@ -481,7 +496,8 @@ internal static class RouteDiagnosticsTests
         ProxyRetryPolicyOptions? retry = null,
         UpstreamTlsOptions? upstreamTls = null,
         ProxyCircuitBreakerOptions? circuitBreaker = null,
-        ProxyPathRewriteOptions? pathRewrite = null)
+        ProxyPathRewriteOptions? pathRewrite = null,
+        string upstreamProtocol = RuntimeUpstreamProtocol.Http1)
     {
         return new ProxyRouteOptions
         {
@@ -496,6 +512,7 @@ internal static class RouteDiagnosticsTests
                 {
                     Name = "local",
                     Scheme = scheme,
+                    Protocol = upstreamProtocol,
                     Address = "127.0.0.1",
                     Port = upstreamPort,
                     UpstreamTls = upstreamTls ?? new UpstreamTlsOptions(),

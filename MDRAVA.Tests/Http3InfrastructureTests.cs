@@ -202,6 +202,49 @@ internal static class Http3InfrastructureTests
         AssertEx.Equal("streaming", statusProjection.RequestBodyMode);
     }
 
+    public static void FinalSupportProjectionReportsHttp3MatrixAndLimitations()
+    {
+        var options = ValidProxyOptions(Http3Listener("main", "http1AndHttp2", experimental: false));
+        options.Routes[0].Upstreams[0] = new UpstreamOptions
+        {
+            Name = "h3",
+            Scheme = "https",
+            Protocol = "http3",
+            Address = "upstream.test",
+            Port = 443
+        };
+        var snapshot = ProxyConfigurationMapper.ToRuntimeSnapshot(
+            options,
+            new ProxyOperationalOptions(),
+            new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),
+            1,
+            DateTimeOffset.UtcNow,
+            "memory",
+            [],
+            Discovery());
+
+        var projection = ProxyConfigurationMapper.ToProjection(snapshot).Http3;
+
+        AssertEx.Equal("default_enabled_for_eligible_tls_proxy_listeners", projection.ClientHttp3SupportLevel);
+        AssertEx.Equal("opt_in_https_quic_one_request_per_connection", projection.UpstreamHttp3SupportLevel);
+        AssertEx.True(projection.ClientProtocols.SequenceEqual(["http1", "http2", "http3"]));
+        AssertEx.True(projection.UpstreamProtocols.SequenceEqual(["http1", "http2", "http3"]));
+        AssertEx.True(projection.SupportedRouteActions.Contains("proxy", StringComparer.Ordinal));
+        AssertEx.True(projection.SupportedRouteActions.Contains("redirect", StringComparer.Ordinal));
+        AssertEx.True(projection.SupportedRouteActions.Contains("staticResponse", StringComparer.Ordinal));
+        AssertEx.True(projection.SupportedRouteActions.Contains("maintenance", StringComparer.Ordinal));
+        AssertEx.True(projection.SupportedPolicyFeatures.Contains("cache_get_head", StringComparer.Ordinal));
+        AssertEx.True(projection.SupportedPolicyFeatures.Contains("retry_circuit_safe_methods", StringComparer.Ordinal));
+        AssertEx.True(projection.SupportedPolicyFeatures.Contains("weighted_balancing", StringComparer.Ordinal));
+        AssertEx.True(projection.SupportedPolicyFeatures.Contains("health_checks", StringComparer.Ordinal));
+        AssertEx.True(projection.UnsupportedFeatures.Contains("h3c", StringComparer.Ordinal));
+        AssertEx.True(projection.UnsupportedFeatures.Contains("connect_over_http3", StringComparer.Ordinal));
+        AssertEx.True(projection.UnsupportedFeatures.Contains("websocket_over_http3", StringComparer.Ordinal));
+        AssertEx.True(projection.UnsupportedFeatures.Contains("upstream_http3_multiplexing", StringComparer.Ordinal));
+        AssertEx.Equal("one_request_per_connection", projection.UpstreamPoolingMode);
+        AssertEx.False(projection.UpstreamMultiplexingEnabled);
+    }
+
     public static void UpstreamProtocolAcceptsExplicitHttp3()
     {
         var options = ValidProxyOptions(

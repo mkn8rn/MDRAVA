@@ -54,6 +54,9 @@ public static class Http3RuntimeSupport
             DefaultEnablementState = defaultState,
             DefaultReadinessBlockers = blockers,
             AltSvcStateReason = AltSvcReason(altSvcConfigured, altSvcActive, previewEnabled, quicReady, runtimeListeners is not null),
+            UpstreamHttp3SupportLevel = upstreamHttp3Configured
+                ? "opt_in_https_quic_one_request_per_connection"
+                : "opt_in_https_quic_available",
             UpstreamHttp3Configured = upstreamHttp3Configured,
             UpstreamPoolingMode = upstreamHttp3Configured ? "one_request_per_connection" : "not_configured",
             UpstreamMultiplexingEnabled = false,

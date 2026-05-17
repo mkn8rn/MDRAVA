@@ -29,6 +29,37 @@ public sealed record RuntimeHttp3SupportProjection(
 
     public string RequestBodyMode { get; init; } = "streaming";
 
+    public string ClientHttp3SupportLevel { get; init; } = "default_enabled_for_eligible_tls_proxy_listeners";
+
+    public string UpstreamHttp3SupportLevel { get; init; } = "opt_in_https_quic";
+
+    public IReadOnlyList<string> ClientProtocols { get; init; } = ["http1", "http2", "http3"];
+
+    public IReadOnlyList<string> UpstreamProtocols { get; init; } = ["http1", "http2", "http3"];
+
+    public IReadOnlyList<string> SupportedRouteActions { get; init; } = ["proxy", "redirect", "staticResponse", "maintenance"];
+
+    public IReadOnlyList<string> SupportedPolicyFeatures { get; init; } =
+    [
+        "cache_get_head",
+        "retry_circuit_safe_methods",
+        "weighted_balancing",
+        "health_checks",
+        "path_rewrites",
+        "canonical_redirects",
+        "http_to_https_redirects",
+        "forwarded_headers",
+        "request_response_header_policies"
+    ];
+
+    public IReadOnlyList<string> UnsupportedFeatures { get; init; } =
+    [
+        "h3c",
+        "connect_over_http3",
+        "websocket_over_http3",
+        "upstream_http3_multiplexing"
+    ];
+
     public bool UpstreamHttp3Configured { get; init; }
 
     public string UpstreamPoolingMode { get; init; } = "not_configured";
