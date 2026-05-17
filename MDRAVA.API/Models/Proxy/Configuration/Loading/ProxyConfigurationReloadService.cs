@@ -1,6 +1,7 @@
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Configuration.Storage;
 using MDRAVA.API.Proxy.Caching;
+using MDRAVA.API.Proxy.Hosting;
 using MDRAVA.API.Proxy.Metrics;
 
 namespace MDRAVA.API.Proxy.Configuration.Loading;
@@ -11,6 +12,7 @@ public sealed class ProxyConfigurationReloadService : IProxyConfigurationReloadS
     private readonly IProxyConfigurationStore _store;
     private readonly ResponseCacheStore? _cacheStore;
     private readonly ProxyMetrics? _metrics;
+    private readonly IProxyListenerManager? _listenerManager;
     private readonly ILogger<ProxyConfigurationReloadService> _logger;
 
     public ProxyConfigurationReloadService(
@@ -18,12 +20,14 @@ public sealed class ProxyConfigurationReloadService : IProxyConfigurationReloadS
         IProxyConfigurationStore store,
         ResponseCacheStore? cacheStore,
         ProxyMetrics? metrics,
+        IProxyListenerManager? listenerManager,
         ILogger<ProxyConfigurationReloadService> logger)
     {
         _loader = loader;
         _store = store;
         _cacheStore = cacheStore;
         _metrics = metrics;
+        _listenerManager = listenerManager;
         _logger = logger;
     }
 
@@ -31,8 +35,18 @@ public sealed class ProxyConfigurationReloadService : IProxyConfigurationReloadS
         IProxyConfigurationLoader loader,
         IProxyConfigurationStore store,
         ResponseCacheStore? cacheStore,
+        ProxyMetrics? metrics,
         ILogger<ProxyConfigurationReloadService> logger)
-        : this(loader, store, cacheStore, null, logger)
+        : this(loader, store, cacheStore, metrics, null, logger)
+    {
+    }
+
+    public ProxyConfigurationReloadService(
+        IProxyConfigurationLoader loader,
+        IProxyConfigurationStore store,
+        ResponseCacheStore? cacheStore,
+        ILogger<ProxyConfigurationReloadService> logger)
+        : this(loader, store, cacheStore, null, null, logger)
     {
     }
 
@@ -69,7 +83,41 @@ public sealed class ProxyConfigurationReloadService : IProxyConfigurationReloadS
                 existing is null ? null : ProxyConfigurationMapper.ToProjection(existing));
         }
 
-        var snapshot = _store.Replace(loadResult.Snapshot);
+        ProxyListenerReloadResult? listenerReload = null;
+        ProxyConfigurationSnapshot snapshot;
+        if (_listenerManager is null)
+        {
+            snapshot = _store.Replace(loadResult.Snapshot);
+        }
+        else
+        {
+            listenerReload = await _listenerManager.ApplyReloadAsync(
+                loadResult.Snapshot,
+                candidate => _store.Replace(candidate),
+                cancellationToken);
+            if (!listenerReload.Succeeded)
+            {
+                _metrics?.ConfigReloadFailed();
+                var hasExisting = _store.TryGetSnapshot(out var existing);
+                return new ProxyConfigurationReloadResult(
+                    false,
+                    loadResult.SourceDirectory,
+                    loadResult.AttemptedAtUtc,
+                    hasExisting && existing is not null ? existing.Version : null,
+                    existing?.LoadedAtUtc,
+                    existing?.LoadedAtUtc,
+                    loadResult.Discovery,
+                    listenerReload.Errors,
+                    listenerReload.Errors.Select(static error => new ProxyConfigurationFileError(null, error)).ToArray(),
+                    existing is null ? null : ProxyConfigurationMapper.ToProjection(existing))
+                {
+                    ListenerReload = listenerReload
+                };
+            }
+
+            snapshot = _store.Snapshot;
+        }
+
         _metrics?.ConfigReloadSucceeded();
         _cacheStore?.Clear("reload");
         _logger.LogInformation(
@@ -87,7 +135,10 @@ public sealed class ProxyConfigurationReloadService : IProxyConfigurationReloadS
             loadResult.Discovery,
             [],
             [],
-            ProxyConfigurationMapper.ToProjection(snapshot));
+            ProxyConfigurationMapper.ToProjection(snapshot))
+        {
+            ListenerReload = listenerReload
+        };
     }
 
     public async ValueTask<ProxyConfigurationValidationResult> ValidateAsync(CancellationToken cancellationToken)

@@ -4,6 +4,7 @@ namespace MDRAVA.API.Proxy.Hosting;
 
 public sealed class ProxyRuntimeState
 {
+    private readonly object _gate = new();
     private int _isRunning;
     private string? _listenerName;
     private string? _endpoint;
@@ -13,45 +14,98 @@ public sealed class ProxyRuntimeState
     private int _isShuttingDown;
     private DateTimeOffset? _shutdownStartedAtUtc;
     private DateTimeOffset? _shutdownDeadlineUtc;
+    private IReadOnlyList<ProxyListenerStatus> _listeners = [];
+    private ProxyListenerReloadResult? _lastListenerReload;
 
     public ProxyRuntimeSnapshot Snapshot()
     {
-        return new ProxyRuntimeSnapshot(
-            Volatile.Read(ref _isRunning) == 1,
-            _listenerName,
-            _endpoint,
-            _startedAt,
-            _stoppedAt,
-            _lastError,
-            Volatile.Read(ref _isShuttingDown) == 1,
-            _shutdownStartedAtUtc,
-            _shutdownDeadlineUtc);
+        lock (_gate)
+        {
+            return new ProxyRuntimeSnapshot(
+                Volatile.Read(ref _isRunning) == 1,
+                _listenerName,
+                _endpoint,
+                _startedAt,
+                _stoppedAt,
+                _lastError,
+                Volatile.Read(ref _isShuttingDown) == 1,
+                _shutdownStartedAtUtc,
+                _shutdownDeadlineUtc)
+            {
+                Listeners = _listeners,
+                LastListenerReload = _lastListenerReload
+            };
+        }
     }
 
     public void MarkRunning(string listenerName, EndPoint endpoint)
     {
-        _listenerName = listenerName;
-        _endpoint = endpoint.ToString();
-        _startedAt = DateTimeOffset.UtcNow;
-        _stoppedAt = null;
-        _lastError = null;
-        Volatile.Write(ref _isShuttingDown, 0);
-        _shutdownStartedAtUtc = null;
-        _shutdownDeadlineUtc = null;
-        Volatile.Write(ref _isRunning, 1);
+        lock (_gate)
+        {
+            _listenerName = listenerName;
+            _endpoint = endpoint.ToString();
+            _startedAt = DateTimeOffset.UtcNow;
+            _stoppedAt = null;
+            _lastError = null;
+            Volatile.Write(ref _isShuttingDown, 0);
+            _shutdownStartedAtUtc = null;
+            _shutdownDeadlineUtc = null;
+            Volatile.Write(ref _isRunning, 1);
+        }
     }
 
     public void MarkStopped(string? error = null)
     {
-        _stoppedAt = DateTimeOffset.UtcNow;
-        _lastError = error;
-        Volatile.Write(ref _isRunning, 0);
+        lock (_gate)
+        {
+            _stoppedAt = DateTimeOffset.UtcNow;
+            _lastError = error;
+            Volatile.Write(ref _isRunning, 0);
+        }
     }
 
     public void MarkShuttingDown(DateTimeOffset startedAtUtc, DateTimeOffset deadlineUtc)
     {
-        _shutdownStartedAtUtc = startedAtUtc;
-        _shutdownDeadlineUtc = deadlineUtc;
-        Volatile.Write(ref _isShuttingDown, 1);
+        lock (_gate)
+        {
+            _shutdownStartedAtUtc = startedAtUtc;
+            _shutdownDeadlineUtc = deadlineUtc;
+            Volatile.Write(ref _isShuttingDown, 1);
+        }
+    }
+
+    public void ReplaceListeners(
+        IReadOnlyList<ProxyListenerStatus> listeners,
+        ProxyListenerReloadResult? lastReload)
+    {
+        lock (_gate)
+        {
+            _listeners = listeners;
+            _lastListenerReload = lastReload ?? _lastListenerReload;
+
+            var active = listeners.FirstOrDefault(static listener => listener.State == ProxyListenerState.Active);
+            if (active is not null)
+            {
+                _listenerName = active.Name;
+                _endpoint = $"{active.Address}:{active.Port}";
+                _startedAt = active.StartedAtUtc;
+                _stoppedAt = null;
+                _lastError = null;
+                Volatile.Write(ref _isRunning, 1);
+                Volatile.Write(ref _isShuttingDown, 0);
+                _shutdownStartedAtUtc = null;
+                _shutdownDeadlineUtc = null;
+                return;
+            }
+
+            _listenerName = null;
+            _endpoint = null;
+            _startedAt = null;
+            _stoppedAt = DateTimeOffset.UtcNow;
+            _lastError = listeners.Count == 0
+                ? "No configured proxy listener."
+                : listeners.FirstOrDefault(static listener => listener.State == ProxyListenerState.Failed)?.LastError;
+            Volatile.Write(ref _isRunning, 0);
+        }
     }
 }

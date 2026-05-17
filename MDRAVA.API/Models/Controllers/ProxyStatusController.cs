@@ -73,6 +73,10 @@ public sealed class ProxyStatusController : ControllerBase
             listenerCount,
             routeCount,
             _metrics.Snapshot(),
-            upstreams);
+            upstreams)
+        {
+            Listeners = runtime.Listeners,
+            LastListenerReload = runtime.LastListenerReload
+        };
     }
 }

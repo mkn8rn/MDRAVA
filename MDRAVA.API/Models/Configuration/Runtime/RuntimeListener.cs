@@ -12,4 +12,7 @@ public sealed record RuntimeListener(
     int MaxRequestHeadBytes,
     int MaxResponseHeadBytes,
     int MaxChunkLineBytes,
-    int ForwardingBufferBytes);
+    int ForwardingBufferBytes)
+{
+    public RuntimeListenerIdentity Identity => RuntimeListenerIdentity.From(this);
+}

@@ -108,6 +108,16 @@ public sealed class PrometheusMetricsExporter
 
         AppendLabeledCounter(builder, "mdrava_config_reloads_total", "Configuration reloads by result.", proxy.ConfigReloadSuccesses, new Label("result", "success"));
         AppendLabeledCounter(builder, "mdrava_config_reloads_total", null, proxy.ConfigReloadFailures, new Label("result", "failure"));
+        AppendLabeledCounter(builder, "mdrava_listener_reloads_total", "Proxy listener reload attempts by result.", proxy.ListenerReloadSuccesses, new Label("result", "success"));
+        AppendLabeledCounter(builder, "mdrava_listener_reloads_total", null, proxy.ListenerReloadFailures, new Label("result", "failure"));
+        AppendCounter(builder, "mdrava_listener_reload_attempts_total", "Proxy listener reload attempts.", proxy.ListenerReloadAttempts);
+        AppendLabeledCounter(builder, "mdrava_listener_reload_changes_total", "Proxy listener reload changes by bounded action.", proxy.ListenerReloadAdded, new Label("action", "added"));
+        AppendLabeledCounter(builder, "mdrava_listener_reload_changes_total", null, proxy.ListenerReloadRemoved, new Label("action", "removed"));
+        AppendLabeledCounter(builder, "mdrava_listener_reload_changes_total", null, proxy.ListenerReloadChanged, new Label("action", "changed"));
+        AppendLabeledCounter(builder, "mdrava_listener_reload_changes_total", null, proxy.ListenerReloadUnchanged, new Label("action", "unchanged"));
+        AppendCounter(builder, "mdrava_listener_start_failures_total", "Proxy listener start failures.", proxy.ListenerStartFailures);
+        AppendCounter(builder, "mdrava_listener_drains_total", "Proxy listener drains after reload removal or replacement.", proxy.ListenerDrainCount);
+        AppendGauge(builder, "mdrava_listeners_active", "Currently active proxy listeners.", proxy.ActiveListeners);
         AppendLabeledCounter(builder, "mdrava_admin_auth_total", "Admin authentication attempts by result.", proxy.AdminAuthSuccesses, new Label("result", "success"));
         AppendLabeledCounter(builder, "mdrava_admin_auth_total", null, proxy.AdminAuthFailures, new Label("result", "failure"));
         AppendLabeledCounter(builder, "mdrava_acme_renewals_total", "ACME renewal attempts by result.", proxy.AcmeRenewalAttempts, new Label("result", "attempt"));

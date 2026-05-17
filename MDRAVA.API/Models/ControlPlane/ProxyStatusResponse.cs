@@ -17,4 +17,9 @@ public sealed record ProxyStatusResponse(
     int ConfiguredListeners,
     int ConfiguredRoutes,
     ProxyMetricsSnapshot Metrics,
-    IReadOnlyList<ProxyUpstreamStatusResponse> Upstreams);
+    IReadOnlyList<ProxyUpstreamStatusResponse> Upstreams)
+{
+    public IReadOnlyList<ProxyListenerStatus> Listeners { get; init; } = [];
+
+    public ProxyListenerReloadResult? LastListenerReload { get; init; }
+}

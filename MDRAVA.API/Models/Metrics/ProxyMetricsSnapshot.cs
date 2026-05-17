@@ -81,4 +81,14 @@ public sealed record ProxyMetricsSnapshot(
     long CircuitClosed,
     long CircuitRejections,
     long NoAvailableUpstreamFailures,
-    IReadOnlyList<ProxyUpstreamSelectionSnapshot> UpstreamSelectionsByUpstream);
+    IReadOnlyList<ProxyUpstreamSelectionSnapshot> UpstreamSelectionsByUpstream,
+    long ListenerReloadAttempts,
+    long ListenerReloadSuccesses,
+    long ListenerReloadFailures,
+    long ListenerReloadAdded,
+    long ListenerReloadRemoved,
+    long ListenerReloadChanged,
+    long ListenerReloadUnchanged,
+    long ListenerStartFailures,
+    long ListenerDrainCount,
+    long ActiveListeners);

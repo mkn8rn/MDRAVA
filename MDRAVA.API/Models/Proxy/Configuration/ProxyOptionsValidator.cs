@@ -34,6 +34,8 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
             failures.Add("Proxy:Listeners must contain at least one listener.");
         }
 
+        HashSet<string> listenerNames = new(StringComparer.OrdinalIgnoreCase);
+        HashSet<string> listenerBinds = new(StringComparer.OrdinalIgnoreCase);
         for (var index = 0; index < options.Listeners.Count; index++)
         {
             var listener = options.Listeners[index];
@@ -42,6 +44,10 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
             if (string.IsNullOrWhiteSpace(listener.Name))
             {
                 failures.Add($"{prefix}:Name is required.");
+            }
+            else if (!listenerNames.Add(listener.Name))
+            {
+                failures.Add($"{prefix}:Name '{listener.Name}' is duplicated.");
             }
 
             if (!IPAddress.TryParse(listener.Address, out _))
@@ -77,6 +83,12 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
             if (listener.MaxChunkLineBytes is < 64 or > 16 * 1024)
             {
                 failures.Add($"{prefix}:MaxChunkLineBytes must be between 64 and 16384.");
+            }
+
+            var bindKey = $"{listener.Address.Trim().ToLowerInvariant()}|{listener.Port}|{listener.Transport.Trim().ToLowerInvariant()}";
+            if (listener.Enabled && !listenerBinds.Add(bindKey))
+            {
+                failures.Add($"{prefix}:Listener bind {listener.Address}:{listener.Port}/{listener.Transport} is duplicated.");
             }
         }
 

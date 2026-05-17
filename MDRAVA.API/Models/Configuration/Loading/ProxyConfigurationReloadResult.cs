@@ -12,4 +12,7 @@ public sealed record ProxyConfigurationReloadResult(
     ProxyConfigurationDiscovery Discovery,
     IReadOnlyList<string> Errors,
     IReadOnlyList<ProxyConfigurationFileError> FileErrors,
-    ProxyConfigurationProjection? ActiveConfiguration);
+    ProxyConfigurationProjection? ActiveConfiguration)
+{
+    public ProxyListenerReloadResult? ListenerReload { get; init; }
+}

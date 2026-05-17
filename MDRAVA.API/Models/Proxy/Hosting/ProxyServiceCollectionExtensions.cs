@@ -34,6 +34,8 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<IProxyConfigurationNormalizer, ProxyConfigurationNormalizer>();
         services.AddSingleton<IProxyConfigurationStore, ProxyConfigurationStore>();
         services.AddSingleton<IProxyConfigurationLoader, ProxyConfigurationLoader>();
+        services.AddSingleton<ProxyListenerService>();
+        services.AddSingleton<IProxyListenerManager>(static services => services.GetRequiredService<ProxyListenerService>());
         services.AddSingleton<IProxyConfigurationReloadService, ProxyConfigurationReloadService>();
         services.AddSingleton<ProxyMetrics>();
         services.AddSingleton<PrometheusMetricsExporter>();
@@ -71,7 +73,7 @@ public static class ProxyServiceCollectionExtensions
         services.AddHostedService<ProxyConfigurationStartupService>();
         services.AddHostedService<AcmeRenewalService>();
         services.AddHostedService<UpstreamHealthCheckService>();
-        services.AddHostedService<ProxyListenerService>();
+        services.AddHostedService(static services => services.GetRequiredService<ProxyListenerService>());
 
         return services;
     }

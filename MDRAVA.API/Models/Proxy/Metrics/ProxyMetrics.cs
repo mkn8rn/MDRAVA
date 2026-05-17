@@ -85,6 +85,16 @@ public sealed class ProxyMetrics
     private long _circuitClosed;
     private long _circuitRejections;
     private long _noAvailableUpstreamFailures;
+    private long _listenerReloadAttempts;
+    private long _listenerReloadSuccesses;
+    private long _listenerReloadFailures;
+    private long _listenerReloadAdded;
+    private long _listenerReloadRemoved;
+    private long _listenerReloadChanged;
+    private long _listenerReloadUnchanged;
+    private long _listenerStartFailures;
+    private long _listenerDrainCount;
+    private long _activeListeners;
     private readonly long[] _requestFailuresByKind = new long[FailureKinds.Length];
     private readonly ConcurrentDictionary<RequestSeriesKey, RequestSeriesCounter> _requestsByRoute = new();
     private readonly ConcurrentDictionary<string, RequestSeriesCounter> _retrySkippedByReason = new(StringComparer.Ordinal);
@@ -390,6 +400,25 @@ public sealed class ProxyMetrics
 
     public void CircuitRejected(object _) => Interlocked.Increment(ref _circuitRejections);
 
+    public void ListenerReloadAttempted() => Interlocked.Increment(ref _listenerReloadAttempts);
+
+    public void ListenerReloadSucceeded(int added, int removed, int changed, int unchanged)
+    {
+        Interlocked.Increment(ref _listenerReloadSuccesses);
+        Interlocked.Add(ref _listenerReloadAdded, added);
+        Interlocked.Add(ref _listenerReloadRemoved, removed);
+        Interlocked.Add(ref _listenerReloadChanged, changed);
+        Interlocked.Add(ref _listenerReloadUnchanged, unchanged);
+    }
+
+    public void ListenerReloadFailed() => Interlocked.Increment(ref _listenerReloadFailures);
+
+    public void ListenerStartFailed() => Interlocked.Increment(ref _listenerStartFailures);
+
+    public void ListenerDrained() => Interlocked.Increment(ref _listenerDrainCount);
+
+    public void SetActiveListeners(long count) => Interlocked.Exchange(ref _activeListeners, count);
+
     public ProxyMetricsSnapshot Snapshot()
     {
         Dictionary<string, long> failuresByKind = new(StringComparer.Ordinal);
@@ -511,7 +540,17 @@ public sealed class ProxyMetrics
             Interlocked.Read(ref _circuitClosed),
             Interlocked.Read(ref _circuitRejections),
             Interlocked.Read(ref _noAvailableUpstreamFailures),
-            upstreamSelectionsByUpstream);
+            upstreamSelectionsByUpstream,
+            Interlocked.Read(ref _listenerReloadAttempts),
+            Interlocked.Read(ref _listenerReloadSuccesses),
+            Interlocked.Read(ref _listenerReloadFailures),
+            Interlocked.Read(ref _listenerReloadAdded),
+            Interlocked.Read(ref _listenerReloadRemoved),
+            Interlocked.Read(ref _listenerReloadChanged),
+            Interlocked.Read(ref _listenerReloadUnchanged),
+            Interlocked.Read(ref _listenerStartFailures),
+            Interlocked.Read(ref _listenerDrainCount),
+            Interlocked.Read(ref _activeListeners));
     }
 
     private static string StatusClass(int? statusCode)

@@ -9,4 +9,9 @@ public sealed record ProxyRuntimeSnapshot(
     string? LastError,
     bool IsShuttingDown = false,
     DateTimeOffset? ShutdownStartedAtUtc = null,
-    DateTimeOffset? ShutdownDeadlineUtc = null);
+    DateTimeOffset? ShutdownDeadlineUtc = null)
+{
+    public IReadOnlyList<ProxyListenerStatus> Listeners { get; init; } = [];
+
+    public ProxyListenerReloadResult? LastListenerReload { get; init; }
+}
