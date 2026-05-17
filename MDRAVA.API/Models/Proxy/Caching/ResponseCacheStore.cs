@@ -26,6 +26,7 @@ public sealed class ResponseCacheStore
     private long _approximateBytes;
     private long _hits;
     private long _misses;
+    private long _stores;
     private long _evictions;
     private long _storeRejections;
     private DateTimeOffset? _lastClearedAtUtc;
@@ -145,6 +146,7 @@ public sealed class ResponseCacheStore
 
             _entries[key] = entry;
             _approximateBytes += sizeBytes;
+            _stores++;
             EvictRouteOverCapacity(route.Name, route.Cache.MaxTotalBytes);
         }
     }
@@ -182,6 +184,7 @@ public sealed class ResponseCacheStore
                 _approximateBytes,
                 _hits,
                 _misses,
+                _stores,
                 _evictions,
                 _storeRejections,
                 _lastClearedAtUtc,

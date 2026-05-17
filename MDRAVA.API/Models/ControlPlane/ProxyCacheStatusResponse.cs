@@ -5,6 +5,7 @@ public sealed record ProxyCacheStatusResponse(
     long ApproximateBytes,
     long HitCount,
     long MissCount,
+    long StoreCount,
     long EvictionCount,
     long StoreRejectionCount,
     DateTimeOffset? LastClearedAtUtc,

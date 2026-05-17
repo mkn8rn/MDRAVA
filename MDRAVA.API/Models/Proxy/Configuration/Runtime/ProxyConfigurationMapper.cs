@@ -81,8 +81,12 @@ public static class ProxyConfigurationMapper
 
         var adminSecurity = AdminSecurityTokenResolver.ToRuntimeOptions(operationalOptions.Admin);
         var acme = ToRuntimeAcmeOptions(operationalOptions.Acme);
+        var metrics = ToRuntimeMetricsOptions(operationalOptions.Metrics);
 
-        return new ProxyConfigurationSnapshot(version, loadedAtUtc, sourceDirectory, sourceFiles, discovery, adminSecurity, acme, timeouts, connectionLimits, observability, limits, forwardedHeaders, certificates, listeners, routes);
+        return new ProxyConfigurationSnapshot(version, loadedAtUtc, sourceDirectory, sourceFiles, discovery, adminSecurity, acme, timeouts, connectionLimits, observability, limits, forwardedHeaders, certificates, listeners, routes)
+        {
+            Metrics = metrics
+        };
     }
 
     public static ProxyConfigurationProjection ToProjection(ProxyConfigurationSnapshot snapshot)
@@ -135,7 +139,10 @@ public static class ProxyConfigurationMapper
                 .OrderBy(static certificate => certificate.Id, StringComparer.OrdinalIgnoreCase)
                 .ToArray(),
             snapshot.Listeners,
-            snapshot.Routes);
+            snapshot.Routes)
+        {
+            Metrics = snapshot.Metrics
+        };
     }
 
     public static RuntimeAcmeOptions ToRuntimeAcmeOptions(ProxyAcmeOptions options)
@@ -164,6 +171,17 @@ public static class ProxyConfigurationMapper
                         .ToArray(),
                     certificate.RenewBeforeDays ?? options.RenewBeforeDays))
                 .ToArray());
+    }
+
+    public static RuntimeMetricsOptions ToRuntimeMetricsOptions(ProxyMetricsOptions options)
+    {
+        return new RuntimeMetricsOptions(
+            options.Enabled,
+            RuntimeMetricsOptions.FixedAdminEndpointPath,
+            ProtectedByAdminAuth: true,
+            options.IncludePerRouteLabels,
+            options.IncludePerUpstreamLabels,
+            options.PublicMetricsEnabled);
     }
 
     public static string ResolveAcmeDirectoryUrl(ProxyAcmeOptions options)
@@ -265,7 +283,10 @@ public static class ProxyConfigurationMapper
                 route.Overrides.MaxRequestBodyBytes ?? operationalOptions.Limits.MaxRequestBodyBytes,
                 TimeSpan.FromMilliseconds(route.Overrides.ClientRequestHeadTimeoutMs ?? operationalOptions.Timeouts.ClientRequestHeadTimeoutMs),
                 TimeSpan.FromMilliseconds(route.Overrides.UpstreamResponseHeadTimeoutMs ?? operationalOptions.Timeouts.UpstreamResponseHeadTimeoutMs),
-                route.Overrides.AccessLogEnabled ?? operationalOptions.Observability.AccessLogEnabled));
+                route.Overrides.AccessLogEnabled ?? operationalOptions.Observability.AccessLogEnabled))
+        {
+            SiteName = route.SiteName
+        };
     }
 
     private static RuntimeRouteAction ParseAction(string action)

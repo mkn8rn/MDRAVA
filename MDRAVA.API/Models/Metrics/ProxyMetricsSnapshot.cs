@@ -64,4 +64,12 @@ public sealed record ProxyMetricsSnapshot(
     long RateLimitedUpgrades,
     long RequestBodySizeRejections,
     long ParserLimitRejections,
-    IReadOnlyDictionary<string, long> RequestFailuresByKind);
+    IReadOnlyDictionary<string, long> RequestFailuresByKind,
+    IReadOnlyList<ProxyRequestSeriesSnapshot> RequestsByRoute,
+    long ConfigReloadSuccesses,
+    long ConfigReloadFailures,
+    long AdminAuthSuccesses,
+    long AdminAuthFailures,
+    long AcmeRenewalAttempts,
+    long AcmeRenewalSuccesses,
+    long AcmeRenewalFailures);

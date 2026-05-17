@@ -52,6 +52,12 @@ public sealed class AccessLogEmitter
             _metrics.RequestFailed(context.FailureKind);
         }
 
+        _metrics.RequestCompleted(
+            context.SiteName,
+            context.RouteName,
+            context.RouteAction,
+            context.ResponseStatusCode);
+
         if (!accessLogEnabled)
         {
             return;

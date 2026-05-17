@@ -31,6 +31,7 @@ public static class ProxyOperationalOptionsValidator
         ValidateCertificates(failures, options.Certificates);
         ValidateAdmin(failures, options.Admin);
         ValidateAcme(failures, options.Acme, options.Certificates);
+        ValidateMetrics(failures, options.Metrics);
         return failures;
     }
 
@@ -315,6 +316,14 @@ public static class ProxyOperationalOptionsValidator
             && !AdminSecurityTokenResolver.IsAuthenticationEnabled(options))
         {
             failures.Add("Proxy admin Urls includes a non-local bind address, so Admin:RequireAuthentication must be true with a configured token.");
+        }
+    }
+
+    private static void ValidateMetrics(List<string> failures, ProxyMetricsOptions options)
+    {
+        if (options.PublicMetricsEnabled)
+        {
+            failures.Add("Proxy metrics PublicMetricsEnabled is not supported in Phase 17; use the protected /admin/proxy/metrics endpoint.");
         }
     }
 

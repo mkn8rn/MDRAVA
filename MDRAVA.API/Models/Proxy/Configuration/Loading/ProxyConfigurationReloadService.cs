@@ -1,6 +1,7 @@
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Configuration.Storage;
 using MDRAVA.API.Proxy.Caching;
+using MDRAVA.API.Proxy.Metrics;
 
 namespace MDRAVA.API.Proxy.Configuration.Loading;
 
@@ -9,18 +10,30 @@ public sealed class ProxyConfigurationReloadService : IProxyConfigurationReloadS
     private readonly IProxyConfigurationLoader _loader;
     private readonly IProxyConfigurationStore _store;
     private readonly ResponseCacheStore? _cacheStore;
+    private readonly ProxyMetrics? _metrics;
     private readonly ILogger<ProxyConfigurationReloadService> _logger;
 
     public ProxyConfigurationReloadService(
         IProxyConfigurationLoader loader,
         IProxyConfigurationStore store,
         ResponseCacheStore? cacheStore,
+        ProxyMetrics? metrics,
         ILogger<ProxyConfigurationReloadService> logger)
     {
         _loader = loader;
         _store = store;
         _cacheStore = cacheStore;
+        _metrics = metrics;
         _logger = logger;
+    }
+
+    public ProxyConfigurationReloadService(
+        IProxyConfigurationLoader loader,
+        IProxyConfigurationStore store,
+        ResponseCacheStore? cacheStore,
+        ILogger<ProxyConfigurationReloadService> logger)
+        : this(loader, store, cacheStore, null, logger)
+    {
     }
 
     public ProxyConfigurationReloadService(
@@ -36,6 +49,7 @@ public sealed class ProxyConfigurationReloadService : IProxyConfigurationReloadS
         var loadResult = await _loader.LoadAsync(cancellationToken);
         if (!loadResult.Succeeded || loadResult.Snapshot is null)
         {
+            _metrics?.ConfigReloadFailed();
             _logger.LogWarning(
                 "Proxy configuration reload failed from {SourcePath}: {Errors}",
                 loadResult.SourceDirectory,
@@ -56,6 +70,7 @@ public sealed class ProxyConfigurationReloadService : IProxyConfigurationReloadS
         }
 
         var snapshot = _store.Replace(loadResult.Snapshot);
+        _metrics?.ConfigReloadSucceeded();
         _cacheStore?.Clear("reload");
         _logger.LogInformation(
             "Proxy configuration version {Version} loaded from {SourcePath}",

@@ -6,6 +6,8 @@ public sealed class ProxyOperationalOptions
 
     public ProxyAcmeOptions Acme { get; init; } = new();
 
+    public ProxyMetricsOptions Metrics { get; init; } = new();
+
     public ProxyTimeoutOptions Timeouts { get; init; } = new();
 
     public ProxyConnectionOptions Connections { get; init; } = new();

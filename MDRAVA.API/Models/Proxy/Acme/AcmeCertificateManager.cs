@@ -1,5 +1,6 @@
 using MDRAVA.API.Proxy.Configuration.Paths;
 using MDRAVA.API.Proxy.Configuration.Storage;
+using MDRAVA.API.Proxy.Metrics;
 
 namespace MDRAVA.API.Proxy.Acme;
 
@@ -11,6 +12,7 @@ public sealed class AcmeCertificateManager
     private readonly AcmeChallengeStore _challengeStore;
     private readonly AcmeCertificateStatusStore _statusStore;
     private readonly TimeProvider _timeProvider;
+    private readonly ProxyMetrics? _metrics;
     private readonly ILogger<AcmeCertificateManager> _logger;
 
     public AcmeCertificateManager(
@@ -20,6 +22,7 @@ public sealed class AcmeCertificateManager
         AcmeChallengeStore challengeStore,
         AcmeCertificateStatusStore statusStore,
         TimeProvider timeProvider,
+        ProxyMetrics? metrics,
         ILogger<AcmeCertificateManager> logger)
     {
         _configurationStore = configurationStore;
@@ -28,7 +31,20 @@ public sealed class AcmeCertificateManager
         _challengeStore = challengeStore;
         _statusStore = statusStore;
         _timeProvider = timeProvider;
+        _metrics = metrics;
         _logger = logger;
+    }
+
+    public AcmeCertificateManager(
+        IProxyConfigurationStore configurationStore,
+        IMdravaDataDirectoryProvider dataDirectoryProvider,
+        IAcmeCertificateIssuer issuer,
+        AcmeChallengeStore challengeStore,
+        AcmeCertificateStatusStore statusStore,
+        TimeProvider timeProvider,
+        ILogger<AcmeCertificateManager> logger)
+        : this(configurationStore, dataDirectoryProvider, issuer, challengeStore, statusStore, timeProvider, null, logger)
+    {
     }
 
     public async ValueTask CheckRenewalsAsync(CancellationToken cancellationToken)
@@ -84,6 +100,7 @@ public sealed class AcmeCertificateManager
         }
 
         var attemptStartedAtUtc = nowUtc;
+        _metrics?.AcmeRenewalAttempted();
         _statusStore.Upsert(CreateStatus(snapshot, certificateOptions, nowUtc, "attempting", null, null) with
         {
             LastAttemptAtUtc = attemptStartedAtUtc
@@ -107,6 +124,7 @@ public sealed class AcmeCertificateManager
 
         if (!result.Succeeded || result.PfxBytes is null)
         {
+            _metrics?.AcmeRenewalFailed();
             var nextAttempt = attemptStartedAtUtc.AddMinutes(snapshot.Acme.RetryAfterMinutes);
             _logger.LogWarning(
                 "ACME renewal for certificate {CertificateId} failed: {ErrorSummary}",
@@ -131,6 +149,7 @@ public sealed class AcmeCertificateManager
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
+            _metrics?.AcmeRenewalFailed();
             var nextAttempt = attemptStartedAtUtc.AddMinutes(snapshot.Acme.RetryAfterMinutes);
             _statusStore.Upsert(CreateStatus(snapshot, certificateOptions, nowUtc, "failed", SafeError(exception.Message), nextAttempt) with
             {
@@ -141,6 +160,7 @@ public sealed class AcmeCertificateManager
         }
 
         ReplaceCertificate(renewedCertificate);
+        _metrics?.AcmeRenewalSucceeded();
         var refreshedSnapshot = _configurationStore.Snapshot;
         _statusStore.Upsert(CreateStatus(refreshedSnapshot, certificateOptions, nowUtc, "succeeded", null, CalculateRenewalDueAt(renewedCertificate, certificateOptions)) with
         {

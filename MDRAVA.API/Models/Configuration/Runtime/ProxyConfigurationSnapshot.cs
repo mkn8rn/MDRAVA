@@ -27,4 +27,6 @@ public sealed record ProxyConfigurationSnapshot(
     {
         return Listeners.First(static listener => listener.Enabled);
     }
+
+    public RuntimeMetricsOptions Metrics { get; init; } = RuntimeMetricsOptions.Default;
 }

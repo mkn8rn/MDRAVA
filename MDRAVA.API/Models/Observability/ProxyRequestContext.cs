@@ -43,6 +43,10 @@ public sealed class ProxyRequestContext
 
     public string? RouteName { get; set; }
 
+    public string? SiteName { get; set; }
+
+    public string? RouteAction { get; set; }
+
     public string? UpstreamName { get; set; }
 
     public string? UpstreamEndpoint { get; set; }
@@ -80,7 +84,14 @@ public sealed class ProxyRequestContext
     public void SetRoute(RuntimeRoute route)
     {
         RouteName = route.Name;
+        SiteName = route.SiteName;
+        RouteAction = route.Maintenance.Enabled ? "maintenance" : ActionName(route.Action);
         AccessLogEnabled = route.ResolvedOptions.AccessLogEnabled;
+    }
+
+    public void SetRouteAction(string action)
+    {
+        RouteAction = action;
     }
 
     public void SetUpstream(RuntimeUpstream upstream)
@@ -92,5 +103,15 @@ public sealed class ProxyRequestContext
     public void SetClientEndpoint(string? clientEndpoint)
     {
         ClientEndpoint = clientEndpoint;
+    }
+
+    private static string ActionName(RuntimeRouteAction action)
+    {
+        return action switch
+        {
+            RuntimeRouteAction.Redirect => "redirect",
+            RuntimeRouteAction.StaticResponse => "staticResponse",
+            _ => "proxy"
+        };
     }
 }

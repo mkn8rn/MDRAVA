@@ -2,6 +2,7 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using MDRAVA.API.Proxy.Configuration.Storage;
+using MDRAVA.API.Proxy.Metrics;
 using Microsoft.Extensions.Primitives;
 
 namespace MDRAVA.API.Proxy.Security;
@@ -13,18 +14,30 @@ public sealed class AdminAuthenticationMiddleware
     private readonly RequestDelegate _next;
     private readonly IProxyConfigurationStore _configurationStore;
     private readonly AdminAuditStore _auditStore;
+    private readonly ProxyMetrics? _metrics;
     private readonly ILogger<AdminAuthenticationMiddleware> _logger;
 
     public AdminAuthenticationMiddleware(
         RequestDelegate next,
         IProxyConfigurationStore configurationStore,
         AdminAuditStore auditStore,
+        ProxyMetrics? metrics,
         ILogger<AdminAuthenticationMiddleware> logger)
     {
         _next = next;
         _configurationStore = configurationStore;
         _auditStore = auditStore;
+        _metrics = metrics;
         _logger = logger;
+    }
+
+    public AdminAuthenticationMiddleware(
+        RequestDelegate next,
+        IProxyConfigurationStore configurationStore,
+        AdminAuditStore auditStore,
+        ILogger<AdminAuthenticationMiddleware> logger)
+        : this(next, configurationStore, auditStore, null, logger)
+    {
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -51,9 +64,12 @@ public sealed class AdminAuthenticationMiddleware
                 }
 
                 await context.Response.WriteAsync("Admin authentication failed.", context.RequestAborted);
+                _metrics?.AdminAuthFailed();
                 AddAudit(context, authResult, context.Response.StatusCode, succeeded: false, security.RecentAuditCapacity);
                 return;
             }
+
+            _metrics?.AdminAuthSucceeded();
         }
 
         try

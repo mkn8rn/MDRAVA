@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using MDRAVA.API.Proxy.Observability;
 
 namespace MDRAVA.API.Proxy.Metrics;
@@ -5,6 +6,7 @@ namespace MDRAVA.API.Proxy.Metrics;
 public sealed class ProxyMetrics
 {
     private static readonly ProxyFailureKind[] FailureKinds = Enum.GetValues<ProxyFailureKind>();
+    private const int MaxLabelLength = 96;
 
     private long _acceptedConnections;
     private long _activeConnections;
@@ -69,7 +71,15 @@ public sealed class ProxyMetrics
     private long _rateLimitedUpgrades;
     private long _requestBodySizeRejections;
     private long _parserLimitRejections;
+    private long _configReloadSuccesses;
+    private long _configReloadFailures;
+    private long _adminAuthSuccesses;
+    private long _adminAuthFailures;
+    private long _acmeRenewalAttempts;
+    private long _acmeRenewalSuccesses;
+    private long _acmeRenewalFailures;
     private readonly long[] _requestFailuresByKind = new long[FailureKinds.Length];
+    private readonly ConcurrentDictionary<RequestSeriesKey, RequestSeriesCounter> _requestsByRoute = new();
 
     public void ConnectionAccepted()
     {
@@ -314,6 +324,31 @@ public sealed class ProxyMetrics
 
     public void ParserLimitRejected() => Interlocked.Increment(ref _parserLimitRejections);
 
+    public void RequestCompleted(string? site, string? route, string? action, int? statusCode)
+    {
+        var key = new RequestSeriesKey(
+            NormalizeLabel(site),
+            NormalizeLabel(route),
+            NormalizeLabel(action),
+            StatusClass(statusCode));
+        var counter = _requestsByRoute.GetOrAdd(key, static _ => new RequestSeriesCounter());
+        Interlocked.Increment(ref counter.Count);
+    }
+
+    public void ConfigReloadSucceeded() => Interlocked.Increment(ref _configReloadSuccesses);
+
+    public void ConfigReloadFailed() => Interlocked.Increment(ref _configReloadFailures);
+
+    public void AdminAuthSucceeded() => Interlocked.Increment(ref _adminAuthSuccesses);
+
+    public void AdminAuthFailed() => Interlocked.Increment(ref _adminAuthFailures);
+
+    public void AcmeRenewalAttempted() => Interlocked.Increment(ref _acmeRenewalAttempts);
+
+    public void AcmeRenewalSucceeded() => Interlocked.Increment(ref _acmeRenewalSuccesses);
+
+    public void AcmeRenewalFailed() => Interlocked.Increment(ref _acmeRenewalFailures);
+
     public ProxyMetricsSnapshot Snapshot()
     {
         Dictionary<string, long> failuresByKind = new(StringComparer.Ordinal);
@@ -326,6 +361,19 @@ public sealed class ProxyMetrics
 
             failuresByKind[failureKind.ToString()] = Interlocked.Read(ref _requestFailuresByKind[(int)failureKind]);
         }
+
+        var requestsByRoute = _requestsByRoute
+            .Select(static pair => new ProxyRequestSeriesSnapshot(
+                pair.Key.Site,
+                pair.Key.Route,
+                pair.Key.Action,
+                pair.Key.StatusClass,
+                Interlocked.Read(ref pair.Value.Count)))
+            .OrderBy(static item => item.Site, StringComparer.Ordinal)
+            .ThenBy(static item => item.Route, StringComparer.Ordinal)
+            .ThenBy(static item => item.Action, StringComparer.Ordinal)
+            .ThenBy(static item => item.StatusClass, StringComparer.Ordinal)
+            .ToArray();
 
         return new ProxyMetricsSnapshot(
             Interlocked.Read(ref _acceptedConnections),
@@ -391,6 +439,66 @@ public sealed class ProxyMetrics
             Interlocked.Read(ref _rateLimitedUpgrades),
             Interlocked.Read(ref _requestBodySizeRejections),
             Interlocked.Read(ref _parserLimitRejections),
-            failuresByKind);
+            failuresByKind,
+            requestsByRoute,
+            Interlocked.Read(ref _configReloadSuccesses),
+            Interlocked.Read(ref _configReloadFailures),
+            Interlocked.Read(ref _adminAuthSuccesses),
+            Interlocked.Read(ref _adminAuthFailures),
+            Interlocked.Read(ref _acmeRenewalAttempts),
+            Interlocked.Read(ref _acmeRenewalSuccesses),
+            Interlocked.Read(ref _acmeRenewalFailures));
+    }
+
+    private static string StatusClass(int? statusCode)
+    {
+        if (!statusCode.HasValue)
+        {
+            return "none";
+        }
+
+        var value = statusCode.Value;
+        return value is >= 100 and <= 599
+            ? $"{value / 100}xx"
+            : "other";
+    }
+
+    private static string NormalizeLabel(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "none";
+        }
+
+        Span<char> buffer = stackalloc char[Math.Min(value.Length, MaxLabelLength)];
+        var index = 0;
+        foreach (var character in value.Trim())
+        {
+            if (index >= buffer.Length)
+            {
+                break;
+            }
+
+            buffer[index++] = IsSafeLabelCharacter(character) ? character : '_';
+        }
+
+        return index == 0 ? "none" : new string(buffer[..index]);
+    }
+
+    private static bool IsSafeLabelCharacter(char character)
+    {
+        return char.IsAsciiLetterOrDigit(character)
+            || character is '-' or '_' or '.';
+    }
+
+    private readonly record struct RequestSeriesKey(
+        string Site,
+        string Route,
+        string Action,
+        string StatusClass);
+
+    private sealed class RequestSeriesCounter
+    {
+        public long Count;
     }
 }

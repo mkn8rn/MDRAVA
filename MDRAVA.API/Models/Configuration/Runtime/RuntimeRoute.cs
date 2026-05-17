@@ -16,4 +16,7 @@ public sealed record RuntimeRoute(
     RuntimeStaticResponse StaticResponse,
     RuntimeMaintenancePolicy Maintenance,
     RuntimeCachePolicy Cache,
-    RuntimeRouteResolvedOptions ResolvedOptions);
+    RuntimeRouteResolvedOptions ResolvedOptions)
+{
+    public string SiteName { get; init; } = "";
+}

@@ -4,6 +4,8 @@ public sealed class ProxyRouteOptions
 {
     public string Name { get; init; } = "";
 
+    public string SiteName { get; init; } = "";
+
     public string Host { get; init; } = "*";
 
     public string PathPrefix { get; init; } = "/";

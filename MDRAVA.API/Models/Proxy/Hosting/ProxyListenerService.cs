@@ -152,6 +152,7 @@ public sealed class ProxyListenerService : BackgroundService
                 if (admissionLease is null)
                 {
                     clientSocket.Dispose();
+                    _metrics.ConnectionClosed();
                     continue;
                 }
 

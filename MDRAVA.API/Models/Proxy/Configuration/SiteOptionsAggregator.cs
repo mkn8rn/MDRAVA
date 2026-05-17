@@ -27,6 +27,7 @@ public static class SiteOptionsAggregator
                 routes.Add(new ProxyRouteOptions
                 {
                     Name = source.Site.Name,
+                    SiteName = source.Site.Name,
                     Host = source.Site.Host,
                     PathPrefix = source.Site.PathPrefix,
                     Action = "proxy",
@@ -48,6 +49,7 @@ public static class SiteOptionsAggregator
                 routes.Add(new ProxyRouteOptions
                 {
                     Name = route.Name,
+                    SiteName = source.Site.Name,
                     Host = string.IsNullOrWhiteSpace(route.Host) || string.Equals(route.Host, "*", StringComparison.Ordinal)
                         ? source.Site.Host
                         : route.Host,

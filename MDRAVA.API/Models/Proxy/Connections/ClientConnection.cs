@@ -717,6 +717,7 @@ public sealed class ClientConnection
         context.ResponseStarted = true;
         context.ResponseStatusCode = response.StatusCode;
         context.KeepClientConnectionOpen = keepClientConnectionOpen;
+        context.SetRouteAction("cache");
     }
 
     private async ValueTask WriteGeneratedRouteResponseAsync(
