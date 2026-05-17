@@ -1,3 +1,4 @@
+using System.Globalization;
 using MDRAVA.API.Proxy.Protocol;
 
 namespace MDRAVA.API.Proxy.Http3;
@@ -18,7 +19,8 @@ public static class Http3PreviewRequestTranslator
         IReadOnlyList<Http1HeaderField> headers,
         RuntimeListener listener,
         out Http1RequestHead requestHead,
-        out string rejectionReason)
+        out string rejectionReason,
+        long bodyLength = 0)
     {
         requestHead = null!;
         rejectionReason = "invalid_headers";
@@ -93,8 +95,14 @@ public static class Http3PreviewRequestTranslator
             return false;
         }
 
+        if (!TryValidateContentLength(regularHeaders, bodyLength, out rejectionReason))
+        {
+            return false;
+        }
+
         regularHeaders.RemoveAll(static header => string.Equals(header.Name, "host", StringComparison.OrdinalIgnoreCase));
         var path = target.Split('?', 2)[0];
+        var framing = Http1RequestFraming.FromContentLength(bodyLength);
         regularHeaders.Insert(0, new Http1HeaderField("Host", authority));
         requestHead = new Http1RequestHead(
             method,
@@ -102,7 +110,7 @@ public static class Http3PreviewRequestTranslator
             path,
             "HTTP/3",
             authority,
-            Http1RequestFraming.None,
+            framing,
             regularHeaders);
         return true;
     }
@@ -110,7 +118,11 @@ public static class Http3PreviewRequestTranslator
     public static bool IsSupportedPreviewMethod(string method, out string rejectionReason)
     {
         if (string.Equals(method, "GET", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(method, "HEAD", StringComparison.OrdinalIgnoreCase))
+            || string.Equals(method, "HEAD", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(method, "POST", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(method, "PUT", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(method, "PATCH", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(method, "DELETE", StringComparison.OrdinalIgnoreCase))
         {
             rejectionReason = "";
             return true;
@@ -125,5 +137,39 @@ public static class Http3PreviewRequestTranslator
     private static bool IsAllowedPseudoHeader(string name)
     {
         return name is ":method" or ":scheme" or ":authority" or ":path";
+    }
+
+    private static bool TryValidateContentLength(
+        IReadOnlyList<Http1HeaderField> headers,
+        long bodyLength,
+        out string rejectionReason)
+    {
+        rejectionReason = "";
+        long? declared = null;
+        foreach (var header in headers)
+        {
+            if (!string.Equals(header.Name, "content-length", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (declared.HasValue
+                || !long.TryParse(header.Value.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var parsed)
+                || parsed < 0)
+            {
+                rejectionReason = "invalid_content_length";
+                return false;
+            }
+
+            declared = parsed;
+        }
+
+        if (declared.HasValue && declared.Value != bodyLength)
+        {
+            rejectionReason = "invalid_content_length";
+            return false;
+        }
+
+        return true;
     }
 }

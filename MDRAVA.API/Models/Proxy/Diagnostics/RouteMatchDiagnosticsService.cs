@@ -55,12 +55,13 @@ public sealed class RouteMatchDiagnosticsService
         }
 
         var scheme = NormalizeScheme(request.Scheme);
+        var protocol = NormalizeProtocol(request.Protocol);
         var method = NormalizeMethod(request.Method);
         var path = NormalizePath(request.Path);
         var query = NormalizeQuery(request.Query);
         var target = path + query;
         var findings = new List<RouteMatchDryRunFinding>();
-        var listener = SelectListener(snapshot, request.ListenerName, scheme, request.Port);
+        var listener = SelectListener(snapshot, request.ListenerName, scheme, request.Port, protocol);
         if (listener is null)
         {
             return Complete(new RouteMatchDryRunResult(
@@ -208,6 +209,19 @@ public sealed class RouteMatchDiagnosticsService
             return false;
         }
 
+        var protocol = NormalizeProtocol(request.Protocol);
+        if (protocol is not null and not "http1" and not "http2" and not "http3")
+        {
+            result = Failure(evaluatedAtUtc, "invalid_protocol", "Protocol must be 'http1', 'http2', or 'http3' when supplied.");
+            return false;
+        }
+
+        if (protocol == "http3" && scheme != "https")
+        {
+            result = Failure(evaluatedAtUtc, "invalid_protocol", "HTTP/3 dry-runs must use the https scheme.");
+            return false;
+        }
+
         if (string.IsNullOrWhiteSpace(request.Host) || request.Host.Length > 253 || ContainsControl(request.Host))
         {
             result = Failure(evaluatedAtUtc, "invalid_host", "Host is required and must not contain control characters.");
@@ -260,7 +274,8 @@ public sealed class RouteMatchDiagnosticsService
         ProxyConfigurationSnapshot snapshot,
         string? listenerName,
         string scheme,
-        int? port)
+        int? port,
+        string? protocol)
     {
         var transport = scheme == "https" ? RuntimeListenerTransport.Https : RuntimeListenerTransport.Http;
         IEnumerable<RuntimeListener> listeners = snapshot.Listeners.Where(static listener => listener.Enabled);
@@ -274,6 +289,14 @@ public sealed class RouteMatchDiagnosticsService
         {
             listeners = listeners.Where(listener => listener.Port == port.Value);
         }
+
+        listeners = protocol switch
+        {
+            "http1" => listeners.Where(static listener => listener.Protocols.HasFlag(RuntimeListenerProtocols.Http1)),
+            "http2" => listeners.Where(static listener => listener.Protocols.HasFlag(RuntimeListenerProtocols.Http2)),
+            "http3" => listeners.Where(static listener => listener.Http3.EnabledForTraffic),
+            _ => listeners
+        };
 
         return listeners.FirstOrDefault();
     }
@@ -505,6 +528,11 @@ public sealed class RouteMatchDiagnosticsService
 
         var query = value.Trim();
         return query.StartsWith('?') ? query : "?" + query;
+    }
+
+    private static string? NormalizeProtocol(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim().ToLowerInvariant();
     }
 
     private static bool ContainsControl(string value)

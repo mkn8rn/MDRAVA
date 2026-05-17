@@ -99,6 +99,47 @@ internal static class RouteDiagnosticsTests
         AssertEx.Equal("/api/users?id=1", result.RewrittenTarget!);
     }
 
+    public static void DryRunCanSelectHttp3ProtocolListener()
+    {
+        var options = new ProxyOptions
+        {
+            Listeners =
+            [
+                new ListenerOptions
+                {
+                    Name = "web",
+                    Address = "127.0.0.1",
+                    Port = 8443,
+                    Transport = "https",
+                    Protocols = "http1AndHttp2AndHttp3Preview",
+                    ExperimentalHttp3 = true,
+                    Http3Enablement = "preview",
+                    DefaultCertificateId = "home-cert"
+                }
+            ],
+            Routes = [ProxyRoute("api", "diag.test", "/api")]
+        };
+        var service = CreateRouteService(options, out _, out _);
+
+        var result = service.Explain(new RouteMatchDryRunRequest(
+            "https",
+            "diag.test",
+            8443,
+            "GET",
+            "/api",
+            "",
+            null,
+            null,
+            "web",
+            "http3"));
+
+        AssertEx.True(result.Succeeded);
+        AssertEx.Equal("api", AssertEx.NotNull(result.Route).Name);
+        var listener = AssertEx.NotNull(result.Listener);
+        AssertEx.Equal("https", listener.Transport);
+        AssertEx.True(listener.Protocols.Contains("Http3Preview", StringComparison.Ordinal));
+    }
+
     public static void DryRunReportsGeneratedRouteActions()
     {
         var redirect = new ProxyRouteOptions

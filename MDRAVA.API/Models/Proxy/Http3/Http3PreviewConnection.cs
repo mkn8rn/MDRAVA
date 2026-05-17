@@ -19,6 +19,7 @@ namespace MDRAVA.API.Proxy.Http3;
 public sealed class Http3PreviewConnection
 {
     private const int MaxFramePayloadBytes = 1024 * 1024;
+    private const int MaxBufferedRequestBodyBytes = 8 * 1024 * 1024;
     private const int MaxProtocolErrorsPerConnection = 8;
     private readonly QuicConnection _connection;
     private readonly ProxyConfigurationSnapshot _configurationSnapshot;
@@ -127,24 +128,45 @@ public sealed class Http3PreviewConnection
         _metrics.Http3StreamStarted();
         try
         {
-            var requestBytes = await ReadStreamBytesAsync(stream, _listener.Http2Limits.MaxHeaderListBytes + MaxFramePayloadBytes, cancellationToken);
+            var maxBufferedBodyBytes = MaxBufferedBodyBytes(_configurationSnapshot.Limits);
+            var requestBytes = await ReadStreamBytesAsync(
+                stream,
+                MaxRequestStreamBytes(_listener.Http2Limits.MaxHeaderListBytes, maxBufferedBodyBytes),
+                cancellationToken);
             if (requestBytes is null)
             {
+                _metrics.RequestBodySizeRejected();
+                _metrics.Http3RequestRejected("request_body_too_large");
                 var closeConnection = RecordProtocolError("stream_too_large");
                 await WriteGeneratedResponseAsync(stream, 413, "Payload Too Large", "Payload Too Large", context, "GET", cancellationToken);
                 CompleteContext(ref context);
                 return !closeConnection;
             }
 
-            if (!TryReadHeaders(requestBytes, out var headers, out var rejectionReason))
+            if (!TryReadRequestFrames(requestBytes, maxBufferedBodyBytes, out var headers, out var requestBody, out var rejectionReason))
             {
+                if (string.Equals(rejectionReason, "request_body_too_large", StringComparison.Ordinal))
+                {
+                    _metrics.RequestBodySizeRejected();
+                    _metrics.Http3RequestRejected(rejectionReason);
+                }
+
                 var closeConnection = RecordProtocolError(rejectionReason);
-                await WriteGeneratedResponseAsync(stream, 400, "Bad Request", "Bad Request", context, "GET", cancellationToken);
+                var statusCode = string.Equals(rejectionReason, "request_body_too_large", StringComparison.Ordinal)
+                    ? 413
+                    : 400;
+                var reasonPhrase = statusCode == 413 ? "Payload Too Large" : "Bad Request";
+                await WriteGeneratedResponseAsync(stream, statusCode, reasonPhrase, reasonPhrase, context, "GET", cancellationToken);
                 CompleteContext(ref context);
                 return !closeConnection;
             }
 
-            if (!Http3PreviewRequestTranslator.TryBuildRequest(headers, _listener, out var requestHead, out rejectionReason))
+            if (!Http3PreviewRequestTranslator.TryBuildRequest(
+                    headers,
+                    _listener,
+                    out var requestHead,
+                    out rejectionReason,
+                    requestBody.Length))
             {
                 var closeConnection = RecordProtocolError(rejectionReason);
                 await WriteGeneratedResponseAsync(stream, 400, "Bad Request", "Bad Request", context, "GET", cancellationToken);
@@ -204,6 +226,16 @@ public sealed class Http3PreviewConnection
                 return true;
             }
 
+            if (requestHead.Framing.Kind == Http1BodyKind.ContentLength
+                && requestHead.Framing.ContentLength.GetValueOrDefault() > routeMatch.Route.ResolvedOptions.MaxRequestBodyBytes)
+            {
+                _metrics.RequestBodySizeRejected();
+                _metrics.Http3RequestRejected("request_body_too_large");
+                await WriteGeneratedResponseAsync(stream, 413, "Payload Too Large", "Payload Too Large", context, requestHead.Method, cancellationToken);
+                CompleteContext(ref context);
+                return true;
+            }
+
             var upstreamTarget = _pathRewritePolicy.Apply(routeMatch.Route, requestHead.Target, requestHead.Path);
             var effectiveTimeouts = ApplyRouteTimeouts(routeMatch.Route, _configurationSnapshot.Timeouts);
             if (_cacheStore.TryGet(
@@ -222,7 +254,7 @@ public sealed class Http3PreviewConnection
             _metrics.Http3ProxiedRequest();
             var result = await ForwardWithRetriesAsync(
                 stream,
-                [],
+                requestBody,
                 requestHead,
                 routeMatch.Route,
                 effectiveTimeouts,
@@ -280,15 +312,19 @@ public sealed class Http3PreviewConnection
         }
     }
 
-    private bool TryReadHeaders(
+    private bool TryReadRequestFrames(
         byte[] requestBytes,
+        int maxBodyBytes,
         out IReadOnlyList<Http1HeaderField> headers,
+        out byte[] body,
         out string rejectionReason)
     {
         headers = [];
+        body = [];
         rejectionReason = "missing_headers";
         var offset = 0;
         var sawHeaders = false;
+        using var bodyBuffer = new MemoryStream();
         while (offset < requestBytes.Length)
         {
             if (!Http3PreviewCodec.TryReadFrame(requestBytes, ref offset, out var frameType, out var payload))
@@ -305,8 +341,20 @@ public sealed class Http3PreviewConnection
 
             if (frameType == Http3PreviewCodec.DataFrame)
             {
-                rejectionReason = sawHeaders ? "request_body_unsupported" : "unexpected_data";
-                return false;
+                if (!sawHeaders)
+                {
+                    rejectionReason = "unexpected_data";
+                    return false;
+                }
+
+                if (bodyBuffer.Length + payload.Length > maxBodyBytes)
+                {
+                    rejectionReason = "request_body_too_large";
+                    return false;
+                }
+
+                bodyBuffer.Write(payload.Span);
+                continue;
             }
 
             if (frameType != Http3PreviewCodec.HeadersFrame)
@@ -332,6 +380,7 @@ public sealed class Http3PreviewConnection
             }
         }
 
+        body = bodyBuffer.ToArray();
         return sawHeaders;
     }
 
@@ -357,6 +406,23 @@ public sealed class Http3PreviewConnection
 
             memory.Write(buffer, 0, read);
         }
+    }
+
+    private static int MaxBufferedBodyBytes(RuntimeLimits limits)
+    {
+        if (limits.MaxRequestBodyBytes <= 0)
+        {
+            return 0;
+        }
+
+        return (int)Math.Min(limits.MaxRequestBodyBytes, MaxBufferedRequestBodyBytes);
+    }
+
+    private static int MaxRequestStreamBytes(int maxHeaderBytes, int maxBodyBytes)
+    {
+        return Math.Min(
+            int.MaxValue,
+            Math.Max(0, maxHeaderBytes) + maxBodyBytes + 64 * 1024);
     }
 
     private async ValueTask<ForwardingResult> ForwardWithRetriesAsync(
