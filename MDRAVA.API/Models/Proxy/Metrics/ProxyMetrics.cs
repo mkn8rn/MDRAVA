@@ -103,6 +103,10 @@ public sealed class ProxyMetrics
     private long _upstreamHttp2ProtocolErrors;
     private long _http3AcceptedConnections;
     private long _http3Requests;
+    private long _http3ProxiedRequests;
+    private long _http3GeneratedResponses;
+    private long _activeHttp3Streams;
+    private long _http3StreamResets;
     private long _quicListenerStartSuccesses;
     private long _quicListenerStartFailures;
     private long _activeQuicListeners;
@@ -462,6 +466,16 @@ public sealed class ProxyMetrics
 
     public void Http3RequestReceived() => Interlocked.Increment(ref _http3Requests);
 
+    public void Http3ProxiedRequest() => Interlocked.Increment(ref _http3ProxiedRequests);
+
+    public void Http3GeneratedResponse() => Interlocked.Increment(ref _http3GeneratedResponses);
+
+    public void Http3StreamStarted() => Interlocked.Increment(ref _activeHttp3Streams);
+
+    public void Http3StreamEnded() => Interlocked.Decrement(ref _activeHttp3Streams);
+
+    public void Http3StreamReset() => Interlocked.Increment(ref _http3StreamResets);
+
     public void Http3RequestRejected(string reason)
     {
         var counter = _http3RejectedRequests.GetOrAdd(NormalizeLabel(reason), static _ => new RequestSeriesCounter());
@@ -628,6 +642,10 @@ public sealed class ProxyMetrics
             Interlocked.Read(ref _upstreamHttp2ProtocolErrors),
             Interlocked.Read(ref _http3AcceptedConnections),
             Interlocked.Read(ref _http3Requests),
+            Interlocked.Read(ref _http3ProxiedRequests),
+            Interlocked.Read(ref _http3GeneratedResponses),
+            Interlocked.Read(ref _activeHttp3Streams),
+            Interlocked.Read(ref _http3StreamResets),
             http3RejectedRequests,
             http3ProtocolErrors,
             Interlocked.Read(ref _quicListenerStartSuccesses),

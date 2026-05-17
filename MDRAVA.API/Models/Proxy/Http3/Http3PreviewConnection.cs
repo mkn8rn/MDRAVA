@@ -2,10 +2,15 @@
 using System.Net;
 using System.Net.Quic;
 using System.Text;
+using MDRAVA.API.Proxy.Acme;
+using MDRAVA.API.Proxy.Caching;
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Forwarding;
+using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Observability;
+using MDRAVA.API.Proxy.Protocol;
+using MDRAVA.API.Proxy.Resilience;
 using MDRAVA.API.Proxy.Routing;
 using MDRAVA.API.Proxy.Runtime;
 
@@ -14,25 +19,41 @@ namespace MDRAVA.API.Proxy.Http3;
 public sealed class Http3PreviewConnection
 {
     private const int MaxFramePayloadBytes = 1024 * 1024;
+    private const int MaxProtocolErrorsPerConnection = 8;
     private readonly QuicConnection _connection;
     private readonly ProxyConfigurationSnapshot _configurationSnapshot;
     private readonly RuntimeListener _listener;
     private readonly IRouteMatcher _routeMatcher;
+    private readonly IUpstreamSelector _upstreamSelector;
+    private readonly UpstreamHealthStore _healthStore;
+    private readonly ProxyForwarder _forwarder;
     private readonly ForwardedHeadersPolicy _forwardedHeadersPolicy;
     private readonly ProxyRouteActionPolicy _routeActionPolicy;
+    private readonly PathRewritePolicy _pathRewritePolicy;
+    private readonly ResponseCacheStore _cacheStore;
+    private readonly CircuitBreakerStore _circuitBreakerStore;
+    private readonly AcmeHttp01ChallengeResponder _acmeChallengeResponder;
     private readonly ProxyMetrics _metrics;
     private readonly RequestIdGenerator _requestIdGenerator;
     private readonly AccessLogEmitter _accessLogEmitter;
     private readonly ClientRateLimiter _rateLimiter;
     private readonly ILogger _logger;
+    private int _protocolErrors;
 
     public Http3PreviewConnection(
         QuicConnection connection,
         ProxyConfigurationSnapshot configurationSnapshot,
         RuntimeListener listener,
         IRouteMatcher routeMatcher,
+        IUpstreamSelector upstreamSelector,
+        UpstreamHealthStore healthStore,
+        ProxyForwarder forwarder,
         ForwardedHeadersPolicy forwardedHeadersPolicy,
         ProxyRouteActionPolicy routeActionPolicy,
+        PathRewritePolicy pathRewritePolicy,
+        ResponseCacheStore cacheStore,
+        CircuitBreakerStore circuitBreakerStore,
+        AcmeHttp01ChallengeResponder acmeChallengeResponder,
         ProxyMetrics metrics,
         RequestIdGenerator requestIdGenerator,
         AccessLogEmitter accessLogEmitter,
@@ -43,8 +64,15 @@ public sealed class Http3PreviewConnection
         _configurationSnapshot = configurationSnapshot;
         _listener = listener;
         _routeMatcher = routeMatcher;
+        _upstreamSelector = upstreamSelector;
+        _healthStore = healthStore;
+        _forwarder = forwarder;
         _forwardedHeadersPolicy = forwardedHeadersPolicy;
         _routeActionPolicy = routeActionPolicy;
+        _pathRewritePolicy = pathRewritePolicy;
+        _cacheStore = cacheStore;
+        _circuitBreakerStore = circuitBreakerStore;
+        _acmeChallengeResponder = acmeChallengeResponder;
         _metrics = metrics;
         _requestIdGenerator = requestIdGenerator;
         _accessLogEmitter = accessLogEmitter;
@@ -65,7 +93,11 @@ public sealed class Http3PreviewConnection
                 var stream = await _connection.AcceptInboundStreamAsync(cancellationToken);
                 if (stream.Type == QuicStreamType.Bidirectional)
                 {
-                    await ProcessRequestStreamAsync(stream, cancellationToken);
+                    if (!await ProcessRequestStreamAsync(stream, cancellationToken))
+                    {
+                        await _connection.CloseAsync(0x100, CancellationToken.None);
+                        return;
+                    }
                 }
                 else
                 {
@@ -86,36 +118,38 @@ public sealed class Http3PreviewConnection
         }
     }
 
-    private async ValueTask ProcessRequestStreamAsync(
+    private async ValueTask<bool> ProcessRequestStreamAsync(
         QuicStream stream,
         CancellationToken cancellationToken)
     {
         await using var ownedStream = stream;
         var context = CreateRequestContext();
+        _metrics.Http3StreamStarted();
         try
         {
             var requestBytes = await ReadStreamBytesAsync(stream, _listener.Http2Limits.MaxHeaderListBytes + MaxFramePayloadBytes, cancellationToken);
             if (requestBytes is null)
             {
+                var closeConnection = RecordProtocolError("stream_too_large");
                 await WriteGeneratedResponseAsync(stream, 413, "Payload Too Large", "Payload Too Large", context, "GET", cancellationToken);
                 CompleteContext(ref context);
-                return;
+                return !closeConnection;
             }
 
             if (!TryReadHeaders(requestBytes, out var headers, out var rejectionReason))
             {
-                _metrics.Http3ProtocolError(rejectionReason);
+                var closeConnection = RecordProtocolError(rejectionReason);
                 await WriteGeneratedResponseAsync(stream, 400, "Bad Request", "Bad Request", context, "GET", cancellationToken);
                 CompleteContext(ref context);
-                return;
+                return !closeConnection;
             }
 
             if (!Http3PreviewRequestTranslator.TryBuildRequest(headers, _listener, out var requestHead, out rejectionReason))
             {
-                _metrics.Http3ProtocolError(rejectionReason);
+                var closeConnection = RecordProtocolError(rejectionReason);
                 await WriteGeneratedResponseAsync(stream, 400, "Bad Request", "Bad Request", context, "GET", cancellationToken);
                 CompleteContext(ref context);
-                return;
+                return !closeConnection;
             }
 
             _metrics.RequestReceived();
@@ -127,7 +161,7 @@ public sealed class Http3PreviewConnection
                 _metrics.Http3RequestRejected(rejectionReason);
                 await WriteGeneratedResponseAsync(stream, 501, "Not Implemented", "Not Implemented", context, requestHead.Method, cancellationToken);
                 CompleteContext(ref context);
-                return;
+                return true;
             }
 
             var forwardedHeaders = _forwardedHeadersPolicy.Build(
@@ -141,7 +175,15 @@ public sealed class Http3PreviewConnection
             {
                 await WriteGeneratedResponseAsync(stream, 429, "Too Many Requests", "Too Many Requests", context, requestHead.Method, cancellationToken);
                 CompleteContext(ref context);
-                return;
+                return true;
+            }
+
+            if (_acmeChallengeResponder.TryCreateResponse(requestHead, out var acmeChallengeResponse))
+            {
+                _metrics.Http3GeneratedResponse();
+                await WriteGeneratedRouteResponseAsync(stream, acmeChallengeResponse, context, requestHead.Method, cancellationToken);
+                CompleteContext(ref context);
+                return true;
             }
 
             var routeMatch = _routeMatcher.Match(_configurationSnapshot, requestHead);
@@ -149,27 +191,67 @@ public sealed class Http3PreviewConnection
             {
                 await WriteGeneratedResponseAsync(stream, 404, "Not Found", "Not Found", context, requestHead.Method, cancellationToken);
                 CompleteContext(ref context);
-                return;
+                return true;
             }
 
             context.SetRoute(routeMatch.Route);
             var actionDecision = _routeActionPolicy.Evaluate(routeMatch.Route, requestHead, _listener, isUpgradeRequest: false);
             if (!actionDecision.ShouldProxy)
             {
+                _metrics.Http3GeneratedResponse();
                 await WriteGeneratedRouteResponseAsync(stream, actionDecision.Response!, context, requestHead.Method, cancellationToken);
                 CompleteContext(ref context);
-                return;
+                return true;
             }
 
-            _metrics.Http3RequestRejected("proxy_not_implemented");
-            await WriteGeneratedResponseAsync(stream, 501, "Not Implemented", "HTTP/3 proxying is not implemented in preview.", context, requestHead.Method, cancellationToken);
+            var upstreamTarget = _pathRewritePolicy.Apply(routeMatch.Route, requestHead.Target, requestHead.Path);
+            var effectiveTimeouts = ApplyRouteTimeouts(routeMatch.Route, _configurationSnapshot.Timeouts);
+            if (_cacheStore.TryGet(
+                    routeMatch.Route,
+                    _listener,
+                    requestHead,
+                    upstreamTarget,
+                    out var cachedResponse)
+                && cachedResponse is not null)
+            {
+                await WriteCachedResponseAsync(stream, requestHead, cachedResponse, context, cancellationToken);
+                CompleteContext(ref context);
+                return true;
+            }
+
+            _metrics.Http3ProxiedRequest();
+            var result = await ForwardWithRetriesAsync(
+                stream,
+                [],
+                requestHead,
+                routeMatch.Route,
+                effectiveTimeouts,
+                _configurationSnapshot.ConnectionLimits,
+                _configurationSnapshot.Limits,
+                upstreamTarget,
+                forwardedHeaders,
+                context,
+                context.RequestId,
+                cancellationToken);
+            ApplyForwardingResult(context, result);
             CompleteContext(ref context);
+            return true;
         }
         catch (Exception exception) when (exception is QuicException or IOException)
         {
             _metrics.Http3ProtocolError("io_error");
+            if (exception is QuicException)
+            {
+                _metrics.Http3StreamReset();
+            }
+
             _logger.LogDebug(exception, "HTTP/3 preview stream ended with I/O failure.");
             CompleteContext(ref context);
+            return true;
+        }
+        finally
+        {
+            _metrics.Http3StreamEnded();
         }
     }
 
@@ -221,15 +303,16 @@ public sealed class Http3PreviewConnection
                 return false;
             }
 
-            if (frameType == Http3PreviewCodec.DataFrame && payload.Length > 0)
+            if (frameType == Http3PreviewCodec.DataFrame)
             {
-                rejectionReason = "request_body_unsupported";
+                rejectionReason = sawHeaders ? "request_body_unsupported" : "unexpected_data";
                 return false;
             }
 
             if (frameType != Http3PreviewCodec.HeadersFrame)
             {
-                continue;
+                rejectionReason = "unsupported_frame";
+                return false;
             }
 
             if (sawHeaders)
@@ -269,12 +352,206 @@ public sealed class Http3PreviewConnection
 
             if (memory.Length + read > maxBytes)
             {
-                _metrics.Http3ProtocolError("stream_too_large");
                 return null;
             }
 
             memory.Write(buffer, 0, read);
         }
+    }
+
+    private async ValueTask<ForwardingResult> ForwardWithRetriesAsync(
+        QuicStream stream,
+        byte[] body,
+        Http1RequestHead requestHead,
+        RuntimeRoute route,
+        RuntimeTimeouts timeouts,
+        RuntimeConnectionLimits connectionLimits,
+        RuntimeLimits limits,
+        string upstreamTarget,
+        ForwardedHeadersContext forwardedHeaders,
+        ProxyRequestContext context,
+        string requestId,
+        CancellationToken cancellationToken)
+    {
+        var retryAllowed = IsRetryAllowed(route, requestHead, out var skipReason);
+        if (!retryAllowed && skipReason is not null)
+        {
+            _metrics.RetrySkipped(skipReason);
+        }
+
+        var maxAttempts = retryAllowed ? route.Retry.MaxAttempts : 1;
+        ForwardingResult? lastResult = null;
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            var selection = _upstreamSelector.Select(route);
+            if (selection is null)
+            {
+                if (attempt > 1)
+                {
+                    _metrics.RetryExhausted();
+                }
+
+                await WriteGeneratedResponseAsync(
+                    stream,
+                    503,
+                    "Service Unavailable",
+                    "Service Unavailable",
+                    context,
+                    requestHead.Method,
+                    cancellationToken);
+                return new ForwardingResult(false, true, false, 503, ProxyFailureKind.NoHealthyUpstream);
+            }
+
+            context.SetUpstream(selection.Upstream);
+            var suppressGeneratedFailureResponse = retryAllowed && attempt < maxAttempts;
+            var translator = new Http3ResponseTranslationStream(
+                this,
+                stream,
+                requestHead.Method,
+                _configurationSnapshot.Timeouts.DownstreamWriteTimeout,
+                body);
+            var result = await _forwarder.ForwardAsync(
+                translator,
+                new Http1HeadReadResult(0, 0, ReadOnlyMemory<byte>.Empty, body),
+                requestHead,
+                route,
+                selection.Upstream,
+                _listener,
+                ApplyRetryAttemptTimeout(route, timeouts),
+                connectionLimits,
+                limits,
+                upstreamTarget,
+                forwardedHeaders,
+                preferClientKeepAlive: false,
+                requestId,
+                cancellationToken,
+                suppressGeneratedFailureResponse);
+            lastResult = result;
+            RecordUpstreamAttemptResult(selection, result);
+
+            string? finalSkipReason = null;
+            if (retryAllowed
+                && ShouldRetry(route.Retry, requestHead, result, attempt, maxAttempts, out finalSkipReason))
+            {
+                _metrics.RetryAttempted();
+                if (route.Retry.RetryBackoff > TimeSpan.Zero)
+                {
+                    await Task.Delay(route.Retry.RetryBackoff, cancellationToken);
+                }
+
+                continue;
+            }
+
+            if (finalSkipReason is not null)
+            {
+                _metrics.RetrySkipped(finalSkipReason);
+            }
+
+            if (retryAllowed && attempt == maxAttempts && IsRetryableFailure(route.Retry, result))
+            {
+                _metrics.RetryExhausted();
+            }
+
+            if (suppressGeneratedFailureResponse && !result.Succeeded && !result.ResponseStarted)
+            {
+                return await WriteSuppressedFailureAsync(stream, result, context, requestHead.Method, cancellationToken);
+            }
+
+            await translator.CompleteAsync(cancellationToken);
+            return result;
+        }
+
+        if (lastResult is not null && !lastResult.ResponseStarted)
+        {
+            return await WriteSuppressedFailureAsync(stream, lastResult, context, requestHead.Method, cancellationToken);
+        }
+
+        return lastResult ?? new ForwardingResult(false, false, false, null, ProxyFailureKind.NoHealthyUpstream);
+    }
+
+    private async ValueTask<ForwardingResult> WriteSuppressedFailureAsync(
+        QuicStream stream,
+        ForwardingResult result,
+        ProxyRequestContext context,
+        string method,
+        CancellationToken cancellationToken)
+    {
+        var statusCode = result.ResponseStatusCode ?? StatusCodeForFailure(result.FailureKind);
+        if (statusCode == 502)
+        {
+            _metrics.ProxyGenerated502();
+        }
+        else if (statusCode == 504)
+        {
+            _metrics.ProxyGenerated504();
+        }
+
+        var reason = ProxyRouteActionPolicy.ReasonPhrase(statusCode);
+        await WriteGeneratedResponseAsync(
+            stream,
+            statusCode,
+            reason,
+            reason,
+            context,
+            method,
+            cancellationToken);
+        return result with
+        {
+            ResponseStarted = true,
+            KeepClientConnectionOpen = false,
+            ResponseStatusCode = statusCode
+        };
+    }
+
+    private void RecordUpstreamAttemptResult(UpstreamSelection selection, ForwardingResult result)
+    {
+        if (result.ResponseStatusCode.HasValue
+            && selection.Upstream.CircuitBreaker.FailureStatusCodes.Any(code => code == result.ResponseStatusCode.Value))
+        {
+            _circuitBreakerStore.RecordFailure(selection.CircuitBreakerLease, "status_code", result.ResponseStatusCode);
+            return;
+        }
+
+        if (!result.Succeeded)
+        {
+            _healthStore.RecordRequestFailure(selection.Upstream);
+            if (IsCircuitFailure(result.FailureKind))
+            {
+                _circuitBreakerStore.RecordFailure(selection.CircuitBreakerLease, CircuitFailureReason(result.FailureKind));
+            }
+            else
+            {
+                selection.CircuitBreakerLease?.Dispose();
+            }
+
+            return;
+        }
+
+        _circuitBreakerStore.RecordSuccess(selection.CircuitBreakerLease);
+    }
+
+    private async ValueTask WriteCachedResponseAsync(
+        QuicStream stream,
+        Http1RequestHead requestHead,
+        CachedProxyResponse response,
+        ProxyRequestContext context,
+        CancellationToken cancellationToken)
+    {
+        var ageSeconds = Math.Max(
+            0,
+            (long)Math.Floor((DateTimeOffset.UtcNow - response.StoredAtUtc).TotalSeconds));
+        var headers = response.Headers
+            .Where(static header => !IsHopByHopHeader(header.Name))
+            .Append(new Http1HeaderField("age", ageSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture)))
+            .Append(new Http1HeaderField("x-request-id", context.RequestId))
+            .Append(new Http1HeaderField("content-length", response.Body.Length.ToString(System.Globalization.CultureInfo.InvariantCulture)))
+            .ToArray();
+        var includeBody = !string.Equals(requestHead.Method, "HEAD", StringComparison.OrdinalIgnoreCase);
+        await WriteHeadersAndBodyAsync(stream, response.StatusCode, headers, includeBody ? response.Body : [], cancellationToken);
+        context.ResponseStarted = true;
+        context.ResponseStatusCode = response.StatusCode;
+        context.KeepClientConnectionOpen = true;
+        context.SetRouteAction("cache");
     }
 
     private async ValueTask WriteGeneratedRouteResponseAsync(
@@ -311,7 +588,6 @@ public sealed class Http3PreviewConnection
         var bodyBytes = Encoding.UTF8.GetBytes(body);
         List<Http1HeaderField> headers =
         [
-            new(":status", Http3PreviewCodec.StatusText(statusCode)),
             new("x-request-id", context.RequestId),
             new("content-length", bodyBytes.Length.ToString(System.Globalization.CultureInfo.InvariantCulture))
         ];
@@ -331,19 +607,93 @@ public sealed class Http3PreviewConnection
             }
         }
 
-        var headerBlock = Http3PreviewCodec.EncodeHeaderBlock(headers);
-        using var response = new MemoryStream();
-        Http3PreviewCodec.WriteFrame(response, Http3PreviewCodec.HeadersFrame, headerBlock);
-        if (!string.Equals(method, "HEAD", StringComparison.OrdinalIgnoreCase) && bodyBytes.Length > 0)
-        {
-            Http3PreviewCodec.WriteFrame(response, Http3PreviewCodec.DataFrame, bodyBytes);
-        }
-
-        await stream.WriteAsync(response.ToArray(), completeWrites: true, cancellationToken);
-        _metrics.AddBytesWritten(response.Length);
+        await WriteHeadersAndBodyAsync(
+            stream,
+            statusCode,
+            headers,
+            string.Equals(method, "HEAD", StringComparison.OrdinalIgnoreCase) ? [] : bodyBytes,
+            cancellationToken);
         context.ResponseStarted = true;
         context.ResponseStatusCode = statusCode;
-        context.KeepClientConnectionOpen = false;
+        context.KeepClientConnectionOpen = true;
+    }
+
+    private async ValueTask WriteHeadersAndBodyAsync(
+        QuicStream stream,
+        int statusCode,
+        IReadOnlyList<Http1HeaderField> headers,
+        ReadOnlyMemory<byte> body,
+        CancellationToken cancellationToken)
+    {
+        await WriteHeadersAsync(
+            stream,
+            statusCode,
+            headers,
+            completeWrites: body.Length == 0,
+            cancellationToken);
+        if (body.Length > 0)
+        {
+            await WriteDataAsync(stream, body, completeWrites: true, cancellationToken);
+        }
+    }
+
+    private async ValueTask WriteHeadersAsync(
+        QuicStream stream,
+        int statusCode,
+        IReadOnlyList<Http1HeaderField> headers,
+        bool completeWrites,
+        CancellationToken cancellationToken)
+    {
+        List<Http1HeaderField> encodedHeaders = [new(":status", Http3PreviewCodec.StatusText(statusCode))];
+        foreach (var header in headers)
+        {
+            if (!header.Name.StartsWith(':') && !IsHopByHopHeader(header.Name))
+            {
+                encodedHeaders.Add(new Http1HeaderField(header.Name.ToLowerInvariant(), header.Value));
+            }
+        }
+
+        var headerBlock = Http3PreviewCodec.EncodeHeaderBlock(encodedHeaders);
+        await WriteFrameAsync(stream, Http3PreviewCodec.HeadersFrame, headerBlock, completeWrites, cancellationToken);
+    }
+
+    private async ValueTask WriteDataAsync(
+        QuicStream stream,
+        ReadOnlyMemory<byte> body,
+        bool completeWrites,
+        CancellationToken cancellationToken)
+    {
+        var remaining = body;
+        while (remaining.Length > 0)
+        {
+            var chunkLength = Math.Min(_listener.Http2Limits.MaxFrameSize, remaining.Length);
+            var final = completeWrites && chunkLength == remaining.Length;
+            await WriteFrameAsync(
+                stream,
+                Http3PreviewCodec.DataFrame,
+                remaining[..chunkLength],
+                final,
+                cancellationToken);
+            remaining = remaining[chunkLength..];
+        }
+
+        if (body.Length == 0 && completeWrites)
+        {
+            await WriteFrameAsync(stream, Http3PreviewCodec.DataFrame, ReadOnlyMemory<byte>.Empty, completeWrites: true, cancellationToken);
+        }
+    }
+
+    private async ValueTask WriteFrameAsync(
+        QuicStream stream,
+        long frameType,
+        ReadOnlyMemory<byte> payload,
+        bool completeWrites,
+        CancellationToken cancellationToken)
+    {
+        using var frame = new MemoryStream();
+        Http3PreviewCodec.WriteFrame(frame, frameType, payload.Span);
+        await stream.WriteAsync(frame.ToArray(), completeWrites, cancellationToken);
+        _metrics.AddBytesWritten(frame.Length);
     }
 
     private ProxyRequestContext CreateRequestContext()
@@ -370,12 +720,150 @@ public sealed class Http3PreviewConnection
         context = null;
     }
 
+    private bool RecordProtocolError(string reason)
+    {
+        _metrics.Http3ProtocolError(reason);
+        return Interlocked.Increment(ref _protocolErrors) >= MaxProtocolErrorsPerConnection;
+    }
+
+    private static bool IsRetryAllowed(RuntimeRoute route, Http1RequestHead requestHead, out string? skipReason)
+    {
+        skipReason = null;
+        if (!route.Retry.Enabled)
+        {
+            return false;
+        }
+
+        if (!route.Retry.RetryMethods.Any(method => string.Equals(method, requestHead.Method, StringComparison.OrdinalIgnoreCase)))
+        {
+            skipReason = "method";
+            return false;
+        }
+
+        if (requestHead.Framing.Kind != Http1BodyKind.None)
+        {
+            skipReason = "request_body";
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool ShouldRetry(
+        RuntimeRetryPolicy retry,
+        Http1RequestHead requestHead,
+        ForwardingResult result,
+        int attempt,
+        int maxAttempts,
+        out string? skipReason)
+    {
+        _ = requestHead;
+        skipReason = null;
+        if (!IsRetryableFailure(retry, result))
+        {
+            return false;
+        }
+
+        if (result.ResponseStarted)
+        {
+            skipReason = "response_started";
+            return false;
+        }
+
+        return attempt < maxAttempts;
+    }
+
+    private static bool IsRetryableFailure(RuntimeRetryPolicy retry, ForwardingResult result)
+    {
+        if (result.ResponseStatusCode.HasValue
+            && retry.RetryOnStatusCodes.Any(code => code == result.ResponseStatusCode.Value))
+        {
+            return true;
+        }
+
+        if (!result.Succeeded)
+        {
+            return result.FailureKind switch
+            {
+                ProxyFailureKind.UpstreamConnectFailed => retry.RetryOnConnectFailure,
+                ProxyFailureKind.UpstreamConnectTimeout => retry.RetryOnConnectFailure,
+                ProxyFailureKind.UpstreamResponseHeadTimeout => retry.RetryOnUpstreamResponseHeadTimeout,
+                _ => false
+            };
+        }
+
+        return false;
+    }
+
+    private static bool IsCircuitFailure(ProxyFailureKind failureKind)
+    {
+        return failureKind is ProxyFailureKind.UpstreamConnectFailed
+            or ProxyFailureKind.UpstreamConnectTimeout
+            or ProxyFailureKind.UpstreamResponseHeadTimeout;
+    }
+
+    private static string CircuitFailureReason(ProxyFailureKind failureKind)
+    {
+        return failureKind switch
+        {
+            ProxyFailureKind.UpstreamConnectFailed => "connect_failure",
+            ProxyFailureKind.UpstreamConnectTimeout => "connect_timeout",
+            ProxyFailureKind.UpstreamResponseHeadTimeout => "response_head_timeout",
+            _ => "other"
+        };
+    }
+
+    private static int StatusCodeForFailure(ProxyFailureKind failureKind)
+    {
+        return failureKind switch
+        {
+            ProxyFailureKind.UpstreamConnectTimeout => 504,
+            ProxyFailureKind.UpstreamResponseHeadTimeout => 504,
+            ProxyFailureKind.RequestPayloadTooLarge => 413,
+            ProxyFailureKind.ClientMalformedRequest => 400,
+            _ => 502
+        };
+    }
+
+    private static RuntimeTimeouts ApplyRouteTimeouts(RuntimeRoute route, RuntimeTimeouts timeouts)
+    {
+        return timeouts with
+        {
+            UpstreamResponseHeadTimeout = route.ResolvedOptions.UpstreamResponseHeadTimeout
+        };
+    }
+
+    private static RuntimeTimeouts ApplyRetryAttemptTimeout(RuntimeRoute route, RuntimeTimeouts timeouts)
+    {
+        if (route.Retry.PerAttemptTimeout is not { } perAttemptTimeout)
+        {
+            return timeouts;
+        }
+
+        return timeouts with
+        {
+            UpstreamConnectTimeout = perAttemptTimeout,
+            UpstreamResponseHeadTimeout = perAttemptTimeout
+        };
+    }
+
+    private static void ApplyForwardingResult(ProxyRequestContext context, ForwardingResult result)
+    {
+        context.ResponseStarted = result.ResponseStarted;
+        context.ResponseStatusCode = result.ResponseStatusCode;
+        context.KeepClientConnectionOpen = true;
+        context.FailureKind = result.FailureKind;
+    }
+
     private static bool IsHopByHopHeader(string header)
     {
         return string.Equals(header, "connection", StringComparison.OrdinalIgnoreCase)
             || string.Equals(header, "transfer-encoding", StringComparison.OrdinalIgnoreCase)
             || string.Equals(header, "upgrade", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(header, "keep-alive", StringComparison.OrdinalIgnoreCase);
+            || string.Equals(header, "keep-alive", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(header, "proxy-connection", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(header, "proxy-authenticate", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(header, "proxy-authorization", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string? ExtractExternalRequestId(Http1RequestHead requestHead)
@@ -392,4 +880,183 @@ public sealed class Http3PreviewConnection
 
         return null;
     }
+
+    private sealed class Http3ResponseTranslationStream : Stream
+    {
+        private readonly Http3PreviewConnection _connection;
+        private readonly QuicStream _stream;
+        private readonly string _method;
+        private readonly TimeSpan _writeTimeout;
+        private readonly MemoryStream _requestBody;
+        private readonly MemoryStream _headBuffer = new();
+        private bool _headWritten;
+        private bool _endStreamSent;
+        private bool _dropBody;
+
+        public Http3ResponseTranslationStream(
+            Http3PreviewConnection connection,
+            QuicStream stream,
+            string method,
+            TimeSpan writeTimeout,
+            byte[] requestBody)
+        {
+            _connection = connection;
+            _stream = stream;
+            _method = method;
+            _writeTimeout = writeTimeout;
+            _requestBody = new MemoryStream(requestBody, writable: false);
+        }
+
+        public override bool CanRead => true;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => true;
+
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            return _requestBody.Read(buffer, offset, count);
+        }
+
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            return _requestBody.ReadAsync(buffer, cancellationToken);
+        }
+
+        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            await ProxyTimeoutPolicy.RunAsync(
+                async timeoutToken => await WriteCoreAsync(buffer, timeoutToken),
+                _writeTimeout,
+                ProxyTimeoutKind.DownstreamWrite,
+                cancellationToken);
+        }
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            WriteAsync(buffer.AsMemory(offset, count)).AsTask().GetAwaiter().GetResult();
+        }
+
+        public async ValueTask CompleteAsync(CancellationToken cancellationToken)
+        {
+            if (_headWritten && !_endStreamSent)
+            {
+                await _connection.WriteDataAsync(_stream, ReadOnlyMemory<byte>.Empty, completeWrites: true, cancellationToken);
+                _endStreamSent = true;
+            }
+        }
+
+        private async ValueTask WriteCoreAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+        {
+            if (!_headWritten)
+            {
+                _headBuffer.Write(buffer.Span);
+                var bytes = _headBuffer.ToArray();
+                var split = IndexOfHeaderEnd(bytes);
+                if (split < 0)
+                {
+                    return;
+                }
+
+                var headText = Encoding.ASCII.GetString(bytes, 0, split);
+                var bodyOffset = split + 4;
+                var statusAndHeaders = ParseHttp1ResponseHead(headText);
+                _dropBody = string.Equals(_method, "HEAD", StringComparison.OrdinalIgnoreCase)
+                    || statusAndHeaders.StatusCode is 204 or 304;
+                var bodyBytes = bytes.AsMemory(bodyOffset);
+                var endWithHeaders = _dropBody || IsZeroContentLength(statusAndHeaders.Headers);
+                await _connection.WriteHeadersAsync(
+                    _stream,
+                    statusAndHeaders.StatusCode,
+                    statusAndHeaders.Headers,
+                    completeWrites: endWithHeaders,
+                    cancellationToken);
+                _headWritten = true;
+                _endStreamSent = endWithHeaders;
+                _headBuffer.SetLength(0);
+                if (!_dropBody && bodyBytes.Length > 0 && !_endStreamSent)
+                {
+                    await _connection.WriteDataAsync(_stream, bodyBytes, completeWrites: false, cancellationToken);
+                }
+
+                return;
+            }
+
+            if (!_dropBody && !_endStreamSent && buffer.Length > 0)
+            {
+                await _connection.WriteDataAsync(_stream, buffer, completeWrites: false, cancellationToken);
+            }
+        }
+
+        private static ResponseHead ParseHttp1ResponseHead(string text)
+        {
+            var lines = text.Split("\r\n", StringSplitOptions.None);
+            var statusParts = lines[0].Split(' ', 3, StringSplitOptions.RemoveEmptyEntries);
+            var statusCode = statusParts.Length >= 2 && int.TryParse(statusParts[1], out var parsed) ? parsed : 502;
+            List<Http1HeaderField> headers = [];
+            for (var index = 1; index < lines.Length; index++)
+            {
+                var colon = lines[index].IndexOf(':');
+                if (colon <= 0)
+                {
+                    continue;
+                }
+
+                var name = lines[index][..colon].Trim().ToLowerInvariant();
+                var value = lines[index][(colon + 1)..].Trim();
+                if (!IsHopByHopHeader(name))
+                {
+                    headers.Add(new Http1HeaderField(name, value));
+                }
+            }
+
+            return new ResponseHead(statusCode, headers);
+        }
+
+        private static bool IsZeroContentLength(IReadOnlyList<Http1HeaderField> headers)
+        {
+            return headers.Any(static header =>
+                string.Equals(header.Name, "content-length", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(header.Value.Trim(), "0", StringComparison.Ordinal));
+        }
+
+        private static int IndexOfHeaderEnd(ReadOnlySpan<byte> bytes)
+        {
+            for (var index = 3; index < bytes.Length; index++)
+            {
+                if (bytes[index - 3] == (byte)'\r'
+                    && bytes[index - 2] == (byte)'\n'
+                    && bytes[index - 1] == (byte)'\r'
+                    && bytes[index] == (byte)'\n')
+                {
+                    return index - 3;
+                }
+            }
+
+            return -1;
+        }
+
+        public override void Flush()
+        {
+        }
+
+        public override Task FlushAsync(CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
+        public override void SetLength(long value) => throw new NotSupportedException();
+    }
+
+    private readonly record struct ResponseHead(int StatusCode, IReadOnlyList<Http1HeaderField> Headers);
 }

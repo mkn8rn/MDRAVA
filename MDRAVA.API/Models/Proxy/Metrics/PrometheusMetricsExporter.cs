@@ -56,6 +56,10 @@ public sealed class PrometheusMetricsExporter
 
         AppendCounter(builder, "mdrava_http3_connections_accepted_total", "Accepted HTTP/3 preview downstream client connections.", proxy.Http3AcceptedConnections);
         AppendCounter(builder, "mdrava_http3_requests_total", "HTTP/3 preview requests received by the dataplane.", proxy.Http3Requests);
+        AppendCounter(builder, "mdrava_http3_proxied_requests_total", "HTTP/3 preview requests sent through proxy routes.", proxy.Http3ProxiedRequests);
+        AppendCounter(builder, "mdrava_http3_generated_responses_total", "HTTP/3 preview generated route or control responses.", proxy.Http3GeneratedResponses);
+        AppendGauge(builder, "mdrava_http3_streams_active", "Currently active HTTP/3 preview request streams.", proxy.ActiveHttp3Streams);
+        AppendCounter(builder, "mdrava_http3_stream_resets_total", "HTTP/3 preview request stream resets or cancellations.", proxy.Http3StreamResets);
         AppendGauge(builder, "mdrava_quic_listeners_active", "Currently active HTTP/3 preview QUIC listeners.", proxy.ActiveQuicListeners);
         AppendLabeledCounter(builder, "mdrava_quic_listener_starts_total", "HTTP/3 preview QUIC listener starts by result.", proxy.QuicListenerStartSuccesses, new Label("result", "success"));
         AppendLabeledCounter(builder, "mdrava_quic_listener_starts_total", null, proxy.QuicListenerStartFailures, new Label("result", "failure"));

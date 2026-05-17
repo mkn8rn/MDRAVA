@@ -10,7 +10,8 @@ public static class Http3PreviewRequestTranslator
         "upgrade",
         "keep-alive",
         "proxy-connection",
-        "transfer-encoding"
+        "transfer-encoding",
+        "te"
     };
 
     public static bool TryBuildRequest(
@@ -85,6 +86,14 @@ public static class Http3PreviewRequestTranslator
             return false;
         }
 
+        var hostHeader = regularHeaders.FirstOrDefault(static header => string.Equals(header.Name, "host", StringComparison.OrdinalIgnoreCase));
+        if (hostHeader is not null && !string.Equals(hostHeader.Value, authority, StringComparison.OrdinalIgnoreCase))
+        {
+            rejectionReason = "authority_host_mismatch";
+            return false;
+        }
+
+        regularHeaders.RemoveAll(static header => string.Equals(header.Name, "host", StringComparison.OrdinalIgnoreCase));
         var path = target.Split('?', 2)[0];
         regularHeaders.Insert(0, new Http1HeaderField("Host", authority));
         requestHead = new Http1RequestHead(
