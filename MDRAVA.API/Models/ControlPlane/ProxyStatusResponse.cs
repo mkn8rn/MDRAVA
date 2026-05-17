@@ -37,4 +37,8 @@ public sealed record ProxyStatusResponse(
         "not_configured",
         UdpQuicListenerIdentityModeled: true,
         "preview_only");
+
+    public RouteDiagnosticsStatus RouteDiagnostics { get; init; } = RouteDiagnosticsStatus.Enabled;
+
+    public ConfigLintStatus ConfigLint { get; init; } = ConfigLintStatus.Empty;
 }

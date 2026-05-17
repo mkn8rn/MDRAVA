@@ -110,6 +110,8 @@ public sealed class ProxyMetrics
     private long _quicListenerStartSuccesses;
     private long _quicListenerStartFailures;
     private long _activeQuicListeners;
+    private long _configLintRuns;
+    private long _routeMatchDryRuns;
     private readonly long[] _requestFailuresByKind = new long[FailureKinds.Length];
     private readonly ConcurrentDictionary<RequestSeriesKey, RequestSeriesCounter> _requestsByRoute = new();
     private readonly ConcurrentDictionary<string, RequestSeriesCounter> _retrySkippedByReason = new(StringComparer.Ordinal);
@@ -117,6 +119,8 @@ public sealed class ProxyMetrics
     private readonly ConcurrentDictionary<string, RequestSeriesCounter> _http2ProtocolErrors = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, RequestSeriesCounter> _http3RejectedRequests = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, RequestSeriesCounter> _http3ProtocolErrors = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<ConfigLintFindingKey, RequestSeriesCounter> _configLintFindings = new();
+    private readonly ConcurrentDictionary<string, RequestSeriesCounter> _routeMatchDryRunFailures = new(StringComparer.Ordinal);
 
     public void ConnectionAccepted()
     {
@@ -494,6 +498,31 @@ public sealed class ProxyMetrics
 
     public void SetActiveQuicListeners(long count) => Interlocked.Exchange(ref _activeQuicListeners, count);
 
+    public void ConfigLintRun(IEnumerable<ConfigLintFinding> findings)
+    {
+        Interlocked.Increment(ref _configLintRuns);
+        foreach (var finding in findings)
+        {
+            var key = new ConfigLintFindingKey(
+                NormalizeLabel(finding.Severity),
+                NormalizeLabel(finding.Code));
+            var counter = _configLintFindings.GetOrAdd(key, static _ => new RequestSeriesCounter());
+            Interlocked.Increment(ref counter.Count);
+        }
+    }
+
+    public void RouteMatchDryRun(string? failureReason)
+    {
+        Interlocked.Increment(ref _routeMatchDryRuns);
+        if (string.IsNullOrWhiteSpace(failureReason))
+        {
+            return;
+        }
+
+        var counter = _routeMatchDryRunFailures.GetOrAdd(NormalizeLabel(failureReason), static _ => new RequestSeriesCounter());
+        Interlocked.Increment(ref counter.Count);
+    }
+
     public ProxyMetricsSnapshot Snapshot()
     {
         Dictionary<string, long> failuresByKind = new(StringComparer.Ordinal);
@@ -540,6 +569,18 @@ public sealed class ProxyMetrics
             .ToDictionary(static pair => pair.Key, static pair => Interlocked.Read(ref pair.Value.Count), StringComparer.Ordinal);
         var http3ProtocolErrors = _http3ProtocolErrors
             .ToDictionary(static pair => pair.Key, static pair => Interlocked.Read(ref pair.Value.Count), StringComparer.Ordinal);
+        var configLintFindings = _configLintFindings
+            .Select(static pair => new ProxyConfigLintFindingMetricSnapshot(
+                pair.Key.Severity,
+                pair.Key.Code,
+                Interlocked.Read(ref pair.Value.Count)))
+            .OrderBy(static item => item.Severity, StringComparer.Ordinal)
+            .ThenBy(static item => item.Code, StringComparer.Ordinal)
+            .ToArray();
+        var routeMatchDryRunFailures = _routeMatchDryRunFailures
+            .Select(static pair => new ProxyRouteDryRunFailureSnapshot(pair.Key, Interlocked.Read(ref pair.Value.Count)))
+            .OrderBy(static item => item.Reason, StringComparer.Ordinal)
+            .ToArray();
 
         return new ProxyMetricsSnapshot(
             Interlocked.Read(ref _acceptedConnections),
@@ -650,7 +691,11 @@ public sealed class ProxyMetrics
             http3ProtocolErrors,
             Interlocked.Read(ref _quicListenerStartSuccesses),
             Interlocked.Read(ref _quicListenerStartFailures),
-            Interlocked.Read(ref _activeQuicListeners));
+            Interlocked.Read(ref _activeQuicListeners),
+            Interlocked.Read(ref _configLintRuns),
+            configLintFindings,
+            Interlocked.Read(ref _routeMatchDryRuns),
+            routeMatchDryRunFailures);
     }
 
     private static string StatusClass(int? statusCode)
@@ -705,6 +750,10 @@ public sealed class ProxyMetrics
         string Upstream,
         string Scheme,
         string Protocol);
+
+    private readonly record struct ConfigLintFindingKey(
+        string Severity,
+        string Code);
 
     private sealed class RequestSeriesCounter
     {

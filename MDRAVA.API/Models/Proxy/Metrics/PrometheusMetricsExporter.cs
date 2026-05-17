@@ -150,6 +150,35 @@ public sealed class PrometheusMetricsExporter
 
         AppendLabeledCounter(builder, "mdrava_config_reloads_total", "Configuration reloads by result.", proxy.ConfigReloadSuccesses, new Label("result", "success"));
         AppendLabeledCounter(builder, "mdrava_config_reloads_total", null, proxy.ConfigReloadFailures, new Label("result", "failure"));
+        AppendCounter(builder, "mdrava_config_lint_runs_total", "Configuration lint runs.", proxy.ConfigLintRuns);
+        if (proxy.ConfigLintFindings.Count > 0)
+        {
+            AppendHelpAndType(builder, "mdrava_config_lint_findings_total", "Configuration lint findings by bounded severity and code.", "counter");
+            foreach (var finding in proxy.ConfigLintFindings)
+            {
+                AppendSample(
+                    builder,
+                    "mdrava_config_lint_findings_total",
+                    finding.Count,
+                    new Label("severity", finding.Severity),
+                    new Label("code", finding.Code));
+            }
+        }
+
+        AppendCounter(builder, "mdrava_route_match_dry_runs_total", "Route match dry-run requests.", proxy.RouteMatchDryRuns);
+        if (proxy.RouteMatchDryRunFailures.Count > 0)
+        {
+            AppendHelpAndType(builder, "mdrava_route_match_dry_run_failures_total", "Route match dry-run non-match or rejection results by bounded reason.", "counter");
+            foreach (var failure in proxy.RouteMatchDryRunFailures)
+            {
+                AppendSample(
+                    builder,
+                    "mdrava_route_match_dry_run_failures_total",
+                    failure.Count,
+                    new Label("reason", failure.Reason));
+            }
+        }
+
         AppendLabeledCounter(builder, "mdrava_listener_reloads_total", "Proxy listener reload attempts by result.", proxy.ListenerReloadSuccesses, new Label("result", "success"));
         AppendLabeledCounter(builder, "mdrava_listener_reloads_total", null, proxy.ListenerReloadFailures, new Label("result", "failure"));
         AppendCounter(builder, "mdrava_listener_reload_attempts_total", "Proxy listener reload attempts.", proxy.ListenerReloadAttempts);

@@ -5,6 +5,7 @@ using MDRAVA.API.Proxy.Configuration.Loading;
 using MDRAVA.API.Proxy.Configuration.Paths;
 using MDRAVA.API.Proxy.Configuration.Storage;
 using MDRAVA.API.Proxy.Connections;
+using MDRAVA.API.Proxy.Diagnostics;
 using MDRAVA.API.Proxy.Forwarding;
 using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Http3;
@@ -40,6 +41,8 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<IProxyConfigurationReloadService, ProxyConfigurationReloadService>();
         services.AddSingleton<ProxyMetrics>();
         services.AddSingleton<PrometheusMetricsExporter>();
+        services.AddSingleton<ConfigLintService>();
+        services.AddSingleton<RouteMatchDiagnosticsService>();
         services.AddSingleton<RequestIdGenerator>();
         services.AddSingleton<ResponseCacheStore>();
         services.AddSingleton<RecentRequestDiagnosticsStore>();

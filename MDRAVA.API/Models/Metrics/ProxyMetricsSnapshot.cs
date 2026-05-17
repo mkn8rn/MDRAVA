@@ -109,4 +109,8 @@ public sealed record ProxyMetricsSnapshot(
     IReadOnlyDictionary<string, long> Http3ProtocolErrors,
     long QuicListenerStartSuccesses,
     long QuicListenerStartFailures,
-    long ActiveQuicListeners);
+    long ActiveQuicListeners,
+    long ConfigLintRuns,
+    IReadOnlyList<ProxyConfigLintFindingMetricSnapshot> ConfigLintFindings,
+    long RouteMatchDryRuns,
+    IReadOnlyList<ProxyRouteDryRunFailureSnapshot> RouteMatchDryRunFailures);

@@ -1,4 +1,5 @@
 using MDRAVA.API.Proxy.Configuration.Storage;
+using MDRAVA.API.Proxy.Diagnostics;
 using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Hosting;
 using MDRAVA.API.Proxy.Http3;
@@ -15,17 +16,20 @@ public sealed class ProxyStatusController : ControllerBase
     private readonly ProxyMetrics _metrics;
     private readonly IProxyConfigurationStore _configurationStore;
     private readonly UpstreamHealthStore _healthStore;
+    private readonly ConfigLintService? _lintService;
 
     public ProxyStatusController(
         ProxyRuntimeState runtimeState,
         ProxyMetrics metrics,
         IProxyConfigurationStore configurationStore,
-        UpstreamHealthStore healthStore)
+        UpstreamHealthStore healthStore,
+        ConfigLintService? lintService = null)
     {
         _runtimeState = runtimeState;
         _metrics = metrics;
         _configurationStore = configurationStore;
         _healthStore = healthStore;
+        _lintService = lintService;
     }
 
     [HttpGet("status")]
@@ -79,7 +83,9 @@ public sealed class ProxyStatusController : ControllerBase
         {
             Listeners = runtime.Listeners,
             LastListenerReload = runtime.LastListenerReload,
-            Http3 = Http3RuntimeSupport.Project(snapshot?.Listeners ?? [], runtime.Listeners)
+            Http3 = Http3RuntimeSupport.Project(snapshot?.Listeners ?? [], runtime.Listeners),
+            RouteDiagnostics = RouteDiagnosticsStatus.Enabled,
+            ConfigLint = _lintService?.LastActiveStatus ?? ConfigLintStatus.Empty
         };
     }
 }
