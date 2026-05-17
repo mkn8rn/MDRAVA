@@ -22,4 +22,13 @@ public sealed record ProxyStatusResponse(
     public IReadOnlyList<ProxyListenerStatus> Listeners { get; init; } = [];
 
     public ProxyListenerReloadResult? LastListenerReload { get; init; }
+
+    public RuntimeHttp3SupportProjection Http3 { get; init; } = new(
+        "unknown",
+        QuicListenerSupported: false,
+        QuicConnectionSupported: false,
+        "disabled",
+        EnabledForTraffic: false,
+        "not_configured",
+        UdpQuicListenerIdentityModeled: true);
 }

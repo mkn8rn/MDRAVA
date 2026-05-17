@@ -14,6 +14,8 @@ public sealed class ListenerOptions
 
     public string Protocols { get; init; } = "http1";
 
+    public bool ExperimentalHttp3 { get; init; }
+
     public string? DefaultCertificateId { get; init; }
 
     public List<SniCertificateOptions> SniCertificates { get; init; } = [];

@@ -1,4 +1,5 @@
 using MDRAVA.API.Proxy.Security;
+using MDRAVA.API.Proxy.Http3;
 
 namespace MDRAVA.API.Proxy.Configuration.Runtime;
 
@@ -34,6 +35,7 @@ public static class ProxyConfigurationMapper
                 listener.ForwardingBufferBytes)
             {
                 Protocols = ParseProtocols(listener.Protocols),
+                ExperimentalHttp3 = listener.ExperimentalHttp3,
                 Http2Limits = new RuntimeHttp2Limits(
                     listener.Http2MaxConcurrentStreams,
                     listener.Http2MaxHeaderListBytes,
@@ -148,7 +150,8 @@ public static class ProxyConfigurationMapper
             snapshot.Listeners,
             snapshot.Routes)
         {
-            Metrics = snapshot.Metrics
+            Metrics = snapshot.Metrics,
+            Http3 = Http3RuntimeSupport.Project(snapshot.Listeners)
         };
     }
 
@@ -365,6 +368,10 @@ public static class ProxyConfigurationMapper
         {
             "http2" => RuntimeListenerProtocols.Http2,
             "http1andhttp2" => RuntimeListenerProtocols.Http1AndHttp2,
+            "http3preview" => RuntimeListenerProtocols.Http3Preview,
+            "http1andhttp3preview" => RuntimeListenerProtocols.Http1AndHttp3Preview,
+            "http2andhttp3preview" => RuntimeListenerProtocols.Http2AndHttp3Preview,
+            "http1andhttp2andhttp3preview" => RuntimeListenerProtocols.Http1AndHttp2AndHttp3Preview,
             _ => RuntimeListenerProtocols.Http1
         };
     }

@@ -100,6 +100,8 @@ public static class SiteOptionsAggregator
             Port = existing.Port,
             Enabled = existing.Enabled || next.Enabled,
             Transport = existing.Transport,
+            Protocols = MergeListenerProtocols(existing.Protocols, next.Protocols),
+            ExperimentalHttp3 = existing.ExperimentalHttp3 || next.ExperimentalHttp3,
             DefaultCertificateId = !string.IsNullOrWhiteSpace(existing.DefaultCertificateId)
                 ? existing.DefaultCertificateId
                 : next.DefaultCertificateId,
@@ -108,7 +110,58 @@ public static class SiteOptionsAggregator
             MaxRequestHeadBytes = existing.MaxRequestHeadBytes,
             MaxResponseHeadBytes = existing.MaxResponseHeadBytes,
             MaxChunkLineBytes = existing.MaxChunkLineBytes,
-            ForwardingBufferBytes = existing.ForwardingBufferBytes
+            ForwardingBufferBytes = existing.ForwardingBufferBytes,
+            Http2MaxConcurrentStreams = existing.Http2MaxConcurrentStreams,
+            Http2MaxHeaderListBytes = existing.Http2MaxHeaderListBytes,
+            Http2MaxFrameSize = existing.Http2MaxFrameSize
+        };
+    }
+
+    private static string MergeListenerProtocols(string existing, string next)
+    {
+        if (!TryParseListenerProtocols(existing, out var existingProtocols))
+        {
+            return existing;
+        }
+
+        if (!TryParseListenerProtocols(next, out var nextProtocols))
+        {
+            return next;
+        }
+
+        var merged = existingProtocols | nextProtocols;
+        return ListenerProtocolsText(merged);
+    }
+
+    private static bool TryParseListenerProtocols(
+        string protocols,
+        out RuntimeListenerProtocols parsed)
+    {
+        parsed = protocols.Trim().ToLowerInvariant() switch
+        {
+            "http2" => RuntimeListenerProtocols.Http2,
+            "http1andhttp2" => RuntimeListenerProtocols.Http1AndHttp2,
+            "http3preview" => RuntimeListenerProtocols.Http3Preview,
+            "http1andhttp3preview" => RuntimeListenerProtocols.Http1AndHttp3Preview,
+            "http2andhttp3preview" => RuntimeListenerProtocols.Http2AndHttp3Preview,
+            "http1andhttp2andhttp3preview" => RuntimeListenerProtocols.Http1AndHttp2AndHttp3Preview,
+            "http1" => RuntimeListenerProtocols.Http1,
+            _ => RuntimeListenerProtocols.None
+        };
+        return parsed != RuntimeListenerProtocols.None;
+    }
+
+    private static string ListenerProtocolsText(RuntimeListenerProtocols protocols)
+    {
+        return protocols switch
+        {
+            RuntimeListenerProtocols.Http2 => "http2",
+            RuntimeListenerProtocols.Http1AndHttp2 => "http1AndHttp2",
+            RuntimeListenerProtocols.Http3Preview => "http3Preview",
+            RuntimeListenerProtocols.Http1AndHttp3Preview => "http1AndHttp3Preview",
+            RuntimeListenerProtocols.Http2AndHttp3Preview => "http2AndHttp3Preview",
+            RuntimeListenerProtocols.Http1AndHttp2AndHttp3Preview => "http1AndHttp2AndHttp3Preview",
+            _ => "http1"
         };
     }
 

@@ -64,11 +64,30 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
 
             if (!IsListenerProtocols(listener.Protocols))
             {
-                failures.Add($"{prefix}:Protocols must be 'http1', 'http2', or 'http1AndHttp2'.");
+                failures.Add($"{prefix}:Protocols must be 'http1', 'http2', 'http1AndHttp2', 'http3Preview', 'http1AndHttp3Preview', 'http2AndHttp3Preview', or 'http1AndHttp2AndHttp3Preview'.");
             }
             else if (EnablesHttp2(listener.Protocols) && !isHttps)
             {
                 failures.Add($"{prefix}:HTTP/2 requires an HTTPS listener with ALPN; h2c is not supported.");
+            }
+
+            if (EnablesHttp3Preview(listener.Protocols))
+            {
+                if (!listener.ExperimentalHttp3)
+                {
+                    failures.Add($"{prefix}:HTTP/3 preview requires ExperimentalHttp3 to be true.");
+                }
+
+                if (!isHttps)
+                {
+                    failures.Add($"{prefix}:HTTP/3 preview requires an HTTPS listener; QUIC TLS over plaintext is not supported.");
+                }
+
+                if (string.IsNullOrWhiteSpace(listener.DefaultCertificateId)
+                    && listener.SniCertificates.Count == 0)
+                {
+                    failures.Add($"{prefix}:HTTP/3 preview requires DefaultCertificateId or SniCertificates so future QUIC TLS can use the certificate registry.");
+                }
             }
 
             if (listener.Port is < 1 or > 65535)
@@ -285,13 +304,25 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
     {
         return string.Equals(protocols, "http1", StringComparison.OrdinalIgnoreCase)
             || string.Equals(protocols, "http2", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(protocols, "http1AndHttp2", StringComparison.OrdinalIgnoreCase);
+            || string.Equals(protocols, "http1AndHttp2", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(protocols, "http3Preview", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(protocols, "http1AndHttp3Preview", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(protocols, "http2AndHttp3Preview", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(protocols, "http1AndHttp2AndHttp3Preview", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool EnablesHttp2(string protocols)
     {
         return string.Equals(protocols, "http2", StringComparison.OrdinalIgnoreCase)
             || string.Equals(protocols, "http1AndHttp2", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool EnablesHttp3Preview(string protocols)
+    {
+        return string.Equals(protocols, "http3Preview", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(protocols, "http1AndHttp3Preview", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(protocols, "http2AndHttp3Preview", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(protocols, "http1AndHttp2AndHttp3Preview", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsSupportedUpstreamScheme(string scheme)

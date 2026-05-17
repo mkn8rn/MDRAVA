@@ -18,5 +18,17 @@ public sealed record RuntimeListener(
 
     public RuntimeListenerProtocols Protocols { get; init; } = RuntimeListenerProtocols.Http1;
 
+    public bool ExperimentalHttp3 { get; init; }
+
     public RuntimeHttp2Limits Http2Limits { get; init; } = RuntimeHttp2Limits.Default;
+
+    public bool TcpTrafficEnabled => Protocols.HasTcpProtocols();
+
+    public bool Http3PreviewConfigured => Protocols.HasHttp3Preview();
+
+    public RuntimeQuicListenerIdentity? QuicIdentity => Http3PreviewConfigured
+        ? RuntimeQuicListenerIdentity.From(this)
+        : null;
+
+    public RuntimeHttp3ListenerReadiness Http3 => RuntimeHttp3ListenerReadiness.From(this);
 }

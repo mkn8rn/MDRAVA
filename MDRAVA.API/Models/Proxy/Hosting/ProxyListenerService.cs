@@ -110,7 +110,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
             _metrics.ListenerReloadAttempted();
             var attemptedAt = DateTimeOffset.UtcNow;
             var nextListeners = snapshot.Listeners
-                .Where(static listener => listener.Enabled)
+                .Where(static listener => listener.Enabled && listener.TcpTrafficEnabled)
                 .ToDictionary(static listener => RuntimeListenerIdentity.From(listener).Key, StringComparer.OrdinalIgnoreCase);
             var diff = DiffListeners(nextListeners);
             Dictionary<string, ManagedListener> pending = new(StringComparer.OrdinalIgnoreCase);
@@ -702,7 +702,8 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
                     _listener.Port,
                     _listener.Transport.ToString().ToLowerInvariant(),
                     identity.TlsEnabled,
-                    ProtocolsText(_listener.Protocols),
+                    ListenerProtocolAdvertisement.ToConfigText(_listener.Protocols),
+                    _listener.Http3,
                     _listener.Http2Limits.MaxConcurrentStreams,
                     _listener.Http2Limits.MaxHeaderListBytes,
                     _listener.Http2Limits.MaxFrameSize,
@@ -712,15 +713,6 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
                     _stoppedAtUtc,
                     _lastError);
             }
-        }
-
-        private static string ProtocolsText(RuntimeListenerProtocols protocols)
-        {
-            return protocols == RuntimeListenerProtocols.Http1AndHttp2
-                ? "http1AndHttp2"
-                : protocols == RuntimeListenerProtocols.Http2
-                    ? "http2"
-                    : "http1";
         }
     }
 }

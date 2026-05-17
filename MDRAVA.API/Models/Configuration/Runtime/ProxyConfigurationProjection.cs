@@ -18,4 +18,13 @@ public sealed record ProxyConfigurationProjection(
     IReadOnlyList<RuntimeRoute> Routes)
 {
     public RuntimeMetricsOptions Metrics { get; init; } = RuntimeMetricsOptions.Default;
+
+    public RuntimeHttp3SupportProjection Http3 { get; init; } = new(
+        "unknown",
+        QuicListenerSupported: false,
+        QuicConnectionSupported: false,
+        "disabled",
+        EnabledForTraffic: false,
+        "not_configured",
+        UdpQuicListenerIdentityModeled: true);
 }

@@ -44,7 +44,7 @@ public sealed class TlsConnectionAuthenticator
             EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
             ClientCertificateRequired = false,
             CertificateRevocationCheckMode = X509RevocationMode.NoCheck,
-            ApplicationProtocols = BuildApplicationProtocols(listener),
+            ApplicationProtocols = ListenerProtocolAdvertisement.BuildTcpAlpn(listener.Protocols),
             ServerCertificateSelectionCallback = (_, hostName) =>
                 SelectCertificate(snapshot, listener, hostName) ?? null!
         };
@@ -121,21 +121,5 @@ public sealed class TlsConnectionAuthenticator
             hostName ?? "<none>",
             listener.Name);
         return null;
-    }
-
-    private static List<SslApplicationProtocol> BuildApplicationProtocols(RuntimeListener listener)
-    {
-        List<SslApplicationProtocol> protocols = [];
-        if (listener.Protocols.HasFlag(RuntimeListenerProtocols.Http2))
-        {
-            protocols.Add(SslApplicationProtocol.Http2);
-        }
-
-        if (listener.Protocols.HasFlag(RuntimeListenerProtocols.Http1))
-        {
-            protocols.Add(SslApplicationProtocol.Http11);
-        }
-
-        return protocols;
     }
 }

@@ -1,6 +1,7 @@
 using MDRAVA.API.Proxy.Configuration.Storage;
 using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Hosting;
+using MDRAVA.API.Proxy.Http3;
 using MDRAVA.API.Proxy.Metrics;
 using Microsoft.AspNetCore.Mvc;
 
@@ -77,7 +78,8 @@ public sealed class ProxyStatusController : ControllerBase
             upstreams)
         {
             Listeners = runtime.Listeners,
-            LastListenerReload = runtime.LastListenerReload
+            LastListenerReload = runtime.LastListenerReload,
+            Http3 = Http3RuntimeSupport.Project(snapshot?.Listeners ?? [])
         };
     }
 }

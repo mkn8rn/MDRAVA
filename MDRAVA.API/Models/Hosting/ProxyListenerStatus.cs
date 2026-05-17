@@ -9,6 +9,7 @@ public sealed record ProxyListenerStatus(
     string Transport,
     bool TlsEnabled,
     string Protocols,
+    RuntimeHttp3ListenerReadiness Http3,
     int Http2MaxConcurrentStreams,
     int Http2MaxHeaderListBytes,
     int Http2MaxFrameSize,
