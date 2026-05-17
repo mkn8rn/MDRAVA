@@ -87,6 +87,7 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
                 cancellationToken);
             metrics.UpstreamHttp3ConnectionSucceeded();
             metrics.UpstreamHttp3ConnectionOpened();
+            metrics.UpstreamHttp3PoolConnectionOpened();
             connectionOpened = true;
             await SendSettingsAsync(connection, timeouts, cancellationToken);
             stream = await ProxyTimeoutPolicy.RunAsync(
@@ -232,6 +233,7 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
 
             await Connection.DisposeAsync();
             _metrics.UpstreamHttp3ConnectionClosed();
+            _metrics.UpstreamHttp3PoolConnectionClosed();
         }
     }
 
@@ -457,6 +459,7 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
         if (connectionOpened)
         {
             metrics.UpstreamHttp3ConnectionClosed();
+            metrics.UpstreamHttp3PoolConnectionClosed();
         }
     }
 

@@ -6,7 +6,8 @@ public static class Http3RuntimeSupport
 {
     public static RuntimeHttp3SupportProjection Project(
         IReadOnlyList<RuntimeListener> listeners,
-        IReadOnlyList<ProxyListenerStatus>? runtimeListeners = null)
+        IReadOnlyList<ProxyListenerStatus>? runtimeListeners = null,
+        IReadOnlyList<RuntimeRoute>? routes = null)
     {
         var previewConfigured = listeners.Any(static listener => listener.Http3.Configured);
         var previewEnabled = listeners.Any(static listener => listener.Http3.EnabledForTraffic);
@@ -33,6 +34,8 @@ public static class Http3RuntimeSupport
             : defaultState == "disabled"
                 ? "disabled"
                 : "explicit_only";
+        var upstreamHttp3Configured = routes?.Any(static route => route.Upstreams.Any(static upstream =>
+            RuntimeUpstreamProtocol.IsHttp3(upstream.Protocol))) ?? false;
         return new RuntimeHttp3SupportProjection(
             support.RuntimeSupport,
             support.QuicListenerSupported,
@@ -50,7 +53,15 @@ public static class Http3RuntimeSupport
         {
             DefaultEnablementState = defaultState,
             DefaultReadinessBlockers = blockers,
-            AltSvcStateReason = AltSvcReason(altSvcConfigured, altSvcActive, previewEnabled, quicReady, runtimeListeners is not null)
+            AltSvcStateReason = AltSvcReason(altSvcConfigured, altSvcActive, previewEnabled, quicReady, runtimeListeners is not null),
+            UpstreamHttp3Configured = upstreamHttp3Configured,
+            UpstreamPoolingMode = upstreamHttp3Configured ? "one_request_per_connection" : "not_configured",
+            UpstreamMultiplexingEnabled = false,
+            UpstreamMaxStreamsPerConnection = upstreamHttp3Configured ? 1 : 0,
+            UpstreamQpackMode = "static_with_zero_dynamic_table",
+            UpstreamPoolingLimitationReason = upstreamHttp3Configured
+                ? "upstream_http3_multiplexing_deferred"
+                : ""
         };
     }
 

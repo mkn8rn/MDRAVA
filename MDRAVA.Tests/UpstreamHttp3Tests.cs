@@ -57,6 +57,24 @@ internal static class UpstreamHttp3Tests
         AssertEx.Equal("https", upstream.Scheme);
     }
 
+    public static async Task Http3EffectiveProjectionReportsOneRequestPerConnection()
+    {
+        using var temp = TemporaryDirectory.Create();
+        ConfigurationTests.WriteCustomSite(
+            temp.Path,
+            "upstream-h3.json",
+            SiteJson(proxyPort: 18080, upstreamPort: 18443));
+
+        var result = await CreateLoader(temp.Path).LoadAsync(CancellationToken.None);
+        var projection = ProxyConfigurationMapper.ToProjection(AssertEx.NotNull(result.Snapshot));
+
+        AssertEx.True(projection.Http3.UpstreamHttp3Configured);
+        AssertEx.Equal("one_request_per_connection", projection.Http3.UpstreamPoolingMode);
+        AssertEx.False(projection.Http3.UpstreamMultiplexingEnabled);
+        AssertEx.Equal(1, projection.Http3.UpstreamMaxStreamsPerConnection);
+        AssertEx.Equal("upstream_http3_multiplexing_deferred", projection.Http3.UpstreamPoolingLimitationReason);
+    }
+
     public static void PoolKeyDiffersForHttp1Http2AndHttp3()
     {
         var http1 = Upstream(5001, RuntimeUpstreamProtocol.Http1);
@@ -98,6 +116,47 @@ internal static class UpstreamHttp3Tests
         AssertEx.Equal("/api/users?id=1", result.Upstream.RequestHeaders[":path"]);
         AssertEx.False(result.Upstream.RequestHeaders.ContainsKey("connection"));
         AssertEx.False(result.Upstream.RequestHeaders.ContainsKey("keep-alive"));
+    }
+
+    public static async Task Http3UpstreamAlpnFailureDoesNotDowngrade()
+    {
+        if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
+        {
+            return;
+        }
+
+        var port = GetFreeUdpPort();
+        await using var listener = await CreateQuicListenerAsync(
+            port,
+            CancellationToken.None,
+            applicationProtocols: [new SslApplicationProtocol("not-h3")]);
+        var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var client = new UpstreamHealthCheckClient(new UpstreamConnectionFactory());
+
+        var result = await client.CheckAsync(
+            Route([Upstream(port, RuntimeUpstreamProtocol.Http3)]),
+            Upstream(port, RuntimeUpstreamProtocol.Http3),
+            timeout.Token);
+
+        AssertEx.False(result.Healthy, result.Result);
+    }
+
+    public static async Task Http3UpstreamMalformedResponseHeadersAreRejected()
+    {
+        if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
+        {
+            return;
+        }
+
+        var result = await RunProxyScenarioAsync(
+            "/bad",
+            200,
+            [("content-length", "2")],
+            Encoding.ASCII.GetBytes("ok"),
+            malformedResponseHeaders: true);
+
+        AssertEx.True(result.ClientResponse.Contains("502 Bad Gateway", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.True(result.Metrics.UpstreamHttp3ProtocolErrors.ContainsKey("protocol_failure"), "Expected upstream HTTP/3 protocol failure metric.");
     }
 
     public static async Task Http3UpstreamForwardsRequestBody()
@@ -147,6 +206,35 @@ internal static class UpstreamHttp3Tests
         AssertEx.Equal("/health", observation.RequestHeaders[":path"]);
     }
 
+    public static async Task CacheWorksWithHttp3Upstream()
+    {
+        if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
+        {
+            return;
+        }
+
+        var result = await RunProxyScenarioAsync(
+            "/cache",
+            200,
+            [("content-length", "8"), ("cache-control", "max-age=60")],
+            Encoding.ASCII.GetBytes("cache-h3"),
+            routeExtraJson:
+            """
+                  "cache": {
+                    "enabled": true,
+                    "maxEntryBytes": 4096,
+                    "maxTotalBytes": 8192,
+                    "defaultTtlSeconds": 60,
+                    "respectOriginCacheControl": true
+                  },
+            """,
+            sendSecondRequest: true);
+
+        AssertEx.True(result.ClientResponse.Contains("cache-h3", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.True(result.SecondClientResponse.Contains("cache-h3", StringComparison.Ordinal), result.SecondClientResponse);
+        AssertEx.True(result.Metrics.UpstreamHttp3Requests >= 1, result.Metrics.UpstreamHttp3Requests.ToString());
+    }
+
     public static async Task MetricsIncludeUpstreamHttp3Counters()
     {
         if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
@@ -163,6 +251,9 @@ internal static class UpstreamHttp3Tests
         AssertEx.True(result.Metrics.UpstreamHttp3Requests >= 1, result.Metrics.UpstreamHttp3Requests.ToString());
         AssertEx.True(result.Metrics.UpstreamHttp3ConnectionAttempts >= 1, result.Metrics.UpstreamHttp3ConnectionAttempts.ToString());
         AssertEx.True(result.Metrics.UpstreamHttp3ConnectionSuccesses >= 1, result.Metrics.UpstreamHttp3ConnectionSuccesses.ToString());
+        AssertEx.True(result.Metrics.UpstreamHttp3PoolConnectionsOpened >= 1, result.Metrics.UpstreamHttp3PoolConnectionsOpened.ToString());
+        AssertEx.Equal(0, result.Metrics.UpstreamHttp3PoolConnectionsReused);
+        AssertEx.True(result.Metrics.UpstreamHttp3PoolConnectionsClosed >= 1, result.Metrics.UpstreamHttp3PoolConnectionsClosed.ToString());
     }
 
     private static async Task<ProxyScenarioResult> RunProxyScenarioAsync(
@@ -172,19 +263,23 @@ internal static class UpstreamHttp3Tests
         byte[] responseBody,
         string requestHeaders = "",
         string method = "GET",
-        string requestBody = "")
+        string requestBody = "",
+        string routeExtraJson = "",
+        bool sendSecondRequest = false,
+        bool malformedResponseHeaders = false)
     {
         var proxyPort = GetFreeTcpPort();
         var upstreamPort = GetFreeUdpPort();
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         using var temp = TemporaryDirectory.Create();
-        ConfigurationTests.WriteCustomSite(temp.Path, "upstream-h3.json", SiteJson(proxyPort, upstreamPort));
+        ConfigurationTests.WriteCustomSite(temp.Path, "upstream-h3.json", SiteJson(proxyPort, upstreamPort, routeExtraJson));
         var upstreamTask = RunSingleHttp3UpstreamAsync(
             upstreamPort,
             statusCode,
             responseHeaders,
             responseBody,
-            timeout.Token);
+            timeout.Token,
+            malformedResponseHeaders);
         using var host = BuildProxyHost(temp.Path);
         await host.StartAsync(timeout.Token);
 
@@ -196,9 +291,12 @@ internal static class UpstreamHttp3Tests
                 : "";
             var request = $"{method} {target} HTTP/1.1\r\nHost: home.test\r\n{requestHeaders}{contentLengthHeader}Connection: close\r\n\r\n{requestBody}";
             var first = await SendSingleRequestAsync(proxyPort, request, timeout.Token);
+            var second = sendSecondRequest
+                ? await SendSingleRequestAsync(proxyPort, request, timeout.Token)
+                : "";
             var upstream = await upstreamTask.WaitAsync(timeout.Token);
             var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
-            return new ProxyScenarioResult(first, upstream, metrics);
+            return new ProxyScenarioResult(first, second, upstream, metrics);
         }
         finally
         {
@@ -206,7 +304,7 @@ internal static class UpstreamHttp3Tests
         }
     }
 
-    private static string SiteJson(int proxyPort, int upstreamPort)
+    private static string SiteJson(int proxyPort, int upstreamPort, string routeExtraJson = "")
     {
         return $$"""
         {
@@ -224,6 +322,7 @@ internal static class UpstreamHttp3Tests
               "name": "app",
               "pathPrefix": "/",
               "action": "proxy",
+              {{routeExtraJson}}
               "upstreams": [
                 {
                   "name": "h3-upstream",
@@ -248,7 +347,8 @@ internal static class UpstreamHttp3Tests
         int statusCode,
         IReadOnlyList<(string Name, string Value)> responseHeaders,
         byte[] responseBody,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool malformedResponseHeaders = false)
     {
         await using var listener = await CreateQuicListenerAsync(port, cancellationToken);
         try
@@ -265,7 +365,7 @@ internal static class UpstreamHttp3Tests
 
                 await using var ownedStream = stream;
                 var observation = await ReadRequestAsync(stream, cancellationToken);
-                await WriteResponseAsync(stream, statusCode, responseHeaders, responseBody, cancellationToken);
+                await WriteResponseAsync(stream, statusCode, responseHeaders, responseBody, cancellationToken, malformedResponseHeaders);
                 return observation;
             }
         }
@@ -277,14 +377,15 @@ internal static class UpstreamHttp3Tests
 
     private static async ValueTask<QuicListener> CreateQuicListenerAsync(
         int port,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IReadOnlyList<SslApplicationProtocol>? applicationProtocols = null)
     {
         var certificate = CreateServerCertificate("upstream.test");
         return await QuicListener.ListenAsync(
             new QuicListenerOptions
             {
                 ListenEndPoint = new IPEndPoint(IPAddress.Loopback, port),
-                ApplicationProtocols = [Http3Alpn],
+                ApplicationProtocols = applicationProtocols?.ToList() ?? [Http3Alpn],
                 ConnectionOptionsCallback = (_, _, _) =>
                     ValueTask.FromResult(new QuicServerConnectionOptions
                     {
@@ -292,7 +393,7 @@ internal static class UpstreamHttp3Tests
                         {
                             ServerCertificate = certificate,
                             EnabledSslProtocols = SslProtocols.Tls13,
-                            ApplicationProtocols = [Http3Alpn],
+                            ApplicationProtocols = applicationProtocols?.ToList() ?? [Http3Alpn],
                             CertificateRevocationCheckMode = X509RevocationMode.NoCheck
                         },
                         MaxInboundBidirectionalStreams = 4,
@@ -354,9 +455,12 @@ internal static class UpstreamHttp3Tests
         int statusCode,
         IReadOnlyList<(string Name, string Value)> responseHeaders,
         ReadOnlyMemory<byte> responseBody,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool malformedResponseHeaders)
     {
-        List<Http1HeaderField> headers = [new(":status", statusCode.ToString(System.Globalization.CultureInfo.InvariantCulture))];
+        List<Http1HeaderField> headers = malformedResponseHeaders
+            ? []
+            : [new(":status", statusCode.ToString(System.Globalization.CultureInfo.InvariantCulture))];
         foreach (var header in responseHeaders)
         {
             headers.Add(new Http1HeaderField(header.Name, header.Value));
@@ -524,6 +628,21 @@ internal static class UpstreamHttp3Tests
                 true));
     }
 
+    private static RuntimeTimeouts HealthCheckTimeouts(TimeSpan timeout)
+    {
+        return new RuntimeTimeouts(
+            timeout,
+            timeout,
+            timeout,
+            timeout,
+            timeout,
+            timeout,
+            timeout,
+            timeout,
+            timeout,
+            timeout);
+    }
+
     private static RuntimeUpstream Upstream(
         int port,
         string protocol,
@@ -640,6 +759,7 @@ internal static class UpstreamHttp3Tests
 
     private sealed record ProxyScenarioResult(
         string ClientResponse,
+        string SecondClientResponse,
         Http3UpstreamObservation Upstream,
         ProxyMetricsSnapshot Metrics);
 

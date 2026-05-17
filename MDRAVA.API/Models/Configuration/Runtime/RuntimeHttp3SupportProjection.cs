@@ -28,4 +28,16 @@ public sealed record RuntimeHttp3SupportProjection(
     public int QpackBlockedStreams { get; init; }
 
     public string RequestBodyMode { get; init; } = "streaming";
+
+    public bool UpstreamHttp3Configured { get; init; }
+
+    public string UpstreamPoolingMode { get; init; } = "not_configured";
+
+    public bool UpstreamMultiplexingEnabled { get; init; }
+
+    public int UpstreamMaxStreamsPerConnection { get; init; } = 1;
+
+    public string UpstreamQpackMode { get; init; } = "static_with_zero_dynamic_table";
+
+    public string UpstreamPoolingLimitationReason { get; init; } = "";
 }

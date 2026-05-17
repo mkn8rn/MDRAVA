@@ -156,7 +156,7 @@ public static class ProxyConfigurationMapper
             snapshot.Routes)
         {
             Metrics = snapshot.Metrics,
-            Http3 = Http3RuntimeSupport.Project(snapshot.Listeners)
+            Http3 = Http3RuntimeSupport.Project(snapshot.Listeners, routes: snapshot.Routes)
         };
     }
 

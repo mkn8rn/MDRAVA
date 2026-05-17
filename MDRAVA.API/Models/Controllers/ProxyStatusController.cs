@@ -83,7 +83,7 @@ public sealed class ProxyStatusController : ControllerBase
         {
             Listeners = runtime.Listeners,
             LastListenerReload = runtime.LastListenerReload,
-            Http3 = Http3RuntimeSupport.Project(snapshot?.Listeners ?? [], runtime.Listeners),
+            Http3 = Http3RuntimeSupport.Project(snapshot?.Listeners ?? [], runtime.Listeners, snapshot?.Routes),
             RouteDiagnostics = RouteDiagnosticsStatus.Enabled,
             ConfigLint = _lintService?.LastActiveStatus ?? ConfigLintStatus.Empty
         };
