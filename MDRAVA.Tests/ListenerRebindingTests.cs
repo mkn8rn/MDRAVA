@@ -237,7 +237,7 @@ internal static class ListenerRebindingTests
             var after = await WaitForListenerAsync(runtime, "main", ProxyListenerState.Active, timeout.Token);
 
             AssertEx.True(reload.Succeeded, string.Join("; ", reload.Errors));
-            AssertEx.Equal(1, AssertEx.NotNull(reload.ListenerReload).Unchanged);
+            AssertEx.Equal(2, AssertEx.NotNull(reload.ListenerReload).Unchanged);
             AssertEx.Equal(before.StartedAtUtc, after.StartedAtUtc);
         }
         finally

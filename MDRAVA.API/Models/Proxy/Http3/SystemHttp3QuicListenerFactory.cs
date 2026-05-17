@@ -41,7 +41,7 @@ public sealed class SystemHttp3QuicListenerFactory : IHttp3QuicListenerFactory
         {
             ListenEndPoint = listenEndPoint,
             ListenBacklog = listener.Backlog,
-            ApplicationProtocols = ListenerProtocolAdvertisement.BuildHttp3PreviewAlpn(listener.Protocols),
+            ApplicationProtocols = ListenerProtocolAdvertisement.BuildHttp3Alpn(listener),
             ConnectionOptionsCallback = (_, clientHello, _) =>
             {
                 var certificate = SelectCertificate(snapshot, listener, clientHello.ServerName);
@@ -62,7 +62,7 @@ public sealed class SystemHttp3QuicListenerFactory : IHttp3QuicListenerFactory
                         EnabledSslProtocols = SslProtocols.Tls13,
                         ClientCertificateRequired = false,
                         CertificateRevocationCheckMode = X509RevocationMode.NoCheck,
-                        ApplicationProtocols = ListenerProtocolAdvertisement.BuildHttp3PreviewAlpn(listener.Protocols),
+                        ApplicationProtocols = ListenerProtocolAdvertisement.BuildHttp3Alpn(listener),
                         ServerCertificate = certificate
                     },
                     MaxInboundBidirectionalStreams = Math.Max(1, listener.Http2Limits.MaxConcurrentStreams),

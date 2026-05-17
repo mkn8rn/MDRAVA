@@ -8,17 +8,17 @@ public static class Http3RuntimeSupport
         IReadOnlyList<RuntimeListener> listeners,
         IReadOnlyList<ProxyListenerStatus>? runtimeListeners = null)
     {
-        var previewConfigured = listeners.Any(static listener => listener.Http3PreviewConfigured);
+        var previewConfigured = listeners.Any(static listener => listener.Http3.Configured);
         var previewEnabled = listeners.Any(static listener => listener.Http3.EnabledForTraffic);
         var quicReady = runtimeListeners?.Any(static listener =>
             string.Equals(listener.Kind, "quic", StringComparison.OrdinalIgnoreCase)
             && listener.State == ProxyListenerState.Active) ?? false;
-        var altSvcConfigured = listeners.Any(static listener => listener.Http3AltSvc.Enabled);
+        var altSvcConfigured = listeners.Any(static listener => Http3AltSvcPolicy.IsEnabled(listener));
         var altSvcActive = altSvcConfigured
             && runtimeListeners is not null
-            && listeners.Any(listener => listener.Http3AltSvc.Enabled && Http3AltSvcPolicy.HasActiveQuicListener(listener, runtimeListeners));
+            && listeners.Any(listener => Http3AltSvcPolicy.IsEnabled(listener) && Http3AltSvcPolicy.HasActiveQuicListener(listener, runtimeListeners));
         var maxAge = listeners
-            .Where(static listener => listener.Http3AltSvc.Enabled)
+            .Where(static listener => Http3AltSvcPolicy.IsEnabled(listener))
             .Select(static listener => (int?)listener.Http3AltSvc.MaxAgeSeconds)
             .FirstOrDefault();
         var support = Check();
@@ -37,14 +37,14 @@ public static class Http3RuntimeSupport
             support.RuntimeSupport,
             support.QuicListenerSupported,
             support.QuicConnectionSupported,
-            previewConfigured ? "preview" : "disabled",
+            ConfiguredMode(listeners),
             EnablementLevel(listeners),
             previewEnabled,
             quicReady,
             altSvcConfigured,
             altSvcActive,
             maxAge,
-            DisabledReason(previewConfigured, previewEnabled, quicReady, runtimeListeners is not null),
+            DisabledReason(listeners, previewConfigured, previewEnabled, quicReady, runtimeListeners is not null),
             UdpQuicListenerIdentityModeled: true,
             readinessConclusion)
         {
@@ -81,17 +81,27 @@ public static class Http3RuntimeSupport
 
     private static string EnablementLevel(IReadOnlyList<RuntimeListener> listeners)
     {
-        if (listeners.Any(static listener => listener.Http3.EnablementLevel == "beta"))
+        if (listeners.Any(static listener => listener.Http3.Configured && listener.Http3.EnablementLevel == "beta"))
         {
             return "beta";
         }
 
-        return listeners.Any(static listener => listener.Http3.EnablementLevel == "preview")
-            ? "preview"
+        if (listeners.Any(static listener => listener.Http3.Configured && listener.Http3.EnablementLevel == "preview"))
+        {
+            return "preview";
+        }
+
+        return listeners.Any(static listener => listener.Http3.Configured && listener.Http3.EnablementLevel == "default")
+            ? "default"
             : "disabled";
     }
 
-    private static string DisabledReason(bool configured, bool enabled, bool ready, bool hasRuntimeState)
+    private static string DisabledReason(
+        IReadOnlyList<RuntimeListener> listeners,
+        bool configured,
+        bool enabled,
+        bool ready,
+        bool hasRuntimeState)
     {
         if (ready)
         {
@@ -100,7 +110,9 @@ public static class Http3RuntimeSupport
 
         if (enabled && !hasRuntimeState)
         {
-            return "preview_enabled";
+            return listeners.Any(static listener => listener.Http3.EnabledForTraffic && listener.Http3.EnablementLevel == "default")
+                ? "default_enabled"
+                : "preview_enabled";
         }
 
         if (enabled)
@@ -126,13 +138,24 @@ public static class Http3RuntimeSupport
             blockers.Add("no_http3_enabled_listener");
         }
 
-        if (listeners.Any(static listener => listener.Http3.EnabledForTraffic && listener.Http3MaxBufferedRequestBodyBytes > 0))
+        return blockers.Distinct(StringComparer.Ordinal).ToArray();
+    }
+
+    private static string ConfiguredMode(IReadOnlyList<RuntimeListener> listeners)
+    {
+        if (listeners.Any(static listener => listener.Http3.Configured && listener.Http3.EnablementLevel == "beta"))
         {
-            blockers.Add("request_body_buffered_not_streamed");
+            return "beta";
         }
 
-        blockers.Add("qpack_dynamic_table_unsupported");
-        return blockers.Distinct(StringComparer.Ordinal).ToArray();
+        if (listeners.Any(static listener => listener.Http3.Configured && listener.Http3.EnablementLevel == "preview"))
+        {
+            return "preview";
+        }
+
+        return listeners.Any(static listener => listener.Http3.Configured && listener.Http3.EnablementLevel == "default")
+            ? "default"
+            : "disabled";
     }
 
     private static string AltSvcReason(

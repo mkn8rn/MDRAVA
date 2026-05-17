@@ -465,19 +465,27 @@ internal static class ClientHttp2Tests
 
             try
             {
-                await using var client = await Http2TestClient.ConnectAsync(proxyPort, timeout.Token);
-                var request = new Http2RequestSpec();
-                configureRequest(request);
-                var response = await client.SendRequestAsync(request, timeout.Token);
-                var upstreamRequest = await upstreamTask.WaitAsync(timeout.Token);
-                var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
+                Http2Response response;
+                string upstreamRequest;
+                SslApplicationProtocol negotiatedProtocol;
+                await using (var client = await Http2TestClient.ConnectAsync(proxyPort, timeout.Token))
+                {
+                    var request = new Http2RequestSpec();
+                    configureRequest(request);
+                    response = await client.SendRequestAsync(request, timeout.Token);
+                    upstreamRequest = await upstreamTask.WaitAsync(timeout.Token);
+                    negotiatedProtocol = client.NegotiatedProtocol;
+                }
+
+                var metricsStore = host.Services.GetRequiredService<ProxyMetrics>();
+                var metrics = metricsStore.Snapshot();
                 var diagnostics = host.Services.GetRequiredService<RecentRequestDiagnosticsStore>().Recent(50);
                 return new Http2ScenarioResult(
                     response,
                     upstreamRequest,
                     metrics,
                     diagnostics,
-                    client.NegotiatedProtocol);
+                    negotiatedProtocol);
             }
             finally
             {

@@ -49,27 +49,51 @@ internal static class Http3InfrastructureTests
         AssertEx.False(both.Failed, string.Join("; ", both.Failures ?? []));
     }
 
-    public static void Http3PreviewIsDisabledByDefault()
+    public static void Http3DefaultEnabledForEligibleTlsListener()
     {
         var listener = RuntimeListenerFor("http1");
 
         AssertEx.False(listener.ExperimentalHttp3);
         AssertEx.False(listener.Http3PreviewConfigured);
-        AssertEx.False(listener.Http3.EnabledForTraffic);
-        AssertEx.Equal("not_configured", listener.Http3.DisabledReason);
+        AssertEx.True(listener.Http3.Configured);
+        AssertEx.True(listener.Http3.EnabledForTraffic);
+        AssertEx.Equal("default", listener.Http3.EnablementLevel);
+        AssertEx.Equal("default_enabled", listener.Http3.DisabledReason);
     }
 
-    public static void Http3PreviewConfigIsRejectedWithoutExperimentalGate()
+    public static void Http3DefaultDisabledForPlaintextListener()
+    {
+        var listener = new RuntimeListener(
+            "main",
+            "127.0.0.1",
+            8080,
+            true,
+            RuntimeListenerTransport.Http,
+            null,
+            [],
+            512,
+            32 * 1024,
+            32 * 1024,
+            1024,
+            64 * 1024);
+
+        AssertEx.False(listener.Http3.Configured);
+        AssertEx.False(listener.Http3.EnabledForTraffic);
+        AssertEx.Equal("tls_required", listener.Http3.DisabledReason);
+    }
+
+    public static void Http3PreviewProtocolDoesNotRequireExperimentalGateForDefaultEnablement()
     {
         var validation = new ProxyOptionsValidator().Validate(
             null,
             ValidProxyOptions(Http3Listener("preview", "http1AndHttp2AndHttp3Preview", experimental: false)));
+        var runtime = RuntimeListenerFor("http1AndHttp2AndHttp3Preview", experimentalHttp3: false);
 
-        AssertEx.True(validation.Failed);
-        var failures = AssertEx.NotNull(validation.Failures);
-        AssertEx.True(
-            failures.Any(static failure => failure.Contains("ExperimentalHttp3", StringComparison.Ordinal)),
-            string.Join("; ", failures));
+        AssertEx.False(validation.Failed, string.Join("; ", validation.Failures ?? []));
+        AssertEx.True(runtime.Http3PreviewConfigured);
+        AssertEx.True(runtime.Http3.EnabledForTraffic);
+        AssertEx.Equal("default", runtime.Http3.EnablementLevel);
+        AssertEx.Equal("default_enabled", runtime.Http3.DisabledReason);
     }
 
     public static void Http3PreviewRequiresTlsCertificateCapableListener()
@@ -172,6 +196,10 @@ internal static class Http3InfrastructureTests
         AssertEx.Equal("preview", statusProjection.Configured);
         AssertEx.True(statusProjection.EnabledForTraffic);
         AssertEx.Equal("preview_enabled", statusProjection.DisabledReason);
+        AssertEx.False(statusProjection.DefaultReadinessBlockers.Contains("qpack_dynamic_table_unsupported"));
+        AssertEx.False(statusProjection.DefaultReadinessBlockers.Contains("request_body_buffered_not_streamed"));
+        AssertEx.Equal("static_with_zero_dynamic_table", statusProjection.QpackMode);
+        AssertEx.Equal("streaming", statusProjection.RequestBodyMode);
     }
 
     public static void UpstreamProtocolStillRejectsHttp3()

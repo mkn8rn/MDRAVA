@@ -820,7 +820,8 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
         return string.Equals(current.Address, next.Address, StringComparison.OrdinalIgnoreCase)
             && current.Port == next.Port
             && current.Transport == next.Transport
-            && current.ExperimentalHttp3 == next.ExperimentalHttp3;
+            && current.ExperimentalHttp3 == next.ExperimentalHttp3
+            && current.Http3Enablement == next.Http3Enablement;
     }
 
     private static RuntimeListener ResolveRequestListener(

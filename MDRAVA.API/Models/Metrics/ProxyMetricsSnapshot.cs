@@ -111,6 +111,8 @@ public sealed record ProxyMetricsSnapshot(
     long Http3ResponseBytesSent,
     long Http3RequestBodyBytesReceived,
     long Http3ResponseStreamResets,
+    long Http3AltSvcEmitted,
+    long Http3AltSvcSuppressed,
     IReadOnlyList<ProxyHttp3RequestOutcomeSnapshot> Http3RequestsByOutcome,
     IReadOnlyDictionary<string, long> Http3RejectedRequests,
     IReadOnlyDictionary<string, long> Http3ProtocolErrors,

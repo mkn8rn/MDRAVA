@@ -30,7 +30,7 @@ internal static class ClientHttp3PreviewTests
 {
     private static readonly SslApplicationProtocol Http3Alpn = new("h3");
 
-    public static void Http3PreviewDisabledByDefault()
+    public static void Http3DefaultEnabledForEligibleTlsListener()
     {
         var listener = new RuntimeListener(
             "main",
@@ -47,11 +47,13 @@ internal static class ClientHttp3PreviewTests
             64 * 1024);
 
         AssertEx.False(listener.Http3PreviewConfigured);
-        AssertEx.False(listener.Http3.EnabledForTraffic);
-        AssertEx.Equal("not_configured", listener.Http3.DisabledReason);
+        AssertEx.True(listener.Http3.Configured);
+        AssertEx.True(listener.Http3.EnabledForTraffic);
+        AssertEx.Equal("default", listener.Http3.EnablementLevel);
+        AssertEx.Equal("default_enabled", listener.Http3.DisabledReason);
     }
 
-    public static void Http3PreviewRequiresExperimentalGate()
+    public static void ExplicitHttp3DisablePreventsTraffic()
     {
         var validation = new ProxyOptionsValidator().Validate(
             null,
@@ -65,7 +67,8 @@ internal static class ClientHttp3PreviewTests
                         Address = "127.0.0.1",
                         Port = 8443,
                         Transport = "https",
-                        Protocols = "http3Preview",
+                        Protocols = "http1AndHttp2",
+                        Http3Enablement = "disabled",
                         DefaultCertificateId = "default"
                     }
                 ],
@@ -80,9 +83,27 @@ internal static class ClientHttp3PreviewTests
                     }
                 ]
             });
+        var listener = new RuntimeListener(
+            "main",
+            "127.0.0.1",
+            8443,
+            true,
+            RuntimeListenerTransport.Https,
+            "default",
+            [],
+            512,
+            32 * 1024,
+            32 * 1024,
+            1024,
+            64 * 1024)
+        {
+            Http3Enablement = RuntimeHttp3Enablement.Disabled
+        };
 
-        AssertEx.True(validation.Failed);
-        AssertEx.True(AssertEx.NotNull(validation.Failures).Any(static failure => failure.Contains("ExperimentalHttp3", StringComparison.Ordinal)));
+        AssertEx.False(validation.Failed, string.Join("; ", validation.Failures ?? []));
+        AssertEx.False(listener.Http3.Configured);
+        AssertEx.False(listener.Http3.EnabledForTraffic);
+        AssertEx.Equal("disabled", listener.Http3.DisabledReason);
     }
 
     public static void QuicListenerIdentityIsSeparateFromTcpIdentity()
@@ -118,6 +139,54 @@ internal static class ClientHttp3PreviewTests
             AssertEx.True(snapshot.IsRunning);
             AssertEx.True(snapshot.Listeners.Any(static listener => listener.Kind == "tcp" && listener.State == ProxyListenerState.Active));
             AssertEx.True(snapshot.Listeners.Any(static listener => listener.Kind == "quic" && listener.State == ProxyListenerState.Failed));
+        }
+        finally
+        {
+            await host.StopAsync(CancellationToken.None);
+        }
+    }
+
+    public static async Task DefaultHttp3TlsListenerStartsQuicAndEmitsAltSvc()
+    {
+        if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
+        {
+            return;
+        }
+
+        using var temp = TemporaryDirectory.Create();
+        var port = GetFreeTcpUdpPort();
+        WriteCertificateConfig(temp.Path);
+        WriteHttp3Site(
+            temp.Path,
+            port,
+            "http1AndHttp2",
+            staticBody: "default-h3",
+            experimental: false,
+            altSvcMaxAgeSeconds: 60,
+            http3EnablementOverride: "default");
+        using var host = BuildProxyHost(temp.Path);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+
+        await host.StartAsync(timeout.Token);
+        try
+        {
+            var runtime = host.Services.GetRequiredService<ProxyRuntimeState>();
+            await WaitForListenerAsync(runtime, "main", "tcp", ProxyListenerState.Active, timeout.Token);
+            await WaitForListenerAsync(runtime, "main", "quic", ProxyListenerState.Active, timeout.Token);
+            var response = await SendHttp1TlsRequestAsync(port, "/alt", timeout.Token);
+            var status = new ProxyStatusController(
+                runtime,
+                host.Services.GetRequiredService<ProxyMetrics>(),
+                host.Services.GetRequiredService<IProxyConfigurationStore>(),
+                host.Services.GetRequiredService<UpstreamHealthStore>())
+            {
+                ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+            }.Get();
+
+            AssertEx.True(response.Contains($"Alt-Svc: h3=\":{port}\"; ma=60", StringComparison.Ordinal), response);
+            AssertEx.Equal("default", status.Http3.Configured);
+            AssertEx.True(status.Http3.EnabledForTraffic);
+            AssertEx.True(status.Http3.AltSvcActive);
         }
         finally
         {
@@ -243,9 +312,12 @@ internal static class ClientHttp3PreviewTests
         AssertEx.Equal("preview", projection.Http3.Configured);
         AssertEx.True(projection.Http3.EnabledForTraffic);
         AssertEx.Equal("preview_enabled", projection.Http3.DisabledReason);
-        AssertEx.Equal("explicit", projection.Http3.DefaultEnablementState);
-        AssertEx.True(projection.Http3.DefaultReadinessBlockers.Contains("qpack_dynamic_table_unsupported"));
-        AssertEx.True(projection.Http3.DefaultReadinessBlockers.Contains("request_body_buffered_not_streamed"));
+        AssertEx.False(projection.Http3.DefaultReadinessBlockers.Contains("qpack_dynamic_table_unsupported"));
+        AssertEx.False(projection.Http3.DefaultReadinessBlockers.Contains("request_body_buffered_not_streamed"));
+        AssertEx.Equal("static_with_zero_dynamic_table", projection.Http3.QpackMode);
+        AssertEx.Equal(0, projection.Http3.QpackDynamicTableCapacity);
+        AssertEx.Equal(0, projection.Http3.QpackBlockedStreams);
+        AssertEx.Equal("streaming", projection.Http3.RequestBodyMode);
         AssertEx.True(snapshot.Listeners[0].Http3.ExperimentalGateEnabled);
     }
 
@@ -298,7 +370,7 @@ internal static class ClientHttp3PreviewTests
         AssertEx.Equal("beta_enabled", snapshot.Listeners[0].Http3.DisabledReason);
     }
 
-    public static async Task AltSvcIsAbsentByDefault()
+    public static async Task AltSvcIsAbsentWhenHttp3ExplicitlyDisabled()
     {
         if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
         {
@@ -308,7 +380,7 @@ internal static class ClientHttp3PreviewTests
         using var temp = TemporaryDirectory.Create();
         var port = GetFreeTcpUdpPort();
         WriteCertificateConfig(temp.Path);
-        WriteHttp3Site(temp.Path, port, "http1AndHttp3Preview", staticBody: "alt-default");
+        WriteHttp3Site(temp.Path, port, "http1", staticBody: "alt-disabled", experimental: false);
         using var host = BuildProxyHost(temp.Path);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 
@@ -316,7 +388,7 @@ internal static class ClientHttp3PreviewTests
         try
         {
             var runtime = host.Services.GetRequiredService<ProxyRuntimeState>();
-            await WaitForListenerAsync(runtime, "main", "quic", ProxyListenerState.Active, timeout.Token);
+            await WaitForListenerAsync(runtime, "main", "tcp", ProxyListenerState.Active, timeout.Token);
             var response = await SendHttp1TlsRequestAsync(port, "/alt", timeout.Token);
 
             AssertEx.False(response.Contains("Alt-Svc:", StringComparison.OrdinalIgnoreCase));
@@ -365,7 +437,7 @@ internal static class ClientHttp3PreviewTests
             AssertEx.True(response.Contains($"Alt-Svc: h3=\":{port}\"; ma=60", StringComparison.Ordinal), response);
             AssertEx.True(status.Http3.QuicListenerReady);
             AssertEx.True(status.Http3.AltSvcActive);
-            AssertEx.Equal("explicit_only", status.Http3.ReadinessConclusion);
+            AssertEx.Equal("default_capable_when_config_default_flips", status.Http3.ReadinessConclusion);
             AssertEx.Equal("active", status.Http3.AltSvcStateReason);
         }
         finally
@@ -989,7 +1061,7 @@ internal static class ClientHttp3PreviewTests
         AssertEx.True(result.Metrics.Http3RejectedRequests.ContainsKey("request_body_too_large"));
     }
 
-    public static async Task Http3BufferedRequestBodyLimitApplies()
+    public static async Task Http3LegacyBufferedRequestBodyLimitDoesNotBlockStreaming()
     {
         if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
         {
@@ -998,17 +1070,19 @@ internal static class ClientHttp3PreviewTests
 
         using var result = await RunHttp3ProxyRouteScenarioAsync(
             "POST",
-            "/buffer-too-large",
-            "",
+            "/streamed-body",
+            "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 8\r\n\r\naccepted",
             requestBody: "buffered",
             listenerExtraJson:
             """
                   "http3MaxBufferedRequestBodyBytes": 4,
             """);
 
-        AssertEx.Equal("413", HeaderValue(result.Headers, ":status"));
-        AssertEx.Equal("", result.UpstreamRequest);
-        AssertEx.True(result.Metrics.Http3RejectedRequests.ContainsKey("request_body_too_large"));
+        AssertEx.Equal("200", HeaderValue(result.Headers, ":status"));
+        AssertEx.Equal("accepted", result.Body);
+        AssertEx.True(result.UpstreamRequest.Contains("Content-Length: 8", StringComparison.OrdinalIgnoreCase), result.UpstreamRequest);
+        AssertEx.True(result.UpstreamRequest.EndsWith("buffered", StringComparison.Ordinal), result.UpstreamRequest);
+        AssertEx.False(result.Metrics.Http3RejectedRequests.ContainsKey("request_body_too_large"));
     }
 
     public static async Task Http3RequestWithBodyIsNotRetried()
@@ -1035,7 +1109,8 @@ internal static class ClientHttp3PreviewTests
             var response = await SendHttp3RequestAsync(proxyPort, "GET", "/retry-body", timeout.Token, body: "not-replayable");
             var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
 
-            AssertEx.Equal("502", HeaderValue(response.Headers, ":status"));
+            var status = HeaderValue(response.Headers, ":status");
+            AssertEx.True(status is "502" or "504", status);
             AssertEx.True(metrics.RetrySkipped.Any(static skipped => skipped.Reason == "request_body"));
             AssertEx.Equal(0L, metrics.RetryAttempts);
         }
@@ -1267,6 +1342,8 @@ internal static class ClientHttp3PreviewTests
         metrics.AddHttp3ResponseBytesSent(12);
         metrics.AddHttp3RequestBodyBytesReceived(5);
         metrics.Http3ResponseStreamReset();
+        metrics.Http3AltSvcEmitted();
+        metrics.Http3AltSvcSuppressed();
         metrics.Http3RequestRejected("method_unsupported");
         metrics.Http3ProtocolError("invalid_frame");
         metrics.SetActiveQuicListeners(1);
@@ -1286,6 +1363,8 @@ internal static class ClientHttp3PreviewTests
         AssertEx.Equal(12L, snapshot.Http3ResponseBytesSent);
         AssertEx.Equal(5L, snapshot.Http3RequestBodyBytesReceived);
         AssertEx.Equal(1L, snapshot.Http3ResponseStreamResets);
+        AssertEx.Equal(1L, snapshot.Http3AltSvcEmitted);
+        AssertEx.Equal(1L, snapshot.Http3AltSvcSuppressed);
         AssertEx.Equal(1L, snapshot.Http3RejectedRequests["method_unsupported"]);
         AssertEx.Equal(1L, snapshot.Http3ProtocolErrors["invalid_frame"]);
         AssertEx.Equal(1L, snapshot.ActiveQuicListeners);
@@ -1314,6 +1393,7 @@ internal static class ClientHttp3PreviewTests
                   "protocols": "http3Preview",
                   "experimentalHttp3": true,
                   "http3Enablement": "preview",
+                  "http3MaxBufferedRequestBodyBytes": 4096,
                   "defaultCertificateId": "home-cert"
                 }
               ],
@@ -1334,9 +1414,10 @@ internal static class ClientHttp3PreviewTests
             """));
         var codes = result.Findings.Select(static finding => finding.Code).ToArray();
 
-        AssertEx.True(codes.Contains("http3_alt_svc_disabled"));
-        AssertEx.True(codes.Contains("http3_default_readiness_buffered_body"));
-        AssertEx.True(codes.Contains("http3_default_readiness_qpack_static_only"));
+        AssertEx.True(codes.Contains("http3_alt_svc_not_ready"));
+        AssertEx.True(codes.Contains("http3_legacy_buffer_limit_configured"));
+        AssertEx.False(codes.Contains("http3_default_readiness_buffered_body"));
+        AssertEx.False(codes.Contains("http3_default_readiness_qpack_static_only"));
     }
 
     private static async Task<Http3ScenarioResult> RunHttp3GeneratedRouteScenarioAsync(
@@ -1435,13 +1516,19 @@ internal static class ClientHttp3PreviewTests
         bool dataBeforeHeaders = false,
         bool settingsAfterHeaders = false)
     {
-        var headerBlock = Http3PreviewCodec.EncodeHeaderBlock(
+        List<Http1HeaderField> requestHeaders =
         [
             new Http1HeaderField(":method", method),
             new Http1HeaderField(":scheme", "https"),
             new Http1HeaderField(":authority", "localhost"),
             new Http1HeaderField(":path", target)
-        ]);
+        ];
+        if (body is not null)
+        {
+            requestHeaders.Add(new Http1HeaderField("content-length", Encoding.UTF8.GetByteCount(body).ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        }
+
+        var headerBlock = Http3PreviewCodec.EncodeHeaderBlock(requestHeaders);
         using var request = new MemoryStream();
         if (dataBeforeHeaders)
         {
@@ -1792,6 +1879,7 @@ internal static class ClientHttp3PreviewTests
         bool experimental = true,
         bool altSvcEnabled = false,
         int altSvcMaxAgeSeconds = 86400,
+        string? http3EnablementOverride = null,
         string? routeJson = null)
     {
         var sites = Directory.CreateDirectory(Path.Combine(dataDirectory, "config", "sites")).FullName;
@@ -1808,9 +1896,9 @@ internal static class ClientHttp3PreviewTests
                   }
                 }
             """;
-        var http3Enablement = protocols.Contains("http3", StringComparison.OrdinalIgnoreCase)
+        var http3Enablement = http3EnablementOverride ?? (protocols.Contains("http3", StringComparison.OrdinalIgnoreCase)
             ? "preview"
-            : "disabled";
+            : "disabled");
         File.WriteAllText(
             Path.Combine(sites, "http3.json"),
             $$"""

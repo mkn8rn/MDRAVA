@@ -102,6 +102,9 @@ public static class SiteOptionsAggregator
             Transport = existing.Transport,
             Protocols = MergeListenerProtocols(existing.Protocols, next.Protocols),
             ExperimentalHttp3 = existing.ExperimentalHttp3 || next.ExperimentalHttp3,
+            Http3Enablement = MergeHttp3Enablement(existing.Http3Enablement, next.Http3Enablement),
+            Http3AltSvcEnabled = existing.Http3AltSvcEnabled || next.Http3AltSvcEnabled,
+            Http3AltSvcMaxAgeSeconds = existing.Http3AltSvcMaxAgeSeconds,
             DefaultCertificateId = !string.IsNullOrWhiteSpace(existing.DefaultCertificateId)
                 ? existing.DefaultCertificateId
                 : next.DefaultCertificateId,
@@ -116,6 +119,32 @@ public static class SiteOptionsAggregator
             Http2MaxHeaderListBytes = existing.Http2MaxHeaderListBytes,
             Http2MaxFrameSize = existing.Http2MaxFrameSize
         };
+    }
+
+    private static string MergeHttp3Enablement(string existing, string next)
+    {
+        if (string.Equals(existing, "disabled", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(next, "disabled", StringComparison.OrdinalIgnoreCase))
+        {
+            return "disabled";
+        }
+
+        if (string.Equals(existing, "beta", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(next, "beta", StringComparison.OrdinalIgnoreCase))
+        {
+            return "beta";
+        }
+
+        if (string.Equals(existing, "preview", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(next, "preview", StringComparison.OrdinalIgnoreCase))
+        {
+            return "preview";
+        }
+
+        return string.Equals(existing, "default", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(next, "default", StringComparison.OrdinalIgnoreCase)
+            ? "default"
+            : "";
     }
 
     private static string MergeListenerProtocols(string existing, string next)

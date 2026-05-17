@@ -5,6 +5,7 @@ using MDRAVA.API.Proxy.Configuration.Loading;
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Configuration.Storage;
 using MDRAVA.API.Proxy.Hosting;
+using MDRAVA.API.Proxy.Http3;
 using MDRAVA.API.Proxy.Metrics;
 using Microsoft.Extensions.Options;
 using YamlDotNet.Core;
@@ -177,27 +178,22 @@ public sealed class ConfigLintService
         foreach (var listener in snapshot.Listeners)
         {
             var path = $"listeners[{listener.Name}]";
-            if (listener.Http3PreviewConfigured && !listener.Http3.EnabledForTraffic)
+            if (listener.Http3.Configured && !listener.Http3.EnabledForTraffic)
             {
-                findings.Add(Warning("http3_configured_not_ready", $"Listener '{listener.Name}' has HTTP/3 configured but it is not ready for traffic: {listener.Http3.DisabledReason}.", sourceName, path, "Keep HTTP/3 disabled or satisfy the explicit preview gate, TLS, and certificate requirements."));
+                findings.Add(Warning("http3_configured_not_ready", $"Listener '{listener.Name}' has HTTP/3 configured but it is not ready for traffic: {listener.Http3.DisabledReason}.", sourceName, path, "Keep HTTP/3 disabled or satisfy the TLS and certificate requirements."));
             }
 
-            if (listener.Http3.EnabledForTraffic && !listener.Http3AltSvc.Enabled)
+            if (listener.Http3.EnabledForTraffic && !Http3AltSvcPolicy.IsEnabled(listener))
             {
                 findings.Add(Warning("http3_alt_svc_disabled", $"Listener '{listener.Name}' has HTTP/3 {listener.Http3.EnablementLevel} enabled but Alt-Svc advertisement is disabled.", sourceName, path, "Enable Http3AltSvcEnabled only after the QUIC listener is reachable."));
             }
 
             if (listener.Http3.EnabledForTraffic && listener.Http3MaxBufferedRequestBodyBytes > 0)
             {
-                findings.Add(Warning("http3_default_readiness_buffered_body", $"Listener '{listener.Name}' still uses bounded buffered HTTP/3 request bodies.", sourceName, path, "Keep HTTP/3 explicitly enabled until request-body streaming replaces preview buffering."));
+                findings.Add(Info("http3_legacy_buffer_limit_configured", $"Listener '{listener.Name}' configures the legacy HTTP/3 buffered body limit, but request bodies are streamed.", sourceName, path, "Remove Http3MaxBufferedRequestBodyBytes unless a future compatibility phase reuses it."));
             }
 
-            if (listener.Http3.EnabledForTraffic)
-            {
-                findings.Add(Warning("http3_default_readiness_qpack_static_only", $"Listener '{listener.Name}' uses the conservative static-only QPACK preview decoder.", sourceName, path, "Verify real client compatibility before default-enabling HTTP/3."));
-            }
-
-            if (listener.Http3AltSvc.Enabled)
+            if (Http3AltSvcPolicy.IsEnabled(listener))
             {
                 var ready = activeRuntime
                     && listener.QuicIdentity is not null

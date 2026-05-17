@@ -131,45 +131,22 @@ public sealed class Http3PreviewConnection
         _metrics.Http3StreamStarted();
         try
         {
-            var maxBufferedBodyBytes = EffectiveMaxBufferedBodyBytes(_listener, _configurationSnapshot.Limits);
-            var requestBytes = await ReadStreamBytesAsync(
-                stream,
-                MaxRequestStreamBytes(_listener.Http2Limits.MaxHeaderListBytes, maxBufferedBodyBytes),
-                cancellationToken);
-            if (requestBytes is null)
+            var headerRead = await ReadRequestHeadersAsync(stream, cancellationToken);
+            var rejectionReason = headerRead.Reason;
+            if (!headerRead.Success)
             {
-                _metrics.RequestBodySizeRejected();
-                _metrics.Http3RequestRejected("request_body_too_large");
-                var closeConnection = RecordProtocolError("stream_too_large");
-                await WriteGeneratedResponseAsync(stream, 413, "Payload Too Large", "Payload Too Large", context, "GET", cancellationToken);
-                CompleteContext(ref context);
-                return !closeConnection;
-            }
-
-            if (!TryReadRequestFrames(requestBytes, maxBufferedBodyBytes, out var headers, out var requestBody, out var rejectionReason))
-            {
-                if (string.Equals(rejectionReason, "request_body_too_large", StringComparison.Ordinal))
-                {
-                    _metrics.RequestBodySizeRejected();
-                    _metrics.Http3RequestRejected(rejectionReason);
-                }
-
                 var closeConnection = RecordProtocolError(rejectionReason);
-                var statusCode = string.Equals(rejectionReason, "request_body_too_large", StringComparison.Ordinal)
-                    ? 413
-                    : 400;
-                var reasonPhrase = statusCode == 413 ? "Payload Too Large" : "Bad Request";
-                await WriteGeneratedResponseAsync(stream, statusCode, reasonPhrase, reasonPhrase, context, "GET", cancellationToken);
+                await WriteGeneratedResponseAsync(stream, 400, "Bad Request", "Bad Request", context, "GET", cancellationToken);
                 CompleteContext(ref context);
                 return !closeConnection;
             }
 
             if (!Http3PreviewRequestTranslator.TryBuildRequest(
-                    headers,
+                    headerRead.Headers,
                     _listener,
                     out var requestHead,
                     out rejectionReason,
-                    requestBody.Length))
+                    bodyMayFollow: true))
             {
                 var closeConnection = RecordProtocolError(rejectionReason);
                 await WriteGeneratedResponseAsync(stream, 400, "Bad Request", "Bad Request", context, "GET", cancellationToken);
@@ -187,6 +164,17 @@ public sealed class Http3PreviewConnection
                 await WriteGeneratedResponseAsync(stream, 501, "Not Implemented", "Not Implemented", context, requestHead.Method, cancellationToken);
                 CompleteContext(ref context);
                 return true;
+            }
+
+            var noBodyFrames = requestHead.Framing.Kind == Http1BodyKind.None
+                ? await EnsureNoRequestBodyFramesAsync(stream, cancellationToken)
+                : Http3FrameValidationResult.Successful();
+            if (!noBodyFrames.Success)
+            {
+                var closeConnection = RecordProtocolError(noBodyFrames.Reason);
+                await WriteGeneratedResponseAsync(stream, 400, "Bad Request", "Bad Request", context, requestHead.Method, cancellationToken);
+                CompleteContext(ref context);
+                return !closeConnection;
             }
 
             var forwardedHeaders = _forwardedHeadersPolicy.Build(
@@ -239,6 +227,11 @@ public sealed class Http3PreviewConnection
                 return true;
             }
 
+            var requestBody = new Http3RequestBodyReadStream(
+                this,
+                stream,
+                requestHead.Framing,
+                cancellationToken);
             var upstreamTarget = _pathRewritePolicy.Apply(routeMatch.Route, requestHead.Target, requestHead.Path);
             var effectiveTimeouts = ApplyRouteTimeouts(routeMatch.Route, _configurationSnapshot.Timeouts);
             if (_cacheStore.TryGet(
@@ -297,7 +290,12 @@ public sealed class Http3PreviewConnection
             await using var control = await _connection.OpenOutboundStreamAsync(QuicStreamType.Unidirectional, cancellationToken);
             using var payload = new MemoryStream();
             Http3PreviewCodec.WriteVarInt(payload, Http3PreviewCodec.ControlStream);
-            Http3PreviewCodec.WriteFrame(payload, Http3PreviewCodec.SettingsFrame, ReadOnlySpan<byte>.Empty);
+            using var settings = new MemoryStream();
+            Http3PreviewCodec.WriteVarInt(settings, Http3PreviewCodec.QpackMaxTableCapacitySetting);
+            Http3PreviewCodec.WriteVarInt(settings, 0);
+            Http3PreviewCodec.WriteVarInt(settings, Http3PreviewCodec.QpackBlockedStreamsSetting);
+            Http3PreviewCodec.WriteVarInt(settings, 0);
+            Http3PreviewCodec.WriteFrame(payload, Http3PreviewCodec.SettingsFrame, settings.ToArray());
             await control.WriteAsync(payload.ToArray(), completeWrites: true, cancellationToken);
         }
         catch (Exception exception) when (exception is QuicException or IOException)
@@ -315,130 +313,157 @@ public sealed class Http3PreviewConnection
         }
     }
 
-    private bool TryReadRequestFrames(
-        byte[] requestBytes,
-        int maxBodyBytes,
-        out IReadOnlyList<Http1HeaderField> headers,
-        out byte[] body,
-        out string rejectionReason)
-    {
-        headers = [];
-        body = [];
-        rejectionReason = "missing_headers";
-        var offset = 0;
-        var sawHeaders = false;
-        using var bodyBuffer = new MemoryStream();
-        while (offset < requestBytes.Length)
-        {
-            if (!Http3PreviewCodec.TryReadFrame(requestBytes, ref offset, out var frameType, out var payload))
-            {
-                rejectionReason = "invalid_frame";
-                return false;
-            }
-
-            if (payload.Length > MaxFramePayloadBytes)
-            {
-                rejectionReason = "frame_too_large";
-                return false;
-            }
-
-            if (frameType == Http3PreviewCodec.DataFrame)
-            {
-                if (!sawHeaders)
-                {
-                    rejectionReason = "unexpected_data";
-                    return false;
-                }
-
-                if (bodyBuffer.Length + payload.Length > maxBodyBytes)
-                {
-                    rejectionReason = "request_body_too_large";
-                    return false;
-                }
-
-                bodyBuffer.Write(payload.Span);
-                _metrics.AddHttp3RequestBodyBytesReceived(payload.Length);
-                continue;
-            }
-
-            if (frameType == Http3PreviewCodec.SettingsFrame)
-            {
-                rejectionReason = "unexpected_control_frame";
-                return false;
-            }
-
-            if (frameType != Http3PreviewCodec.HeadersFrame)
-            {
-                rejectionReason = "unsupported_frame";
-                return false;
-            }
-
-            if (sawHeaders)
-            {
-                rejectionReason = "duplicate_headers";
-                return false;
-            }
-
-            sawHeaders = true;
-            if (!Http3PreviewCodec.TryDecodeHeaderBlock(
-                    payload.Span,
-                    _listener.Http2Limits.MaxHeaderListBytes,
-                    out headers,
-                    out rejectionReason))
-            {
-                return false;
-            }
-        }
-
-        body = bodyBuffer.ToArray();
-        return sawHeaders;
-    }
-
-    private async ValueTask<byte[]?> ReadStreamBytesAsync(
+    private async ValueTask<Http3HeaderReadResult> ReadRequestHeadersAsync(
         QuicStream stream,
-        int maxBytes,
         CancellationToken cancellationToken)
     {
-        using var memory = new MemoryStream();
-        var buffer = new byte[4096];
         while (true)
         {
-            var read = await stream.ReadAsync(buffer, cancellationToken);
+            var frame = await ReadFrameAsync(stream, cancellationToken);
+            if (!frame.Success)
+            {
+                return Http3HeaderReadResult.Failure("invalid_frame");
+            }
+
+            if (frame.Payload.Length > MaxFramePayloadBytes)
+            {
+                return Http3HeaderReadResult.Failure("frame_too_large");
+            }
+
+            if (frame.Type == Http3PreviewCodec.DataFrame)
+            {
+                return Http3HeaderReadResult.Failure("unexpected_data");
+            }
+
+            if (frame.Type == Http3PreviewCodec.SettingsFrame)
+            {
+                return Http3HeaderReadResult.Failure("unexpected_control_frame");
+            }
+
+            if (frame.Type != Http3PreviewCodec.HeadersFrame)
+            {
+                return Http3HeaderReadResult.Failure("unsupported_frame");
+            }
+
+            if (!Http3PreviewCodec.TryDecodeHeaderBlock(
+                    frame.Payload.Span,
+                    _listener.Http2Limits.MaxHeaderListBytes,
+                    out var headers,
+                    out var rejectionReason))
+            {
+                return Http3HeaderReadResult.Failure(rejectionReason);
+            }
+
+            return Http3HeaderReadResult.Successful(headers);
+        }
+    }
+
+    private static async ValueTask<Http3FrameValidationResult> EnsureNoRequestBodyFramesAsync(
+        QuicStream stream,
+        CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            var frame = await ReadFrameAsync(stream, cancellationToken);
+            if (!frame.Success)
+            {
+                return Http3FrameValidationResult.Successful();
+            }
+
+            if (frame.Type == Http3PreviewCodec.DataFrame)
+            {
+                return Http3FrameValidationResult.Failure("unexpected_data");
+            }
+
+            var reason = frame.Type == Http3PreviewCodec.HeadersFrame
+                ? "duplicate_headers"
+                : "unexpected_control_frame";
+            return Http3FrameValidationResult.Failure(reason);
+        }
+    }
+
+    private static async ValueTask<Http3FrameReadResult> ReadFrameAsync(
+        QuicStream stream,
+        CancellationToken cancellationToken)
+    {
+        var type = await ReadVarIntAsync(stream, cancellationToken);
+        var lengthResult = type.Success
+            ? await ReadVarIntAsync(stream, cancellationToken)
+            : Http3VarIntReadResult.Failure;
+        if (!type.Success
+            || !lengthResult.Success
+            || lengthResult.Value < 0
+            || lengthResult.Value > MaxFramePayloadBytes)
+        {
+            return Http3FrameReadResult.Failure;
+        }
+
+        var length = lengthResult.Value;
+        var buffer = new byte[(int)length];
+        if (!await TryReadExactAsync(stream, buffer, cancellationToken))
+        {
+            return Http3FrameReadResult.Failure;
+        }
+
+        return new Http3FrameReadResult(true, type.Value, buffer);
+    }
+
+    private static async ValueTask<Http3VarIntReadResult> ReadVarIntAsync(
+        QuicStream stream,
+        CancellationToken cancellationToken)
+    {
+        var firstBuffer = new byte[1];
+        var firstRead = await stream.ReadAsync(firstBuffer, cancellationToken);
+        if (firstRead == 0)
+        {
+            return Http3VarIntReadResult.Failure;
+        }
+
+        var first = firstBuffer[0];
+        var length = 1 << (first >> 6);
+        var value = first & 0x3f;
+        if (length == 1)
+        {
+            return new Http3VarIntReadResult(true, value);
+        }
+
+        var rest = new byte[length - 1];
+        if (!await TryReadExactAsync(stream, rest, cancellationToken))
+        {
+            return Http3VarIntReadResult.Failure;
+        }
+
+        foreach (var next in rest)
+        {
+            value = (value << 8) | next;
+        }
+
+        return new Http3VarIntReadResult(true, value);
+    }
+
+    private static async ValueTask<bool> TryReadExactAsync(
+        QuicStream stream,
+        Memory<byte> destination,
+        CancellationToken cancellationToken)
+    {
+        var total = 0;
+        while (total < destination.Length)
+        {
+            var read = await stream.ReadAsync(destination[total..], cancellationToken);
             if (read == 0)
             {
-                return memory.ToArray();
+                return false;
             }
 
-            if (memory.Length + read > maxBytes)
-            {
-                return null;
-            }
-
-            memory.Write(buffer, 0, read);
-            _metrics.AddBytesRead(read);
-        }
-    }
-
-    private static int EffectiveMaxBufferedBodyBytes(RuntimeListener listener, RuntimeLimits limits)
-    {
-        if (limits.MaxRequestBodyBytes <= 0 || listener.Http3MaxBufferedRequestBodyBytes <= 0)
-        {
-            return 0;
+            total += read;
         }
 
-        return (int)Math.Min(limits.MaxRequestBodyBytes, listener.Http3MaxBufferedRequestBodyBytes);
-    }
-
-    private static int MaxRequestStreamBytes(int maxHeaderBytes, int maxBodyBytes)
-    {
-        return Math.Min(
-            int.MaxValue,
-            Math.Max(0, maxHeaderBytes) + maxBodyBytes + 64 * 1024);
+        return true;
     }
 
     private async ValueTask<ForwardingResult> ForwardWithRetriesAsync(
         QuicStream stream,
-        byte[] body,
+        Stream body,
         Http1RequestHead requestHead,
         RuntimeRoute route,
         RuntimeTimeouts timeouts,
@@ -489,7 +514,7 @@ public sealed class Http3PreviewConnection
                 body);
             var result = await _forwarder.ForwardAsync(
                 translator,
-                new Http1HeadReadResult(0, 0, ReadOnlyMemory<byte>.Empty, body),
+                new Http1HeadReadResult(0, 0, ReadOnlyMemory<byte>.Empty, ReadOnlyMemory<byte>.Empty),
                 requestHead,
                 route,
                 selection.Upstream,
@@ -979,13 +1004,230 @@ public sealed class Http3PreviewConnection
         return null;
     }
 
+    private sealed record Http3HeaderReadResult(
+        bool Success,
+        IReadOnlyList<Http1HeaderField> Headers,
+        string Reason)
+    {
+        public static Http3HeaderReadResult Successful(IReadOnlyList<Http1HeaderField> headers)
+        {
+            return new Http3HeaderReadResult(true, headers, "");
+        }
+
+        public static Http3HeaderReadResult Failure(string reason)
+        {
+            return new Http3HeaderReadResult(false, [], reason);
+        }
+    }
+
+    private readonly record struct Http3FrameValidationResult(bool Success, string Reason)
+    {
+        public static Http3FrameValidationResult Successful()
+        {
+            return new Http3FrameValidationResult(true, "");
+        }
+
+        public static Http3FrameValidationResult Failure(string reason)
+        {
+            return new Http3FrameValidationResult(false, reason);
+        }
+    }
+
+    private readonly record struct Http3FrameReadResult(
+        bool Success,
+        long Type,
+        ReadOnlyMemory<byte> Payload)
+    {
+        public static Http3FrameReadResult Failure { get; } = new(false, 0, ReadOnlyMemory<byte>.Empty);
+    }
+
+    private readonly record struct Http3VarIntReadResult(bool Success, long Value)
+    {
+        public static Http3VarIntReadResult Failure { get; } = new(false, 0);
+    }
+
+    private sealed class Http3RequestBodyReadStream : Stream
+    {
+        private readonly Http3PreviewConnection _connection;
+        private readonly QuicStream _stream;
+        private readonly Http1RequestFraming _framing;
+        private readonly CancellationToken _connectionCancellationToken;
+        private byte[] _pending = [];
+        private int _pendingOffset;
+        private long _remainingContentLength;
+        private bool _completed;
+
+        public Http3RequestBodyReadStream(
+            Http3PreviewConnection connection,
+            QuicStream stream,
+            Http1RequestFraming framing,
+            CancellationToken connectionCancellationToken)
+        {
+            _connection = connection;
+            _stream = stream;
+            _framing = framing;
+            _connectionCancellationToken = connectionCancellationToken;
+            _remainingContentLength = framing.ContentLength.GetValueOrDefault();
+        }
+
+        public override bool CanRead => true;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => false;
+
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            return ReadAsync(buffer.AsMemory(offset, count), _connectionCancellationToken)
+                .AsTask()
+                .GetAwaiter()
+                .GetResult();
+        }
+
+        public override async ValueTask<int> ReadAsync(
+            Memory<byte> buffer,
+            CancellationToken cancellationToken = default)
+        {
+            if (buffer.Length == 0)
+            {
+                return 0;
+            }
+
+            if (_framing.Kind == Http1BodyKind.None)
+            {
+                return 0;
+            }
+
+            while (!HasPending())
+            {
+                if (!await FillPendingAsync(cancellationToken).ConfigureAwait(false))
+                {
+                    return 0;
+                }
+            }
+
+            var count = Math.Min(buffer.Length, _pending.Length - _pendingOffset);
+            _pending.AsMemory(_pendingOffset, count).CopyTo(buffer);
+            _pendingOffset += count;
+            if (_pendingOffset >= _pending.Length)
+            {
+                _pending = [];
+                _pendingOffset = 0;
+            }
+
+            return count;
+        }
+
+        private async ValueTask<bool> FillPendingAsync(CancellationToken cancellationToken)
+        {
+            if (_completed)
+            {
+                return false;
+            }
+
+            if (_framing.Kind == Http1BodyKind.ContentLength && _remainingContentLength <= 0)
+            {
+                _completed = true;
+                return false;
+            }
+
+            while (true)
+            {
+                var frame = await ReadFrameAsync(_stream, cancellationToken).ConfigureAwait(false);
+                if (!frame.Success)
+                {
+                    if (_framing.Kind == Http1BodyKind.ContentLength && _remainingContentLength > 0)
+                    {
+                        throw new IOException("HTTP/3 stream ended before the declared request body was complete.");
+                    }
+
+                    _completed = true;
+                    if (_framing.Kind == Http1BodyKind.Chunked)
+                    {
+                        _pending = "0\r\n\r\n"u8.ToArray();
+                        _pendingOffset = 0;
+                        return true;
+                    }
+
+                    return false;
+                }
+
+                if (frame.Type != Http3PreviewCodec.DataFrame)
+                {
+                    _connection._metrics.Http3ProtocolError(frame.Type == Http3PreviewCodec.HeadersFrame
+                        ? "duplicate_headers"
+                        : "unexpected_control_frame");
+                    throw new IOException("HTTP/3 request body stream contained a non-DATA frame.");
+                }
+
+                if (frame.Payload.Length == 0)
+                {
+                    continue;
+                }
+
+                _connection._metrics.AddHttp3RequestBodyBytesReceived(frame.Payload.Length);
+                if (_framing.Kind == Http1BodyKind.ContentLength)
+                {
+                    if (frame.Payload.Length > _remainingContentLength)
+                    {
+                        _connection._metrics.Http3ProtocolError("invalid_content_length");
+                        throw new IOException("HTTP/3 request body exceeded the declared Content-Length.");
+                    }
+
+                    _remainingContentLength -= frame.Payload.Length;
+                    _pending = frame.Payload.ToArray();
+                    _pendingOffset = 0;
+                    return true;
+                }
+
+                _pending = BuildChunk(frame.Payload.Span);
+                _pendingOffset = 0;
+                return true;
+            }
+        }
+
+        private bool HasPending()
+        {
+            return _pendingOffset < _pending.Length;
+        }
+
+        private static byte[] BuildChunk(ReadOnlySpan<byte> payload)
+        {
+            var prefix = Encoding.ASCII.GetBytes(payload.Length.ToString("x", System.Globalization.CultureInfo.InvariantCulture) + "\r\n");
+            var chunk = new byte[prefix.Length + payload.Length + 2];
+            prefix.CopyTo(chunk);
+            payload.CopyTo(chunk.AsSpan(prefix.Length));
+            chunk[^2] = (byte)'\r';
+            chunk[^1] = (byte)'\n';
+            return chunk;
+        }
+
+        public override void Flush()
+        {
+        }
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
+        public override void SetLength(long value) => throw new NotSupportedException();
+
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
+
     private sealed class Http3ResponseTranslationStream : Stream
     {
         private readonly Http3PreviewConnection _connection;
         private readonly QuicStream _stream;
         private readonly string _method;
         private readonly TimeSpan _writeTimeout;
-        private readonly MemoryStream _requestBody;
+        private readonly Stream _requestBody;
         private readonly MemoryStream _headBuffer = new();
         private readonly MemoryStream _chunkBuffer = new();
         private bool _headWritten;
@@ -1001,13 +1243,13 @@ public sealed class Http3PreviewConnection
             QuicStream stream,
             string method,
             TimeSpan writeTimeout,
-            byte[] requestBody)
+            Stream requestBody)
         {
             _connection = connection;
             _stream = stream;
             _method = method;
             _writeTimeout = writeTimeout;
-            _requestBody = new MemoryStream(requestBody, writable: false);
+            _requestBody = requestBody;
         }
 
         public override bool CanRead => true;

@@ -22,7 +22,7 @@ public sealed class ListenerOptions
 
     public int Http3AltSvcMaxAgeSeconds { get; init; } = 86400;
 
-    public int Http3MaxBufferedRequestBodyBytes { get; init; } = 8 * 1024 * 1024;
+    public int Http3MaxBufferedRequestBodyBytes { get; init; }
 
     public string? DefaultCertificateId { get; init; }
 

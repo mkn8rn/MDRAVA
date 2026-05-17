@@ -20,7 +20,7 @@ public static class Http3PreviewRequestTranslator
         RuntimeListener listener,
         out Http1RequestHead requestHead,
         out string rejectionReason,
-        long bodyLength = 0)
+        bool bodyMayFollow = true)
     {
         requestHead = null!;
         rejectionReason = "invalid_headers";
@@ -101,14 +101,13 @@ public static class Http3PreviewRequestTranslator
             return false;
         }
 
-        if (!TryValidateContentLength(regularHeaders, bodyLength, out rejectionReason))
+        if (!TryGetRequestFraming(regularHeaders, method, bodyMayFollow, out var framing, out rejectionReason))
         {
             return false;
         }
 
         regularHeaders.RemoveAll(static header => string.Equals(header.Name, "host", StringComparison.OrdinalIgnoreCase));
         var path = target.Split('?', 2)[0];
-        var framing = Http1RequestFraming.FromContentLength(bodyLength);
         regularHeaders.Insert(0, new Http1HeaderField("Host", authority));
         requestHead = new Http1RequestHead(
             method,
@@ -168,11 +167,14 @@ public static class Http3PreviewRequestTranslator
             && target.All(static character => character > 0x20 && character != 0x7f);
     }
 
-    private static bool TryValidateContentLength(
+    private static bool TryGetRequestFraming(
         IReadOnlyList<Http1HeaderField> headers,
-        long bodyLength,
+        string method,
+        bool bodyMayFollow,
+        out Http1RequestFraming framing,
         out string rejectionReason)
     {
+        framing = Http1RequestFraming.None;
         rejectionReason = "";
         long? declared = null;
         foreach (var header in headers)
@@ -193,12 +195,25 @@ public static class Http3PreviewRequestTranslator
             declared = parsed;
         }
 
-        if (declared.HasValue && declared.Value != bodyLength)
+        if (declared.HasValue)
         {
-            rejectionReason = "invalid_content_length";
-            return false;
+            framing = Http1RequestFraming.FromContentLength(declared.Value);
+            return true;
+        }
+
+        if (bodyMayFollow && MayCarryBody(method))
+        {
+            framing = Http1RequestFraming.Chunked;
         }
 
         return true;
+    }
+
+    private static bool MayCarryBody(string method)
+    {
+        return string.Equals(method, "POST", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(method, "PUT", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(method, "PATCH", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(method, "DELETE", StringComparison.OrdinalIgnoreCase);
     }
 }

@@ -81,6 +81,12 @@ public sealed class PrometheusMetricsExporter
         AppendCounter(builder, "mdrava_http3_response_bytes_sent_total", "HTTP/3 preview response body bytes sent in DATA frames.", proxy.Http3ResponseBytesSent);
         AppendCounter(builder, "mdrava_http3_request_body_bytes_received_total", "HTTP/3 preview request body bytes accepted from DATA frames.", proxy.Http3RequestBodyBytesReceived);
         AppendCounter(builder, "mdrava_http3_response_stream_resets_total", "HTTP/3 preview response stream cancellations or write failures.", proxy.Http3ResponseStreamResets);
+        AppendCounter(builder, "mdrava_http3_alt_svc_emitted_total", "HTTP/3 Alt-Svc headers emitted on proxy responses.", proxy.Http3AltSvcEmitted);
+        AppendCounter(builder, "mdrava_http3_alt_svc_suppressed_total", "HTTP/3 Alt-Svc opportunities suppressed because HTTP/3 was disabled or not ready.", proxy.Http3AltSvcSuppressed);
+        AppendGauge(builder, "mdrava_http3_default_enabled_listeners", "Configured default-enabled HTTP/3 proxy listeners.", snapshot.Listeners.Count(static listener => listener.Http3.EnabledForTraffic && string.Equals(listener.Http3.EnablementLevel, "default", StringComparison.OrdinalIgnoreCase)));
+        AppendGauge(builder, "mdrava_http3_qpack_dynamic_table_capacity", "Configured HTTP/3 QPACK dynamic table capacity. MDRAVA advertises zero for bounded static-table operation.", 0);
+        AppendGauge(builder, "mdrava_http3_qpack_blocked_streams", "Configured HTTP/3 QPACK blocked streams. MDRAVA advertises zero to avoid blocked-stream accumulation.", 0);
+        AppendGauge(builder, "mdrava_http3_request_body_streaming_enabled", "Whether HTTP/3 request body streaming is enabled for eligible proxy listeners.", snapshot.Listeners.Any(static listener => listener.Http3.EnabledForTraffic) ? 1 : 0);
         AppendGauge(builder, "mdrava_quic_listeners_active", "Currently active HTTP/3 preview QUIC listeners.", proxy.ActiveQuicListeners);
         AppendLabeledCounter(builder, "mdrava_quic_listener_starts_total", "HTTP/3 preview QUIC listener starts by result.", proxy.QuicListenerStartSuccesses, new Label("result", "success"));
         AppendLabeledCounter(builder, "mdrava_quic_listener_starts_total", null, proxy.QuicListenerStartFailures, new Label("result", "failure"));

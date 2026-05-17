@@ -387,14 +387,16 @@ public static class ProxyConfigurationMapper
         {
             return listener.Http3Enablement.Trim().ToLowerInvariant() switch
             {
+                "default" => RuntimeHttp3Enablement.Default,
+                "disabled" => RuntimeHttp3Enablement.Disabled,
                 "preview" => RuntimeHttp3Enablement.Preview,
                 "beta" => RuntimeHttp3Enablement.Beta,
-                _ => RuntimeHttp3Enablement.Disabled
+                _ => RuntimeHttp3Enablement.Default
             };
         }
 
         return ParseProtocols(listener.Protocols).HasHttp3Preview() && listener.ExperimentalHttp3
             ? RuntimeHttp3Enablement.Preview
-            : RuntimeHttp3Enablement.Disabled;
+            : RuntimeHttp3Enablement.Default;
     }
 }

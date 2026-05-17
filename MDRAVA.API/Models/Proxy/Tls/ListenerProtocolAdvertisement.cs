@@ -34,6 +34,13 @@ public static class ListenerProtocolAdvertisement
             : [];
     }
 
+    public static List<SslApplicationProtocol> BuildHttp3Alpn(RuntimeListener listener)
+    {
+        return listener.Http3.EnabledForTraffic
+            ? [new SslApplicationProtocol("h3")]
+            : [];
+    }
+
     public static string ToConfigText(RuntimeListenerProtocols protocols)
     {
         return protocols switch

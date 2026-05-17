@@ -71,39 +71,31 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
                 failures.Add($"{prefix}:HTTP/2 requires an HTTPS listener with ALPN; h2c is not supported.");
             }
 
-            if (EnablesHttp3Preview(listener.Protocols))
+            var http3Enablement = ResolveHttp3Enablement(listener);
+            var explicitHttp3Requested = EnablesHttp3Preview(listener.Protocols)
+                || http3Enablement is RuntimeHttp3Enablement.Preview or RuntimeHttp3Enablement.Beta;
+            if (explicitHttp3Requested)
             {
-                var http3Enablement = ResolveHttp3Enablement(listener);
                 if (http3Enablement == RuntimeHttp3Enablement.Disabled)
                 {
-                    failures.Add($"{prefix}:HTTP/3 preview protocols require Http3Enablement to be 'preview' or 'beta'.");
-                }
-
-                if (!listener.ExperimentalHttp3)
-                {
-                    failures.Add($"{prefix}:HTTP/3 preview requires ExperimentalHttp3 to be true.");
+                    failures.Add($"{prefix}:HTTP/3 protocols cannot be combined with Http3Enablement 'disabled'.");
                 }
 
                 if (!isHttps)
                 {
-                    failures.Add($"{prefix}:HTTP/3 preview requires an HTTPS listener; QUIC TLS over plaintext is not supported.");
+                    failures.Add($"{prefix}:HTTP/3 requires an HTTPS listener; QUIC TLS over plaintext is not supported.");
                 }
 
                 if (string.IsNullOrWhiteSpace(listener.DefaultCertificateId)
                     && listener.SniCertificates.Count == 0)
                 {
-                    failures.Add($"{prefix}:HTTP/3 preview requires DefaultCertificateId or SniCertificates so future QUIC TLS can use the certificate registry.");
+                    failures.Add($"{prefix}:HTTP/3 requires DefaultCertificateId or SniCertificates so QUIC TLS can use the certificate registry.");
                 }
-            }
-            else if (!string.IsNullOrWhiteSpace(listener.Http3Enablement)
-                && !string.Equals(listener.Http3Enablement, "disabled", StringComparison.OrdinalIgnoreCase))
-            {
-                failures.Add($"{prefix}:Http3Enablement requires listener Protocols to include HTTP/3 preview.");
             }
 
             if (!IsHttp3Enablement(listener.Http3Enablement))
             {
-                failures.Add($"{prefix}:Http3Enablement must be 'disabled', 'preview', or 'beta' when configured.");
+                failures.Add($"{prefix}:Http3Enablement must be 'default', 'disabled', 'preview', or 'beta' when configured.");
             }
 
             if (listener.Http3AltSvcMaxAgeSeconds is < 0 or > 31536000)
@@ -111,9 +103,10 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
                 failures.Add($"{prefix}:Http3AltSvcMaxAgeSeconds must be between 0 and 31536000.");
             }
 
-            if (listener.Http3AltSvcEnabled && !EnablesHttp3Preview(listener.Protocols))
+            if (listener.Http3AltSvcEnabled
+                && string.Equals(listener.Http3Enablement, "disabled", StringComparison.OrdinalIgnoreCase))
             {
-                failures.Add($"{prefix}:Http3AltSvcEnabled requires listener Protocols to include HTTP/3 preview.");
+                failures.Add($"{prefix}:Http3AltSvcEnabled cannot be true when Http3Enablement is 'disabled'.");
             }
 
             if (listener.Http3MaxBufferedRequestBodyBytes is < 0 or > 64 * 1024 * 1024)
@@ -361,6 +354,7 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
     private static bool IsHttp3Enablement(string enablement)
     {
         return string.IsNullOrWhiteSpace(enablement)
+            || string.Equals(enablement, "default", StringComparison.OrdinalIgnoreCase)
             || string.Equals(enablement, "disabled", StringComparison.OrdinalIgnoreCase)
             || string.Equals(enablement, "preview", StringComparison.OrdinalIgnoreCase)
             || string.Equals(enablement, "beta", StringComparison.OrdinalIgnoreCase);
@@ -372,15 +366,17 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
         {
             return listener.Http3Enablement.Trim().ToLowerInvariant() switch
             {
+                "default" => RuntimeHttp3Enablement.Default,
+                "disabled" => RuntimeHttp3Enablement.Disabled,
                 "preview" => RuntimeHttp3Enablement.Preview,
                 "beta" => RuntimeHttp3Enablement.Beta,
-                _ => RuntimeHttp3Enablement.Disabled
+                _ => RuntimeHttp3Enablement.Default
             };
         }
 
         return EnablesHttp3Preview(listener.Protocols) && listener.ExperimentalHttp3
             ? RuntimeHttp3Enablement.Preview
-            : RuntimeHttp3Enablement.Disabled;
+            : RuntimeHttp3Enablement.Default;
     }
 
     private static bool IsSupportedUpstreamScheme(string scheme)
