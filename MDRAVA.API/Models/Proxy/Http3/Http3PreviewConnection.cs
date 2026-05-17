@@ -19,7 +19,6 @@ namespace MDRAVA.API.Proxy.Http3;
 public sealed class Http3PreviewConnection
 {
     private const int MaxFramePayloadBytes = 1024 * 1024;
-    private const int MaxBufferedRequestBodyBytes = 8 * 1024 * 1024;
     private const int MaxProtocolErrorsPerConnection = 8;
     private readonly QuicConnection _connection;
     private readonly ProxyConfigurationSnapshot _configurationSnapshot;
@@ -128,7 +127,7 @@ public sealed class Http3PreviewConnection
         _metrics.Http3StreamStarted();
         try
         {
-            var maxBufferedBodyBytes = MaxBufferedBodyBytes(_configurationSnapshot.Limits);
+            var maxBufferedBodyBytes = EffectiveMaxBufferedBodyBytes(_listener, _configurationSnapshot.Limits);
             var requestBytes = await ReadStreamBytesAsync(
                 stream,
                 MaxRequestStreamBytes(_listener.Http2Limits.MaxHeaderListBytes, maxBufferedBodyBytes),
@@ -354,6 +353,7 @@ public sealed class Http3PreviewConnection
                 }
 
                 bodyBuffer.Write(payload.Span);
+                _metrics.AddHttp3RequestBodyBytesReceived(payload.Length);
                 continue;
             }
 
@@ -405,17 +405,18 @@ public sealed class Http3PreviewConnection
             }
 
             memory.Write(buffer, 0, read);
+            _metrics.AddBytesRead(read);
         }
     }
 
-    private static int MaxBufferedBodyBytes(RuntimeLimits limits)
+    private static int EffectiveMaxBufferedBodyBytes(RuntimeListener listener, RuntimeLimits limits)
     {
-        if (limits.MaxRequestBodyBytes <= 0)
+        if (limits.MaxRequestBodyBytes <= 0 || listener.Http3MaxBufferedRequestBodyBytes <= 0)
         {
             return 0;
         }
 
-        return (int)Math.Min(limits.MaxRequestBodyBytes, MaxBufferedRequestBodyBytes);
+        return (int)Math.Min(limits.MaxRequestBodyBytes, listener.Http3MaxBufferedRequestBodyBytes);
     }
 
     private static int MaxRequestStreamBytes(int maxHeaderBytes, int maxBodyBytes)
@@ -740,6 +741,7 @@ public sealed class Http3PreviewConnection
                 remaining[..chunkLength],
                 final,
                 cancellationToken);
+            _metrics.AddHttp3ResponseBytesSent(chunkLength);
             remaining = remaining[chunkLength..];
         }
 
@@ -955,9 +957,14 @@ public sealed class Http3PreviewConnection
         private readonly TimeSpan _writeTimeout;
         private readonly MemoryStream _requestBody;
         private readonly MemoryStream _headBuffer = new();
+        private readonly MemoryStream _chunkBuffer = new();
         private bool _headWritten;
         private bool _endStreamSent;
         private bool _dropBody;
+        private bool _decodeChunkedBody;
+        private bool _responseStreamActive;
+        private ChunkParserState _chunkState = ChunkParserState.ReadingSize;
+        private long _chunkBytesRemaining;
 
         public Http3ResponseTranslationStream(
             Http3PreviewConnection connection,
@@ -999,11 +1006,20 @@ public sealed class Http3PreviewConnection
 
         public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
         {
-            await ProxyTimeoutPolicy.RunAsync(
-                async timeoutToken => await WriteCoreAsync(buffer, timeoutToken),
-                _writeTimeout,
-                ProxyTimeoutKind.DownstreamWrite,
-                cancellationToken);
+            try
+            {
+                await ProxyTimeoutPolicy.RunAsync(
+                    async timeoutToken => await WriteCoreAsync(buffer, timeoutToken),
+                    _writeTimeout,
+                    ProxyTimeoutKind.DownstreamWrite,
+                    cancellationToken);
+            }
+            catch (Exception exception) when (exception is QuicException or IOException)
+            {
+                _connection._metrics.Http3ResponseStreamReset();
+                EndResponseStream();
+                throw;
+            }
         }
 
         public override void Write(byte[] buffer, int offset, int count)
@@ -1018,6 +1034,8 @@ public sealed class Http3PreviewConnection
                 await _connection.WriteDataAsync(_stream, ReadOnlyMemory<byte>.Empty, completeWrites: true, cancellationToken);
                 _endStreamSent = true;
             }
+
+            EndResponseStream();
         }
 
         private async ValueTask WriteCoreAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
@@ -1037,8 +1055,9 @@ public sealed class Http3PreviewConnection
                 var statusAndHeaders = ParseHttp1ResponseHead(headText);
                 _dropBody = string.Equals(_method, "HEAD", StringComparison.OrdinalIgnoreCase)
                     || statusAndHeaders.StatusCode is 204 or 304;
+                _decodeChunkedBody = statusAndHeaders.ChunkedTransfer && !_dropBody;
                 var bodyBytes = bytes.AsMemory(bodyOffset);
-                var endWithHeaders = _dropBody || IsZeroContentLength(statusAndHeaders.Headers);
+                var endWithHeaders = _dropBody || (!_decodeChunkedBody && IsZeroContentLength(statusAndHeaders.Headers));
                 await _connection.WriteHeadersAsync(
                     _stream,
                     statusAndHeaders.StatusCode,
@@ -1048,9 +1067,14 @@ public sealed class Http3PreviewConnection
                 _headWritten = true;
                 _endStreamSent = endWithHeaders;
                 _headBuffer.SetLength(0);
+                if (!_dropBody && !_endStreamSent)
+                {
+                    StartResponseStream();
+                }
+
                 if (!_dropBody && bodyBytes.Length > 0 && !_endStreamSent)
                 {
-                    await _connection.WriteDataAsync(_stream, bodyBytes, completeWrites: false, cancellationToken);
+                    await WriteResponseBodyAsync(bodyBytes, cancellationToken);
                 }
 
                 return;
@@ -1058,8 +1082,150 @@ public sealed class Http3PreviewConnection
 
             if (!_dropBody && !_endStreamSent && buffer.Length > 0)
             {
-                await _connection.WriteDataAsync(_stream, buffer, completeWrites: false, cancellationToken);
+                await WriteResponseBodyAsync(buffer, cancellationToken);
             }
+        }
+
+        private async ValueTask WriteResponseBodyAsync(
+            ReadOnlyMemory<byte> buffer,
+            CancellationToken cancellationToken)
+        {
+            if (_decodeChunkedBody)
+            {
+                await WriteDecodedChunkedBodyAsync(buffer, cancellationToken);
+                return;
+            }
+
+            await _connection.WriteDataAsync(_stream, buffer, completeWrites: false, cancellationToken);
+        }
+
+        private async ValueTask WriteDecodedChunkedBodyAsync(
+            ReadOnlyMemory<byte> buffer,
+            CancellationToken cancellationToken)
+        {
+            _chunkBuffer.Position = _chunkBuffer.Length;
+            _chunkBuffer.Write(buffer.Span);
+
+            var bytes = _chunkBuffer.ToArray();
+            var offset = 0;
+            while (offset < bytes.Length && !_endStreamSent)
+            {
+                if (_chunkState == ChunkParserState.ReadingSize)
+                {
+                    var lineEnd = IndexOfCrlf(bytes, offset);
+                    if (lineEnd < 0)
+                    {
+                        break;
+                    }
+
+                    var line = Encoding.ASCII.GetString(bytes, offset, lineEnd - offset);
+                    var separator = line.IndexOf(';', StringComparison.Ordinal);
+                    if (separator >= 0)
+                    {
+                        line = line[..separator];
+                    }
+
+                    if (!long.TryParse(line.Trim(), System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out _chunkBytesRemaining)
+                        || _chunkBytesRemaining < 0)
+                    {
+                        throw new IOException("Invalid chunked response body.");
+                    }
+
+                    offset = lineEnd + 2;
+                    _chunkState = _chunkBytesRemaining == 0
+                        ? ChunkParserState.ReadingTrailers
+                        : ChunkParserState.ReadingData;
+                    continue;
+                }
+
+                if (_chunkState == ChunkParserState.ReadingData)
+                {
+                    var available = bytes.Length - offset;
+                    if (available <= 0)
+                    {
+                        break;
+                    }
+
+                    var take = (int)Math.Min(available, _chunkBytesRemaining);
+                    await _connection.WriteDataAsync(_stream, bytes.AsMemory(offset, take), completeWrites: false, cancellationToken);
+                    offset += take;
+                    _chunkBytesRemaining -= take;
+                    if (_chunkBytesRemaining == 0)
+                    {
+                        _chunkState = ChunkParserState.ReadingDataCrlf;
+                    }
+
+                    continue;
+                }
+
+                if (_chunkState == ChunkParserState.ReadingDataCrlf)
+                {
+                    if (bytes.Length - offset < 2)
+                    {
+                        break;
+                    }
+
+                    if (bytes[offset] != (byte)'\r' || bytes[offset + 1] != (byte)'\n')
+                    {
+                        throw new IOException("Invalid chunked response body.");
+                    }
+
+                    offset += 2;
+                    _chunkState = ChunkParserState.ReadingSize;
+                    continue;
+                }
+
+                if (_chunkState == ChunkParserState.ReadingTrailers)
+                {
+                    var lineEnd = IndexOfCrlf(bytes, offset);
+                    if (lineEnd < 0)
+                    {
+                        break;
+                    }
+
+                    if (lineEnd == offset)
+                    {
+                        await _connection.WriteDataAsync(_stream, ReadOnlyMemory<byte>.Empty, completeWrites: true, cancellationToken);
+                        _endStreamSent = true;
+                        EndResponseStream();
+                        _chunkState = ChunkParserState.Complete;
+                        offset = lineEnd + 2;
+                        continue;
+                    }
+
+                    offset = lineEnd + 2;
+                    continue;
+                }
+
+                offset = bytes.Length;
+            }
+
+            var remaining = bytes.AsMemory(offset).ToArray();
+            _chunkBuffer.SetLength(0);
+            _chunkBuffer.Write(remaining);
+        }
+
+        private void StartResponseStream()
+        {
+            if (_responseStreamActive)
+            {
+                return;
+            }
+
+            _responseStreamActive = true;
+            _connection._metrics.Http3StreamedResponse();
+            _connection._metrics.Http3ResponseStreamStarted();
+        }
+
+        private void EndResponseStream()
+        {
+            if (!_responseStreamActive)
+            {
+                return;
+            }
+
+            _responseStreamActive = false;
+            _connection._metrics.Http3ResponseStreamEnded();
         }
 
         private static ResponseHead ParseHttp1ResponseHead(string text)
@@ -1068,6 +1234,7 @@ public sealed class Http3PreviewConnection
             var statusParts = lines[0].Split(' ', 3, StringSplitOptions.RemoveEmptyEntries);
             var statusCode = statusParts.Length >= 2 && int.TryParse(statusParts[1], out var parsed) ? parsed : 502;
             List<Http1HeaderField> headers = [];
+            var chunkedTransfer = false;
             for (var index = 1; index < lines.Length; index++)
             {
                 var colon = lines[index].IndexOf(':');
@@ -1078,13 +1245,19 @@ public sealed class Http3PreviewConnection
 
                 var name = lines[index][..colon].Trim().ToLowerInvariant();
                 var value = lines[index][(colon + 1)..].Trim();
+                if (string.Equals(name, "transfer-encoding", StringComparison.OrdinalIgnoreCase)
+                    && value.Contains("chunked", StringComparison.OrdinalIgnoreCase))
+                {
+                    chunkedTransfer = true;
+                }
+
                 if (!IsHopByHopHeader(name))
                 {
                     headers.Add(new Http1HeaderField(name, value));
                 }
             }
 
-            return new ResponseHead(statusCode, headers);
+            return new ResponseHead(statusCode, headers, chunkedTransfer);
         }
 
         private static bool IsZeroContentLength(IReadOnlyList<Http1HeaderField> headers)
@@ -1110,6 +1283,19 @@ public sealed class Http3PreviewConnection
             return -1;
         }
 
+        private static int IndexOfCrlf(ReadOnlySpan<byte> bytes, int start)
+        {
+            for (var index = start + 1; index < bytes.Length; index++)
+            {
+                if (bytes[index - 1] == (byte)'\r' && bytes[index] == (byte)'\n')
+                {
+                    return index - 1;
+                }
+            }
+
+            return -1;
+        }
+
         public override void Flush()
         {
         }
@@ -1124,5 +1310,14 @@ public sealed class Http3PreviewConnection
         public override void SetLength(long value) => throw new NotSupportedException();
     }
 
-    private readonly record struct ResponseHead(int StatusCode, IReadOnlyList<Http1HeaderField> Headers);
+    private enum ChunkParserState
+    {
+        ReadingSize,
+        ReadingData,
+        ReadingDataCrlf,
+        ReadingTrailers,
+        Complete
+    }
+
+    private readonly record struct ResponseHead(int StatusCode, IReadOnlyList<Http1HeaderField> Headers, bool ChunkedTransfer);
 }

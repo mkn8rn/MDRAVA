@@ -107,6 +107,11 @@ public sealed class ProxyMetrics
     private long _http3GeneratedResponses;
     private long _activeHttp3Streams;
     private long _http3StreamResets;
+    private long _http3StreamedResponses;
+    private long _activeHttp3ResponseStreams;
+    private long _http3ResponseBytesSent;
+    private long _http3RequestBodyBytesReceived;
+    private long _http3ResponseStreamResets;
     private long _quicListenerStartSuccesses;
     private long _quicListenerStartFailures;
     private long _activeQuicListeners;
@@ -480,6 +485,30 @@ public sealed class ProxyMetrics
 
     public void Http3StreamReset() => Interlocked.Increment(ref _http3StreamResets);
 
+    public void Http3StreamedResponse() => Interlocked.Increment(ref _http3StreamedResponses);
+
+    public void Http3ResponseStreamStarted() => Interlocked.Increment(ref _activeHttp3ResponseStreams);
+
+    public void Http3ResponseStreamEnded() => Interlocked.Decrement(ref _activeHttp3ResponseStreams);
+
+    public void AddHttp3ResponseBytesSent(long bytes)
+    {
+        if (bytes > 0)
+        {
+            Interlocked.Add(ref _http3ResponseBytesSent, bytes);
+        }
+    }
+
+    public void AddHttp3RequestBodyBytesReceived(long bytes)
+    {
+        if (bytes > 0)
+        {
+            Interlocked.Add(ref _http3RequestBodyBytesReceived, bytes);
+        }
+    }
+
+    public void Http3ResponseStreamReset() => Interlocked.Increment(ref _http3ResponseStreamResets);
+
     public void Http3RequestRejected(string reason)
     {
         var counter = _http3RejectedRequests.GetOrAdd(NormalizeLabel(reason), static _ => new RequestSeriesCounter());
@@ -687,6 +716,11 @@ public sealed class ProxyMetrics
             Interlocked.Read(ref _http3GeneratedResponses),
             Interlocked.Read(ref _activeHttp3Streams),
             Interlocked.Read(ref _http3StreamResets),
+            Interlocked.Read(ref _http3StreamedResponses),
+            Interlocked.Read(ref _activeHttp3ResponseStreams),
+            Interlocked.Read(ref _http3ResponseBytesSent),
+            Interlocked.Read(ref _http3RequestBodyBytesReceived),
+            Interlocked.Read(ref _http3ResponseStreamResets),
             http3RejectedRequests,
             http3ProtocolErrors,
             Interlocked.Read(ref _quicListenerStartSuccesses),

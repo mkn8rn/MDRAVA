@@ -116,6 +116,11 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
                 failures.Add($"{prefix}:Http3AltSvcEnabled requires listener Protocols to include HTTP/3 preview.");
             }
 
+            if (listener.Http3MaxBufferedRequestBodyBytes is < 0 or > 64 * 1024 * 1024)
+            {
+                failures.Add($"{prefix}:Http3MaxBufferedRequestBodyBytes must be between 0 and 67108864.");
+            }
+
             if (listener.Port is < 1 or > 65535)
             {
                 failures.Add($"{prefix}:Port must be between 1 and 65535.");

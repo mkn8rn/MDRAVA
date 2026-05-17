@@ -633,6 +633,73 @@ internal static class ClientHttp3PreviewTests
         AssertEx.False(HeaderExists(result.Headers, "keep-alive"));
     }
 
+    public static async Task Http3ChunkedResponseStreamsBodyWithoutTransferEncoding()
+    {
+        if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
+        {
+            return;
+        }
+
+        using var result = await RunHttp3ProxyRouteScenarioAsync(
+            "GET",
+            "/chunked",
+            "HTTP/1.1 200 OK\r\nConnection: close\r\nTransfer-Encoding: chunked\r\nX-Mode: chunked\r\n\r\n4\r\nwiki\r\n5\r\npedia\r\n0\r\nX-Trailer: ignored\r\n\r\n");
+
+        AssertEx.Equal("200", HeaderValue(result.Headers, ":status"));
+        AssertEx.Equal("chunked", HeaderValue(result.Headers, "x-mode"));
+        AssertEx.Equal("wikipedia", result.Body);
+        AssertEx.False(HeaderExists(result.Headers, "transfer-encoding"));
+        AssertEx.True(result.Metrics.Http3StreamedResponses >= 1);
+        AssertEx.True(result.Metrics.Http3ResponseBytesSent >= "wikipedia".Length);
+    }
+
+    public static async Task Http3ResponseStreamsBeforeUpstreamCompletes()
+    {
+        if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
+        {
+            return;
+        }
+
+        var temp = TemporaryDirectory.Create();
+        var proxyPort = GetFreeTcpUdpPort();
+        var upstreamPort = GetFreeTcpPort();
+        WriteCertificateConfig(temp.Path);
+        WriteHttp3ProxySite(temp.Path, proxyPort, upstreamPort);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var firstChunkSent = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseUpstream = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var upstreamTask = RunStreamingResponseUpstreamAsync(upstreamPort, firstChunkSent, releaseUpstream, timeout.Token);
+        var host = BuildProxyHost(temp.Path);
+        await host.StartAsync(timeout.Token);
+
+        try
+        {
+            var runtime = host.Services.GetRequiredService<ProxyRuntimeState>();
+            await WaitForListenerAsync(runtime, "main", "quic", ProxyListenerState.Active, timeout.Token);
+            await using var connection = await ConnectHttp3Async(proxyPort, timeout.Token);
+            await using var stream = await connection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional, timeout.Token);
+            await WriteHttp3RequestAsync(stream, "GET", "/stream", null, timeout.Token);
+            await firstChunkSent.Task.WaitAsync(timeout.Token);
+
+            var firstData = await ReadFirstHttp3DataAsync(stream, timeout.Token);
+            releaseUpstream.SetResult();
+            _ = await ReadHttp3ResponseRemainderAsync(stream, timeout.Token);
+            var upstreamRequest = await upstreamTask.WaitAsync(timeout.Token);
+            var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
+
+            AssertEx.Equal("stream-", firstData);
+            AssertEx.True(upstreamRequest.StartsWith("GET /stream HTTP/1.1", StringComparison.Ordinal), upstreamRequest);
+            AssertEx.Equal(0L, metrics.ActiveHttp3ResponseStreams);
+        }
+        finally
+        {
+            releaseUpstream.TrySetResult();
+            await host.StopAsync(CancellationToken.None);
+            host.Dispose();
+            temp.Dispose();
+        }
+    }
+
     public static async Task Http3CacheInteractionUsesStoredResponse()
     {
         if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
@@ -678,6 +745,61 @@ internal static class ClientHttp3PreviewTests
             AssertEx.Equal("cached", second.Body);
             AssertEx.True(upstreamRequest.StartsWith("GET /cache?x=1 HTTP/1.1", StringComparison.Ordinal), upstreamRequest);
             AssertEx.True(metrics.Http3ProxiedRequests >= 1);
+        }
+        finally
+        {
+            await host.StopAsync(CancellationToken.None);
+            host.Dispose();
+            temp.Dispose();
+        }
+    }
+
+    public static async Task Http3OversizedCacheCandidateStreamsButIsNotCached()
+    {
+        if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
+        {
+            return;
+        }
+
+        var temp = TemporaryDirectory.Create();
+        var proxyPort = GetFreeTcpUdpPort();
+        var upstreamPort = GetFreeTcpPort();
+        WriteCertificateConfig(temp.Path);
+        WriteHttp3ProxySite(
+            temp.Path,
+            proxyPort,
+            upstreamPort,
+            """
+                  "cache": {
+                    "enabled": true,
+                    "maxEntryBytes": 4,
+                    "maxTotalBytes": 8192,
+                    "defaultTtlSeconds": 60,
+                    "respectOriginCacheControl": false
+                  },
+            """);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var upstreamTask = RunSequentialResponseUpstreamAsync(
+            upstreamPort,
+            [
+                "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 11\r\n\r\nfirst-large",
+                "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 10\r\n\r\nsecond-big"
+            ],
+            timeout.Token);
+        var host = BuildProxyHost(temp.Path);
+        await host.StartAsync(timeout.Token);
+
+        try
+        {
+            var runtime = host.Services.GetRequiredService<ProxyRuntimeState>();
+            await WaitForListenerAsync(runtime, "main", "quic", ProxyListenerState.Active, timeout.Token);
+            var first = await SendHttp3RequestAsync(proxyPort, "GET", "/large", timeout.Token);
+            var second = await SendHttp3RequestAsync(proxyPort, "GET", "/large", timeout.Token);
+            var upstreamRequests = await upstreamTask.WaitAsync(timeout.Token);
+
+            AssertEx.Equal("first-large", first.Body);
+            AssertEx.Equal("second-big", second.Body);
+            AssertEx.Equal(2, upstreamRequests.Length);
         }
         finally
         {
@@ -783,6 +905,28 @@ internal static class ClientHttp3PreviewTests
 
         AssertEx.Equal("413", HeaderValue(result.Headers, ":status"));
         AssertEx.Equal("Payload Too Large", result.Body);
+        AssertEx.Equal("", result.UpstreamRequest);
+        AssertEx.True(result.Metrics.Http3RejectedRequests.ContainsKey("request_body_too_large"));
+    }
+
+    public static async Task Http3BufferedRequestBodyLimitApplies()
+    {
+        if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
+        {
+            return;
+        }
+
+        using var result = await RunHttp3ProxyRouteScenarioAsync(
+            "POST",
+            "/buffer-too-large",
+            "",
+            requestBody: "buffered",
+            listenerExtraJson:
+            """
+                  "http3MaxBufferedRequestBodyBytes": 4,
+            """);
+
+        AssertEx.Equal("413", HeaderValue(result.Headers, ":status"));
         AssertEx.Equal("", result.UpstreamRequest);
         AssertEx.True(result.Metrics.Http3RejectedRequests.ContainsKey("request_body_too_large"));
     }
@@ -944,6 +1088,12 @@ internal static class ClientHttp3PreviewTests
         metrics.Http3StreamStarted();
         metrics.Http3StreamEnded();
         metrics.Http3StreamReset();
+        metrics.Http3StreamedResponse();
+        metrics.Http3ResponseStreamStarted();
+        metrics.Http3ResponseStreamEnded();
+        metrics.AddHttp3ResponseBytesSent(12);
+        metrics.AddHttp3RequestBodyBytesReceived(5);
+        metrics.Http3ResponseStreamReset();
         metrics.Http3RequestRejected("method_unsupported");
         metrics.Http3ProtocolError("invalid_frame");
         metrics.SetActiveQuicListeners(1);
@@ -956,6 +1106,11 @@ internal static class ClientHttp3PreviewTests
         AssertEx.Equal(1L, snapshot.Http3GeneratedResponses);
         AssertEx.Equal(0L, snapshot.ActiveHttp3Streams);
         AssertEx.Equal(1L, snapshot.Http3StreamResets);
+        AssertEx.Equal(1L, snapshot.Http3StreamedResponses);
+        AssertEx.Equal(0L, snapshot.ActiveHttp3ResponseStreams);
+        AssertEx.Equal(12L, snapshot.Http3ResponseBytesSent);
+        AssertEx.Equal(5L, snapshot.Http3RequestBodyBytesReceived);
+        AssertEx.Equal(1L, snapshot.Http3ResponseStreamResets);
         AssertEx.Equal(1L, snapshot.Http3RejectedRequests["method_unsupported"]);
         AssertEx.Equal(1L, snapshot.Http3ProtocolErrors["invalid_frame"]);
         AssertEx.Equal(1L, snapshot.ActiveQuicListeners);
@@ -989,13 +1144,14 @@ internal static class ClientHttp3PreviewTests
         string target,
         string upstreamResponse,
         string? requestBody = null,
-        string routeExtraJson = "")
+        string routeExtraJson = "",
+        string listenerExtraJson = "")
     {
         var temp = TemporaryDirectory.Create();
         var proxyPort = GetFreeTcpUdpPort();
         var upstreamPort = GetFreeTcpPort();
         WriteCertificateConfig(temp.Path);
-        WriteHttp3ProxySite(temp.Path, proxyPort, upstreamPort, routeExtraJson);
+        WriteHttp3ProxySite(temp.Path, proxyPort, upstreamPort, routeExtraJson, listenerExtraJson);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         var upstreamTask = string.IsNullOrEmpty(upstreamResponse)
             ? Task.FromResult("")
@@ -1023,6 +1179,22 @@ internal static class ClientHttp3PreviewTests
         await using var connection = await ConnectHttp3Async(port, cancellationToken);
 
         await using var stream = await connection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional, cancellationToken);
+        await WriteHttp3RequestAsync(stream, method, target, body ?? (includeBodyData ? "body" : null), cancellationToken, dataBeforeHeaders);
+
+        var responseBytes = await ReadToEndAsync(stream, cancellationToken);
+        var response = DecodeHttp3Response(responseBytes);
+        await connection.CloseAsync(0, CancellationToken.None);
+        return response;
+    }
+
+    private static async ValueTask WriteHttp3RequestAsync(
+        QuicStream stream,
+        string method,
+        string target,
+        string? body,
+        CancellationToken cancellationToken,
+        bool dataBeforeHeaders = false)
+    {
         var headerBlock = Http3PreviewCodec.EncodeHeaderBlock(
         [
             new Http1HeaderField(":method", method),
@@ -1037,15 +1209,17 @@ internal static class ClientHttp3PreviewTests
         }
 
         Http3PreviewCodec.WriteFrame(request, Http3PreviewCodec.HeadersFrame, headerBlock);
-        if (includeBodyData || body is not null)
+        if (body is not null)
         {
-            var bodyBytes = Encoding.UTF8.GetBytes(body ?? "body");
+            var bodyBytes = Encoding.UTF8.GetBytes(body);
             Http3PreviewCodec.WriteFrame(request, Http3PreviewCodec.DataFrame, bodyBytes);
         }
 
         await stream.WriteAsync(request.ToArray(), completeWrites: true, cancellationToken);
+    }
 
-        var responseBytes = await ReadToEndAsync(stream, cancellationToken);
+    private static Http3Response DecodeHttp3Response(byte[] responseBytes)
+    {
         var offset = 0;
         IReadOnlyList<Http1HeaderField> headers = [];
         var responseBody = "";
@@ -1066,8 +1240,46 @@ internal static class ClientHttp3PreviewTests
             }
         }
 
-        await connection.CloseAsync(0, CancellationToken.None);
         return new Http3Response(headers, responseBody);
+    }
+
+    private static async Task<string> ReadFirstHttp3DataAsync(
+        QuicStream stream,
+        CancellationToken cancellationToken)
+    {
+        using var memory = new MemoryStream();
+        var buffer = new byte[256];
+        while (true)
+        {
+            var read = await stream.ReadAsync(buffer, cancellationToken);
+            if (read == 0)
+            {
+                return "";
+            }
+
+            memory.Write(buffer, 0, read);
+            var bytes = memory.ToArray();
+            var offset = 0;
+            while (offset < bytes.Length)
+            {
+                if (!Http3PreviewCodec.TryReadFrame(bytes, ref offset, out var type, out var payload))
+                {
+                    break;
+                }
+
+                if (type == Http3PreviewCodec.DataFrame && payload.Length > 0)
+                {
+                    return Encoding.UTF8.GetString(payload.Span);
+                }
+            }
+        }
+    }
+
+    private static async Task<Http3Response> ReadHttp3ResponseRemainderAsync(
+        QuicStream stream,
+        CancellationToken cancellationToken)
+    {
+        return DecodeHttp3Response(await ReadToEndAsync(stream, cancellationToken));
     }
 
     private static ValueTask<QuicConnection> ConnectHttp3Async(
@@ -1128,6 +1340,59 @@ internal static class ClientHttp3PreviewTests
             await using var stream = client.GetStream();
             var request = await ReadHttp1RequestAsync(stream, cancellationToken);
             await stream.WriteAsync(Encoding.ASCII.GetBytes(response), cancellationToken);
+            return request;
+        }
+        finally
+        {
+            listener.Stop();
+        }
+    }
+
+    private static async Task<string[]> RunSequentialResponseUpstreamAsync(
+        int upstreamPort,
+        IReadOnlyList<string> responses,
+        CancellationToken cancellationToken)
+    {
+        var listener = new TcpListener(IPAddress.Loopback, upstreamPort);
+        listener.Start();
+        List<string> requests = [];
+        try
+        {
+            foreach (var response in responses)
+            {
+                using var client = await listener.AcceptTcpClientAsync(cancellationToken);
+                await using var stream = client.GetStream();
+                requests.Add(await ReadHttp1RequestAsync(stream, cancellationToken));
+                await stream.WriteAsync(Encoding.ASCII.GetBytes(response), cancellationToken);
+            }
+
+            return requests.ToArray();
+        }
+        finally
+        {
+            listener.Stop();
+        }
+    }
+
+    private static async Task<string> RunStreamingResponseUpstreamAsync(
+        int upstreamPort,
+        TaskCompletionSource firstChunkSent,
+        TaskCompletionSource releaseUpstream,
+        CancellationToken cancellationToken)
+    {
+        var listener = new TcpListener(IPAddress.Loopback, upstreamPort);
+        listener.Start();
+        try
+        {
+            using var client = await listener.AcceptTcpClientAsync(cancellationToken);
+            await using var stream = client.GetStream();
+            var request = await ReadHttp1RequestAsync(stream, cancellationToken);
+            await stream.WriteAsync(
+                Encoding.ASCII.GetBytes("HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 13\r\n\r\nstream-"),
+                cancellationToken);
+            firstChunkSent.SetResult();
+            await releaseUpstream.Task.WaitAsync(cancellationToken);
+            await stream.WriteAsync(Encoding.ASCII.GetBytes("second"), cancellationToken);
             return request;
         }
         finally
@@ -1332,7 +1597,8 @@ internal static class ClientHttp3PreviewTests
         string dataDirectory,
         int proxyPort,
         int upstreamPort,
-        string routeExtraJson = "")
+        string routeExtraJson = "",
+        string listenerExtraJson = "")
     {
         var sites = Directory.CreateDirectory(Path.Combine(dataDirectory, "config", "sites")).FullName;
         File.WriteAllText(
@@ -1349,6 +1615,7 @@ internal static class ClientHttp3PreviewTests
                   "protocols": "http3Preview",
                   "experimentalHttp3": true,
                   "http3Enablement": "preview",
+            {{listenerExtraJson}}
                   "defaultCertificateId": "home-cert"
                 }
               ],

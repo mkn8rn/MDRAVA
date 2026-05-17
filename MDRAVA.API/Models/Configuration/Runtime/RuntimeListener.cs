@@ -24,6 +24,8 @@ public sealed record RuntimeListener(
 
     public RuntimeHttp3AltSvcOptions Http3AltSvc { get; init; } = RuntimeHttp3AltSvcOptions.Disabled;
 
+    public int Http3MaxBufferedRequestBodyBytes { get; init; } = 8 * 1024 * 1024;
+
     public RuntimeHttp2Limits Http2Limits { get; init; } = RuntimeHttp2Limits.Default;
 
     public bool TcpTrafficEnabled => Protocols.HasTcpProtocols();

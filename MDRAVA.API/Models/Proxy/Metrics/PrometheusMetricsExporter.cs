@@ -60,6 +60,11 @@ public sealed class PrometheusMetricsExporter
         AppendCounter(builder, "mdrava_http3_generated_responses_total", "HTTP/3 preview generated route or control responses.", proxy.Http3GeneratedResponses);
         AppendGauge(builder, "mdrava_http3_streams_active", "Currently active HTTP/3 preview request streams.", proxy.ActiveHttp3Streams);
         AppendCounter(builder, "mdrava_http3_stream_resets_total", "HTTP/3 preview request stream resets or cancellations.", proxy.Http3StreamResets);
+        AppendCounter(builder, "mdrava_http3_streamed_responses_total", "HTTP/3 preview proxied responses streamed over DATA frames.", proxy.Http3StreamedResponses);
+        AppendGauge(builder, "mdrava_http3_response_streams_active", "Currently active HTTP/3 preview response body streams.", proxy.ActiveHttp3ResponseStreams);
+        AppendCounter(builder, "mdrava_http3_response_bytes_sent_total", "HTTP/3 preview response body bytes sent in DATA frames.", proxy.Http3ResponseBytesSent);
+        AppendCounter(builder, "mdrava_http3_request_body_bytes_received_total", "HTTP/3 preview request body bytes accepted from DATA frames.", proxy.Http3RequestBodyBytesReceived);
+        AppendCounter(builder, "mdrava_http3_response_stream_resets_total", "HTTP/3 preview response stream cancellations or write failures.", proxy.Http3ResponseStreamResets);
         AppendGauge(builder, "mdrava_quic_listeners_active", "Currently active HTTP/3 preview QUIC listeners.", proxy.ActiveQuicListeners);
         AppendLabeledCounter(builder, "mdrava_quic_listener_starts_total", "HTTP/3 preview QUIC listener starts by result.", proxy.QuicListenerStartSuccesses, new Label("result", "success"));
         AppendLabeledCounter(builder, "mdrava_quic_listener_starts_total", null, proxy.QuicListenerStartFailures, new Label("result", "failure"));

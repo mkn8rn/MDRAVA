@@ -111,6 +111,7 @@ public static class SiteOptionsAggregator
             MaxResponseHeadBytes = existing.MaxResponseHeadBytes,
             MaxChunkLineBytes = existing.MaxChunkLineBytes,
             ForwardingBufferBytes = existing.ForwardingBufferBytes,
+            Http3MaxBufferedRequestBodyBytes = existing.Http3MaxBufferedRequestBodyBytes,
             Http2MaxConcurrentStreams = existing.Http2MaxConcurrentStreams,
             Http2MaxHeaderListBytes = existing.Http2MaxHeaderListBytes,
             Http2MaxFrameSize = existing.Http2MaxFrameSize
