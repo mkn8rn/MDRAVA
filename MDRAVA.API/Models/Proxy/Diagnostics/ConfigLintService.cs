@@ -298,8 +298,6 @@ public sealed class ConfigLintService
                         findings.Add(Warning("upstream_http3_runtime_unavailable", $"Upstream '{upstream.Name}' uses HTTP/3 but this runtime does not report QUIC client support.", sourceName, upstreamPath, "Use HTTP/1.1 or HTTP/2 for this upstream on runtimes without System.Net.Quic client support."));
                     }
 
-                    findings.Add(Info("upstream_http3_one_request_per_connection", $"Upstream '{upstream.Name}' uses HTTP/3 in one-request-per-connection mode.", sourceName, upstreamPath, "This is explicit in Phase 33; expect higher QUIC connection churn until upstream HTTP/3 multiplexing is implemented."));
-
                     if (route.Retry.Enabled
                         && route.Retry.RetryMethods.Any(static method => !IsSafeRetryMethod(method)))
                     {

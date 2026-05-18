@@ -117,11 +117,11 @@ public sealed class PrometheusMetricsExporter
         AppendCounter(builder, "mdrava_upstream_http3_connection_attempts_total", "Upstream HTTP/3 QUIC connection attempts.", proxy.UpstreamHttp3ConnectionAttempts);
         AppendCounter(builder, "mdrava_upstream_http3_connection_successes_total", "Successful upstream HTTP/3 QUIC connections.", proxy.UpstreamHttp3ConnectionSuccesses);
         AppendCounter(builder, "mdrava_upstream_http3_connection_failures_total", "Failed upstream HTTP/3 QUIC connections.", proxy.UpstreamHttp3ConnectionFailures);
-        AppendCounter(builder, "mdrava_upstream_http3_pool_connections_opened_total", "Upstream HTTP/3 pool connections opened. Phase 33 keeps one request per connection.", proxy.UpstreamHttp3PoolConnectionsOpened);
-        AppendCounter(builder, "mdrava_upstream_http3_pool_connections_reused_total", "Upstream HTTP/3 pool connection reuses. This remains zero while multiplexing is deferred.", proxy.UpstreamHttp3PoolConnectionsReused);
+        AppendCounter(builder, "mdrava_upstream_http3_pool_connections_opened_total", "Upstream HTTP/3 pool connections opened.", proxy.UpstreamHttp3PoolConnectionsOpened);
+        AppendCounter(builder, "mdrava_upstream_http3_pool_connections_reused_total", "Upstream HTTP/3 pool connection reuses.", proxy.UpstreamHttp3PoolConnectionsReused);
         AppendCounter(builder, "mdrava_upstream_http3_pool_connections_closed_total", "Upstream HTTP/3 pool connections closed.", proxy.UpstreamHttp3PoolConnectionsClosed);
         AppendCounter(builder, "mdrava_upstream_http3_stream_limit_rejections_total", "Upstream HTTP/3 stream limit rejections.", proxy.UpstreamHttp3StreamLimitRejections);
-        AppendGauge(builder, "mdrava_upstream_http3_multiplexing_enabled", "Whether upstream HTTP/3 multiplexing is enabled.", 0);
+        AppendGauge(builder, "mdrava_upstream_http3_multiplexing_enabled", "Whether upstream HTTP/3 multiplexing is enabled.", proxy.UpstreamHttp3Requests > 0 || snapshot.Routes.Any(static route => route.Upstreams.Any(static upstream => RuntimeUpstreamProtocol.IsHttp3(upstream.Protocol))) ? 1 : 0);
         AppendGauge(builder, "mdrava_upstream_http3_connections_active", "Active upstream HTTP/3 QUIC connections.", proxy.ActiveUpstreamHttp3Connections);
         AppendGauge(builder, "mdrava_upstream_http3_streams_active", "Active upstream HTTP/3 streams.", proxy.ActiveUpstreamHttp3Streams);
         AppendUpstreamSelectionCounters(builder, snapshot.Metrics, proxy.UpstreamSelectionsByUpstream);

@@ -256,7 +256,7 @@ internal static class Http3InfrastructureTests
         var projection = ProxyConfigurationMapper.ToProjection(snapshot).Http3;
 
         AssertEx.Equal("default_enabled_for_eligible_tls_proxy_listeners", projection.ClientHttp3SupportLevel);
-        AssertEx.Equal("opt_in_https_quic_one_request_per_connection", projection.UpstreamHttp3SupportLevel);
+        AssertEx.Equal("opt_in_https_quic_reused_multiplexed", projection.UpstreamHttp3SupportLevel);
         AssertEx.True(projection.ClientProtocols.SequenceEqual(["http1", "http2", "http3"]));
         AssertEx.True(projection.UpstreamProtocols.SequenceEqual(["http1", "http2", "http3"]));
         AssertEx.True(projection.SupportedRouteActions.Contains("proxy", StringComparer.Ordinal));
@@ -270,9 +270,11 @@ internal static class Http3InfrastructureTests
         AssertEx.True(projection.UnsupportedFeatures.Contains("h3c", StringComparer.Ordinal));
         AssertEx.True(projection.UnsupportedFeatures.Contains("connect_over_http3", StringComparer.Ordinal));
         AssertEx.True(projection.UnsupportedFeatures.Contains("websocket_over_http3", StringComparer.Ordinal));
-        AssertEx.True(projection.UnsupportedFeatures.Contains("upstream_http3_multiplexing", StringComparer.Ordinal));
-        AssertEx.Equal("one_request_per_connection", projection.UpstreamPoolingMode);
-        AssertEx.False(projection.UpstreamMultiplexingEnabled);
+        AssertEx.False(projection.UnsupportedFeatures.Contains("upstream_http3_multiplexing", StringComparer.Ordinal));
+        AssertEx.Equal("reused_multiplexed", projection.UpstreamPoolingMode);
+        AssertEx.True(projection.UpstreamMultiplexingEnabled);
+        AssertEx.Equal(8, projection.UpstreamMaxStreamsPerConnection);
+        AssertEx.Equal("", projection.UpstreamPoolingLimitationReason);
         if (QuicListener.IsSupported && QuicConnection.IsSupported)
         {
             AssertEx.Equal("default-enabled", projection.DefaultEnablementState);

@@ -64,6 +64,7 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<IUpstreamSelector, RoundRobinUpstreamSelector>();
         services.AddSingleton<UpstreamConnectionFactory>();
         services.AddSingleton<UpstreamConnectionPool>();
+        services.AddSingleton<Http3UpstreamConnectionPool>();
         services.AddSingleton<UpstreamHealthCheckClient>();
         services.AddSingleton<HopByHopHeaderPolicy>();
         services.AddSingleton<ForwardedHeadersPolicy>();

@@ -1,4 +1,5 @@
 #pragma warning disable CA1416
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Quic;
 using System.Net.Security;
@@ -57,7 +58,7 @@ internal static class UpstreamHttp3Tests
         AssertEx.Equal("https", upstream.Scheme);
     }
 
-    public static async Task Http3EffectiveProjectionReportsOneRequestPerConnection()
+    public static async Task Http3EffectiveProjectionReportsReusedMultiplexedPooling()
     {
         using var temp = TemporaryDirectory.Create();
         ConfigurationTests.WriteCustomSite(
@@ -69,10 +70,10 @@ internal static class UpstreamHttp3Tests
         var projection = ProxyConfigurationMapper.ToProjection(AssertEx.NotNull(result.Snapshot));
 
         AssertEx.True(projection.Http3.UpstreamHttp3Configured);
-        AssertEx.Equal("one_request_per_connection", projection.Http3.UpstreamPoolingMode);
-        AssertEx.False(projection.Http3.UpstreamMultiplexingEnabled);
-        AssertEx.Equal(1, projection.Http3.UpstreamMaxStreamsPerConnection);
-        AssertEx.Equal("upstream_http3_multiplexing_deferred", projection.Http3.UpstreamPoolingLimitationReason);
+        AssertEx.Equal("reused_multiplexed", projection.Http3.UpstreamPoolingMode);
+        AssertEx.True(projection.Http3.UpstreamMultiplexingEnabled);
+        AssertEx.Equal(8, projection.Http3.UpstreamMaxStreamsPerConnection);
+        AssertEx.Equal("", projection.Http3.UpstreamPoolingLimitationReason);
     }
 
     public static void PoolKeyDiffersForHttp1Http2AndHttp3()
@@ -81,8 +82,8 @@ internal static class UpstreamHttp3Tests
         var http2 = Upstream(5001, RuntimeUpstreamProtocol.Http2);
         var http3 = Upstream(5001, RuntimeUpstreamProtocol.Http3);
 
-        AssertEx.False(string.Equals(UpstreamConnectionPool.GetKey(http1), UpstreamConnectionPool.GetKey(http3), StringComparison.Ordinal));
-        AssertEx.False(string.Equals(UpstreamConnectionPool.GetKey(http2), UpstreamConnectionPool.GetKey(http3), StringComparison.Ordinal));
+        AssertEx.False(string.Equals(UpstreamConnectionPool.GetKey(http1), Http3UpstreamConnectionPool.GetKey(http3), StringComparison.Ordinal));
+        AssertEx.False(string.Equals(UpstreamConnectionPool.GetKey(http2), Http3UpstreamConnectionPool.GetKey(http3), StringComparison.Ordinal));
     }
 
     public static void PoolKeyIncludesHttp3SniAndValidation()
@@ -91,8 +92,8 @@ internal static class UpstreamHttp3Tests
         var second = Upstream(5001, RuntimeUpstreamProtocol.Http3, validateCertificate: true, sniHost: "two.test");
         var third = Upstream(5001, RuntimeUpstreamProtocol.Http3, validateCertificate: false, sniHost: "one.test");
 
-        AssertEx.False(string.Equals(UpstreamConnectionPool.GetKey(first), UpstreamConnectionPool.GetKey(second), StringComparison.Ordinal));
-        AssertEx.False(string.Equals(UpstreamConnectionPool.GetKey(first), UpstreamConnectionPool.GetKey(third), StringComparison.Ordinal));
+        AssertEx.False(string.Equals(Http3UpstreamConnectionPool.GetKey(first), Http3UpstreamConnectionPool.GetKey(second), StringComparison.Ordinal));
+        AssertEx.False(string.Equals(Http3UpstreamConnectionPool.GetKey(first), Http3UpstreamConnectionPool.GetKey(third), StringComparison.Ordinal));
     }
 
     public static async Task Http3UpstreamProxyMapsHeadersQueryAndResponse()
@@ -116,6 +117,60 @@ internal static class UpstreamHttp3Tests
         AssertEx.Equal("/api/users?id=1", result.Upstream.RequestHeaders[":path"]);
         AssertEx.False(result.Upstream.RequestHeaders.ContainsKey("connection"));
         AssertEx.False(result.Upstream.RequestHeaders.ContainsKey("keep-alive"));
+    }
+
+    public static async Task SequentialHttp3UpstreamRequestsReuseConnection()
+    {
+        if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
+        {
+            return;
+        }
+
+        var result = await RunReusableProxyScenarioAsync(requestCount: 2, concurrent: false);
+
+        AssertEx.Equal(1, result.Upstream.ConnectionCount);
+        AssertEx.Equal(2, result.Upstream.Requests.Count);
+        AssertEx.True(result.FirstClientResponse.Contains("h3-reuse", StringComparison.Ordinal), result.FirstClientResponse);
+        AssertEx.True(result.SecondClientResponse.Contains("h3-reuse", StringComparison.Ordinal), result.SecondClientResponse);
+        AssertEx.Equal(1, result.Metrics.UpstreamHttp3PoolConnectionsOpened);
+        AssertEx.True(result.Metrics.UpstreamHttp3PoolConnectionsReused >= 1, result.Metrics.UpstreamHttp3PoolConnectionsReused.ToString());
+    }
+
+    public static async Task ConcurrentHttp3UpstreamRequestsShareConnection()
+    {
+        if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
+        {
+            return;
+        }
+
+        var result = await RunReusableProxyScenarioAsync(requestCount: 2, concurrent: true);
+
+        AssertEx.Equal(1, result.Upstream.ConnectionCount);
+        AssertEx.Equal(2, result.Upstream.Requests.Count);
+        AssertEx.True(result.FirstClientResponse.Contains("h3-reuse", StringComparison.Ordinal), result.FirstClientResponse);
+        AssertEx.True(result.SecondClientResponse.Contains("h3-reuse", StringComparison.Ordinal), result.SecondClientResponse);
+        AssertEx.Equal(1, result.Metrics.UpstreamHttp3PoolConnectionsOpened);
+        AssertEx.True(result.Metrics.UpstreamHttp3PoolConnectionsReused >= 1, result.Metrics.UpstreamHttp3PoolConnectionsReused.ToString());
+    }
+
+    public static async Task IdleHttp3UpstreamConnectionsExpire()
+    {
+        if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
+        {
+            return;
+        }
+
+        var result = await RunReusableProxyScenarioAsync(
+            requestCount: 2,
+            concurrent: false,
+            upstreamIdleConnectionLifetimeMs: 100,
+            delayBetweenRequests: TimeSpan.FromMilliseconds(175));
+
+        AssertEx.True(result.Upstream.ConnectionCount >= 2, result.Upstream.ConnectionCount.ToString());
+        AssertEx.Equal(2, result.Upstream.Requests.Count);
+        AssertEx.True(result.Metrics.UpstreamHttp3PoolConnectionsOpened >= 2, result.Metrics.UpstreamHttp3PoolConnectionsOpened.ToString());
+        AssertEx.Equal(0, result.Metrics.UpstreamHttp3PoolConnectionsReused);
+        AssertEx.True(result.Metrics.UpstreamHttp3PoolConnectionsClosed >= 1, result.Metrics.UpstreamHttp3PoolConnectionsClosed.ToString());
     }
 
     public static async Task Http3UpstreamAlpnFailureDoesNotDowngrade()
@@ -253,7 +308,7 @@ internal static class UpstreamHttp3Tests
         AssertEx.True(result.Metrics.UpstreamHttp3ConnectionSuccesses >= 1, result.Metrics.UpstreamHttp3ConnectionSuccesses.ToString());
         AssertEx.True(result.Metrics.UpstreamHttp3PoolConnectionsOpened >= 1, result.Metrics.UpstreamHttp3PoolConnectionsOpened.ToString());
         AssertEx.Equal(0, result.Metrics.UpstreamHttp3PoolConnectionsReused);
-        AssertEx.True(result.Metrics.UpstreamHttp3PoolConnectionsClosed >= 1, result.Metrics.UpstreamHttp3PoolConnectionsClosed.ToString());
+        AssertEx.True(result.Metrics.ActiveUpstreamHttp3Connections >= 1, result.Metrics.ActiveUpstreamHttp3Connections.ToString());
     }
 
     private static async Task<ProxyScenarioResult> RunProxyScenarioAsync(
@@ -297,6 +352,74 @@ internal static class UpstreamHttp3Tests
             var upstream = await upstreamTask.WaitAsync(timeout.Token);
             var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
             return new ProxyScenarioResult(first, second, upstream, metrics);
+        }
+        finally
+        {
+            await host.StopAsync(CancellationToken.None);
+        }
+    }
+
+    private static async Task<ReusableProxyScenarioResult> RunReusableProxyScenarioAsync(
+        int requestCount,
+        bool concurrent,
+        int? upstreamIdleConnectionLifetimeMs = null,
+        TimeSpan? delayBetweenRequests = null)
+    {
+        var proxyPort = GetFreeTcpPort();
+        var upstreamPort = GetFreeUdpPort();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var temp = TemporaryDirectory.Create();
+        ConfigurationTests.WriteCustomSite(temp.Path, "upstream-h3.json", SiteJson(proxyPort, upstreamPort));
+        if (upstreamIdleConnectionLifetimeMs.HasValue)
+        {
+            var config = Directory.CreateDirectory(Path.Combine(temp.Path, "config")).FullName;
+            File.WriteAllText(
+                Path.Combine(config, "proxy.json"),
+                $$"""
+                {
+                  "timeouts": {
+                    "upstreamIdleConnectionLifetimeMs": {{upstreamIdleConnectionLifetimeMs.Value}}
+                  }
+                }
+                """);
+        }
+
+        var upstreamTask = RunReusableHttp3UpstreamAsync(
+            upstreamPort,
+            requestCount,
+            [("content-length", "8")],
+            Encoding.ASCII.GetBytes("h3-reuse"),
+            holdResponsesUntilAllRequestsRead: concurrent,
+            timeout.Token);
+        using var host = BuildProxyHost(temp.Path);
+        await host.StartAsync(timeout.Token);
+
+        try
+        {
+            var request = "GET /reuse HTTP/1.1\r\nHost: home.test\r\nConnection: close\r\n\r\n";
+            string first;
+            string second;
+            if (concurrent)
+            {
+                var firstTask = SendSingleRequestAsync(proxyPort, request, timeout.Token);
+                var secondTask = SendSingleRequestAsync(proxyPort, request, timeout.Token);
+                first = await firstTask;
+                second = await secondTask;
+            }
+            else
+            {
+                first = await SendSingleRequestAsync(proxyPort, request, timeout.Token);
+                if (delayBetweenRequests.HasValue)
+                {
+                    await Task.Delay(delayBetweenRequests.Value, timeout.Token);
+                }
+
+                second = await SendSingleRequestAsync(proxyPort, request, timeout.Token);
+            }
+
+            var upstream = await upstreamTask.WaitAsync(timeout.Token);
+            var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
+            return new ReusableProxyScenarioResult(first, second, upstream, metrics);
         }
         finally
         {
@@ -372,6 +495,108 @@ internal static class UpstreamHttp3Tests
         catch (Exception exception) when (exception is AuthenticationException or IOException or QuicException)
         {
             return new Http3UpstreamObservation(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase), [], exception.GetType().Name);
+        }
+    }
+
+    private static async Task<ReusableHttp3UpstreamObservation> RunReusableHttp3UpstreamAsync(
+        int port,
+        int requestCount,
+        IReadOnlyList<(string Name, string Value)> responseHeaders,
+        byte[] responseBody,
+        bool holdResponsesUntilAllRequestsRead,
+        CancellationToken cancellationToken)
+    {
+        await using var listener = await CreateQuicListenerAsync(port, cancellationToken);
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var requests = new ConcurrentQueue<Http3UpstreamObservation>();
+        var connectionTasks = new ConcurrentBag<Task>();
+        var streamTasks = new ConcurrentBag<Task>();
+        var completed = 0;
+        var read = 0;
+        var connections = 0;
+        var allCompleted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var allRead = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        async Task HandleStreamAsync(QuicStream stream)
+        {
+            await using var ownedStream = stream;
+            var observation = await ReadRequestAsync(stream, stop.Token);
+            requests.Enqueue(observation);
+            if (Interlocked.Increment(ref read) >= requestCount)
+            {
+                allRead.TrySetResult();
+            }
+
+            if (holdResponsesUntilAllRequestsRead)
+            {
+                await allRead.Task.WaitAsync(stop.Token);
+            }
+
+            await WriteResponseAsync(stream, 200, responseHeaders, responseBody, stop.Token, malformedResponseHeaders: false);
+            if (Interlocked.Increment(ref completed) >= requestCount)
+            {
+                allCompleted.TrySetResult();
+            }
+        }
+
+        async Task HandleConnectionAsync(QuicConnection connection)
+        {
+            await using var ownedConnection = connection;
+            while (!stop.IsCancellationRequested)
+            {
+                var stream = await connection.AcceptInboundStreamAsync(stop.Token);
+                if (stream.Type != QuicStreamType.Bidirectional)
+                {
+                    _ = DrainAsync(stream, stop.Token);
+                    continue;
+                }
+
+                var task = HandleStreamAsync(stream);
+                streamTasks.Add(task);
+            }
+        }
+
+        try
+        {
+            while (Volatile.Read(ref completed) < requestCount)
+            {
+                var acceptTask = listener.AcceptConnectionAsync(stop.Token).AsTask();
+                var completedTask = await Task.WhenAny(acceptTask, allCompleted.Task);
+                if (completedTask == allCompleted.Task)
+                {
+                    break;
+                }
+
+                var connection = await acceptTask;
+                Interlocked.Increment(ref connections);
+                var task = HandleConnectionAsync(connection);
+                connectionTasks.Add(task);
+            }
+
+            await allCompleted.Task.WaitAsync(cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        finally
+        {
+            stop.Cancel();
+            await Task.WhenAll(streamTasks.Select(static task => ObserveAsync(task)));
+            await Task.WhenAll(connectionTasks.Select(static task => ObserveAsync(task)));
+        }
+
+        return new ReusableHttp3UpstreamObservation(connections, requests.ToArray());
+    }
+
+    private static async Task ObserveAsync(Task task)
+    {
+        try
+        {
+            await task;
+        }
+        catch (Exception exception) when (exception is OperationCanceledException or IOException or QuicException)
+        {
         }
     }
 
@@ -763,10 +988,20 @@ internal static class UpstreamHttp3Tests
         Http3UpstreamObservation Upstream,
         ProxyMetricsSnapshot Metrics);
 
+    private sealed record ReusableProxyScenarioResult(
+        string FirstClientResponse,
+        string SecondClientResponse,
+        ReusableHttp3UpstreamObservation Upstream,
+        ProxyMetricsSnapshot Metrics);
+
     private sealed record Http3UpstreamObservation(
         IReadOnlyDictionary<string, string> RequestHeaders,
         byte[] RequestBody,
         string? Error);
+
+    private sealed record ReusableHttp3UpstreamObservation(
+        int ConnectionCount,
+        IReadOnlyList<Http3UpstreamObservation> Requests);
 
     private readonly record struct Http3FrameReadResult(
         bool EndStream,

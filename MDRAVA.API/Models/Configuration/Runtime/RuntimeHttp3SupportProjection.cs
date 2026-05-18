@@ -56,8 +56,7 @@ public sealed record RuntimeHttp3SupportProjection(
     [
         "h3c",
         "connect_over_http3",
-        "websocket_over_http3",
-        "upstream_http3_multiplexing"
+        "websocket_over_http3"
     ];
 
     public bool UpstreamHttp3Configured { get; init; }
@@ -66,7 +65,7 @@ public sealed record RuntimeHttp3SupportProjection(
 
     public bool UpstreamMultiplexingEnabled { get; init; }
 
-    public int UpstreamMaxStreamsPerConnection { get; init; } = 1;
+    public int UpstreamMaxStreamsPerConnection { get; init; } = 8;
 
     public string UpstreamQpackMode { get; init; } = "static_with_zero_dynamic_table";
 

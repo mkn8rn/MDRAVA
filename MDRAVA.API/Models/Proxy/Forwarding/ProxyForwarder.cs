@@ -17,6 +17,7 @@ namespace MDRAVA.API.Proxy.Forwarding;
 public sealed class ProxyForwarder
 {
     private readonly UpstreamConnectionPool _upstreamConnections;
+    private readonly Http3UpstreamConnectionPool _http3UpstreamConnections;
     private readonly ProxyMetrics _metrics;
     private readonly HopByHopHeaderPolicy _headerPolicy;
     private readonly ResponseCacheStore _cacheStore;
@@ -25,6 +26,7 @@ public sealed class ProxyForwarder
 
     public ProxyForwarder(
         UpstreamConnectionPool upstreamConnections,
+        Http3UpstreamConnectionPool http3UpstreamConnections,
         ProxyMetrics metrics,
         HopByHopHeaderPolicy headerPolicy,
         ResponseCacheStore cacheStore,
@@ -32,6 +34,7 @@ public sealed class ProxyForwarder
         ILogger<ProxyForwarder> logger)
     {
         _upstreamConnections = upstreamConnections;
+        _http3UpstreamConnections = http3UpstreamConnections;
         _metrics = metrics;
         _headerPolicy = headerPolicy;
         _cacheStore = cacheStore;
@@ -85,6 +88,7 @@ public sealed class ProxyForwarder
                     upstream,
                     listener,
                     timeouts,
+                    connectionLimits,
                     upstreamTarget,
                     forwardedHeaders,
                     preferClientKeepAlive,
@@ -552,6 +556,7 @@ public sealed class ProxyForwarder
         RuntimeUpstream upstream,
         RuntimeListener listener,
         RuntimeTimeouts timeouts,
+        RuntimeConnectionLimits connectionLimits,
         string upstreamTarget,
         ForwardedHeadersContext forwardedHeaders,
         bool preferClientKeepAlive,
@@ -563,10 +568,10 @@ public sealed class ProxyForwarder
         CancellationToken cancellationToken)
     {
         _metrics.UpstreamHttp3RequestAttempted();
-        await using var upstreamHttp3 = await Http3UpstreamConnection.ConnectAsync(
+        await using var upstreamHttp3 = await _http3UpstreamConnections.BorrowAsync(
             upstream,
             timeouts,
-            _metrics,
+            connectionLimits,
             Math.Max(16 * 1024, listener.Http2Limits.MaxFrameSize),
             cancellationToken);
 

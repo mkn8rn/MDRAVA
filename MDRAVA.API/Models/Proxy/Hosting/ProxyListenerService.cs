@@ -44,6 +44,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
     private readonly ProxyAdmissionController _admission;
     private readonly ProxyShutdownCoordinator _shutdown;
     private readonly UpstreamConnectionPool _upstreamConnectionPool;
+    private readonly Http3UpstreamConnectionPool _http3UpstreamConnectionPool;
     private readonly ClientRateLimiter _rateLimiter;
     private readonly ProxyRuntimeState _runtimeState;
     private readonly ILogger<ProxyListenerService> _logger;
@@ -76,6 +77,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
         ProxyAdmissionController admission,
         ProxyShutdownCoordinator shutdown,
         UpstreamConnectionPool upstreamConnectionPool,
+        Http3UpstreamConnectionPool http3UpstreamConnectionPool,
         ClientRateLimiter rateLimiter,
         ProxyRuntimeState runtimeState,
         ILogger<ProxyListenerService> logger,
@@ -103,6 +105,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
         _admission = admission;
         _shutdown = shutdown;
         _upstreamConnectionPool = upstreamConnectionPool;
+        _http3UpstreamConnectionPool = http3UpstreamConnectionPool;
         _rateLimiter = rateLimiter;
         _runtimeState = runtimeState;
         _logger = logger;
@@ -422,6 +425,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
         UpdateRuntimeState(null);
         await base.StopAsync(cancellationToken);
         _upstreamConnectionPool.Dispose();
+        _http3UpstreamConnectionPool.Dispose();
     }
 
     private ListenerDiff DiffListeners(IReadOnlyDictionary<string, RuntimeListener> nextListeners)

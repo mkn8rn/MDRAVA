@@ -288,7 +288,7 @@ internal static class RouteDiagnosticsTests
         AssertFinding(result, "unsafe_upstream_tls_validation_disabled", "warning");
     }
 
-    public static void LintReportsUpstreamHttp3FinalLimitations()
+    public static void LintDoesNotReportResolvedUpstreamHttp3PoolingLimitation()
     {
         var route = ProxyRoute(
             "h3",
@@ -300,7 +300,7 @@ internal static class RouteDiagnosticsTests
 
         var result = service.LintActive();
 
-        AssertFinding(result, "upstream_http3_one_request_per_connection", "info");
+        AssertNoFinding(result, "upstream_http3_one_request_per_connection");
     }
 
     public static void LintHandlesJsonAndYamlSubmittedConfigWithoutApplying()
@@ -590,6 +590,13 @@ internal static class RouteDiagnosticsTests
     {
         AssertEx.True(
             result.Findings.Any(finding => finding.Code == code && finding.Severity == severity),
+            string.Join("; ", result.Findings.Select(static finding => $"{finding.Severity}:{finding.Code}:{finding.Message}")));
+    }
+
+    private static void AssertNoFinding(ConfigLintResult result, string code)
+    {
+        AssertEx.False(
+            result.Findings.Any(finding => finding.Code == code),
             string.Join("; ", result.Findings.Select(static finding => $"{finding.Severity}:{finding.Code}:{finding.Message}")));
     }
 }

@@ -19,17 +19,24 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
 
     private readonly ProxyMetrics _metrics;
     private readonly int _maxFramePayloadBytes;
+    private readonly Http3UpstreamPooledConnection? _pooledConnection;
+    private readonly QuicStream? _controlStream;
+    private bool _connectionUsable = true;
 
     private Http3UpstreamConnection(
         QuicConnection connection,
         QuicStream stream,
         ProxyMetrics metrics,
-        int maxFramePayloadBytes)
+        int maxFramePayloadBytes,
+        QuicStream? controlStream,
+        Http3UpstreamPooledConnection? pooledConnection)
     {
         Connection = connection;
         Stream = stream;
         _metrics = metrics;
         _maxFramePayloadBytes = Math.Clamp(maxFramePayloadBytes, 16 * 1024, MaxFramePayloadBytes);
+        _controlStream = controlStream;
+        _pooledConnection = pooledConnection;
     }
 
     private QuicConnection Connection { get; }
@@ -46,6 +53,55 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
         metrics.UpstreamHttp3ConnectionAttempted();
         if (!QuicConnection.IsSupported)
         {
+            throw new Http3UpstreamProtocolException(
+                "The current runtime does not support QUIC client connections.",
+                Http3UpstreamFailureKind.ConnectFailure);
+        }
+
+        var remoteEndPoint = await ResolveEndPointAsync(upstream, cancellationToken);
+        Http3UpstreamTransport? transport = null;
+        QuicStream? stream = null;
+        var streamStarted = false;
+        try
+        {
+            transport = await OpenTransportAsync(upstream, remoteEndPoint, timeouts, metrics, cancellationToken);
+            stream = await ProxyTimeoutPolicy.RunAsync(
+                async timeoutToken => await transport.Connection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional, timeoutToken),
+                timeouts.UpstreamConnectTimeout,
+                ProxyTimeoutKind.UpstreamConnect,
+                cancellationToken);
+            metrics.UpstreamHttp3StreamStarted();
+            streamStarted = true;
+            return new Http3UpstreamConnection(transport.Connection, stream, metrics, maxFramePayloadBytes, transport.ControlStream, pooledConnection: null);
+        }
+        catch (Http3UpstreamProtocolException)
+        {
+            metrics.UpstreamHttp3ConnectionFailed();
+            await DisposePartialConnectionAsync(transport, stream, metrics, streamStarted);
+
+            throw;
+        }
+        catch (Exception exception) when (exception is AuthenticationException or IOException or QuicException)
+        {
+            metrics.UpstreamHttp3ConnectionFailed();
+            await DisposePartialConnectionAsync(transport, stream, metrics, streamStarted);
+
+            throw new Http3UpstreamProtocolException(
+                "Failed to connect to the upstream HTTP/3 endpoint.",
+                Http3UpstreamFailureKind.ConnectFailure,
+                exception);
+        }
+    }
+
+    internal static async ValueTask<Http3UpstreamTransport> OpenTransportAsync(
+        RuntimeUpstream upstream,
+        RuntimeTimeouts timeouts,
+        ProxyMetrics metrics,
+        CancellationToken cancellationToken)
+    {
+        metrics.UpstreamHttp3ConnectionAttempted();
+        if (!QuicConnection.IsSupported)
+        {
             metrics.UpstreamHttp3ConnectionFailed();
             throw new Http3UpstreamProtocolException(
                 "The current runtime does not support QUIC client connections.",
@@ -53,66 +109,45 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
         }
 
         var remoteEndPoint = await ResolveEndPointAsync(upstream, cancellationToken);
-        QuicConnection? connection = null;
+        return await OpenTransportAsync(upstream, remoteEndPoint, timeouts, metrics, cancellationToken);
+    }
+
+    internal static async ValueTask<Http3UpstreamConnection> OpenStreamAsync(
+        Http3UpstreamPooledConnection pooledConnection,
+        RuntimeTimeouts timeouts,
+        ProxyMetrics metrics,
+        int maxFramePayloadBytes,
+        CancellationToken cancellationToken)
+    {
         QuicStream? stream = null;
-        var connectionOpened = false;
         var streamStarted = false;
         try
         {
-            connection = await ProxyTimeoutPolicy.RunAsync(
-                async timeoutToken => await QuicConnection.ConnectAsync(
-                    new QuicClientConnectionOptions
-                    {
-                        RemoteEndPoint = remoteEndPoint,
-                        ClientAuthenticationOptions = new SslClientAuthenticationOptions
-                        {
-                            TargetHost = upstream.EffectiveSniHost,
-                            EnabledSslProtocols = SslProtocols.Tls13,
-                            ApplicationProtocols = [Http3Alpn],
-                            CertificateRevocationCheckMode = X509RevocationMode.NoCheck,
-                            RemoteCertificateValidationCallback = upstream.Tls.ValidateCertificate
-                                ? null
-                                : static (_, _, _, _) => true
-                        },
-                        MaxInboundBidirectionalStreams = 16,
-                        MaxInboundUnidirectionalStreams = 4,
-                        IdleTimeout = timeouts.UpstreamIdleConnectionLifetime,
-                        HandshakeTimeout = timeouts.UpstreamConnectTimeout,
-                        DefaultCloseErrorCode = 0x100,
-                        DefaultStreamErrorCode = 0x100
-                    },
-                    timeoutToken),
-                timeouts.UpstreamConnectTimeout,
-                ProxyTimeoutKind.UpstreamConnect,
-                cancellationToken);
-            metrics.UpstreamHttp3ConnectionSucceeded();
-            metrics.UpstreamHttp3ConnectionOpened();
-            metrics.UpstreamHttp3PoolConnectionOpened();
-            connectionOpened = true;
-            await SendSettingsAsync(connection, timeouts, cancellationToken);
             stream = await ProxyTimeoutPolicy.RunAsync(
-                async timeoutToken => await connection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional, timeoutToken),
+                async timeoutToken => await pooledConnection.Connection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional, timeoutToken),
                 timeouts.UpstreamConnectTimeout,
                 ProxyTimeoutKind.UpstreamConnect,
                 cancellationToken);
             metrics.UpstreamHttp3StreamStarted();
             streamStarted = true;
-            return new Http3UpstreamConnection(connection, stream, metrics, maxFramePayloadBytes);
+            return new Http3UpstreamConnection(pooledConnection.Connection, stream, metrics, maxFramePayloadBytes, controlStream: null, pooledConnection);
         }
-        catch (Http3UpstreamProtocolException)
+        catch (Exception exception) when (exception is QuicException or IOException)
         {
-            metrics.UpstreamHttp3ConnectionFailed();
-            await DisposePartialConnectionAsync(connection, stream, metrics, connectionOpened, streamStarted);
+            if (stream is not null)
+            {
+                await stream.DisposeAsync();
+            }
 
-            throw;
-        }
-        catch (Exception exception) when (exception is AuthenticationException or IOException or QuicException)
-        {
-            metrics.UpstreamHttp3ConnectionFailed();
-            await DisposePartialConnectionAsync(connection, stream, metrics, connectionOpened, streamStarted);
+            if (streamStarted)
+            {
+                metrics.UpstreamHttp3StreamEnded();
+            }
 
+            pooledConnection.MarkUnusable();
+            pooledConnection.ReleaseStream(connectionUsable: false);
             throw new Http3UpstreamProtocolException(
-                "Failed to connect to the upstream HTTP/3 endpoint.",
+                "Failed to open an upstream HTTP/3 request stream.",
                 Http3UpstreamFailureKind.ConnectFailure,
                 exception);
         }
@@ -223,26 +258,93 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
         finally
         {
             _metrics.UpstreamHttp3StreamEnded();
-            try
+            if (_pooledConnection is not null)
             {
-                await Connection.CloseAsync(0, CancellationToken.None);
+                _pooledConnection.ReleaseStream(_connectionUsable);
             }
-            catch (QuicException)
+            else
             {
-            }
+                try
+                {
+                    if (_controlStream is not null)
+                    {
+                        await _controlStream.DisposeAsync();
+                    }
 
-            await Connection.DisposeAsync();
-            _metrics.UpstreamHttp3ConnectionClosed();
-            _metrics.UpstreamHttp3PoolConnectionClosed();
+                    await Connection.CloseAsync(0, CancellationToken.None);
+                }
+                catch (QuicException)
+                {
+                }
+
+                await Connection.DisposeAsync();
+                _metrics.UpstreamHttp3ConnectionClosed();
+                _metrics.UpstreamHttp3PoolConnectionClosed();
+            }
         }
     }
 
-    private static async ValueTask SendSettingsAsync(
+    private static async ValueTask<Http3UpstreamTransport> OpenTransportAsync(
+        RuntimeUpstream upstream,
+        IPEndPoint remoteEndPoint,
+        RuntimeTimeouts timeouts,
+        ProxyMetrics metrics,
+        CancellationToken cancellationToken)
+    {
+        QuicConnection? connection = null;
+        try
+        {
+            connection = await ProxyTimeoutPolicy.RunAsync(
+                async timeoutToken => await QuicConnection.ConnectAsync(
+                    new QuicClientConnectionOptions
+                    {
+                        RemoteEndPoint = remoteEndPoint,
+                        ClientAuthenticationOptions = new SslClientAuthenticationOptions
+                        {
+                            TargetHost = upstream.EffectiveSniHost,
+                            EnabledSslProtocols = SslProtocols.Tls13,
+                            ApplicationProtocols = [Http3Alpn],
+                            CertificateRevocationCheckMode = X509RevocationMode.NoCheck,
+                            RemoteCertificateValidationCallback = upstream.Tls.ValidateCertificate
+                                ? null
+                                : static (_, _, _, _) => true
+                        },
+                        MaxInboundBidirectionalStreams = 16,
+                        MaxInboundUnidirectionalStreams = 4,
+                        IdleTimeout = timeouts.UpstreamIdleConnectionLifetime,
+                        HandshakeTimeout = timeouts.UpstreamConnectTimeout,
+                        DefaultCloseErrorCode = 0x100,
+                        DefaultStreamErrorCode = 0x100
+                    },
+                    timeoutToken),
+                timeouts.UpstreamConnectTimeout,
+                ProxyTimeoutKind.UpstreamConnect,
+                cancellationToken);
+            metrics.UpstreamHttp3ConnectionSucceeded();
+            metrics.UpstreamHttp3ConnectionOpened();
+            metrics.UpstreamHttp3PoolConnectionOpened();
+            var controlStream = await SendSettingsAsync(connection, timeouts, cancellationToken);
+            return new Http3UpstreamTransport(connection, controlStream);
+        }
+        catch
+        {
+            if (connection is not null)
+            {
+                await connection.DisposeAsync();
+                metrics.UpstreamHttp3ConnectionClosed();
+                metrics.UpstreamHttp3PoolConnectionClosed();
+            }
+
+            throw;
+        }
+    }
+
+    private static async ValueTask<QuicStream> SendSettingsAsync(
         QuicConnection connection,
         RuntimeTimeouts timeouts,
         CancellationToken cancellationToken)
     {
-        await using var control = await ProxyTimeoutPolicy.RunAsync(
+        var control = await ProxyTimeoutPolicy.RunAsync(
             async timeoutToken => await connection.OpenOutboundStreamAsync(QuicStreamType.Unidirectional, timeoutToken),
             timeouts.UpstreamConnectTimeout,
             ProxyTimeoutKind.UpstreamConnect,
@@ -256,10 +358,11 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
         Http3PreviewCodec.WriteVarInt(settings, 0);
         Http3PreviewCodec.WriteFrame(payload, Http3PreviewCodec.SettingsFrame, settings.ToArray());
         await ProxyTimeoutPolicy.RunAsync(
-            async timeoutToken => await control.WriteAsync(payload.ToArray(), completeWrites: true, timeoutToken),
+            async timeoutToken => await control.WriteAsync(payload.ToArray(), completeWrites: false, timeoutToken),
             timeouts.DownstreamWriteTimeout,
             ProxyTimeoutKind.DownstreamWrite,
             cancellationToken);
+        return control;
     }
 
     private async ValueTask<Http3FrameReadResult> ReadFrameAsync(
@@ -435,10 +538,9 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
     }
 
     private static async ValueTask DisposePartialConnectionAsync(
-        QuicConnection? connection,
+        Http3UpstreamTransport? transport,
         QuicStream? stream,
         ProxyMetrics metrics,
-        bool connectionOpened,
         bool streamStarted)
     {
         if (stream is not null)
@@ -451,13 +553,17 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
             metrics.UpstreamHttp3StreamEnded();
         }
 
-        if (connection is not null)
+        if (transport is not null)
         {
-            await connection.DisposeAsync();
-        }
+            try
+            {
+                await transport.ControlStream.DisposeAsync();
+            }
+            finally
+            {
+                await transport.Connection.DisposeAsync();
+            }
 
-        if (connectionOpened)
-        {
             metrics.UpstreamHttp3ConnectionClosed();
             metrics.UpstreamHttp3PoolConnectionClosed();
         }
@@ -474,6 +580,142 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
     private readonly record struct Http3VarIntReadResult(bool Success, long Value)
     {
         public static Http3VarIntReadResult Failure { get; } = new(false, 0);
+    }
+}
+
+internal sealed record Http3UpstreamTransport(
+    QuicConnection Connection,
+    QuicStream ControlStream);
+
+internal sealed class Http3UpstreamPooledConnection : IAsyncDisposable
+{
+    private readonly object _gate = new();
+    private readonly ProxyMetrics _metrics;
+    private bool _closed;
+    private bool _unusable;
+    private int _activeStreams;
+
+    public Http3UpstreamPooledConnection(
+        string key,
+        Http3UpstreamTransport transport,
+        ProxyMetrics metrics,
+        int maxConcurrentStreams)
+    {
+        Key = key;
+        Connection = transport.Connection;
+        ControlStream = transport.ControlStream;
+        _metrics = metrics;
+        MaxConcurrentStreams = Math.Clamp(maxConcurrentStreams, 1, 64);
+        LastUsedUtc = DateTimeOffset.UtcNow;
+    }
+
+    public string Key { get; }
+
+    public QuicConnection Connection { get; }
+
+    private QuicStream ControlStream { get; }
+
+    public int MaxConcurrentStreams { get; }
+
+    public DateTimeOffset LastUsedUtc { get; private set; }
+
+    public bool TryReserveStream(TimeSpan idleLifetime)
+    {
+        lock (_gate)
+        {
+            if (_closed || _unusable || _activeStreams >= MaxConcurrentStreams)
+            {
+                return false;
+            }
+
+            if (_activeStreams == 0 && DateTimeOffset.UtcNow - LastUsedUtc > idleLifetime)
+            {
+                _unusable = true;
+                return false;
+            }
+
+            _activeStreams++;
+            return true;
+        }
+    }
+
+    public bool IsIdleExpired(TimeSpan idleLifetime)
+    {
+        lock (_gate)
+        {
+            return !_closed
+                && _activeStreams == 0
+                && DateTimeOffset.UtcNow - LastUsedUtc > idleLifetime;
+        }
+    }
+
+    public bool CanAcceptNewStreams
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return !_closed && !_unusable && _activeStreams < MaxConcurrentStreams;
+            }
+        }
+    }
+
+    public void ReleaseStream(bool connectionUsable)
+    {
+        lock (_gate)
+        {
+            if (_activeStreams > 0)
+            {
+                _activeStreams--;
+            }
+
+            if (!connectionUsable)
+            {
+                _unusable = true;
+            }
+
+            if (_activeStreams == 0)
+            {
+                LastUsedUtc = DateTimeOffset.UtcNow;
+            }
+        }
+    }
+
+    public void MarkUnusable()
+    {
+        lock (_gate)
+        {
+            _unusable = true;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        lock (_gate)
+        {
+            if (_closed)
+            {
+                return;
+            }
+
+            _closed = true;
+            _unusable = true;
+        }
+
+        try
+        {
+            await ControlStream.DisposeAsync();
+            await Connection.CloseAsync(0, CancellationToken.None);
+        }
+        catch (QuicException)
+        {
+        }
+        finally
+        {
+            await Connection.DisposeAsync();
+            _metrics.UpstreamHttp3ConnectionClosed();
+            _metrics.UpstreamHttp3PoolConnectionClosed();
+        }
     }
 }
 
