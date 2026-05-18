@@ -179,6 +179,7 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Sequential upstream HTTP/3 requests reuse a pooled connection", UpstreamHttp3Tests.SequentialHttp3UpstreamRequestsReuseConnection),
     ("Concurrent upstream HTTP/3 requests share a pooled connection", UpstreamHttp3Tests.ConcurrentHttp3UpstreamRequestsShareConnection),
     ("Idle upstream HTTP/3 pooled connections expire", UpstreamHttp3Tests.IdleHttp3UpstreamConnectionsExpire),
+    ("Upstream HTTP/3 GOAWAY drains connection without breaking active stream", UpstreamHttp3Tests.UpstreamHttp3GoAwayDrainsConnectionWithoutBreakingActiveStream),
     ("Upstream HTTP/3 ALPN failure does not downgrade", UpstreamHttp3Tests.Http3UpstreamAlpnFailureDoesNotDowngrade),
     ("Upstream HTTP/3 malformed response headers are rejected", UpstreamHttp3Tests.Http3UpstreamMalformedResponseHeadersAreRejected),
     ("Upstream HTTP/3 forwards request body", UpstreamHttp3Tests.Http3UpstreamForwardsRequestBody),

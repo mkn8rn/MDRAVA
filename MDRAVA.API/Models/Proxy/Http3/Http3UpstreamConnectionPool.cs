@@ -183,7 +183,7 @@ public sealed class Http3UpstreamConnectionPool : IDisposable
             for (var index = connections.Count - 1; index >= 0; index--)
             {
                 var connection = connections[index];
-                if (!connection.IsIdleExpired(idleLifetime))
+                if (!connection.ShouldPrune(idleLifetime))
                 {
                     continue;
                 }

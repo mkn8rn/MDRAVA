@@ -173,6 +173,27 @@ internal static class UpstreamHttp3Tests
         AssertEx.True(result.Metrics.UpstreamHttp3PoolConnectionsClosed >= 1, result.Metrics.UpstreamHttp3PoolConnectionsClosed.ToString());
     }
 
+    public static async Task UpstreamHttp3GoAwayDrainsConnectionWithoutBreakingActiveStream()
+    {
+        if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
+        {
+            return;
+        }
+
+        var result = await RunReusableProxyScenarioAsync(
+            requestCount: 2,
+            concurrent: false,
+            delayBetweenRequests: TimeSpan.FromMilliseconds(200),
+            sendGoAwayAfterFirstRequest: true);
+
+        AssertEx.True(result.FirstClientResponse.Contains("h3-reuse", StringComparison.Ordinal), result.FirstClientResponse);
+        AssertEx.True(result.SecondClientResponse.Contains("h3-reuse", StringComparison.Ordinal), result.SecondClientResponse);
+        AssertEx.True(result.Upstream.ConnectionCount >= 2, result.Upstream.ConnectionCount.ToString());
+        AssertEx.Equal(2, result.Upstream.Requests.Count);
+        AssertEx.True(result.Metrics.UpstreamHttp3PoolConnectionsOpened >= 2, result.Metrics.UpstreamHttp3PoolConnectionsOpened.ToString());
+        AssertEx.Equal(0, result.Metrics.UpstreamHttp3PoolConnectionsReused);
+    }
+
     public static async Task Http3UpstreamAlpnFailureDoesNotDowngrade()
     {
         if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
@@ -363,7 +384,8 @@ internal static class UpstreamHttp3Tests
         int requestCount,
         bool concurrent,
         int? upstreamIdleConnectionLifetimeMs = null,
-        TimeSpan? delayBetweenRequests = null)
+        TimeSpan? delayBetweenRequests = null,
+        bool sendGoAwayAfterFirstRequest = false)
     {
         var proxyPort = GetFreeTcpPort();
         var upstreamPort = GetFreeUdpPort();
@@ -390,6 +412,7 @@ internal static class UpstreamHttp3Tests
             [("content-length", "8")],
             Encoding.ASCII.GetBytes("h3-reuse"),
             holdResponsesUntilAllRequestsRead: concurrent,
+            sendGoAwayAfterFirstRequest,
             timeout.Token);
         using var host = BuildProxyHost(temp.Path);
         await host.StartAsync(timeout.Token);
@@ -504,6 +527,7 @@ internal static class UpstreamHttp3Tests
         IReadOnlyList<(string Name, string Value)> responseHeaders,
         byte[] responseBody,
         bool holdResponsesUntilAllRequestsRead,
+        bool sendGoAwayAfterFirstRequest,
         CancellationToken cancellationToken)
     {
         await using var listener = await CreateQuicListenerAsync(port, cancellationToken);
@@ -516,12 +540,19 @@ internal static class UpstreamHttp3Tests
         var connections = 0;
         var allCompleted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var allRead = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var goAwaySent = 0;
 
-        async Task HandleStreamAsync(QuicStream stream)
+        async Task HandleStreamAsync(QuicConnection connection, QuicStream stream)
         {
             await using var ownedStream = stream;
             var observation = await ReadRequestAsync(stream, stop.Token);
             requests.Enqueue(observation);
+            if (sendGoAwayAfterFirstRequest
+                && Interlocked.Exchange(ref goAwaySent, 1) == 0)
+            {
+                await SendGoAwayAsync(connection, stop.Token);
+            }
+
             if (Interlocked.Increment(ref read) >= requestCount)
             {
                 allRead.TrySetResult();
@@ -551,7 +582,7 @@ internal static class UpstreamHttp3Tests
                     continue;
                 }
 
-                var task = HandleStreamAsync(stream);
+                var task = HandleStreamAsync(connection, stream);
                 streamTasks.Add(task);
             }
         }
@@ -701,6 +732,20 @@ internal static class UpstreamHttp3Tests
             Http3PreviewCodec.WriteFrame(body, Http3PreviewCodec.DataFrame, responseBody.Span);
             await stream.WriteAsync(body.ToArray(), completeWrites: true, cancellationToken);
         }
+    }
+
+    private static async ValueTask SendGoAwayAsync(
+        QuicConnection connection,
+        CancellationToken cancellationToken)
+    {
+        var control = await connection.OpenOutboundStreamAsync(QuicStreamType.Unidirectional, cancellationToken);
+        using var payload = new MemoryStream();
+        Http3PreviewCodec.WriteVarInt(payload, Http3PreviewCodec.ControlStream);
+        Http3PreviewCodec.WriteFrame(payload, Http3PreviewCodec.SettingsFrame, ReadOnlySpan<byte>.Empty);
+        using var goAwayPayload = new MemoryStream();
+        Http3PreviewCodec.WriteVarInt(goAwayPayload, 0);
+        Http3PreviewCodec.WriteFrame(payload, Http3PreviewCodec.GoAwayFrame, goAwayPayload.ToArray());
+        await control.WriteAsync(payload.ToArray(), completeWrites: false, cancellationToken);
     }
 
     private static async Task DrainAsync(

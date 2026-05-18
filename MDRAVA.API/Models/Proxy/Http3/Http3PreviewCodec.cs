@@ -9,6 +9,7 @@ public static class Http3PreviewCodec
     public const long DataFrame = 0x0;
     public const long HeadersFrame = 0x1;
     public const long SettingsFrame = 0x4;
+    public const long GoAwayFrame = 0x7;
     public const long ControlStream = 0x0;
     public const long QpackMaxTableCapacitySetting = 0x1;
     public const long QpackBlockedStreamsSetting = 0x7;
