@@ -240,6 +240,7 @@ var tests = new (string Name, Func<Task> Run)[]
     ("HTTP/3 oversized header block is rejected", Sync(ClientHttp3PreviewTests.OversizedHeaderBlockIsRejected)),
     ("HTTP/3 unsupported QPACK dynamic table usage is rejected", Sync(ClientHttp3PreviewTests.UnsupportedQpackDynamicTableUsageIsRejected)),
     ("HTTP/3 unsupported QPACK dynamic table prefix is rejected", Sync(ClientHttp3PreviewTests.UnsupportedQpackDynamicTablePrefixIsRejected)),
+    ("HTTP/3 QPACK Huffman static name reference decodes", Sync(ClientHttp3PreviewTests.QpackHuffmanStaticNameReferenceDecodes)),
     ("Metrics include HTTP/3 preview counters", Sync(ClientHttp3PreviewTests.MetricsIncludeHttp3PreviewCounters)),
     ("Config lint reports HTTP/3 default readiness issues", Sync(ClientHttp3PreviewTests.ConfigLintReportsHttp3DefaultReadinessIssues)),
     ("Resilience disabled preserves existing behavior", ResilienceTests.ExistingBehaviorUnchangedWhenResilienceDisabled),

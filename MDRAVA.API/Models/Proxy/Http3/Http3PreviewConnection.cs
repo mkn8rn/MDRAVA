@@ -39,6 +39,7 @@ public sealed class Http3PreviewConnection
     private readonly ClientRateLimiter _rateLimiter;
     private readonly ILogger _logger;
     private int _protocolErrors;
+    private QuicStream? _localControlStream;
 
     public Http3PreviewConnection(
         QuicConnection connection,
@@ -101,7 +102,7 @@ public sealed class Http3PreviewConnection
                 }
                 else
                 {
-                    await DrainUnsupportedStreamAsync(stream, cancellationToken);
+                    DrainUnsupportedStreamInBackground(stream, cancellationToken);
                 }
             }
         }
@@ -118,6 +119,11 @@ public sealed class Http3PreviewConnection
         }
         finally
         {
+            if (_localControlStream is not null)
+            {
+                await _localControlStream.DisposeAsync();
+            }
+
             _metrics.Http3ConnectionClosed();
         }
     }
@@ -287,7 +293,7 @@ public sealed class Http3PreviewConnection
     {
         try
         {
-            await using var control = await _connection.OpenOutboundStreamAsync(QuicStreamType.Unidirectional, cancellationToken);
+            _localControlStream = await _connection.OpenOutboundStreamAsync(QuicStreamType.Unidirectional, cancellationToken);
             using var payload = new MemoryStream();
             Http3PreviewCodec.WriteVarInt(payload, Http3PreviewCodec.ControlStream);
             using var settings = new MemoryStream();
@@ -296,12 +302,31 @@ public sealed class Http3PreviewConnection
             Http3PreviewCodec.WriteVarInt(settings, Http3PreviewCodec.QpackBlockedStreamsSetting);
             Http3PreviewCodec.WriteVarInt(settings, 0);
             Http3PreviewCodec.WriteFrame(payload, Http3PreviewCodec.SettingsFrame, settings.ToArray());
-            await control.WriteAsync(payload.ToArray(), completeWrites: true, cancellationToken);
+            await _localControlStream.WriteAsync(payload.ToArray(), completeWrites: false, cancellationToken);
         }
         catch (Exception exception) when (exception is QuicException or IOException)
         {
             _logger.LogDebug(exception, "HTTP/3 preview failed to send SETTINGS.");
         }
+    }
+
+    private void DrainUnsupportedStreamInBackground(
+        QuicStream stream,
+        CancellationToken cancellationToken)
+    {
+        _ = Task.Run(
+            async () =>
+            {
+                try
+                {
+                    await DrainUnsupportedStreamAsync(stream, cancellationToken);
+                }
+                catch (Exception exception) when (exception is OperationCanceledException or QuicException or IOException)
+                {
+                    _logger.LogDebug(exception, "HTTP/3 preview unidirectional stream ended.");
+                }
+            },
+            CancellationToken.None);
     }
 
     private async ValueTask DrainUnsupportedStreamAsync(QuicStream stream, CancellationToken cancellationToken)

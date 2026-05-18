@@ -1242,6 +1242,25 @@ internal static class ClientHttp3PreviewTests
         AssertEx.Equal("unsupported_qpack_dynamic_table", reason);
     }
 
+    public static void QpackHuffmanStaticNameReferenceDecodes()
+    {
+        var block = new byte[]
+        {
+            0x00, 0x00, 0x50, 0x8c, 0xf1, 0xe3, 0xc2, 0xe5,
+            0xf2, 0x3a, 0x6b, 0xa0, 0xab, 0x90, 0xf4, 0xff
+        };
+
+        var ok = Http3PreviewCodec.TryDecodeHeaderBlock(
+            block,
+            maxHeaderBytes: 1024,
+            out var headers,
+            out var reason);
+
+        AssertEx.True(ok, reason);
+        AssertEx.Equal(":authority", headers[0].Name);
+        AssertEx.Equal("www.example.com", headers[0].Value);
+    }
+
     public static void MalformedPseudoHeadersAreRejected()
     {
         var headers = new[]
