@@ -1,4 +1,5 @@
 using System.Net.Security;
+using System.Net.Quic;
 using MDRAVA.API.Proxy.Configuration;
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Http3;
@@ -47,6 +48,35 @@ internal static class Http3InfrastructureTests
         AssertEx.False(http1.Failed, string.Join("; ", http1.Failures ?? []));
         AssertEx.False(http2.Failed, string.Join("; ", http2.Failures ?? []));
         AssertEx.False(both.Failed, string.Join("; ", both.Failures ?? []));
+    }
+
+    public static void ListenerProtocolConfigParsingPreservesCompatibility()
+    {
+        var cases = new (string Text, RuntimeListenerProtocols Protocols)[]
+        {
+            ("http1", RuntimeListenerProtocols.Http1),
+            ("http2", RuntimeListenerProtocols.Http2),
+            ("http1AndHttp2", RuntimeListenerProtocols.Http1AndHttp2),
+            ("http3Preview", RuntimeListenerProtocols.Http3Preview),
+            ("http1AndHttp3Preview", RuntimeListenerProtocols.Http1AndHttp3Preview),
+            ("http2AndHttp3Preview", RuntimeListenerProtocols.Http2AndHttp3Preview),
+            ("http1AndHttp2AndHttp3Preview", RuntimeListenerProtocols.Http1AndHttp2AndHttp3Preview)
+        };
+
+        foreach (var entry in cases)
+        {
+            var parsed = RuntimeListenerProtocolExtensions.TryParseConfigText(entry.Text, out var protocols);
+
+            AssertEx.True(parsed, entry.Text);
+            AssertEx.Equal(entry.Protocols, protocols);
+            AssertEx.Equal(entry.Text, protocols.ToConfigText());
+        }
+
+        AssertEx.False(RuntimeListenerProtocolExtensions.TryParseConfigText("http3", out _));
+        AssertEx.True(RuntimeListenerProtocols.Http1AndHttp2AndHttp3Preview.HasHttp3());
+        AssertEx.Equal(
+            RuntimeListenerProtocolExtensions.SupportedConfigValues.Count,
+            cases.Length);
     }
 
     public static void Http3DefaultEnabledForEligibleTlsListener()
@@ -175,7 +205,7 @@ internal static class Http3InfrastructureTests
         AssertEx.True(futureQuicAlpn.Any(static protocol => protocol.Protocol.Span.SequenceEqual("h3"u8)));
     }
 
-    public static void StatusAndEffectiveProjectionReportHttp3PreviewEnabled()
+    public static void StatusAndEffectiveProjectionReportLegacyHttp3PreviewEnabled()
     {
         var snapshot = ProxyConfigurationMapper.ToRuntimeSnapshot(
             ValidProxyOptions(Http3Listener("preview", "http1AndHttp2AndHttp3Preview", experimental: true)),
@@ -202,7 +232,7 @@ internal static class Http3InfrastructureTests
         AssertEx.Equal("streaming", statusProjection.RequestBodyMode);
     }
 
-    public static void FinalSupportProjectionReportsHttp3MatrixAndLimitations()
+    public static void FinalSupportProjectionReportsHttp3MatrixAndFinalNaming()
     {
         var options = ValidProxyOptions(Http3Listener("main", "http1AndHttp2", experimental: false));
         options.Routes[0].Upstreams[0] = new UpstreamOptions
@@ -243,6 +273,11 @@ internal static class Http3InfrastructureTests
         AssertEx.True(projection.UnsupportedFeatures.Contains("upstream_http3_multiplexing", StringComparer.Ordinal));
         AssertEx.Equal("one_request_per_connection", projection.UpstreamPoolingMode);
         AssertEx.False(projection.UpstreamMultiplexingEnabled);
+        if (QuicListener.IsSupported && QuicConnection.IsSupported)
+        {
+            AssertEx.Equal("default-enabled", projection.DefaultEnablementState);
+            AssertEx.Equal("default_enabled_for_eligible_tls_proxy_listeners", projection.ReadinessConclusion);
+        }
     }
 
     public static void UpstreamProtocolAcceptsExplicitHttp3()
@@ -309,14 +344,7 @@ internal static class Http3InfrastructureTests
 
     private static RuntimeListenerProtocols ParseProtocols(string protocols)
     {
-        return protocols.ToLowerInvariant() switch
-        {
-            "http2" => RuntimeListenerProtocols.Http2,
-            "http1andhttp2" => RuntimeListenerProtocols.Http1AndHttp2,
-            "http3preview" => RuntimeListenerProtocols.Http3Preview,
-            "http1andhttp2andhttp3preview" => RuntimeListenerProtocols.Http1AndHttp2AndHttp3Preview,
-            _ => RuntimeListenerProtocols.Http1
-        };
+        return RuntimeListenerProtocolExtensions.ParseConfigTextOrDefault(protocols);
     }
 
     private static ProxyOptions ValidProxyOptions(ListenerOptions listener)

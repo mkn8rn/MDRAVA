@@ -30,7 +30,9 @@ public sealed record RuntimeListener(
 
     public bool TcpTrafficEnabled => Protocols.HasTcpProtocols();
 
-    public bool Http3PreviewConfigured => Protocols.HasHttp3Preview();
+    public bool Http3ProtocolConfigured => Protocols.HasHttp3();
+
+    public bool Http3PreviewConfigured => Http3ProtocolConfigured;
 
     public RuntimeQuicListenerIdentity? QuicIdentity => Http3.EnabledForTraffic
         ? RuntimeQuicListenerIdentity.From(this)

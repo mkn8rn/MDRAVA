@@ -111,11 +111,11 @@ public sealed class Http3PreviewConnection
         }
         catch (QuicException exception)
         {
-            _logger.LogDebug(exception, "HTTP/3 preview QUIC connection ended.");
+            _logger.LogDebug(exception, "HTTP/3 QUIC connection ended.");
         }
         catch (IOException exception)
         {
-            _logger.LogDebug(exception, "HTTP/3 preview connection ended with I/O failure.");
+            _logger.LogDebug(exception, "HTTP/3 connection ended with I/O failure.");
         }
         finally
         {
@@ -279,7 +279,7 @@ public sealed class Http3PreviewConnection
                 _metrics.Http3StreamReset();
             }
 
-            _logger.LogDebug(exception, "HTTP/3 preview stream ended with I/O failure.");
+            _logger.LogDebug(exception, "HTTP/3 stream ended with I/O failure.");
             CompleteContext(ref context);
             return true;
         }
@@ -302,11 +302,12 @@ public sealed class Http3PreviewConnection
             Http3PreviewCodec.WriteVarInt(settings, Http3PreviewCodec.QpackBlockedStreamsSetting);
             Http3PreviewCodec.WriteVarInt(settings, 0);
             Http3PreviewCodec.WriteFrame(payload, Http3PreviewCodec.SettingsFrame, settings.ToArray());
+            // Chrome expects the server control stream to remain open after SETTINGS.
             await _localControlStream.WriteAsync(payload.ToArray(), completeWrites: false, cancellationToken);
         }
         catch (Exception exception) when (exception is QuicException or IOException)
         {
-            _logger.LogDebug(exception, "HTTP/3 preview failed to send SETTINGS.");
+            _logger.LogDebug(exception, "HTTP/3 failed to send SETTINGS.");
         }
     }
 
@@ -323,7 +324,7 @@ public sealed class Http3PreviewConnection
                 }
                 catch (Exception exception) when (exception is OperationCanceledException or QuicException or IOException)
                 {
-                    _logger.LogDebug(exception, "HTTP/3 preview unidirectional stream ended.");
+                    _logger.LogDebug(exception, "HTTP/3 unidirectional stream ended.");
                 }
             },
             CancellationToken.None);

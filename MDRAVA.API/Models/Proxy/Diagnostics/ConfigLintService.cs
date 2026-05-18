@@ -202,7 +202,7 @@ public sealed class ConfigLintService
                         && string.Equals(runtime.Identity, listener.QuicIdentity.Key, StringComparison.OrdinalIgnoreCase));
                 if (!ready)
                 {
-                    findings.Add(Warning("http3_alt_svc_not_ready", $"Listener '{listener.Name}' configures Alt-Svc but no matching active QUIC listener is currently ready.", sourceName, path, "MDRAVA only emits Alt-Svc when the preview QUIC listener is active."));
+                    findings.Add(Warning("http3_alt_svc_not_ready", $"Listener '{listener.Name}' configures Alt-Svc but no matching active QUIC listener is currently ready.", sourceName, path, "MDRAVA only emits Alt-Svc when the HTTP/3 QUIC listener is active."));
                 }
             }
         }

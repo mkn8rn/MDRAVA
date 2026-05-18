@@ -62,17 +62,17 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
                 failures.Add($"{prefix}:Transport must be 'http' or 'https'.");
             }
 
-            if (!IsListenerProtocols(listener.Protocols))
+            if (!RuntimeListenerProtocolExtensions.TryParseConfigText(listener.Protocols, out var listenerProtocols))
             {
-                failures.Add($"{prefix}:Protocols must be 'http1', 'http2', 'http1AndHttp2', 'http3Preview', 'http1AndHttp3Preview', 'http2AndHttp3Preview', or 'http1AndHttp2AndHttp3Preview'.");
+                failures.Add($"{prefix}:Protocols must be {SupportedListenerProtocolsText()}.");
             }
-            else if (EnablesHttp2(listener.Protocols) && !isHttps)
+            else if (listenerProtocols.HasFlag(RuntimeListenerProtocols.Http2) && !isHttps)
             {
                 failures.Add($"{prefix}:HTTP/2 requires an HTTPS listener with ALPN; h2c is not supported.");
             }
 
             var http3Enablement = ResolveHttp3Enablement(listener);
-            var explicitHttp3Requested = EnablesHttp3Preview(listener.Protocols)
+            var explicitHttp3Requested = listenerProtocols.HasHttp3()
                 || http3Enablement is RuntimeHttp3Enablement.Preview or RuntimeHttp3Enablement.Beta;
             if (explicitHttp3Requested)
             {
@@ -329,33 +329,6 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
         return string.Equals(action, "staticResponse", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool IsListenerProtocols(string protocols)
-    {
-        return string.Equals(protocols, "http1", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(protocols, "http2", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(protocols, "http1AndHttp2", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(protocols, "http3Preview", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(protocols, "http1AndHttp3Preview", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(protocols, "http2AndHttp3Preview", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(protocols, "http1AndHttp2AndHttp3Preview", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static bool EnablesHttp2(string protocols)
-    {
-        return string.Equals(protocols, "http2", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(protocols, "http1AndHttp2", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(protocols, "http2AndHttp3Preview", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(protocols, "http1AndHttp2AndHttp3Preview", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static bool EnablesHttp3Preview(string protocols)
-    {
-        return string.Equals(protocols, "http3Preview", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(protocols, "http1AndHttp3Preview", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(protocols, "http2AndHttp3Preview", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(protocols, "http1AndHttp2AndHttp3Preview", StringComparison.OrdinalIgnoreCase);
-    }
-
     private static bool IsHttp3Enablement(string enablement)
     {
         return string.IsNullOrWhiteSpace(enablement)
@@ -379,9 +352,17 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
             };
         }
 
-        return EnablesHttp3Preview(listener.Protocols) && listener.ExperimentalHttp3
+        return RuntimeListenerProtocolExtensions.ParseConfigTextOrDefault(listener.Protocols).HasHttp3()
+            && listener.ExperimentalHttp3
             ? RuntimeHttp3Enablement.Preview
             : RuntimeHttp3Enablement.Default;
+    }
+
+    private static string SupportedListenerProtocolsText()
+    {
+        return string.Join(
+            ", ",
+            RuntimeListenerProtocolExtensions.SupportedConfigValues.Select(static value => $"'{value}'"));
     }
 
     private static bool IsSupportedUpstreamScheme(string scheme)

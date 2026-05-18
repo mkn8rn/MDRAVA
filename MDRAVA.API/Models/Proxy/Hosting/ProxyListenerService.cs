@@ -180,7 +180,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
                     pendingQuic.Add(key, handle);
                     _metrics.QuicListenerStarted();
                     _logger.LogInformation(
-                        "HTTP/3 preview QUIC listener {ListenerName} prepared on {Address}:{Port}",
+                        "HTTP/3 QUIC listener {ListenerName} prepared on {Address}:{Port}",
                         listener.Name,
                         listener.Address,
                         listener.Port);
@@ -192,7 +192,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
                     var error = $"quic:{listener.Name}:{SafeError(exception)}";
                     listenerErrors.Add(error);
                     pendingQuic.Add(key, ManagedQuicListener.Failed(listener, SafeError(exception)));
-                    _logger.LogWarning(exception, "HTTP/3 preview QUIC listener {ListenerName} failed to start.", listener.Name);
+                    _logger.LogWarning(exception, "HTTP/3 QUIC listener {ListenerName} failed to start.", listener.Name);
                 }
             }
 
@@ -693,12 +693,12 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
         catch (Exception exception) when (exception is QuicException or SocketException or IOException)
         {
             handle.MarkFailed(SafeError(exception));
-            _logger.LogWarning(exception, "HTTP/3 preview QUIC listener {ListenerName} stopped after transport failure.", handle.Listener.Name);
+            _logger.LogWarning(exception, "HTTP/3 QUIC listener {ListenerName} stopped after transport failure.", handle.Listener.Name);
         }
         catch (Exception exception)
         {
             handle.MarkFailed(SafeError(exception));
-            _logger.LogError(exception, "HTTP/3 preview QUIC listener {ListenerName} stopped unexpectedly.", handle.Listener.Name);
+            _logger.LogError(exception, "HTTP/3 QUIC listener {ListenerName} stopped unexpectedly.", handle.Listener.Name);
         }
         finally
         {
@@ -796,11 +796,11 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
         }
         catch (Exception exception) when (exception is QuicException or IOException)
         {
-            _logger.LogDebug(exception, "HTTP/3 preview client connection ended with an I/O error.");
+            _logger.LogDebug(exception, "HTTP/3 client connection ended with an I/O error.");
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "HTTP/3 preview client connection failed unexpectedly.");
+            _logger.LogError(exception, "HTTP/3 client connection failed unexpectedly.");
         }
         finally
         {

@@ -9,8 +9,8 @@ public static class Http3RuntimeSupport
         IReadOnlyList<ProxyListenerStatus>? runtimeListeners = null,
         IReadOnlyList<RuntimeRoute>? routes = null)
     {
-        var previewConfigured = listeners.Any(static listener => listener.Http3.Configured);
-        var previewEnabled = listeners.Any(static listener => listener.Http3.EnabledForTraffic);
+        var http3Configured = listeners.Any(static listener => listener.Http3.Configured);
+        var http3Enabled = listeners.Any(static listener => listener.Http3.EnabledForTraffic);
         var quicReady = runtimeListeners?.Any(static listener =>
             string.Equals(listener.Kind, "quic", StringComparison.OrdinalIgnoreCase)
             && listener.State == ProxyListenerState.Active) ?? false;
@@ -24,13 +24,13 @@ public static class Http3RuntimeSupport
             .FirstOrDefault();
         var support = Check();
         var blockers = DefaultReadinessBlockers(listeners, support);
-        var defaultState = !previewConfigured
+        var defaultState = !http3Configured
             ? "disabled"
-            : blockers.Count == 0 && previewEnabled
-                ? "default-capable"
+            : blockers.Count == 0 && http3Enabled
+                ? "default-enabled"
                 : "explicit";
-        var readinessConclusion = defaultState == "default-capable"
-            ? "default_capable_when_config_default_flips"
+        var readinessConclusion = defaultState == "default-enabled"
+            ? "default_enabled_for_eligible_tls_proxy_listeners"
             : defaultState == "disabled"
                 ? "disabled"
                 : "explicit_only";
@@ -42,18 +42,18 @@ public static class Http3RuntimeSupport
             support.QuicConnectionSupported,
             ConfiguredMode(listeners),
             EnablementLevel(listeners),
-            previewEnabled,
+            http3Enabled,
             quicReady,
             altSvcConfigured,
             altSvcActive,
             maxAge,
-            DisabledReason(listeners, previewConfigured, previewEnabled, quicReady, runtimeListeners is not null),
+            DisabledReason(listeners, http3Configured, http3Enabled, quicReady, runtimeListeners is not null),
             UdpQuicListenerIdentityModeled: true,
             readinessConclusion)
         {
             DefaultEnablementState = defaultState,
             DefaultReadinessBlockers = blockers,
-            AltSvcStateReason = AltSvcReason(altSvcConfigured, altSvcActive, previewEnabled, quicReady, runtimeListeners is not null),
+            AltSvcStateReason = AltSvcReason(altSvcConfigured, altSvcActive, http3Enabled, quicReady, runtimeListeners is not null),
             UpstreamHttp3SupportLevel = upstreamHttp3Configured
                 ? "opt_in_https_quic_one_request_per_connection"
                 : "opt_in_https_quic_available",

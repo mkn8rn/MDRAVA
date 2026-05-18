@@ -36,7 +36,7 @@ public sealed record ProxyStatusResponse(
         AltSvcMaxAgeSeconds: null,
         "not_configured",
         UdpQuicListenerIdentityModeled: true,
-        "preview_only");
+        "client_http3_default_enabled_for_eligible_tls_proxy_listeners");
 
     public RouteDiagnosticsStatus RouteDiagnostics { get; init; } = RouteDiagnosticsStatus.Enabled;
 

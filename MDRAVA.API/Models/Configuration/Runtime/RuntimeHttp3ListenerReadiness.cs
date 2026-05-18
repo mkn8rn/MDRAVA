@@ -13,10 +13,10 @@ public sealed record RuntimeHttp3ListenerReadiness(
 {
     public static RuntimeHttp3ListenerReadiness From(RuntimeListener listener)
     {
-        var legacyPreviewConfigured = listener.Protocols.HasHttp3Preview();
+        var legacyHttp3ProtocolConfigured = listener.Protocols.HasHttp3();
         var certificateCapable = !string.IsNullOrWhiteSpace(listener.DefaultCertificateId)
             || listener.SniCertificates.Count > 0;
-        var enablement = EffectiveEnablement(listener, legacyPreviewConfigured);
+        var enablement = EffectiveEnablement(listener, legacyHttp3ProtocolConfigured);
         var configured = enablement != RuntimeHttp3Enablement.Disabled
             && listener.Transport == RuntimeListenerTransport.Https
             && certificateCapable;
@@ -24,7 +24,7 @@ public sealed record RuntimeHttp3ListenerReadiness(
             && enablement != RuntimeHttp3Enablement.Disabled
             && listener.Transport == RuntimeListenerTransport.Https
             && certificateCapable;
-        var reason = DisabledReasonFor(listener, legacyPreviewConfigured, configured, certificateCapable, enablement, enabledForTraffic);
+        var reason = DisabledReasonFor(listener, legacyHttp3ProtocolConfigured, configured, certificateCapable, enablement, enabledForTraffic);
 
         return new RuntimeHttp3ListenerReadiness(
             configured,
@@ -40,7 +40,7 @@ public sealed record RuntimeHttp3ListenerReadiness(
 
     private static string DisabledReasonFor(
         RuntimeListener listener,
-        bool legacyPreviewConfigured,
+        bool legacyHttp3ProtocolConfigured,
         bool configured,
         bool certificateCapable,
         RuntimeHttp3Enablement enablement,
@@ -61,7 +61,7 @@ public sealed record RuntimeHttp3ListenerReadiness(
             return "disabled";
         }
 
-        if (legacyPreviewConfigured && !listener.ExperimentalHttp3)
+        if (legacyHttp3ProtocolConfigured && !listener.ExperimentalHttp3)
         {
             return "experimental_gate_missing";
         }

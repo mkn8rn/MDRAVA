@@ -34,7 +34,7 @@ public static class ProxyConfigurationMapper
                 listener.MaxChunkLineBytes,
                 listener.ForwardingBufferBytes)
             {
-                Protocols = ParseProtocols(listener.Protocols),
+                Protocols = RuntimeListenerProtocolExtensions.ParseConfigTextOrDefault(listener.Protocols),
                 ExperimentalHttp3 = listener.ExperimentalHttp3,
                 Http3Enablement = ResolveHttp3Enablement(listener),
                 Http3AltSvc = new RuntimeHttp3AltSvcOptions(
@@ -367,20 +367,6 @@ public static class ProxyConfigurationMapper
             : RuntimeListenerTransport.Http;
     }
 
-    private static RuntimeListenerProtocols ParseProtocols(string protocols)
-    {
-        return protocols.Trim().ToLowerInvariant() switch
-        {
-            "http2" => RuntimeListenerProtocols.Http2,
-            "http1andhttp2" => RuntimeListenerProtocols.Http1AndHttp2,
-            "http3preview" => RuntimeListenerProtocols.Http3Preview,
-            "http1andhttp3preview" => RuntimeListenerProtocols.Http1AndHttp3Preview,
-            "http2andhttp3preview" => RuntimeListenerProtocols.Http2AndHttp3Preview,
-            "http1andhttp2andhttp3preview" => RuntimeListenerProtocols.Http1AndHttp2AndHttp3Preview,
-            _ => RuntimeListenerProtocols.Http1
-        };
-    }
-
     private static RuntimeHttp3Enablement ResolveHttp3Enablement(ListenerOptions listener)
     {
         if (!string.IsNullOrWhiteSpace(listener.Http3Enablement))
@@ -395,7 +381,8 @@ public static class ProxyConfigurationMapper
             };
         }
 
-        return ParseProtocols(listener.Protocols).HasHttp3Preview() && listener.ExperimentalHttp3
+        return RuntimeListenerProtocolExtensions.ParseConfigTextOrDefault(listener.Protocols).HasHttp3()
+            && listener.ExperimentalHttp3
             ? RuntimeHttp3Enablement.Preview
             : RuntimeHttp3Enablement.Default;
     }

@@ -437,7 +437,7 @@ internal static class ClientHttp3PreviewTests
             AssertEx.True(response.Contains($"Alt-Svc: h3=\":{port}\"; ma=60", StringComparison.Ordinal), response);
             AssertEx.True(status.Http3.QuicListenerReady);
             AssertEx.True(status.Http3.AltSvcActive);
-            AssertEx.Equal("default_capable_when_config_default_flips", status.Http3.ReadinessConclusion);
+            AssertEx.Equal("default_enabled_for_eligible_tls_proxy_listeners", status.Http3.ReadinessConclusion);
             AssertEx.Equal("active", status.Http3.AltSvcStateReason);
         }
         finally

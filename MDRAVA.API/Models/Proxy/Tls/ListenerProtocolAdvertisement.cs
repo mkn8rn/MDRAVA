@@ -22,14 +22,14 @@ public static class ListenerProtocolAdvertisement
 
     public static IReadOnlyList<SslApplicationProtocol> FutureHttp3Alpn(RuntimeListenerProtocols protocols)
     {
-        return protocols.HasHttp3Preview()
+        return protocols.HasHttp3()
             ? [new SslApplicationProtocol("h3")]
             : [];
     }
 
     public static List<SslApplicationProtocol> BuildHttp3PreviewAlpn(RuntimeListenerProtocols protocols)
     {
-        return protocols.HasHttp3Preview()
+        return protocols.HasHttp3()
             ? [new SslApplicationProtocol("h3")]
             : [];
     }
@@ -43,15 +43,6 @@ public static class ListenerProtocolAdvertisement
 
     public static string ToConfigText(RuntimeListenerProtocols protocols)
     {
-        return protocols switch
-        {
-            RuntimeListenerProtocols.Http2 => "http2",
-            RuntimeListenerProtocols.Http1AndHttp2 => "http1AndHttp2",
-            RuntimeListenerProtocols.Http3Preview => "http3Preview",
-            RuntimeListenerProtocols.Http1AndHttp3Preview => "http1AndHttp3Preview",
-            RuntimeListenerProtocols.Http2AndHttp3Preview => "http2AndHttp3Preview",
-            RuntimeListenerProtocols.Http1AndHttp2AndHttp3Preview => "http1AndHttp2AndHttp3Preview",
-            _ => "http1"
-        };
+        return protocols.ToConfigText();
     }
 }
