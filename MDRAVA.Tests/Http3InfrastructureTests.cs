@@ -270,6 +270,9 @@ internal static class Http3InfrastructureTests
         AssertEx.True(projection.UnsupportedFeatures.Contains("h3c", StringComparer.Ordinal));
         AssertEx.True(projection.UnsupportedFeatures.Contains("connect_over_http3", StringComparer.Ordinal));
         AssertEx.True(projection.UnsupportedFeatures.Contains("websocket_over_http3", StringComparer.Ordinal));
+        AssertEx.True(projection.UnsupportedFeatures.Contains("connect_udp_over_http3", StringComparer.Ordinal));
+        AssertEx.True(projection.UnsupportedFeatures.Contains("masque", StringComparer.Ordinal));
+        AssertEx.True(projection.UnsupportedFeatures.Contains("webtransport_over_http3", StringComparer.Ordinal));
         AssertEx.False(projection.UnsupportedFeatures.Contains("upstream_http3_multiplexing", StringComparer.Ordinal));
         AssertEx.Equal("reused_multiplexed", projection.UpstreamPoolingMode);
         AssertEx.True(projection.UpstreamMultiplexingEnabled);

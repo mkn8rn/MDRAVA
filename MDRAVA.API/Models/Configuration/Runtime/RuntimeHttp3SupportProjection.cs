@@ -56,7 +56,10 @@ public sealed record RuntimeHttp3SupportProjection(
     [
         "h3c",
         "connect_over_http3",
-        "websocket_over_http3"
+        "websocket_over_http3",
+        "connect_udp_over_http3",
+        "masque",
+        "webtransport_over_http3"
     ];
 
     public bool UpstreamHttp3Configured { get; init; }

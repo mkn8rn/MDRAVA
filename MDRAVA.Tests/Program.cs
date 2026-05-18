@@ -229,6 +229,8 @@ var tests = new (string Name, Func<Task> Run)[]
     ("HTTP/3 oversized cache candidate streams but is not cached", ClientHttp3PreviewTests.Http3OversizedCacheCandidateStreamsButIsNotCached),
     ("HTTP/3 retry for GET can reach second upstream", ClientHttp3PreviewTests.Http3RetryForGetCanReachSecondUpstream),
     ("HTTP/3 unsupported CONNECT is rejected", ClientHttp3PreviewTests.UnsupportedConnectIsRejected),
+    ("HTTP/3 malformed CONNECT is rejected", ClientHttp3PreviewTests.MalformedHttp3ConnectIsRejected),
+    ("HTTP/3 extended CONNECT WebSocket form is rejected", ClientHttp3PreviewTests.ExtendedHttp3ConnectWebSocketIsRejected),
     ("HTTP/3 POST with bounded body reaches upstream", ClientHttp3PreviewTests.Http3PostWithBoundedBodyReachesUpstream),
     ("HTTP/3 PUT PATCH and DELETE bodies reach upstream", ClientHttp3PreviewTests.Http3PutPatchAndDeleteBodiesReachUpstream),
     ("HTTP/3 path rewrite applies to proxy route", ClientHttp3PreviewTests.Http3PathRewriteAppliesToProxyRoute),
