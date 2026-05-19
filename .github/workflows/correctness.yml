@@ -6,7 +6,7 @@ on:
 
 jobs:
   full:
-    name: Correctness / Full Suite
+    name: Correctness / Full
     runs-on: windows-latest
 
     steps:
@@ -24,8 +24,48 @@ jobs:
       - name: Build
         run: dotnet build MDRAVA.slnx --no-restore
 
+      - name: List correctness categories
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          dotnet run --project MDRAVA.Tests/MDRAVA.Tests.csproj --no-restore --no-build -- --list-categories | Out-File -FilePath artifacts/correctness-categories.txt -Encoding utf8
+
       - name: Run full test suite
-        run: dotnet run --project MDRAVA.Tests/MDRAVA.Tests.csproj --no-restore --no-build
+        run: dotnet run --project MDRAVA.Tests/MDRAVA.Tests.csproj --no-restore --no-build -- --summary-file artifacts/correctness-Full.json
+
+      - name: Write job summary
+        if: always()
+        env:
+          SUMMARY_PATH: artifacts/correctness-Full.json
+          CHECK_NAME: Full
+          RUN_COMMAND: dotnet run --project MDRAVA.Tests/MDRAVA.Tests.csproj --no-restore --no-build
+        run: |
+          "### Correctness / $env:CHECK_NAME" >> $env:GITHUB_STEP_SUMMARY
+          "" >> $env:GITHUB_STEP_SUMMARY
+          if (Test-Path $env:SUMMARY_PATH) {
+            $summary = Get-Content $env:SUMMARY_PATH -Raw | ConvertFrom-Json
+            "| Field | Value |" >> $env:GITHUB_STEP_SUMMARY
+            "| --- | --- |" >> $env:GITHUB_STEP_SUMMARY
+            "| Status | $($summary.status) |" >> $env:GITHUB_STEP_SUMMARY
+            "| Tests | $($summary.passedTests) passed / $($summary.selectedTests) selected / $($summary.totalTests) total |" >> $env:GITHUB_STEP_SUMMARY
+            "| Command | ``$env:RUN_COMMAND`` |" >> $env:GITHUB_STEP_SUMMARY
+            if ($summary.failedTests -gt 0) {
+              "" >> $env:GITHUB_STEP_SUMMARY
+              "Failures: $(@($summary.failures) -join ', ')" >> $env:GITHUB_STEP_SUMMARY
+            }
+          } else {
+            "Summary file was not produced. Inspect the raw job log." >> $env:GITHUB_STEP_SUMMARY
+          }
+
+      - name: Upload correctness summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: correctness-Full
+          path: |
+            artifacts/correctness-Full.json
+            artifacts/correctness-categories.txt
+          if-no-files-found: ignore
+          retention-days: 14
 
   domain:
     name: Correctness / ${{ matrix.category }}
@@ -69,4 +109,38 @@ jobs:
         run: dotnet build MDRAVA.slnx --no-restore
 
       - name: Run ${{ matrix.category }} tests
-        run: dotnet run --project MDRAVA.Tests/MDRAVA.Tests.csproj --no-restore --no-build -- --category ${{ matrix.category }}
+        run: dotnet run --project MDRAVA.Tests/MDRAVA.Tests.csproj --no-restore --no-build -- --category ${{ matrix.category }} --summary-file artifacts/correctness-${{ matrix.category }}.json
+
+      - name: Write job summary
+        if: always()
+        env:
+          SUMMARY_PATH: artifacts/correctness-${{ matrix.category }}.json
+          CHECK_NAME: ${{ matrix.category }}
+          RUN_COMMAND: dotnet run --project MDRAVA.Tests/MDRAVA.Tests.csproj --no-restore --no-build -- --category ${{ matrix.category }}
+        run: |
+          "### Correctness / $env:CHECK_NAME" >> $env:GITHUB_STEP_SUMMARY
+          "" >> $env:GITHUB_STEP_SUMMARY
+          if (Test-Path $env:SUMMARY_PATH) {
+            $summary = Get-Content $env:SUMMARY_PATH -Raw | ConvertFrom-Json
+            "| Field | Value |" >> $env:GITHUB_STEP_SUMMARY
+            "| --- | --- |" >> $env:GITHUB_STEP_SUMMARY
+            "| Status | $($summary.status) |" >> $env:GITHUB_STEP_SUMMARY
+            "| Category | $env:CHECK_NAME |" >> $env:GITHUB_STEP_SUMMARY
+            "| Tests | $($summary.passedTests) passed / $($summary.selectedTests) selected / $($summary.totalTests) total |" >> $env:GITHUB_STEP_SUMMARY
+            "| Command | ``$env:RUN_COMMAND`` |" >> $env:GITHUB_STEP_SUMMARY
+            if ($summary.failedTests -gt 0) {
+              "" >> $env:GITHUB_STEP_SUMMARY
+              "Failures: $(@($summary.failures) -join ', ')" >> $env:GITHUB_STEP_SUMMARY
+            }
+          } else {
+            "Summary file was not produced. Inspect the raw job log." >> $env:GITHUB_STEP_SUMMARY
+          }
+
+      - name: Upload correctness summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: correctness-${{ matrix.category }}
+          path: artifacts/correctness-${{ matrix.category }}.json
+          if-no-files-found: ignore
+          retention-days: 14

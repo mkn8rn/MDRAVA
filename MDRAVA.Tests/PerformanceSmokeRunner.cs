@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.Json;
 using MDRAVA.API.Controllers;
 using MDRAVA.API.Proxy.Caching;
 using MDRAVA.API.Proxy.Configuration;
@@ -79,26 +80,33 @@ internal static class PerformanceSmokeRunner
         }
 
         var failures = 0;
+        List<PerformanceSmokeResult> results = [];
+        List<string> failureDomains = [];
         foreach (var domain in selectedDomains)
         {
             try
             {
                 var result = await RunDomainAsync(domain);
+                results.Add(result);
                 var status = result.Passed ? "PASS" : "FAIL";
                 Console.WriteLine(
                     $"{status} Performance {result.Domain}: {result.Operations} operations in {result.Elapsed.TotalMilliseconds:F1} ms; threshold {result.Threshold.TotalMilliseconds:F1} ms; {result.Detail}");
                 if (!result.Passed)
                 {
                     failures++;
+                    failureDomains.Add(result.Domain);
                 }
             }
             catch (Exception exception)
             {
                 failures++;
+                failureDomains.Add(domain);
                 Console.Error.WriteLine($"FAIL Performance {domain}: correctness failure before threshold evaluation.");
                 Console.Error.WriteLine(exception);
             }
         }
+
+        WritePerformanceSummary(options, selectedDomains, results, failures, failureDomains);
 
         if (failures > 0)
         {
@@ -107,6 +115,48 @@ internal static class PerformanceSmokeRunner
 
         Console.WriteLine($"Passed {selectedDomains.Length} performance smoke domains.");
         return 0;
+    }
+
+    private static void WritePerformanceSummary(
+        PerformanceSmokeOptions options,
+        IReadOnlyList<string> selectedDomains,
+        IReadOnlyList<PerformanceSmokeResult> results,
+        int failures,
+        IReadOnlyList<string> failureDomains)
+    {
+        if (string.IsNullOrWhiteSpace(options.SummaryFile))
+        {
+            return;
+        }
+
+        var directory = Path.GetDirectoryName(options.SummaryFile);
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        var summary = new
+        {
+            kind = "performance",
+            status = failures == 0 ? "passed" : "failed",
+            selectedDomains,
+            passedDomains = selectedDomains.Count - failures,
+            failedDomains = failures,
+            failures = failureDomains,
+            results = results.Select(static result => new
+            {
+                domain = result.Domain,
+                operations = result.Operations,
+                elapsedMilliseconds = result.Elapsed.TotalMilliseconds,
+                thresholdMilliseconds = result.Threshold.TotalMilliseconds,
+                passed = result.Passed,
+                detail = result.Detail
+            }).ToArray()
+        };
+
+        File.WriteAllText(
+            options.SummaryFile,
+            JsonSerializer.Serialize(summary, new JsonSerializerOptions { WriteIndented = true }));
     }
 
     private static Task<PerformanceSmokeResult> RunDomainAsync(string domain)
@@ -682,12 +732,13 @@ internal static class PerformanceSmokeRunner
         public bool Passed => Elapsed <= Threshold;
     }
 
-    private sealed record PerformanceSmokeOptions(IReadOnlySet<string> Domains, bool ListDomains)
+    private sealed record PerformanceSmokeOptions(IReadOnlySet<string> Domains, bool ListDomains, string? SummaryFile)
     {
         public static PerformanceSmokeOptions Parse(string[] args)
         {
             var performance = false;
             var listDomains = false;
+            string? summaryFile = null;
             HashSet<string> domains = new(StringComparer.OrdinalIgnoreCase);
 
             for (var index = 0; index < args.Length; index++)
@@ -705,6 +756,17 @@ internal static class PerformanceSmokeRunner
                     continue;
                 }
 
+                if (string.Equals(arg, "--summary-file", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (index + 1 >= args.Length)
+                    {
+                        throw new ArgumentException($"{arg} requires a file path.");
+                    }
+
+                    summaryFile = args[++index];
+                    continue;
+                }
+
                 if (string.Equals(arg, "--domain", StringComparison.OrdinalIgnoreCase)
                     || string.Equals(arg, "--domains", StringComparison.OrdinalIgnoreCase))
                 {
@@ -719,6 +781,7 @@ internal static class PerformanceSmokeRunner
 
                 const string domainPrefix = "--domain=";
                 const string domainsPrefix = "--domains=";
+                const string summaryFilePrefix = "--summary-file=";
                 if (arg.StartsWith(domainPrefix, StringComparison.OrdinalIgnoreCase))
                 {
                     AddDomains(arg[domainPrefix.Length..], domains);
@@ -728,6 +791,12 @@ internal static class PerformanceSmokeRunner
                 if (arg.StartsWith(domainsPrefix, StringComparison.OrdinalIgnoreCase))
                 {
                     AddDomains(arg[domainsPrefix.Length..], domains);
+                    continue;
+                }
+
+                if (arg.StartsWith(summaryFilePrefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    summaryFile = arg[summaryFilePrefix.Length..];
                     continue;
                 }
 
@@ -743,7 +812,7 @@ internal static class PerformanceSmokeRunner
                 .Select(CanonicalDomain)
                 .OrderBy(static domain => domain, StringComparer.Ordinal)
                 .ToHashSet(StringComparer.Ordinal);
-            return new PerformanceSmokeOptions(canonical, listDomains);
+            return new PerformanceSmokeOptions(canonical, listDomains, summaryFile);
         }
 
         private static void AddDomains(string value, HashSet<string> domains)

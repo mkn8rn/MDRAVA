@@ -36,4 +36,46 @@ jobs:
         run: dotnet build MDRAVA.slnx --no-restore
 
       - name: Run ${{ matrix.domain }} performance smoke
-        run: dotnet run --project MDRAVA.Tests/MDRAVA.Tests.csproj --no-restore --no-build -- --performance --domain ${{ matrix.domain }}
+        run: dotnet run --project MDRAVA.Tests/MDRAVA.Tests.csproj --no-restore --no-build -- --performance --domain ${{ matrix.domain }} --summary-file artifacts/performance-${{ matrix.domain }}.json
+
+      - name: Write job summary
+        if: always()
+        env:
+          SUMMARY_PATH: artifacts/performance-${{ matrix.domain }}.json
+          CHECK_NAME: ${{ matrix.domain }}
+          RUN_COMMAND: dotnet run --project MDRAVA.Tests/MDRAVA.Tests.csproj --no-restore --no-build -- --performance --domain ${{ matrix.domain }}
+        run: |
+          "### Performance / $env:CHECK_NAME" >> $env:GITHUB_STEP_SUMMARY
+          "" >> $env:GITHUB_STEP_SUMMARY
+          if (Test-Path $env:SUMMARY_PATH) {
+            $summary = Get-Content $env:SUMMARY_PATH -Raw | ConvertFrom-Json
+            $results = @($summary.results)
+            "| Field | Value |" >> $env:GITHUB_STEP_SUMMARY
+            "| --- | --- |" >> $env:GITHUB_STEP_SUMMARY
+            "| Status | $($summary.status) |" >> $env:GITHUB_STEP_SUMMARY
+            "| Domain | $env:CHECK_NAME |" >> $env:GITHUB_STEP_SUMMARY
+            if ($results.Count -gt 0) {
+              $result = $results[0]
+              "| Operations | $($result.operations) |" >> $env:GITHUB_STEP_SUMMARY
+              "| Elapsed | $('{0:F1}' -f [double]$result.elapsedMilliseconds) ms |" >> $env:GITHUB_STEP_SUMMARY
+              "| Threshold | $('{0:F1}' -f [double]$result.thresholdMilliseconds) ms, loose smoke gate |" >> $env:GITHUB_STEP_SUMMARY
+              "| Detail | $($result.detail) |" >> $env:GITHUB_STEP_SUMMARY
+            } else {
+              "| Operations | n/a |" >> $env:GITHUB_STEP_SUMMARY
+              "| Elapsed | n/a |" >> $env:GITHUB_STEP_SUMMARY
+              "| Threshold | loose smoke gate |" >> $env:GITHUB_STEP_SUMMARY
+              "| Detail | domain failed before measurement |" >> $env:GITHUB_STEP_SUMMARY
+            }
+            "| Command | ``$env:RUN_COMMAND`` |" >> $env:GITHUB_STEP_SUMMARY
+          } else {
+            "Summary file was not produced. Inspect the raw job log." >> $env:GITHUB_STEP_SUMMARY
+          }
+
+      - name: Upload performance summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-${{ matrix.domain }}
+          path: artifacts/performance-${{ matrix.domain }}.json
+          if-no-files-found: ignore
+          retention-days: 14

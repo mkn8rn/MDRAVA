@@ -1,3 +1,4 @@
+using System.Text.Json;
 using MDRAVA.Tests;
 
 if (PerformanceSmokeRunner.IsPerformanceCommand(args))
@@ -431,6 +432,7 @@ if (options.Categories.Count > 0)
 }
 
 var failures = 0;
+List<string> failureNames = [];
 
 foreach (var test in selectedTests)
 {
@@ -442,10 +444,13 @@ foreach (var test in selectedTests)
     catch (Exception exception)
     {
         failures++;
+        failureNames.Add(test.Name);
         Console.Error.WriteLine($"FAIL {test.Name}");
         Console.Error.WriteLine(exception);
     }
 }
+
+WriteCorrectnessSummary(options, tests.Length, selectedTests.Length, failures, failureNames);
 
 if (failures > 0)
 {
@@ -464,14 +469,50 @@ static Func<Task> Sync(Action test)
     };
 }
 
+static void WriteCorrectnessSummary(
+    TestRunOptions options,
+    int totalTests,
+    int selectedTests,
+    int failures,
+    IReadOnlyList<string> failureNames)
+{
+    if (string.IsNullOrWhiteSpace(options.SummaryFile))
+    {
+        return;
+    }
+
+    var directory = Path.GetDirectoryName(options.SummaryFile);
+    if (!string.IsNullOrWhiteSpace(directory))
+    {
+        Directory.CreateDirectory(directory);
+    }
+
+    var summary = new
+    {
+        kind = "correctness",
+        status = failures == 0 ? "passed" : "failed",
+        categories = options.Categories,
+        totalTests,
+        selectedTests,
+        passedTests = selectedTests - failures,
+        failedTests = failures,
+        failures = failureNames
+    };
+
+    File.WriteAllText(
+        options.SummaryFile,
+        JsonSerializer.Serialize(summary, new JsonSerializerOptions { WriteIndented = true }));
+}
+
 internal sealed record TestCase(string Name, Func<Task> Run, IReadOnlySet<string> Categories);
 
-internal sealed record TestRunOptions(IReadOnlySet<string> Categories, bool ListCategories)
+internal sealed record TestRunOptions(IReadOnlySet<string> Categories, bool ListCategories, string? SummaryFile)
 {
     public static TestRunOptions Parse(string[] args)
     {
         HashSet<string> categories = new(StringComparer.OrdinalIgnoreCase);
         var listCategories = false;
+        string? summaryFile = null;
 
         for (var index = 0; index < args.Length; index++)
         {
@@ -479,6 +520,17 @@ internal sealed record TestRunOptions(IReadOnlySet<string> Categories, bool List
             if (string.Equals(arg, "--list-categories", StringComparison.OrdinalIgnoreCase))
             {
                 listCategories = true;
+                continue;
+            }
+
+            if (string.Equals(arg, "--summary-file", StringComparison.OrdinalIgnoreCase))
+            {
+                if (index + 1 >= args.Length)
+                {
+                    throw new ArgumentException($"{arg} requires a file path.");
+                }
+
+                summaryFile = args[++index];
                 continue;
             }
 
@@ -496,6 +548,7 @@ internal sealed record TestRunOptions(IReadOnlySet<string> Categories, bool List
 
             const string categoryPrefix = "--category=";
             const string categoriesPrefix = "--categories=";
+            const string summaryFilePrefix = "--summary-file=";
             if (arg.StartsWith(categoryPrefix, StringComparison.OrdinalIgnoreCase))
             {
                 AddCategories(arg[categoryPrefix.Length..], categories);
@@ -508,6 +561,12 @@ internal sealed record TestRunOptions(IReadOnlySet<string> Categories, bool List
                 continue;
             }
 
+            if (arg.StartsWith(summaryFilePrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                summaryFile = arg[summaryFilePrefix.Length..];
+                continue;
+            }
+
             throw new ArgumentException($"Unknown test runner argument: {arg}");
         }
 
@@ -515,7 +574,7 @@ internal sealed record TestRunOptions(IReadOnlySet<string> Categories, bool List
             .Select(TestTaxonomy.CanonicalCategory)
             .OrderBy(static category => category, StringComparer.Ordinal)
             .ToArray();
-        return new TestRunOptions(canonical.ToHashSet(StringComparer.Ordinal), listCategories);
+        return new TestRunOptions(canonical.ToHashSet(StringComparer.Ordinal), listCategories, summaryFile);
     }
 
     private static void AddCategories(string value, HashSet<string> categories)
