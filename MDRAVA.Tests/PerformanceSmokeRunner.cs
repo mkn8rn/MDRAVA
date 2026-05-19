@@ -1,0 +1,804 @@
+using System.Diagnostics;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
+using MDRAVA.API.Controllers;
+using MDRAVA.API.Proxy.Caching;
+using MDRAVA.API.Proxy.Configuration;
+using MDRAVA.API.Proxy.Configuration.Loading;
+using MDRAVA.API.Proxy.Configuration.Paths;
+using MDRAVA.API.Proxy.Configuration.Runtime;
+using MDRAVA.API.Proxy.Forwarding;
+using MDRAVA.API.Proxy.Hosting;
+using MDRAVA.API.Proxy.Protocol;
+using MDRAVA.API.Proxy.Routing;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+
+namespace MDRAVA.Tests;
+
+internal static class PerformanceSmokeRunner
+{
+    private const string Routing = "Routing";
+    private const string Config = "Config";
+    private const string Http1 = "HTTP1";
+    private const string Cache = "Cache";
+    private const string Headers = "Headers";
+
+    private static readonly string[] Domains =
+    [
+        Routing,
+        Config,
+        Http1,
+        Cache,
+        Headers
+    ];
+
+    public static bool IsPerformanceCommand(string[] args)
+    {
+        return args.Any(static arg =>
+            string.Equals(arg, "--performance", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(arg, "--list-performance-domains", StringComparison.OrdinalIgnoreCase));
+    }
+
+    public static async Task<int> RunAsync(string[] args)
+    {
+        PerformanceSmokeOptions options;
+        try
+        {
+            options = PerformanceSmokeOptions.Parse(args);
+        }
+        catch (ArgumentException exception)
+        {
+            Console.Error.WriteLine(exception.Message);
+            Console.Error.WriteLine("Use --list-performance-domains to see supported performance domains.");
+            return 2;
+        }
+
+        if (options.ListDomains)
+        {
+            foreach (var domain in Domains)
+            {
+                Console.WriteLine(domain);
+            }
+
+            return 0;
+        }
+
+        var selectedDomains = options.Domains.Count == 0
+            ? Domains
+            : Domains.Where(options.Domains.Contains).ToArray();
+
+        if (selectedDomains.Length == 0)
+        {
+            Console.Error.WriteLine($"No performance domains matched: {string.Join(", ", options.Domains)}");
+            return 2;
+        }
+
+        var failures = 0;
+        foreach (var domain in selectedDomains)
+        {
+            try
+            {
+                var result = await RunDomainAsync(domain);
+                var status = result.Passed ? "PASS" : "FAIL";
+                Console.WriteLine(
+                    $"{status} Performance {result.Domain}: {result.Operations} operations in {result.Elapsed.TotalMilliseconds:F1} ms; threshold {result.Threshold.TotalMilliseconds:F1} ms; {result.Detail}");
+                if (!result.Passed)
+                {
+                    failures++;
+                }
+            }
+            catch (Exception exception)
+            {
+                failures++;
+                Console.Error.WriteLine($"FAIL Performance {domain}: correctness failure before threshold evaluation.");
+                Console.Error.WriteLine(exception);
+            }
+        }
+
+        if (failures > 0)
+        {
+            return 1;
+        }
+
+        Console.WriteLine($"Passed {selectedDomains.Length} performance smoke domains.");
+        return 0;
+    }
+
+    private static Task<PerformanceSmokeResult> RunDomainAsync(string domain)
+    {
+        return domain switch
+        {
+            Routing => RunRoutingAsync(),
+            Config => RunConfigAsync(),
+            Http1 => RunHttp1Async(),
+            Cache => RunCacheAsync(),
+            Headers => RunHeadersAsync(),
+            _ => throw new ArgumentException($"Unknown performance domain: {domain}")
+        };
+    }
+
+    private static Task<PerformanceSmokeResult> RunRoutingAsync()
+    {
+        const int routeCount = 64;
+        const int warmup = 1_000;
+        const int operations = 50_000;
+        var matcher = new SingleUpstreamRouteMatcher();
+        var snapshot = CreateSnapshot(routeCount, cacheEnabled: false);
+        var request = new Http1RequestHead(
+            "GET",
+            "/svc42/resource?id=1",
+            "/svc42/resource",
+            "HTTP/1.1",
+            "perf.test",
+            Http1RequestFraming.None,
+            []);
+
+        for (var index = 0; index < warmup; index++)
+        {
+            matcher.Match(snapshot, request);
+        }
+
+        var stopwatch = Stopwatch.StartNew();
+        RouteMatch? match = null;
+        for (var index = 0; index < operations; index++)
+        {
+            match = matcher.Match(snapshot, request);
+        }
+
+        stopwatch.Stop();
+        AssertEx.NotNull(match);
+        AssertEx.Equal("route-42", match!.Route.Name);
+        return Task.FromResult(new PerformanceSmokeResult(
+            Routing,
+            operations,
+            stopwatch.Elapsed,
+            TimeSpan.FromSeconds(5),
+            $"{routeCount} configured routes"));
+    }
+
+    private static async Task<PerformanceSmokeResult> RunConfigAsync()
+    {
+        const int sites = 8;
+        const int operations = 15;
+        using var temp = TemporaryDirectory.Create("mdrava-perf-config");
+        for (var index = 0; index < sites; index++)
+        {
+            ConfigurationTests.WriteCustomSite(
+                temp.Path,
+                $"site-{index}.json",
+                SiteJson($"site-{index}", 18_000 + index, 19_000 + index));
+        }
+
+        var loader = CreateLoader(temp.Path);
+        var warmup = await loader.LoadAsync(CancellationToken.None);
+        AssertEx.True(warmup.Succeeded, string.Join("; ", warmup.Errors));
+
+        var stopwatch = Stopwatch.StartNew();
+        for (var index = 0; index < operations; index++)
+        {
+            var result = await loader.LoadAsync(CancellationToken.None);
+            AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
+            var projection = ProxyConfigurationMapper.ToProjection(AssertEx.NotNull(result.Snapshot));
+            AssertEx.Equal(sites, projection.Routes.Count);
+        }
+
+        stopwatch.Stop();
+        return new PerformanceSmokeResult(
+            Config,
+            operations,
+            stopwatch.Elapsed,
+            TimeSpan.FromSeconds(10),
+            $"{sites} JSON site files loaded and projected each operation");
+    }
+
+    private static async Task<PerformanceSmokeResult> RunHttp1Async()
+    {
+        const int staticRequests = 30;
+        const int proxyRequests = 30;
+        var staticElapsed = await RunHttp1StaticResponseAsync(staticRequests);
+        var proxyElapsed = await RunHttp1ProxyAsync(proxyRequests);
+        var elapsed = staticElapsed + proxyElapsed;
+
+        return new PerformanceSmokeResult(
+            Http1,
+            staticRequests + proxyRequests,
+            elapsed,
+            TimeSpan.FromSeconds(20),
+            $"static={staticElapsed.TotalMilliseconds:F1} ms; proxy={proxyElapsed.TotalMilliseconds:F1} ms");
+    }
+
+    private static Task<PerformanceSmokeResult> RunCacheAsync()
+    {
+        const int warmup = 1_000;
+        const int operations = 75_000;
+        var cache = new ResponseCacheStore(TimeProvider.System);
+        var snapshot = CreateSnapshot(routeCount: 1, cacheEnabled: true);
+        var route = snapshot.Routes[0];
+        var listener = snapshot.Listeners[0];
+        var request = new Http1RequestHead(
+            "GET",
+            "/svc0/resource?id=1",
+            "/svc0/resource",
+            "HTTP/1.1",
+            "perf.test",
+            Http1RequestFraming.None,
+            [new Http1HeaderField("Accept", "text/plain")]);
+        var responseHeaders = new[]
+        {
+            new Http1HeaderField("Content-Type", "text/plain"),
+            new Http1HeaderField("Cache-Control", "max-age=60")
+        };
+        var response = new Http1ResponseHead(
+            "HTTP/1.1",
+            200,
+            "OK",
+            Http1ResponseFraming.FromContentLength(6),
+            responseHeaders);
+
+        cache.Store(route, listener, request, request.Target, response, responseHeaders, Encoding.ASCII.GetBytes("cached"));
+
+        for (var index = 0; index < warmup; index++)
+        {
+            cache.TryGet(route, listener, request, request.Target, out _);
+        }
+
+        var stopwatch = Stopwatch.StartNew();
+        CachedProxyResponse? cached = null;
+        for (var index = 0; index < operations; index++)
+        {
+            if (!cache.TryGet(route, listener, request, request.Target, out cached))
+            {
+                throw new InvalidOperationException("Cache hot-path smoke missed a stored response.");
+            }
+        }
+
+        stopwatch.Stop();
+        AssertEx.Equal("cached", Encoding.ASCII.GetString(AssertEx.NotNull(cached).Body));
+        return Task.FromResult(new PerformanceSmokeResult(
+            Cache,
+            operations,
+            stopwatch.Elapsed,
+            TimeSpan.FromSeconds(5),
+            "cache-safe GET hot path"));
+    }
+
+    private static Task<PerformanceSmokeResult> RunHeadersAsync()
+    {
+        const int warmup = 1_000;
+        const int operations = 75_000;
+        var policy = new HopByHopHeaderPolicy();
+        var headers = new[]
+        {
+            new Http1HeaderField("Host", "perf.test"),
+            new Http1HeaderField("Connection", "x-private, keep-alive"),
+            new Http1HeaderField("X-Private", "secret"),
+            new Http1HeaderField("Keep-Alive", "timeout=5"),
+            new Http1HeaderField("Upgrade", "websocket"),
+            new Http1HeaderField("X-One", "1"),
+            new Http1HeaderField("X-Two", "2"),
+            new Http1HeaderField("X-Three", "3"),
+            new Http1HeaderField("Accept", "text/plain"),
+            new Http1HeaderField("User-Agent", "mdrava-perf-smoke")
+        };
+
+        for (var index = 0; index < warmup; index++)
+        {
+            policy.FilterForForwarding(headers, preserveTransferEncoding: false, preserveTrailer: false);
+        }
+
+        var stopwatch = Stopwatch.StartNew();
+        IReadOnlyList<Http1HeaderField> filtered = [];
+        for (var index = 0; index < operations; index++)
+        {
+            filtered = policy.FilterForForwarding(headers, preserveTransferEncoding: false, preserveTrailer: false);
+        }
+
+        stopwatch.Stop();
+        AssertEx.Equal(6, filtered.Count);
+        AssertEx.False(filtered.Any(static header => string.Equals(header.Name, "X-Private", StringComparison.OrdinalIgnoreCase)));
+        return Task.FromResult(new PerformanceSmokeResult(
+            Headers,
+            operations,
+            stopwatch.Elapsed,
+            TimeSpan.FromSeconds(5),
+            "hop-by-hop and Connection-nominated filtering"));
+    }
+
+    private static async Task<TimeSpan> RunHttp1StaticResponseAsync(int operations)
+    {
+        using var temp = TemporaryDirectory.Create("mdrava-perf-http1-static");
+        var proxyPort = GetFreeTcpPort();
+        ConfigurationTests.WriteCustomSite(temp.Path, "static.json", StaticSiteJson(proxyPort));
+        using var host = BuildProxyHost(temp.Path);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        await host.StartAsync(timeout.Token);
+
+        try
+        {
+            var warmup = await SendSingleRequestAsync(
+                proxyPort,
+                "GET /static HTTP/1.1\r\nHost: perf.test\r\nConnection: close\r\n\r\n",
+                timeout.Token);
+            AssertEx.True(warmup.Contains("200 OK", StringComparison.Ordinal), warmup);
+
+            var stopwatch = Stopwatch.StartNew();
+            for (var index = 0; index < operations; index++)
+            {
+                var response = await SendSingleRequestAsync(
+                    proxyPort,
+                    "GET /static HTTP/1.1\r\nHost: perf.test\r\nConnection: close\r\n\r\n",
+                    timeout.Token);
+                AssertEx.True(response.EndsWith("static-ok", StringComparison.Ordinal), response);
+            }
+
+            stopwatch.Stop();
+            return stopwatch.Elapsed;
+        }
+        finally
+        {
+            await host.StopAsync(CancellationToken.None);
+        }
+    }
+
+    private static async Task<TimeSpan> RunHttp1ProxyAsync(int operations)
+    {
+        using var temp = TemporaryDirectory.Create("mdrava-perf-http1-proxy");
+        var proxyPort = GetFreeTcpPort();
+        var upstreamPort = GetFreeTcpPort();
+        ConfigurationTests.WriteCustomSite(temp.Path, "proxy.json", ProxySiteJson(proxyPort, upstreamPort));
+        using var host = BuildProxyHost(temp.Path);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var upstreamStop = new CancellationTokenSource();
+        var upstreamTask = RunReusableHttpUpstreamAsync(upstreamPort, expectedRequests: operations + 1, upstreamStop.Token);
+        await host.StartAsync(timeout.Token);
+
+        try
+        {
+            var warmup = await SendSingleRequestAsync(
+                proxyPort,
+                "GET /proxy HTTP/1.1\r\nHost: perf.test\r\nConnection: close\r\n\r\n",
+                timeout.Token);
+            AssertEx.True(warmup.EndsWith("proxied", StringComparison.Ordinal), warmup);
+
+            var stopwatch = Stopwatch.StartNew();
+            for (var index = 0; index < operations; index++)
+            {
+                var response = await SendSingleRequestAsync(
+                    proxyPort,
+                    "GET /proxy HTTP/1.1\r\nHost: perf.test\r\nConnection: close\r\n\r\n",
+                    timeout.Token);
+                AssertEx.True(response.EndsWith("proxied", StringComparison.Ordinal), response);
+            }
+
+            stopwatch.Stop();
+            var upstreamRequests = await upstreamTask.WaitAsync(timeout.Token);
+            AssertEx.Equal(operations + 1, upstreamRequests);
+            return stopwatch.Elapsed;
+        }
+        finally
+        {
+            await host.StopAsync(CancellationToken.None);
+            await upstreamStop.CancelAsync();
+        }
+    }
+
+    private static ProxyConfigurationSnapshot CreateSnapshot(int routeCount, bool cacheEnabled)
+    {
+        var options = new ProxyOptions
+        {
+            Listeners =
+            [
+                new ListenerOptions
+                {
+                    Name = "main",
+                    Address = "127.0.0.1",
+                    Port = 8080
+                }
+            ]
+        };
+
+        for (var index = 0; index < routeCount; index++)
+        {
+            options.Routes.Add(new ProxyRouteOptions
+            {
+                Name = $"route-{index}",
+                Host = "perf.test",
+                PathPrefix = $"/svc{index}/",
+                Cache = new ProxyCachePolicyOptions
+                {
+                    Enabled = cacheEnabled,
+                    MaxEntryBytes = 1024 * 1024,
+                    MaxTotalBytes = 4 * 1024 * 1024,
+                    DefaultTtlSeconds = 60
+                },
+                Upstreams =
+                [
+                    new UpstreamOptions
+                    {
+                        Name = "local",
+                        Address = "127.0.0.1",
+                        Port = 19_000 + index
+                    }
+                ]
+            });
+        }
+
+        return ProxyConfigurationMapper.ToRuntimeSnapshot(
+            options,
+            new ProxyOperationalOptions(),
+            new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),
+            1,
+            DateTimeOffset.UnixEpoch,
+            "performance-smoke",
+            [],
+            new ProxyConfigurationDiscovery(
+                new ProxyFilesystemLayout("performance-smoke", "config", "sites", "logs", "certs", "state", "config/proxy.json"),
+                [],
+                [],
+                []));
+    }
+
+    private static ProxyConfigurationLoader CreateLoader(string dataDirectory)
+    {
+        var dataDirectoryProvider = new MdravaDataDirectoryProvider(Options.Create(new MdravaDataDirectoryOptions
+        {
+            DataDirectory = dataDirectory
+        }));
+
+        return new ProxyConfigurationLoader(
+            dataDirectoryProvider,
+            new ProxyOptionsValidator(),
+            new ProxyDataDirectoryBootstrapper(dataDirectoryProvider),
+            new SiteConfigurationParser(),
+            NullLogger<ProxyConfigurationLoader>.Instance);
+    }
+
+    private static IHost BuildProxyHost(string dataDirectory)
+    {
+        return Host.CreateDefaultBuilder()
+            .ConfigureAppConfiguration(builder =>
+            {
+                builder.Sources.Clear();
+                builder.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Mdrava:DataDirectory"] = dataDirectory
+                });
+            })
+            .ConfigureLogging(logging => logging.ClearProviders())
+            .ConfigureServices((context, services) =>
+            {
+                services.AddProxyDataPlane(context.Configuration);
+            })
+            .Build();
+    }
+
+    private static async Task<string> SendSingleRequestAsync(
+        int proxyPort,
+        string request,
+        CancellationToken cancellationToken)
+    {
+        using var client = new TcpClient();
+        await client.ConnectAsync(IPAddress.Loopback, proxyPort, cancellationToken);
+        await using var stream = client.GetStream();
+        await stream.WriteAsync(Encoding.ASCII.GetBytes(request), cancellationToken);
+        return await ReadToEndAsync(stream, cancellationToken);
+    }
+
+    private static async Task<string> ReadToEndAsync(Stream stream, CancellationToken cancellationToken)
+    {
+        using var memory = new MemoryStream();
+        var buffer = new byte[4096];
+        while (true)
+        {
+            var read = await stream.ReadAsync(buffer, cancellationToken);
+            if (read == 0)
+            {
+                break;
+            }
+
+            memory.Write(buffer, 0, read);
+        }
+
+        return Encoding.ASCII.GetString(memory.ToArray());
+    }
+
+    private static async Task<int> RunReusableHttpUpstreamAsync(
+        int upstreamPort,
+        int expectedRequests,
+        CancellationToken cancellationToken)
+    {
+        var listener = new TcpListener(IPAddress.Loopback, upstreamPort);
+        listener.Start();
+        using var registration = cancellationToken.Register(static state => ((TcpListener)state!).Stop(), listener);
+        var requests = 0;
+
+        try
+        {
+            while (requests < expectedRequests)
+            {
+                using var client = await listener.AcceptTcpClientAsync(cancellationToken);
+                await using var stream = client.GetStream();
+                await ReadHttpRequestHeadAsync(stream, cancellationToken);
+                var response = Encoding.ASCII.GetBytes("HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 7\r\n\r\nproxied");
+                await stream.WriteAsync(response, cancellationToken);
+                requests++;
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (SocketException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            listener.Stop();
+        }
+
+        return requests;
+    }
+
+    private static async Task ReadHttpRequestHeadAsync(Stream stream, CancellationToken cancellationToken)
+    {
+        var previous3 = 0;
+        var previous2 = 0;
+        var previous1 = 0;
+        var buffer = new byte[1];
+        while (true)
+        {
+            var read = await stream.ReadAsync(buffer, cancellationToken);
+            if (read == 0)
+            {
+                return;
+            }
+
+            var current = buffer[0];
+            if (previous3 == '\r'
+                && previous2 == '\n'
+                && previous1 == '\r'
+                && current == '\n')
+            {
+                return;
+            }
+
+            previous3 = previous2;
+            previous2 = previous1;
+            previous1 = current;
+        }
+    }
+
+    private static string SiteJson(string name, int port, int upstreamPort)
+    {
+        return $$"""
+        {
+          "name": "{{name}}",
+          "listeners": [
+            {
+              "name": "main-{{name}}",
+              "address": "127.0.0.1",
+              "port": {{port}}
+            }
+          ],
+          "host": "*",
+          "pathPrefix": "/",
+          "upstreams": [
+            {
+              "name": "local-test",
+              "address": "127.0.0.1",
+              "port": {{upstreamPort}}
+            }
+          ]
+        }
+        """;
+    }
+
+    private static string StaticSiteJson(int proxyPort)
+    {
+        return $$"""
+        {
+          "name": "perf-static",
+          "listeners": [
+            {
+              "name": "main",
+              "address": "127.0.0.1",
+              "port": {{proxyPort}}
+            }
+          ],
+          "host": "*",
+          "routes": [
+            {
+              "name": "static",
+              "pathPrefix": "/static",
+              "action": "staticResponse",
+              "staticResponse": {
+                "statusCode": 200,
+                "contentType": "text/plain",
+                "body": "static-ok"
+              }
+            }
+          ]
+        }
+        """;
+    }
+
+    private static string ProxySiteJson(int proxyPort, int upstreamPort)
+    {
+        return $$"""
+        {
+          "name": "perf-proxy",
+          "listeners": [
+            {
+              "name": "main",
+              "address": "127.0.0.1",
+              "port": {{proxyPort}}
+            }
+          ],
+          "host": "*",
+          "routes": [
+            {
+              "name": "proxy",
+              "pathPrefix": "/proxy",
+              "action": "proxy",
+              "upstreams": [
+                {
+                  "name": "local-test",
+                  "address": "127.0.0.1",
+                  "port": {{upstreamPort}}
+                }
+              ]
+            }
+          ]
+        }
+        """;
+    }
+
+    private static int GetFreeTcpPort()
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+
+        try
+        {
+            return ((IPEndPoint)listener.LocalEndpoint).Port;
+        }
+        finally
+        {
+            listener.Stop();
+        }
+    }
+
+    private sealed record PerformanceSmokeResult(
+        string Domain,
+        int Operations,
+        TimeSpan Elapsed,
+        TimeSpan Threshold,
+        string Detail)
+    {
+        public bool Passed => Elapsed <= Threshold;
+    }
+
+    private sealed record PerformanceSmokeOptions(IReadOnlySet<string> Domains, bool ListDomains)
+    {
+        public static PerformanceSmokeOptions Parse(string[] args)
+        {
+            var performance = false;
+            var listDomains = false;
+            HashSet<string> domains = new(StringComparer.OrdinalIgnoreCase);
+
+            for (var index = 0; index < args.Length; index++)
+            {
+                var arg = args[index];
+                if (string.Equals(arg, "--performance", StringComparison.OrdinalIgnoreCase))
+                {
+                    performance = true;
+                    continue;
+                }
+
+                if (string.Equals(arg, "--list-performance-domains", StringComparison.OrdinalIgnoreCase))
+                {
+                    listDomains = true;
+                    continue;
+                }
+
+                if (string.Equals(arg, "--domain", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(arg, "--domains", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (index + 1 >= args.Length)
+                    {
+                        throw new ArgumentException($"{arg} requires a domain value.");
+                    }
+
+                    AddDomains(args[++index], domains);
+                    continue;
+                }
+
+                const string domainPrefix = "--domain=";
+                const string domainsPrefix = "--domains=";
+                if (arg.StartsWith(domainPrefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    AddDomains(arg[domainPrefix.Length..], domains);
+                    continue;
+                }
+
+                if (arg.StartsWith(domainsPrefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    AddDomains(arg[domainsPrefix.Length..], domains);
+                    continue;
+                }
+
+                throw new ArgumentException($"Unknown performance runner argument: {arg}");
+            }
+
+            if (!performance && !listDomains)
+            {
+                throw new ArgumentException("Performance smoke mode requires --performance.");
+            }
+
+            var canonical = domains
+                .Select(CanonicalDomain)
+                .OrderBy(static domain => domain, StringComparer.Ordinal)
+                .ToHashSet(StringComparer.Ordinal);
+            return new PerformanceSmokeOptions(canonical, listDomains);
+        }
+
+        private static void AddDomains(string value, HashSet<string> domains)
+        {
+            foreach (var domain in value.Split([',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                if (!IsKnownDomain(domain))
+                {
+                    throw new ArgumentException($"Unknown performance domain: {domain}");
+                }
+
+                domains.Add(domain);
+            }
+        }
+
+        private static bool IsKnownDomain(string domain)
+        {
+            return PerformanceSmokeRunner.Domains.Contains(domain, StringComparer.OrdinalIgnoreCase);
+        }
+
+        private static string CanonicalDomain(string domain)
+        {
+            return PerformanceSmokeRunner.Domains.FirstOrDefault(candidate => string.Equals(candidate, domain, StringComparison.OrdinalIgnoreCase))
+                ?? throw new ArgumentException($"Unknown performance domain: {domain}");
+        }
+    }
+
+    private sealed class TemporaryDirectory : IDisposable
+    {
+        private TemporaryDirectory(string path)
+        {
+            Path = path;
+        }
+
+        public string Path { get; }
+
+        public static TemporaryDirectory Create(string prefix)
+        {
+            var path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"{prefix}-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(path);
+            return new TemporaryDirectory(path);
+        }
+
+        public void Dispose()
+        {
+            try
+            {
+                if (Directory.Exists(Path))
+                {
+                    Directory.Delete(Path, recursive: true);
+                }
+            }
+            catch
+            {
+            }
+        }
+    }
+}

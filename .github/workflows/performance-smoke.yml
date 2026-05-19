@@ -1,0 +1,39 @@
+name: Performance Smoke
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+jobs:
+  domain:
+    name: Performance / ${{ matrix.domain }}
+    runs-on: windows-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        domain:
+          - Routing
+          - Config
+          - HTTP1
+          - Cache
+          - Headers
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore MDRAVA.slnx
+
+      - name: Build
+        run: dotnet build MDRAVA.slnx --no-restore
+
+      - name: Run ${{ matrix.domain }} performance smoke
+        run: dotnet run --project MDRAVA.Tests/MDRAVA.Tests.csproj --no-restore --no-build -- --performance --domain ${{ matrix.domain }}

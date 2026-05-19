@@ -1,5 +1,11 @@
 using MDRAVA.Tests;
 
+if (PerformanceSmokeRunner.IsPerformanceCommand(args))
+{
+    Environment.ExitCode = await PerformanceSmokeRunner.RunAsync(args);
+    return;
+}
+
 var testDefinitions = new (string Name, Func<Task> Run)[]
 {
     ("Http1RequestParser parses a valid GET request", Sync(Http1RequestParserTests.ParsesValidGet)),
