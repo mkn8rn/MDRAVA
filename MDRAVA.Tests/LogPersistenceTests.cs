@@ -1,6 +1,11 @@
+using System.Text.Json;
+using MDRAVA.API.Controllers;
+using MDRAVA.API.Proxy.Connections;
 using MDRAVA.API.Proxy.Configuration.Paths;
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Configuration.Storage;
+using MDRAVA.API.Proxy.Health;
+using MDRAVA.API.Proxy.Hosting;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Observability;
 using MDRAVA.API.Proxy.Security;
@@ -162,6 +167,90 @@ internal static class LogPersistenceTests
         AssertEx.Equal("not a directory", File.ReadAllText(Path.Combine(temp.Path, "logs")));
     }
 
+    public static void LogPersistenceStatusReportsEnabledSettings()
+    {
+        using var temp = TemporaryDirectory.Create();
+        var store = CreateStore(temp.Path);
+        var writer = CreateWriter(temp.Path, store);
+
+        var status = writer.GetStatus();
+
+        AssertEx.True(status.AccessLogEnabled);
+        AssertEx.True(status.AdminAuditEnabled);
+        AssertEx.Equal(Path.Combine(temp.Path, "logs"), status.LogDirectory);
+        AssertEx.Equal(1_048_576L, status.MaxFileBytes);
+        AssertEx.Equal(8, status.MaxFiles);
+        AssertEx.Equal("healthy", status.State);
+        AssertEx.Equal("ready", status.Reason);
+        AssertEx.Equal(null, status.LastWriteFailure);
+    }
+
+    public static void LogPersistenceStatusReportsDisabledSettings()
+    {
+        using var temp = TemporaryDirectory.Create();
+        var store = CreateStore(temp.Path, new ProxyLogPersistenceOptions
+        {
+            AccessLogEnabled = false,
+            AdminAuditEnabled = false,
+            MaxFileBytes = 8192,
+            MaxFiles = 3
+        });
+        var writer = CreateWriter(temp.Path, store);
+
+        var status = writer.GetStatus();
+
+        AssertEx.False(status.AccessLogEnabled);
+        AssertEx.False(status.AdminAuditEnabled);
+        AssertEx.Equal("disabled", status.State);
+        AssertEx.Equal("disabled", status.Reason);
+        AssertEx.Equal(8192L, status.MaxFileBytes);
+        AssertEx.Equal(3, status.MaxFiles);
+    }
+
+    public static void LogPersistenceStatusRecordsLastWriteFailureWithoutSecrets()
+    {
+        const string querySecret = "status-query-secret";
+        using var temp = TemporaryDirectory.Create();
+        File.WriteAllText(Path.Combine(temp.Path, "logs"), "not a directory");
+        var store = CreateStore(temp.Path, requireAdminAuth: true);
+        var writer = CreateWriter(temp.Path, store);
+
+        writer.WriteAdminAudit(AdminAudit($"/admin/proxy/status?token={querySecret}", 403));
+
+        var status = writer.GetStatus();
+        var text = JsonSerializer.Serialize(status);
+        AssertEx.Equal("degraded", status.State);
+        AssertEx.Equal("last_write_failed", status.Reason);
+        AssertEx.Equal("admin_audit", status.LastWriteFailure?.Category);
+        AssertEx.Equal("io_error", status.LastWriteFailure?.Reason);
+        AssertEx.False(text.Contains(AdminToken, StringComparison.Ordinal), text);
+        AssertEx.False(text.Contains(querySecret, StringComparison.Ordinal), text);
+        AssertEx.False(text.Contains("Authorization", StringComparison.OrdinalIgnoreCase), text);
+        AssertEx.False(text.Contains("Cookie", StringComparison.OrdinalIgnoreCase), text);
+    }
+
+    public static void StatusControllerIncludesLogPersistenceHealthWithoutSecrets()
+    {
+        const string querySecret = "status-controller-query-secret";
+        using var temp = TemporaryDirectory.Create();
+        File.WriteAllText(Path.Combine(temp.Path, "logs"), "not a directory");
+        var store = CreateStore(temp.Path, requireAdminAuth: true);
+        var writer = CreateWriter(temp.Path, store);
+
+        writer.WriteAdminAudit(AdminAudit($"/admin/proxy/status?token={querySecret}", 403));
+        var status = CreateStatusController(store, writer).Get();
+        var text = JsonSerializer.Serialize(status);
+
+        AssertEx.True(status.LogPersistence.AdminAuditEnabled);
+        AssertEx.Equal("degraded", status.LogPersistence.State);
+        AssertEx.Equal("last_write_failed", status.LogPersistence.Reason);
+        AssertEx.Equal("admin_audit", status.LogPersistence.LastWriteFailure?.Category);
+        AssertEx.False(text.Contains(querySecret, StringComparison.Ordinal), text);
+        AssertEx.False(text.Contains(AdminToken, StringComparison.Ordinal), text);
+        AssertEx.False(text.Contains("Authorization", StringComparison.OrdinalIgnoreCase), text);
+        AssertEx.False(text.Contains("Cookie", StringComparison.OrdinalIgnoreCase), text);
+    }
+
     private static ProxyRequestContext CreateAccessContext(string target, string? externalRequestId = null)
     {
         var context = new ProxyRequestContext(
@@ -213,6 +302,21 @@ internal static class LogPersistenceTests
             })),
             store,
             NullLogger<ProxyPersistentLogWriter>.Instance);
+    }
+
+    private static ProxyStatusController CreateStatusController(
+        IProxyConfigurationStore store,
+        ProxyPersistentLogWriter writer)
+    {
+        var metrics = new ProxyMetrics();
+        var pool = new UpstreamConnectionPool(new UpstreamConnectionFactory(), metrics);
+        var health = new UpstreamHealthStore(metrics, pool);
+        return new ProxyStatusController(
+            new ProxyRuntimeState(),
+            metrics,
+            store,
+            health,
+            logWriter: writer);
     }
 
     private static ProxyConfigurationStore CreateStore(

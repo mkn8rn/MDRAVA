@@ -41,4 +41,6 @@ public sealed record ProxyStatusResponse(
     public RouteDiagnosticsStatus RouteDiagnostics { get; init; } = RouteDiagnosticsStatus.Enabled;
 
     public ConfigLintStatus ConfigLint { get; init; } = ConfigLintStatus.Empty;
+
+    public ProxyLogPersistenceStatus LogPersistence { get; init; } = ProxyLogPersistenceStatus.Unknown;
 }

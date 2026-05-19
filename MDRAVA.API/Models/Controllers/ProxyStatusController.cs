@@ -4,6 +4,7 @@ using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Hosting;
 using MDRAVA.API.Proxy.Http3;
 using MDRAVA.API.Proxy.Metrics;
+using MDRAVA.API.Proxy.Observability;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MDRAVA.API.Controllers;
@@ -17,19 +18,22 @@ public sealed class ProxyStatusController : ControllerBase
     private readonly IProxyConfigurationStore _configurationStore;
     private readonly UpstreamHealthStore _healthStore;
     private readonly ConfigLintService? _lintService;
+    private readonly ProxyPersistentLogWriter? _logWriter;
 
     public ProxyStatusController(
         ProxyRuntimeState runtimeState,
         ProxyMetrics metrics,
         IProxyConfigurationStore configurationStore,
         UpstreamHealthStore healthStore,
-        ConfigLintService? lintService = null)
+        ConfigLintService? lintService = null,
+        ProxyPersistentLogWriter? logWriter = null)
     {
         _runtimeState = runtimeState;
         _metrics = metrics;
         _configurationStore = configurationStore;
         _healthStore = healthStore;
         _lintService = lintService;
+        _logWriter = logWriter;
     }
 
     [HttpGet("status")]
@@ -85,7 +89,8 @@ public sealed class ProxyStatusController : ControllerBase
             LastListenerReload = runtime.LastListenerReload,
             Http3 = Http3RuntimeSupport.Project(snapshot?.Listeners ?? [], runtime.Listeners, snapshot?.Routes),
             RouteDiagnostics = RouteDiagnosticsStatus.Enabled,
-            ConfigLint = _lintService?.LastActiveStatus ?? ConfigLintStatus.Empty
+            ConfigLint = _lintService?.LastActiveStatus ?? ConfigLintStatus.Empty,
+            LogPersistence = _logWriter?.GetStatus() ?? ProxyLogPersistenceStatus.Unknown
         };
     }
 }

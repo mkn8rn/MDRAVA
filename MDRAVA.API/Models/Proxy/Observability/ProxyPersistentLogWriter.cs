@@ -20,6 +20,9 @@ public sealed class ProxyPersistentLogWriter
     private readonly ILogger<ProxyPersistentLogWriter> _logger;
     private readonly object _accessGate = new();
     private readonly object _auditGate = new();
+    private readonly object _statusGate = new();
+    private DateTimeOffset? _lastSuccessfulWriteAtUtc;
+    private ProxyLogPersistenceFailureStatus? _lastWriteFailure;
 
     public ProxyPersistentLogWriter(
         IMdravaDataDirectoryProvider dataDirectoryProvider,
@@ -88,6 +91,56 @@ public sealed class ProxyPersistentLogWriter
         WriteLine("audit", JsonSerializer.Serialize(entry, JsonOptions), options, _auditGate);
     }
 
+    public ProxyLogPersistenceStatus GetStatus()
+    {
+        var logDirectory = SafeValue(_dataDirectoryProvider.GetLogsDirectory(), MaxPathLength);
+        var hasSnapshot = _configurationStore.TryGetSnapshot(out var snapshot) && snapshot is not null;
+        var options = hasSnapshot
+            ? snapshot!.Observability.LogPersistence
+            : new RuntimeLogPersistenceOptions(
+                AccessLogEnabled: false,
+                AdminAuditEnabled: false,
+                MaxFileBytes: 0,
+                MaxFiles: 0);
+
+        DateTimeOffset? lastSuccess;
+        ProxyLogPersistenceFailureStatus? lastFailure;
+        lock (_statusGate)
+        {
+            lastSuccess = _lastSuccessfulWriteAtUtc;
+            lastFailure = _lastWriteFailure;
+        }
+
+        var state = "healthy";
+        var reason = "ready";
+        if (!hasSnapshot)
+        {
+            state = "unknown";
+            reason = "no_active_config";
+        }
+        else if (!options.AccessLogEnabled && !options.AdminAuditEnabled)
+        {
+            state = "disabled";
+            reason = "disabled";
+        }
+        else if (lastFailure is not null && (lastSuccess is null || lastFailure.TimestampUtc >= lastSuccess))
+        {
+            state = "degraded";
+            reason = "last_write_failed";
+        }
+
+        return new ProxyLogPersistenceStatus(
+            options.AccessLogEnabled,
+            options.AdminAuditEnabled,
+            logDirectory,
+            options.MaxFileBytes,
+            options.MaxFiles,
+            state,
+            reason,
+            lastSuccess,
+            lastFailure);
+    }
+
     private bool TryGetOptions(out RuntimeLogPersistenceOptions options)
     {
         if (_configurationStore.TryGetSnapshot(out var snapshot) && snapshot is not null)
@@ -120,11 +173,32 @@ public sealed class ProxyPersistentLogWriter
                 var lineBytes = LogEncoding.GetByteCount(line) + LogEncoding.GetByteCount(Environment.NewLine);
                 RotateIfNeeded(path, options.MaxFileBytes, options.MaxFiles, lineBytes);
                 File.AppendAllText(path, line + Environment.NewLine, LogEncoding);
+                RecordWriteSuccess();
             }
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
+            RecordWriteFailure(logName, exception);
             _logger.LogWarning(exception, "Failed to persist {LogName} log entry.", logName);
+        }
+    }
+
+    private void RecordWriteSuccess()
+    {
+        lock (_statusGate)
+        {
+            _lastSuccessfulWriteAtUtc = DateTimeOffset.UtcNow;
+        }
+    }
+
+    private void RecordWriteFailure(string logName, Exception exception)
+    {
+        var reason = exception is UnauthorizedAccessException ? "access_denied" : "io_error";
+        var category = string.Equals(logName, "audit", StringComparison.OrdinalIgnoreCase) ? "admin_audit" : "access";
+        var failure = new ProxyLogPersistenceFailureStatus(DateTimeOffset.UtcNow, category, reason);
+        lock (_statusGate)
+        {
+            _lastWriteFailure = failure;
         }
     }
 
