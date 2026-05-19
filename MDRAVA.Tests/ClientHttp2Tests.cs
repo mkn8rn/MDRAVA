@@ -6,6 +6,7 @@ using System.Security.Authentication;
 using System.Text;
 using MDRAVA.API.Controllers;
 using MDRAVA.API.Proxy.Configuration;
+using MDRAVA.API.Proxy.Configuration.Loading;
 using MDRAVA.API.Proxy.Hosting;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Observability;
@@ -246,6 +247,96 @@ internal static class ClientHttp2Tests
 
         AssertEx.Equal(203, result.Response.StatusCode);
         AssertEx.Equal("static-h2", result.Response.BodyText);
+    }
+
+    public static async Task ActiveHttp2TrafficSurvivesCertificateReloadAndNewConnectionsUseReloadedCertificate()
+    {
+        var dataDirectory = CreateDataDirectory();
+        var proxyPort = GetFreeTcpPort();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        try
+        {
+            WriteCertificateConfig(dataDirectory);
+            SiteWithStaticRoute(dataDirectory, proxyPort, 0);
+            using var host = BuildProxyHost(dataDirectory);
+            await host.StartAsync(timeout.Token);
+            try
+            {
+                await using var activeClient = await Http2TestClient.ConnectAsync(proxyPort, timeout.Token);
+                var before = await activeClient.SendRequestAsync(
+                    new Http2RequestSpec { Authority = "home.test", Path = "/before-reload" },
+                    timeout.Token);
+                var beforeSubject = activeClient.RemoteCertificateSubject;
+
+                TestCertificates.WriteSelfSignedPfx(Path.Combine(dataDirectory, "certs", "home.pfx"), "home-reloaded.test");
+                var reload = await host.Services.GetRequiredService<IProxyConfigurationReloadService>().ReloadAsync(timeout.Token);
+
+                var afterOnActiveConnection = await activeClient.SendRequestAsync(
+                    new Http2RequestSpec { Authority = "home.test", Path = "/after-reload-active" },
+                    timeout.Token);
+                await using var newClient = await Http2TestClient.ConnectAsync(proxyPort, timeout.Token);
+                var newSubject = newClient.RemoteCertificateSubject;
+                var afterOnNewConnection = await newClient.SendRequestAsync(
+                    new Http2RequestSpec { Authority = "home.test", Path = "/after-reload-new" },
+                    timeout.Token);
+
+                AssertEx.True(reload.Succeeded, string.Join("; ", reload.Errors));
+                AssertEx.True(beforeSubject.Contains("CN=home.test", StringComparison.Ordinal), beforeSubject);
+                AssertEx.Equal(203, before.StatusCode);
+                AssertEx.Equal(203, afterOnActiveConnection.StatusCode);
+                AssertEx.Equal(203, afterOnNewConnection.StatusCode);
+                AssertEx.True(newSubject.Contains("CN=home-reloaded.test", StringComparison.Ordinal), newSubject);
+            }
+            finally
+            {
+                await host.StopAsync(CancellationToken.None);
+            }
+        }
+        finally
+        {
+            DeleteDirectory(dataDirectory);
+        }
+    }
+
+    public static async Task FailedHttp2CertificateReloadPreservesPreviousActiveCertificate()
+    {
+        var dataDirectory = CreateDataDirectory();
+        var proxyPort = GetFreeTcpPort();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        try
+        {
+            WriteCertificateConfig(dataDirectory);
+            SiteWithStaticRoute(dataDirectory, proxyPort, 0);
+            using var host = BuildProxyHost(dataDirectory);
+            await host.StartAsync(timeout.Token);
+            try
+            {
+                await using var beforeClient = await Http2TestClient.ConnectAsync(proxyPort, timeout.Token);
+                var beforeSubject = beforeClient.RemoteCertificateSubject;
+                TestCertificates.WriteSelfSignedPfx(Path.Combine(dataDirectory, "certs", "home.pfx"), "home-reloaded.test");
+                File.WriteAllText(Path.Combine(dataDirectory, "config", "sites", "broken.json"), "{ nope");
+
+                var reload = await host.Services.GetRequiredService<IProxyConfigurationReloadService>().ReloadAsync(timeout.Token);
+                await using var afterClient = await Http2TestClient.ConnectAsync(proxyPort, timeout.Token);
+                var afterSubject = afterClient.RemoteCertificateSubject;
+                var response = await afterClient.SendRequestAsync(
+                    new Http2RequestSpec { Authority = "home.test", Path = "/after-failed-reload" },
+                    timeout.Token);
+
+                AssertEx.False(reload.Succeeded);
+                AssertEx.True(beforeSubject.Contains("CN=home.test", StringComparison.Ordinal), beforeSubject);
+                AssertEx.True(afterSubject.Contains("CN=home.test", StringComparison.Ordinal), afterSubject);
+                AssertEx.Equal(203, response.StatusCode);
+            }
+            finally
+            {
+                await host.StopAsync(CancellationToken.None);
+            }
+        }
+        finally
+        {
+            DeleteDirectory(dataDirectory);
+        }
     }
 
     public static async Task RedirectRouteWorksOverHttp2()
@@ -1213,6 +1304,14 @@ internal static class ClientHttp2Tests
         }
 
         public SslApplicationProtocol NegotiatedProtocol => _stream.NegotiatedApplicationProtocol;
+
+        public string RemoteCertificateSubject
+        {
+            get
+            {
+                return _stream.RemoteCertificate?.Subject ?? "";
+            }
+        }
 
         public static async Task<Http2TestClient> ConnectAsync(int port, CancellationToken cancellationToken)
         {

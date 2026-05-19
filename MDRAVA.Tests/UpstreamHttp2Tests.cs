@@ -293,6 +293,61 @@ internal static class UpstreamHttp2Tests
         AssertEx.True(result.Metrics.UpstreamHttp2Requests >= 1, result.Metrics.UpstreamHttp2Requests.ToString());
     }
 
+    public static async Task Http2UpstreamCloseBeforeResponseHeadersReturnsSafeFailure()
+    {
+        var result = await RunProxyScenarioAsync(
+            "/close-before-headers",
+            200,
+            [("content-length", "2")],
+            Encoding.ASCII.GetBytes("ok"),
+            closeBeforeResponseHeaders: true);
+
+        AssertEx.True(
+            result.ClientResponse.Contains("502 Bad Gateway", StringComparison.Ordinal)
+            || result.ClientResponse.Contains("504 Gateway Timeout", StringComparison.Ordinal),
+            result.ClientResponse);
+        AssertEx.Equal("GET", result.Upstream.RequestHeaders[":method"]);
+        AssertEx.Equal("/close-before-headers", result.Upstream.RequestHeaders[":path"]);
+        AssertEx.True(result.Metrics.UpstreamFailures >= 1, result.Metrics.UpstreamFailures.ToString());
+    }
+
+    public static async Task Http2UpstreamCloseAfterResponseHeadersDoesNotRetryAfterHeadersAreSent()
+    {
+        var result = await RunProxyScenarioAsync(
+            "/close-after-headers",
+            200,
+            [("content-length", "8")],
+            Encoding.ASCII.GetBytes("ignored"),
+            routeExtraJson: RetryJson(),
+            closeAfterResponseHeaders: true);
+
+        AssertEx.True(result.ClientResponse.Contains("200 OK", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.Equal("GET", result.Upstream.RequestHeaders[":method"]);
+        AssertEx.Equal(0L, result.Metrics.RetryAttempts);
+    }
+
+    public static async Task Http2StreamingPostBodyIsNotRetriedAfterUpstreamFailure()
+    {
+        var result = await RunProxyScenarioAsync(
+            "/post-failure",
+            200,
+            [("content-length", "2")],
+            Encoding.ASCII.GetBytes("ok"),
+            routeExtraJson: RetryJson(),
+            method: "POST",
+            requestBody: "streamed-h2",
+            closeBeforeResponseHeaders: true);
+
+        AssertEx.True(
+            result.ClientResponse.Contains("502 Bad Gateway", StringComparison.Ordinal)
+            || result.ClientResponse.Contains("504 Gateway Timeout", StringComparison.Ordinal),
+            result.ClientResponse);
+        AssertEx.Equal("POST", result.Upstream.RequestHeaders[":method"]);
+        AssertEx.Equal("streamed-h2", Encoding.ASCII.GetString(result.Upstream.RequestBody));
+        AssertEx.Equal(0L, result.Metrics.RetryAttempts);
+        AssertEx.True(result.Metrics.RetrySkipped.Any(static skipped => skipped.Reason is "method" or "request_body"));
+    }
+
     private static async Task<ProxyScenarioResult> RunProxyScenarioAsync(
         string target,
         int statusCode,
@@ -303,7 +358,9 @@ internal static class UpstreamHttp2Tests
         bool sendSecondRequest = false,
         string method = "GET",
         string requestBody = "",
-        bool forceContentLength = false)
+        bool forceContentLength = false,
+        bool closeBeforeResponseHeaders = false,
+        bool closeAfterResponseHeaders = false)
     {
         var proxyPort = GetFreeTcpPort();
         var upstreamPort = GetFreeTcpPort();
@@ -315,7 +372,9 @@ internal static class UpstreamHttp2Tests
             statusCode,
             responseHeaders,
             responseBody,
-            timeout.Token);
+            timeout.Token,
+            closeBeforeResponseHeaders: closeBeforeResponseHeaders,
+            closeAfterResponseHeaders: closeAfterResponseHeaders);
         using var host = BuildProxyHost(temp.Path);
         await host.StartAsync(timeout.Token);
 
@@ -338,6 +397,19 @@ internal static class UpstreamHttp2Tests
         {
             await host.StopAsync(CancellationToken.None);
         }
+    }
+
+    private static string RetryJson()
+    {
+        return """
+                  "retry": {
+                    "enabled": true,
+                    "maxAttempts": 2,
+                    "retryOnConnectFailure": true,
+                    "retryMethods": [ "GET", "HEAD" ],
+                    "retryBackoffMilliseconds": 0
+                  },
+        """;
     }
 
     private static void WriteHttpProxyToHttp2UpstreamSite(
@@ -392,7 +464,9 @@ internal static class UpstreamHttp2Tests
         byte[] responseBody,
         CancellationToken cancellationToken,
         IReadOnlyList<SslApplicationProtocol>? applicationProtocols = null,
-        bool readRequest = true)
+        bool readRequest = true,
+        bool closeBeforeResponseHeaders = false,
+        bool closeAfterResponseHeaders = false)
     {
         var listener = new TcpListener(IPAddress.Loopback, port);
         listener.Start();
@@ -468,6 +542,12 @@ internal static class UpstreamHttp2Tests
                 }
             }
 
+            var observation = new Http2UpstreamObservation(stream.NegotiatedApplicationProtocol, requestHeaders, requestBody.ToArray(), null);
+            if (closeBeforeResponseHeaders)
+            {
+                return observation;
+            }
+
             var block = EncodeResponseHeaders(statusCode, responseHeaders);
             await WriteFrameAsync(
                 stream,
@@ -476,6 +556,12 @@ internal static class UpstreamHttp2Tests
                 streamId,
                 block,
                 cancellationToken);
+            if (closeAfterResponseHeaders)
+            {
+                await stream.FlushAsync(cancellationToken);
+                return observation;
+            }
+
             if (responseBody.Length > 0)
             {
                 await WriteFrameAsync(stream, Http2FrameType.Data, Http2Flags.EndStream, streamId, responseBody, cancellationToken);
@@ -491,7 +577,7 @@ internal static class UpstreamHttp2Tests
             {
             }
 
-            return new Http2UpstreamObservation(stream.NegotiatedApplicationProtocol, requestHeaders, requestBody.ToArray(), null);
+            return observation;
         }
         catch (Exception exception) when (exception is AuthenticationException or IOException)
         {

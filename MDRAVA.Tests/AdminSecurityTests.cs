@@ -1,4 +1,5 @@
 using System.Net;
+using System.Reflection;
 using MDRAVA.API.Controllers;
 using MDRAVA.API.Proxy.Configuration;
 using MDRAVA.API.Proxy.Configuration.Loading;
@@ -8,6 +9,7 @@ using MDRAVA.API.Proxy.Configuration.Storage;
 using MDRAVA.API.Proxy.Security;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -17,6 +19,23 @@ namespace MDRAVA.Tests;
 internal static class AdminSecurityTests
 {
     private const string AdminToken = "phase-13-admin-token";
+    private static readonly string[] KnownAdminEndpointPaths =
+    [
+        "/admin/proxy/status",
+        "/admin/proxy/config/normalize",
+        "/admin/proxy/config/reload",
+        "/admin/proxy/config/validate",
+        "/admin/proxy/config/active",
+        "/admin/proxy/config/effective",
+        "/admin/proxy/config/lint",
+        "/admin/proxy/routes/match",
+        "/admin/proxy/diagnostics/recent",
+        "/admin/proxy/metrics",
+        "/admin/proxy/cache/status",
+        "/admin/proxy/cache/clear",
+        "/admin/proxy/acme/status",
+        "/admin/proxy/audit/recent"
+    ];
 
     public static void DefaultAdminBindIsLocalhostOnly()
     {
@@ -119,22 +138,7 @@ internal static class AdminSecurityTests
 
     public static async Task KnownAdminEndpointPathsRequireAuthentication()
     {
-        var paths = new[]
-        {
-            "/admin/proxy/status",
-            "/admin/proxy/config/effective",
-            "/admin/proxy/config/reload",
-            "/admin/proxy/config/lint",
-            "/admin/proxy/routes/match",
-            "/admin/proxy/diagnostics/recent",
-            "/admin/proxy/metrics",
-            "/admin/proxy/cache/status",
-            "/admin/proxy/cache/clear",
-            "/admin/proxy/acme/status",
-            "/admin/proxy/audit/recent"
-        };
-
-        foreach (var path in paths)
+        foreach (var path in KnownAdminEndpointPaths)
         {
             var store = CreateStoreWithAdminAuthentication();
             var audit = new AdminAuditStore();
@@ -155,6 +159,80 @@ internal static class AdminSecurityTests
             AssertEx.Equal(StatusCodes.Status401Unauthorized, context.Response.StatusCode);
             AssertEx.Equal("missing", audit.Recent(1)[0].AuthResult);
         }
+    }
+
+    public static void KnownAdminEndpointInventoryMatchesControllerRoutes()
+    {
+        var discovered = DiscoverAdminEndpointPaths();
+
+        AssertEx.Equal(
+            string.Join("\n", KnownAdminEndpointPaths.Order(StringComparer.Ordinal)),
+            string.Join("\n", discovered.Order(StringComparer.Ordinal)));
+    }
+
+    public static async Task KnownAdminEndpointPathsAcceptBearerAndApiKey()
+    {
+        foreach (var path in KnownAdminEndpointPaths)
+        {
+            foreach (var useBearer in new[] { true, false })
+            {
+                var store = CreateStoreWithAdminAuthentication();
+                var audit = new AdminAuditStore();
+                var context = CreateAdminContext(path);
+                if (useBearer)
+                {
+                    context.Request.Headers.Authorization = $"Bearer {AdminToken}";
+                }
+                else
+                {
+                    context.Request.Headers[AdminAuthenticationMiddleware.AdminApiKeyHeaderName] = AdminToken;
+                }
+
+                var nextCalled = false;
+                var middleware = CreateMiddleware(
+                    store,
+                    audit,
+                    httpContext =>
+                    {
+                        nextCalled = true;
+                        httpContext.Response.StatusCode = StatusCodes.Status204NoContent;
+                        return Task.CompletedTask;
+                    });
+
+                await middleware.InvokeAsync(context);
+
+                AssertEx.True(nextCalled, path);
+                AssertEx.Equal(StatusCodes.Status204NoContent, context.Response.StatusCode);
+                AssertEx.Equal("valid", audit.Recent(1)[0].AuthResult);
+            }
+        }
+    }
+
+    public static async Task AdminAuthFailureResponseAndAuditDoNotExposePresentedSecrets()
+    {
+        const string badBearer = "bad-bearer-secret";
+        const string badApiKey = "bad-api-key-secret";
+        var store = CreateStoreWithAdminAuthentication();
+        var audit = new AdminAuditStore();
+        var context = CreateAdminContext("/admin/proxy/status");
+        context.Request.QueryString = new QueryString("?token=query-secret");
+        context.Request.Headers.Authorization = $"Bearer {badBearer}";
+        context.Request.Headers[AdminAuthenticationMiddleware.AdminApiKeyHeaderName] = badApiKey;
+        var middleware = CreateMiddleware(store, audit, _ => Task.CompletedTask);
+
+        await middleware.InvokeAsync(context);
+
+        context.Response.Body.Position = 0;
+        using var reader = new StreamReader(context.Response.Body, leaveOpen: true);
+        var responseBody = await reader.ReadToEndAsync();
+        var auditText = string.Join(Environment.NewLine, audit.Recent(10));
+        AssertEx.Equal(StatusCodes.Status403Forbidden, context.Response.StatusCode);
+        AssertEx.False(responseBody.Contains(badBearer, StringComparison.Ordinal), responseBody);
+        AssertEx.False(responseBody.Contains(badApiKey, StringComparison.Ordinal), responseBody);
+        AssertEx.False(responseBody.Contains("query-secret", StringComparison.Ordinal), responseBody);
+        AssertEx.False(auditText.Contains(badBearer, StringComparison.Ordinal), auditText);
+        AssertEx.False(auditText.Contains(badApiKey, StringComparison.Ordinal), auditText);
+        AssertEx.False(auditText.Contains("query-secret", StringComparison.Ordinal), auditText);
     }
 
     public static void AdminAuditCapacityEvictsOldestEntries()
@@ -285,6 +363,47 @@ internal static class AdminSecurityTests
         context.Response.Body = new MemoryStream();
         context.Connection.RemoteIpAddress = IPAddress.Parse("127.0.0.1");
         return context;
+    }
+
+    private static IReadOnlyList<string> DiscoverAdminEndpointPaths()
+    {
+        return typeof(ProxyStatusController).Assembly.GetTypes()
+            .Where(static type => typeof(ControllerBase).IsAssignableFrom(type))
+            .SelectMany(static type =>
+            {
+                var controllerTemplates = type.GetCustomAttributes<RouteAttribute>()
+                    .Select(static attribute => NormalizeRouteTemplate(attribute.Template))
+                    .ToArray();
+                if (controllerTemplates.Length == 0)
+                {
+                    return [];
+                }
+
+                return type.GetMethods(BindingFlags.Instance | BindingFlags.Public)
+                    .SelectMany(method => method.GetCustomAttributes()
+                        .OfType<IRouteTemplateProvider>()
+                        .SelectMany(attribute => controllerTemplates.Select(controller =>
+                            CombineRouteTemplates(controller, NormalizeRouteTemplate(attribute.Template)))))
+                    .Where(static path => path.StartsWith("/admin/", StringComparison.OrdinalIgnoreCase));
+            })
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private static string NormalizeRouteTemplate(string? template)
+    {
+        return string.IsNullOrWhiteSpace(template)
+            ? ""
+            : template.Trim().Trim('/');
+    }
+
+    private static string CombineRouteTemplates(string controllerTemplate, string methodTemplate)
+    {
+        var combined = string.IsNullOrWhiteSpace(methodTemplate)
+            ? controllerTemplate
+            : $"{controllerTemplate.TrimEnd('/')}/{methodTemplate.TrimStart('/')}";
+        return "/" + combined.Trim('/');
     }
 
     private static AdminAuditEvent Event(string path, int statusCode)

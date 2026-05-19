@@ -842,6 +842,126 @@ internal static class ProxyIntegrationTests
         }
     }
 
+    public static async Task ConcurrentClientAdmissionLimitRejectsLimitPlusOneAndRecovers()
+    {
+        var proxyPort = GetFreeTcpPort();
+        var upstreamPort = GetFreeTcpPort();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var upstreamStop = new CancellationTokenSource();
+        var dataDirectory = Path.Combine(Path.GetTempPath(), $"mdrava-admission-{Guid.NewGuid():N}");
+
+        try
+        {
+            ConfigurationTests.WriteSite(dataDirectory, "admission.json", proxyPort, upstreamPort);
+            ConfigurationTests.WriteOperationalConfig(
+                dataDirectory,
+                clientRequestHeadTimeoutMs: 5000,
+                maxActiveClientConnections: 1);
+            var upstreamTask = RunReusableHttpUpstreamAsync(upstreamPort, "ok", upstreamStop.Token);
+            using var host = BuildProxyHost(dataDirectory);
+            await host.StartAsync(timeout.Token);
+            await WaitForProxyRuntimeAsync(host, timeout.Token);
+            var metrics = host.Services.GetRequiredService<ProxyMetrics>();
+
+            using var heldClient = new TcpClient();
+            await heldClient.ConnectAsync(IPAddress.Loopback, proxyPort, timeout.Token);
+            await WaitForMetricsAsync(metrics, static snapshot => snapshot.ActiveConnections == 1, timeout.Token);
+
+            using var rejectedClient = new TcpClient();
+            await rejectedClient.ConnectAsync(IPAddress.Loopback, proxyPort, timeout.Token);
+            await WaitForMetricsAsync(metrics, static snapshot => snapshot.ConnectionAdmissionRejections == 1, timeout.Token);
+
+            heldClient.Dispose();
+            await WaitForMetricsAsync(metrics, static snapshot => snapshot.ActiveConnections == 0, timeout.Token);
+
+            var response = await SendSingleRequestAsync(
+                proxyPort,
+                "GET /after-admission HTTP/1.1\r\nHost: admission.test\r\nConnection: close\r\n\r\n",
+                timeout.Token);
+
+            await host.StopAsync(CancellationToken.None);
+            await upstreamStop.CancelAsync();
+            var upstreamRequests = await upstreamTask.WaitAsync(timeout.Token);
+            var snapshot = metrics.Snapshot();
+
+            AssertEx.True(response.Contains("200 OK", StringComparison.Ordinal), response);
+            AssertEx.True(response.EndsWith("ok", StringComparison.Ordinal), response);
+            AssertEx.Equal(1L, snapshot.ConnectionAdmissionRejections);
+            AssertEx.Equal(0L, snapshot.ActiveConnections);
+            AssertEx.Equal(1, upstreamRequests);
+        }
+        finally
+        {
+            await upstreamStop.CancelAsync();
+            DeleteDirectory(dataDirectory);
+        }
+    }
+
+    public static async Task ConcurrentPerIpRateLimitAllowsOnlyConfiguredBoundary()
+    {
+        var proxyPort = GetFreeTcpPort();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var dataDirectory = Path.Combine(Path.GetTempPath(), $"mdrava-rate-concurrent-{Guid.NewGuid():N}");
+
+        try
+        {
+            ConfigurationTests.WriteCustomSite(
+                dataDirectory,
+                "rate.json",
+                $$"""
+                {
+                  "name": "rate",
+                  "listeners": [
+                    {
+                      "name": "main",
+                      "address": "127.0.0.1",
+                      "port": {{proxyPort}}
+                    }
+                  ],
+                  "host": "rate.test",
+                  "routes": [
+                    {
+                      "name": "static",
+                      "pathPrefix": "/",
+                      "action": "staticResponse",
+                      "staticResponse": {
+                        "statusCode": 200,
+                        "contentType": "text/plain",
+                        "body": "ok"
+                      }
+                    }
+                  ]
+                }
+                """);
+            ConfigurationTests.WriteOperationalConfig(dataDirectory, requestsPerMinutePerIp: 2);
+            using var host = BuildProxyHost(dataDirectory);
+            await host.StartAsync(timeout.Token);
+            await WaitForProxyRuntimeAsync(host, timeout.Token);
+
+            var responses = await Task.WhenAll(Enumerable.Range(0, 4).Select(index =>
+                SendSingleRequestAsync(
+                    proxyPort,
+                    $"GET /rate-{index} HTTP/1.1\r\nHost: rate.test\r\nConnection: close\r\n\r\n",
+                    timeout.Token)));
+
+            await WaitForMetricsAsync(
+                host.Services.GetRequiredService<ProxyMetrics>(),
+                static snapshot => snapshot.RateLimitedRequests == 2,
+                timeout.Token);
+            await host.StopAsync(CancellationToken.None);
+            var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
+
+            AssertEx.Equal(2, responses.Count(static response => response.Contains("200 OK", StringComparison.Ordinal)));
+            AssertEx.Equal(2, responses.Count(static response => response.Contains("429 Too Many Requests", StringComparison.Ordinal)));
+            AssertEx.Equal(2L, metrics.RateLimitedRequests);
+            AssertEx.Equal(0L, metrics.ActiveConnections);
+        }
+        finally
+        {
+            DeleteDirectory(dataDirectory);
+        }
+    }
+
     public static async Task TimesOutIncompleteRequestHead()
     {
         var result = await RunProxyScenarioAsync(

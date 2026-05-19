@@ -415,6 +415,78 @@ internal static class UpstreamHttp3Tests
         AssertEx.True(result.Metrics.ActiveUpstreamHttp3Connections >= 1, result.Metrics.ActiveUpstreamHttp3Connections.ToString());
     }
 
+    public static async Task Http3UpstreamCloseBeforeResponseHeadersReturnsSafeFailure()
+    {
+        if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
+        {
+            return;
+        }
+
+        var result = await RunProxyScenarioAsync(
+            "/close-before-headers",
+            200,
+            [("content-length", "2")],
+            Encoding.ASCII.GetBytes("ok"),
+            closeBeforeResponseHeaders: true);
+
+        AssertEx.True(
+            result.ClientResponse.Contains("502 Bad Gateway", StringComparison.Ordinal)
+            || result.ClientResponse.Contains("504 Gateway Timeout", StringComparison.Ordinal),
+            result.ClientResponse);
+        AssertEx.Equal("GET", result.Upstream.RequestHeaders[":method"]);
+        AssertEx.Equal("/close-before-headers", result.Upstream.RequestHeaders[":path"]);
+        AssertEx.Equal(0L, result.Metrics.ActiveUpstreamHttp3Streams);
+    }
+
+    public static async Task Http3UpstreamCloseAfterResponseHeadersReleasesStreamSlot()
+    {
+        if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
+        {
+            return;
+        }
+
+        var result = await RunProxyScenarioAsync(
+            "/close-after-headers",
+            200,
+            [("content-length", "8")],
+            Encoding.ASCII.GetBytes("ignored"),
+            routeExtraJson: RetryJson(),
+            closeAfterResponseHeaders: true);
+
+        AssertEx.True(result.ClientResponse.Contains("200 OK", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.Equal("GET", result.Upstream.RequestHeaders[":method"]);
+        AssertEx.Equal(0L, result.Metrics.RetryAttempts);
+        AssertEx.Equal(0L, result.Metrics.ActiveUpstreamHttp3Streams);
+    }
+
+    public static async Task Http3StreamingPostBodyIsNotRetriedAfterUpstreamFailure()
+    {
+        if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
+        {
+            return;
+        }
+
+        var result = await RunProxyScenarioAsync(
+            "/post-failure",
+            200,
+            [("content-length", "2")],
+            Encoding.ASCII.GetBytes("ok"),
+            method: "POST",
+            requestBody: "streamed-h3",
+            routeExtraJson: RetryJson(),
+            closeBeforeResponseHeaders: true);
+
+        AssertEx.True(
+            result.ClientResponse.Contains("502 Bad Gateway", StringComparison.Ordinal)
+            || result.ClientResponse.Contains("504 Gateway Timeout", StringComparison.Ordinal),
+            result.ClientResponse);
+        AssertEx.Equal("POST", result.Upstream.RequestHeaders[":method"]);
+        AssertEx.Equal("streamed-h3", Encoding.ASCII.GetString(result.Upstream.RequestBody));
+        AssertEx.Equal(0L, result.Metrics.RetryAttempts);
+        AssertEx.True(result.Metrics.RetrySkipped.Any(static skipped => skipped.Reason is "method" or "request_body"));
+        AssertEx.Equal(0L, result.Metrics.ActiveUpstreamHttp3Streams);
+    }
+
     private static async Task<ProxyScenarioResult> RunProxyScenarioAsync(
         string target,
         int statusCode,
@@ -425,7 +497,9 @@ internal static class UpstreamHttp3Tests
         string requestBody = "",
         string routeExtraJson = "",
         bool sendSecondRequest = false,
-        bool malformedResponseHeaders = false)
+        bool malformedResponseHeaders = false,
+        bool closeBeforeResponseHeaders = false,
+        bool closeAfterResponseHeaders = false)
     {
         var proxyPort = GetFreeTcpPort();
         var upstreamPort = GetFreeUdpPort();
@@ -438,7 +512,9 @@ internal static class UpstreamHttp3Tests
             responseHeaders,
             responseBody,
             timeout.Token,
-            malformedResponseHeaders);
+            malformedResponseHeaders,
+            closeBeforeResponseHeaders,
+            closeAfterResponseHeaders);
         using var host = BuildProxyHost(temp.Path);
         await host.StartAsync(timeout.Token);
 
@@ -461,6 +537,19 @@ internal static class UpstreamHttp3Tests
         {
             await host.StopAsync(CancellationToken.None);
         }
+    }
+
+    private static string RetryJson()
+    {
+        return """
+                  "retry": {
+                    "enabled": true,
+                    "maxAttempts": 2,
+                    "retryOnConnectFailure": true,
+                    "retryMethods": [ "GET", "HEAD" ],
+                    "retryBackoffMilliseconds": 0
+                  },
+        """;
     }
 
     private static async Task<ReusableProxyScenarioResult> RunReusableProxyScenarioAsync(
@@ -582,7 +671,9 @@ internal static class UpstreamHttp3Tests
         IReadOnlyList<(string Name, string Value)> responseHeaders,
         byte[] responseBody,
         CancellationToken cancellationToken,
-        bool malformedResponseHeaders = false)
+        bool malformedResponseHeaders = false,
+        bool closeBeforeResponseHeaders = false,
+        bool closeAfterResponseHeaders = false)
     {
         await using var listener = await CreateQuicListenerAsync(port, cancellationToken);
         try
@@ -599,7 +690,19 @@ internal static class UpstreamHttp3Tests
 
                 await using var ownedStream = stream;
                 var observation = await ReadRequestAsync(stream, cancellationToken);
-                await WriteResponseAsync(stream, statusCode, responseHeaders, responseBody, cancellationToken, malformedResponseHeaders);
+                if (closeBeforeResponseHeaders)
+                {
+                    return observation;
+                }
+
+                await WriteResponseAsync(
+                    stream,
+                    statusCode,
+                    responseHeaders,
+                    responseBody,
+                    cancellationToken,
+                    malformedResponseHeaders,
+                    closeAfterResponseHeaders);
                 return observation;
             }
         }
@@ -839,7 +942,8 @@ internal static class UpstreamHttp3Tests
         IReadOnlyList<(string Name, string Value)> responseHeaders,
         ReadOnlyMemory<byte> responseBody,
         CancellationToken cancellationToken,
-        bool malformedResponseHeaders)
+        bool malformedResponseHeaders,
+        bool closeAfterHeaders = false)
     {
         List<Http1HeaderField> headers = malformedResponseHeaders
             ? []
@@ -853,6 +957,11 @@ internal static class UpstreamHttp3Tests
         using var head = new MemoryStream();
         Http3PreviewCodec.WriteFrame(head, Http3PreviewCodec.HeadersFrame, block);
         await stream.WriteAsync(head.ToArray(), completeWrites: responseBody.Length == 0, cancellationToken);
+        if (closeAfterHeaders)
+        {
+            return;
+        }
+
         if (responseBody.Length > 0)
         {
             using var body = new MemoryStream();

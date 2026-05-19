@@ -5,6 +5,7 @@ using System.Net.Security;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using MDRAVA.API.Proxy.Configuration.Runtime;
+using MDRAVA.API.Proxy.Configuration.Storage;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Tls;
 
@@ -12,13 +13,16 @@ namespace MDRAVA.API.Proxy.Http3;
 
 public sealed class SystemHttp3QuicListenerFactory : IHttp3QuicListenerFactory
 {
+    private readonly IProxyConfigurationStore _configurationStore;
     private readonly ProxyMetrics _metrics;
     private readonly ILogger<SystemHttp3QuicListenerFactory> _logger;
 
     public SystemHttp3QuicListenerFactory(
+        IProxyConfigurationStore configurationStore,
         ProxyMetrics metrics,
         ILogger<SystemHttp3QuicListenerFactory> logger)
     {
+        _configurationStore = configurationStore;
         _metrics = metrics;
         _logger = logger;
     }
@@ -44,7 +48,11 @@ public sealed class SystemHttp3QuicListenerFactory : IHttp3QuicListenerFactory
             ApplicationProtocols = ListenerProtocolAdvertisement.BuildHttp3Alpn(listener),
             ConnectionOptionsCallback = (_, clientHello, _) =>
             {
-                var certificate = SelectCertificate(snapshot, listener, clientHello.ServerName);
+                var activeSnapshot = _configurationStore.TryGetSnapshot(out var currentSnapshot) && currentSnapshot is not null
+                    ? currentSnapshot
+                    : snapshot;
+                var activeListener = ResolveListener(activeSnapshot, listener);
+                var certificate = SelectCertificate(activeSnapshot, activeListener, clientHello.ServerName);
                 if (certificate is null)
                 {
                     _metrics.TlsNoCertificateForSni();
@@ -62,13 +70,13 @@ public sealed class SystemHttp3QuicListenerFactory : IHttp3QuicListenerFactory
                         EnabledSslProtocols = SslProtocols.Tls13,
                         ClientCertificateRequired = false,
                         CertificateRevocationCheckMode = X509RevocationMode.NoCheck,
-                        ApplicationProtocols = ListenerProtocolAdvertisement.BuildHttp3Alpn(listener),
+                        ApplicationProtocols = ListenerProtocolAdvertisement.BuildHttp3Alpn(activeListener),
                         ServerCertificate = certificate
                     },
-                    MaxInboundBidirectionalStreams = Math.Max(1, listener.Http2Limits.MaxConcurrentStreams),
+                    MaxInboundBidirectionalStreams = Math.Max(1, activeListener.Http2Limits.MaxConcurrentStreams),
                     MaxInboundUnidirectionalStreams = 8,
-                    IdleTimeout = snapshot.Timeouts.ClientKeepAliveIdleTimeout,
-                    HandshakeTimeout = snapshot.Timeouts.TlsHandshakeTimeout,
+                    IdleTimeout = activeSnapshot.Timeouts.ClientKeepAliveIdleTimeout,
+                    HandshakeTimeout = activeSnapshot.Timeouts.TlsHandshakeTimeout,
                     DefaultCloseErrorCode = 0x100,
                     DefaultStreamErrorCode = 0x100
                 });
@@ -76,6 +84,16 @@ public sealed class SystemHttp3QuicListenerFactory : IHttp3QuicListenerFactory
         };
 
         return await QuicListener.ListenAsync(options, cancellationToken);
+    }
+
+    private static RuntimeListener ResolveListener(ProxyConfigurationSnapshot snapshot, RuntimeListener boundListener)
+    {
+        return snapshot.Listeners.FirstOrDefault(listener =>
+            string.Equals(listener.Name, boundListener.Name, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(listener.Address, boundListener.Address, StringComparison.OrdinalIgnoreCase)
+            && listener.Port == boundListener.Port
+            && listener.Transport == boundListener.Transport)
+            ?? boundListener;
     }
 
     private static X509Certificate2? SelectCertificate(

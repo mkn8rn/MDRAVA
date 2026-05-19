@@ -266,6 +266,120 @@ internal static class ClientHttp3PreviewTests
         }
     }
 
+    public static async Task SuccessfulHttp3CertificateReloadKeepsQuicListenerAndUsesNewCertificate()
+    {
+        if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
+        {
+            return;
+        }
+
+        using var temp = TemporaryDirectory.Create();
+        var port = GetFreeTcpUdpPort();
+        WriteCertificateConfig(temp.Path);
+        WriteHttp3Site(temp.Path, port, "http1AndHttp3Preview", staticBody: "cert-live");
+        using var host = BuildProxyHost(temp.Path);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+
+        await host.StartAsync(timeout.Token);
+        try
+        {
+            var runtime = host.Services.GetRequiredService<ProxyRuntimeState>();
+            var before = await WaitForListenerAsync(runtime, "main", "quic", ProxyListenerState.Active, timeout.Token);
+            var beforeSubject = "";
+            await using var activeConnection = await ConnectHttp3Async(port, timeout.Token, subject => beforeSubject = subject);
+            await using (var beforeStream = await activeConnection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional, timeout.Token))
+            {
+                await WriteHttp3RequestAsync(beforeStream, "GET", "/before-cert", null, timeout.Token);
+                var beforeResponse = DecodeHttp3Response(await ReadToEndAsync(beforeStream, timeout.Token));
+                AssertEx.Equal("200", HeaderValue(beforeResponse.Headers, ":status"));
+                AssertEx.Equal("cert-live", beforeResponse.Body);
+            }
+
+            TestCertificates.WriteSelfSignedPfx(Path.Combine(temp.Path, "certs", "home.pfx"), "localhost-reloaded", "secret");
+            var reload = await host.Services.GetRequiredService<IProxyConfigurationReloadService>().ReloadAsync(timeout.Token);
+            var after = await WaitForListenerAsync(runtime, "main", "quic", ProxyListenerState.Active, timeout.Token);
+            await using (var activeAfterStream = await activeConnection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional, timeout.Token))
+            {
+                await WriteHttp3RequestAsync(activeAfterStream, "GET", "/after-cert-active", null, timeout.Token);
+                var activeAfterResponse = DecodeHttp3Response(await ReadToEndAsync(activeAfterStream, timeout.Token));
+                AssertEx.Equal("200", HeaderValue(activeAfterResponse.Headers, ":status"));
+                AssertEx.Equal("cert-live", activeAfterResponse.Body);
+            }
+
+            var afterSubject = "";
+            var afterResponse = await SendHttp3RequestAsync(
+                port,
+                "GET",
+                "/after-cert",
+                timeout.Token,
+                certificateSubjectObserver: subject => afterSubject = subject);
+
+            AssertEx.True(reload.Succeeded, string.Join("; ", reload.Errors));
+            AssertEx.Equal("200", HeaderValue(afterResponse.Headers, ":status"));
+            AssertEx.Equal("cert-live", afterResponse.Body);
+            AssertEx.True(beforeSubject.Contains("CN=localhost", StringComparison.Ordinal), beforeSubject);
+            AssertEx.True(afterSubject.Contains("CN=localhost-reloaded", StringComparison.Ordinal), afterSubject);
+            AssertEx.Equal(before.StartedAtUtc, after.StartedAtUtc);
+            await activeConnection.CloseAsync(0, CancellationToken.None);
+        }
+        finally
+        {
+            await host.StopAsync(CancellationToken.None);
+        }
+    }
+
+    public static async Task FailedHttp3CertificateReloadPreservesPreviousQuicCertificate()
+    {
+        if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
+        {
+            return;
+        }
+
+        using var temp = TemporaryDirectory.Create();
+        var port = GetFreeTcpUdpPort();
+        WriteCertificateConfig(temp.Path);
+        WriteHttp3Site(temp.Path, port, "http1AndHttp3Preview", staticBody: "cert-live");
+        using var host = BuildProxyHost(temp.Path);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+
+        await host.StartAsync(timeout.Token);
+        try
+        {
+            var runtime = host.Services.GetRequiredService<ProxyRuntimeState>();
+            var before = await WaitForListenerAsync(runtime, "main", "quic", ProxyListenerState.Active, timeout.Token);
+            var beforeSubject = "";
+            var beforeResponse = await SendHttp3RequestAsync(
+                port,
+                "GET",
+                "/before-failed-cert",
+                timeout.Token,
+                certificateSubjectObserver: subject => beforeSubject = subject);
+            TestCertificates.WriteSelfSignedPfx(Path.Combine(temp.Path, "certs", "home.pfx"), "localhost-reloaded", "secret");
+            File.WriteAllText(Path.Combine(temp.Path, "config", "sites", "broken.json"), "{ nope");
+
+            var reload = await host.Services.GetRequiredService<IProxyConfigurationReloadService>().ReloadAsync(timeout.Token);
+            var after = await WaitForListenerAsync(runtime, "main", "quic", ProxyListenerState.Active, timeout.Token);
+            var afterSubject = "";
+            var afterResponse = await SendHttp3RequestAsync(
+                port,
+                "GET",
+                "/after-failed-cert",
+                timeout.Token,
+                certificateSubjectObserver: subject => afterSubject = subject);
+
+            AssertEx.False(reload.Succeeded);
+            AssertEx.Equal("200", HeaderValue(beforeResponse.Headers, ":status"));
+            AssertEx.Equal("200", HeaderValue(afterResponse.Headers, ":status"));
+            AssertEx.True(beforeSubject.Contains("CN=localhost", StringComparison.Ordinal), beforeSubject);
+            AssertEx.True(afterSubject.Contains("CN=localhost", StringComparison.Ordinal), afterSubject);
+            AssertEx.Equal(before.StartedAtUtc, after.StartedAtUtc);
+        }
+        finally
+        {
+            await host.StopAsync(CancellationToken.None);
+        }
+    }
+
     public static void StatusAndEffectiveConfigMarkHttp3AsExperimentalPreview()
     {
         var snapshot = ProxyConfigurationMapper.ToRuntimeSnapshot(
@@ -1982,9 +2096,10 @@ internal static class ClientHttp3PreviewTests
         bool goAwayAfterHeaders = false,
         bool duplicateHeadersAfterHeaders = false,
         bool unknownFrameBeforeHeaders = false,
-        bool maxPushAfterHeaders = false)
+        bool maxPushAfterHeaders = false,
+        Action<string>? certificateSubjectObserver = null)
     {
-        await using var connection = await ConnectHttp3Async(port, cancellationToken);
+        await using var connection = await ConnectHttp3Async(port, cancellationToken, certificateSubjectObserver);
 
         await using var stream = await connection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional, cancellationToken);
         await WriteHttp3RequestAsync(
@@ -2198,7 +2313,8 @@ internal static class ClientHttp3PreviewTests
 
     private static ValueTask<QuicConnection> ConnectHttp3Async(
         int port,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Action<string>? certificateSubjectObserver = null)
     {
         return QuicConnection.ConnectAsync(
             new QuicClientConnectionOptions
@@ -2208,7 +2324,15 @@ internal static class ClientHttp3PreviewTests
                 {
                     TargetHost = "localhost",
                     ApplicationProtocols = [Http3Alpn],
-                    RemoteCertificateValidationCallback = static (_, _, _, _) => true
+                    RemoteCertificateValidationCallback = (_, certificate, _, _) =>
+                    {
+                        if (certificate is not null && certificateSubjectObserver is not null)
+                        {
+                            certificateSubjectObserver(certificate.Subject);
+                        }
+
+                        return true;
+                    }
                 },
                 MaxInboundBidirectionalStreams = 4,
                 MaxInboundUnidirectionalStreams = 4,
