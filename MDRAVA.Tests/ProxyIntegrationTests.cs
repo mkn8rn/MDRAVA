@@ -112,6 +112,28 @@ internal static class ProxyIntegrationTests
         AssertEx.True(result.UpstreamRequest.Contains("X-Trailer: ok", StringComparison.Ordinal), result.UpstreamRequest);
     }
 
+    public static async Task AcceptsChunkExtensionsAndForwardsChunkedBody()
+    {
+        var result = await RunProxyScenarioAsync(
+            "POST /chunk-ext HTTP/1.1\r\nHost: chunk.test\r\nTransfer-Encoding: chunked\r\n\r\n5;foo=bar\r\nhello\r\n0\r\n\r\n",
+            "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok");
+
+        AssertEx.True(result.ClientResponse.Contains("200 OK", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.True(result.UpstreamRequest.Contains("5;foo=bar\r\nhello", StringComparison.Ordinal), result.UpstreamRequest);
+        AssertEx.True(result.UpstreamRequest.EndsWith("0\r\n\r\n", StringComparison.Ordinal), result.UpstreamRequest);
+    }
+
+    public static async Task ForwardsDeclaredChunkedRequestTrailer()
+    {
+        var result = await RunProxyScenarioAsync(
+            "POST /trailers HTTP/1.1\r\nHost: chunk.test\r\nTransfer-Encoding: chunked\r\nTrailer: X-Trailer\r\n\r\n5\r\nhello\r\n0\r\nX-Trailer: ok\r\n\r\n",
+            "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok");
+
+        AssertEx.True(result.ClientResponse.Contains("200 OK", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.True(result.UpstreamRequest.Contains("Trailer: X-Trailer", StringComparison.OrdinalIgnoreCase), result.UpstreamRequest);
+        AssertEx.True(result.UpstreamRequest.Contains("X-Trailer: ok", StringComparison.Ordinal), result.UpstreamRequest);
+    }
+
     public static async Task DoesNotRelayHeadResponseBody()
     {
         var result = await RunProxyScenarioAsync(
@@ -662,6 +684,41 @@ internal static class ProxyIntegrationTests
         AssertEx.Equal("RequestPayloadTooLarge", result.Diagnostics[0].FailureKind);
     }
 
+    public static async Task RequestBodyExactlyAtConfiguredMaxIsAccepted()
+    {
+        var result = await RunProxyScenarioAsync(
+            "POST /body-max HTTP/1.1\r\nHost: body.test\r\nContent-Length: 5\r\n\r\nabcde",
+            "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
+            maxRequestBodyBytes: 5);
+
+        AssertEx.True(result.ClientResponse.Contains("200 OK", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.True(result.UpstreamRequest.EndsWith("abcde", StringComparison.Ordinal), result.UpstreamRequest);
+    }
+
+    public static async Task ChunkedRequestBodyExactlyAtConfiguredMaxIsAccepted()
+    {
+        var result = await RunProxyScenarioAsync(
+            "POST /chunk-max HTTP/1.1\r\nHost: body.test\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n0\r\n\r\n",
+            "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
+            maxRequestBodyBytes: 5);
+
+        AssertEx.True(result.ClientResponse.Contains("200 OK", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.True(result.UpstreamRequest.Contains("5\r\nhello\r\n0\r\n\r\n", StringComparison.Ordinal), result.UpstreamRequest);
+    }
+
+    public static async Task RequestBodyConfiguredMaxPlusOneIsRejected()
+    {
+        var result = await RunProxyScenarioAsync(
+            "POST /body-max HTTP/1.1\r\nHost: body.test\r\nContent-Length: 6\r\n\r\nabcdef",
+            "HTTP/1.1 500 Should Not Happen\r\nContent-Length: 0\r\n\r\n",
+            expectUpstreamConnection: false,
+            maxRequestBodyBytes: 5);
+
+        AssertEx.True(result.ClientResponse.Contains("413 Payload Too Large", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.Equal("", result.UpstreamRequest);
+        AssertEx.Equal("RequestPayloadTooLarge", result.Diagnostics[0].FailureKind);
+    }
+
     public static async Task ChunkedRequestBodySizeIsRejected()
     {
         var result = await RunProxyScenarioAsync(
@@ -747,6 +804,18 @@ internal static class ProxyIntegrationTests
         AssertEx.Equal(1L, result.Metrics.ClientRequestBodyTimeouts);
     }
 
+    public static async Task TimesOutMissingTerminatingChunkAfterCompleteChunk()
+    {
+        var result = await RunProxyScenarioAsync(
+            "POST /slow-chunk HTTP/1.1\r\nHost: chunk.test\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n",
+            "HTTP/1.1 500 Should Not Happen\r\nContent-Length: 0\r\n\r\n",
+            readBodyFromUpstreamRequest: false,
+            timeoutMs: 150);
+
+        AssertEx.True(result.ClientResponse.Contains("408 Request Timeout", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.Equal(1L, result.Metrics.ClientRequestBodyTimeouts);
+    }
+
     public static async Task UnavailableUpstreamProducesBadGateway()
     {
         var result = await RunProxyScenarioAsync(
@@ -777,6 +846,20 @@ internal static class ProxyIntegrationTests
         var result = await RunProxyScenarioAsync(
             "GET /short HTTP/1.1\r\nHost: upstream.test\r\n\r\n",
             "HTTP/1.1 200 OK\r\nContent-Length: 10\r\n\r\nhello",
+            readBodyFromUpstreamRequest: false,
+            timeoutMs: 150);
+
+        AssertEx.True(result.ClientResponse.Contains("200 OK", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.False(result.ClientResponse.Contains("502 Bad Gateway", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.False(result.ClientResponse.Contains("504 Gateway Timeout", StringComparison.Ordinal), result.ClientResponse);
+        AssertEx.Equal(1L, result.Metrics.UpstreamBodyRelayFailures);
+    }
+
+    public static async Task UpstreamChunkedEarlyCloseClosesAfterStartedResponse()
+    {
+        var result = await RunProxyScenarioAsync(
+            "GET /short-chunk HTTP/1.1\r\nHost: upstream.test\r\n\r\n",
+            "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhe",
             readBodyFromUpstreamRequest: false,
             timeoutMs: 150);
 
@@ -991,6 +1074,23 @@ internal static class ProxyIntegrationTests
 
         AssertEx.True(result.ClientResponses[0].EndsWith("first", StringComparison.Ordinal), result.ClientResponses[0]);
         AssertEx.True(result.ClientResponses[1].Contains("400 Bad Request", StringComparison.Ordinal), result.ClientResponses[1]);
+    }
+
+    public static async Task PipelinedValidThenMalformedRequestDoesNotReachUpstreamTwice()
+    {
+        var result = await RunPersistentClientScenarioAsync(
+            [
+                "GET /first HTTP/1.1\r\nHost: malformed.test\r\n\r\n",
+                "BAD\r\n\r\n"
+            ],
+            ["HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nfirst"],
+            readSecondAsRawClose: true);
+
+        AssertEx.Equal(2, result.ClientResponses.Count);
+        AssertEx.True(result.ClientResponses[0].Contains("200 OK", StringComparison.Ordinal), result.ClientResponses[0]);
+        AssertEx.True(result.ClientResponses[1].Contains("400 Bad Request", StringComparison.Ordinal), result.ClientResponses[1]);
+        AssertEx.Equal(1, result.UpstreamRequests.Count);
+        AssertEx.True(result.UpstreamRequests[0].StartsWith("GET /first HTTP/1.1", StringComparison.Ordinal), result.UpstreamRequests[0]);
     }
 
     public static async Task PersistentClientProxiesContentLengthPost()

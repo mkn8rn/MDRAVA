@@ -194,6 +194,89 @@ internal static class UpstreamHttp3Tests
         AssertEx.Equal(0, result.Metrics.UpstreamHttp3PoolConnectionsReused);
     }
 
+    public static async Task UpstreamHttp3PoolStreamLimitExhaustionReturnsSafeFailure()
+    {
+        if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
+        {
+            return;
+        }
+
+        var result = await RunReusableProxyScenarioAsync(
+            requestCount: 9,
+            concurrent: true,
+            expectedUpstreamRequestCount: 8,
+            maxIdleUpstreamConnectionsPerUpstream: 1,
+            upstreamPeerMaxBidirectionalStreams: 16,
+            responseDelay: TimeSpan.FromMilliseconds(200));
+
+        AssertEx.Equal(8, result.Upstream.Requests.Count);
+        AssertEx.True(result.ClientResponses.Count(response => response.Contains("200 OK", StringComparison.Ordinal)) >= 8);
+        AssertEx.True(
+            result.ClientResponses.Any(response => response.Contains("502 Bad Gateway", StringComparison.Ordinal) || response.Contains("504 Gateway Timeout", StringComparison.Ordinal)),
+            string.Join("\n---\n", result.ClientResponses));
+        AssertEx.True(result.Metrics.UpstreamHttp3StreamLimitRejections >= 1, result.Metrics.UpstreamHttp3StreamLimitRejections.ToString());
+    }
+
+    public static async Task ConcurrentHttp3UpstreamReuseReleasesActiveStreamGauge()
+    {
+        if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
+        {
+            return;
+        }
+
+        var result = await RunReusableProxyScenarioAsync(
+            requestCount: 2,
+            concurrent: true);
+
+        AssertEx.True(result.FirstClientResponse.Contains("h3-reuse", StringComparison.Ordinal), result.FirstClientResponse);
+        AssertEx.True(result.SecondClientResponse.Contains("h3-reuse", StringComparison.Ordinal), result.SecondClientResponse);
+        AssertEx.Equal(1, result.Upstream.ConnectionCount);
+        AssertEx.Equal(2, result.Upstream.Requests.Count);
+        AssertEx.Equal(0L, result.Metrics.ActiveUpstreamHttp3Streams);
+    }
+
+    public static async Task UpstreamHttp3StreamResetDoesNotPoisonUnrelatedActiveStream()
+    {
+        if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
+        {
+            return;
+        }
+
+        var result = await RunReusableProxyScenarioAsync(
+            requestCount: 2,
+            concurrent: true,
+            resetFirstStreamBeforeResponse: true);
+
+        AssertEx.Equal(2, result.Upstream.Requests.Count);
+        AssertEx.True(result.ClientResponses.Any(response => response.Contains("200 OK", StringComparison.Ordinal)), string.Join("\n---\n", result.ClientResponses));
+        AssertEx.True(
+            result.ClientResponses.Any(response => response.Contains("502 Bad Gateway", StringComparison.Ordinal) || response.Contains("504 Gateway Timeout", StringComparison.Ordinal)),
+            string.Join("\n---\n", result.ClientResponses));
+        AssertEx.Equal(0L, result.Metrics.ActiveUpstreamHttp3Streams);
+    }
+
+    public static async Task FailedHttp3UpstreamConnectionDoesNotReceiveNewStreams()
+    {
+        if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
+        {
+            return;
+        }
+
+        var result = await RunReusableProxyScenarioAsync(
+            requestCount: 2,
+            concurrent: false,
+            closeConnectionAfterFirstRequest: true);
+
+        AssertEx.True(
+            result.FirstClientResponse.Contains("502 Bad Gateway", StringComparison.Ordinal)
+            || result.FirstClientResponse.Contains("504 Gateway Timeout", StringComparison.Ordinal),
+            result.FirstClientResponse);
+        AssertEx.True(result.SecondClientResponse.Contains("h3-reuse", StringComparison.Ordinal), result.SecondClientResponse);
+        AssertEx.True(result.Upstream.ConnectionCount >= 2, result.Upstream.ConnectionCount.ToString());
+        AssertEx.Equal(2, result.Upstream.Requests.Count);
+        AssertEx.Equal(0L, result.Metrics.ActiveUpstreamHttp3Streams);
+    }
+
     public static async Task Http3UpstreamAlpnFailureDoesNotDowngrade()
     {
         if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
@@ -385,34 +468,39 @@ internal static class UpstreamHttp3Tests
         bool concurrent,
         int? upstreamIdleConnectionLifetimeMs = null,
         TimeSpan? delayBetweenRequests = null,
-        bool sendGoAwayAfterFirstRequest = false)
+        bool sendGoAwayAfterFirstRequest = false,
+        int? expectedUpstreamRequestCount = null,
+        int? maxIdleUpstreamConnectionsPerUpstream = null,
+        int? upstreamPeerMaxBidirectionalStreams = null,
+        TimeSpan? responseDelay = null,
+        bool resetFirstStreamBeforeResponse = false,
+        bool closeConnectionAfterFirstRequest = false)
     {
         var proxyPort = GetFreeTcpPort();
         var upstreamPort = GetFreeUdpPort();
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         using var temp = TemporaryDirectory.Create();
         ConfigurationTests.WriteCustomSite(temp.Path, "upstream-h3.json", SiteJson(proxyPort, upstreamPort));
-        if (upstreamIdleConnectionLifetimeMs.HasValue)
+        if (upstreamIdleConnectionLifetimeMs.HasValue || maxIdleUpstreamConnectionsPerUpstream.HasValue)
         {
-            var config = Directory.CreateDirectory(Path.Combine(temp.Path, "config")).FullName;
-            File.WriteAllText(
-                Path.Combine(config, "proxy.json"),
-                $$"""
-                {
-                  "timeouts": {
-                    "upstreamIdleConnectionLifetimeMs": {{upstreamIdleConnectionLifetimeMs.Value}}
-                  }
-                }
-                """);
+            ConfigurationTests.WriteOperationalConfig(
+                temp.Path,
+                upstreamIdleConnectionLifetimeMs: upstreamIdleConnectionLifetimeMs ?? 60000,
+                maxIdleUpstreamConnectionsPerUpstream: maxIdleUpstreamConnectionsPerUpstream ?? 16);
         }
 
+        var expectedRequests = expectedUpstreamRequestCount ?? requestCount;
         var upstreamTask = RunReusableHttp3UpstreamAsync(
             upstreamPort,
-            requestCount,
+            expectedRequests,
             [("content-length", "8")],
             Encoding.ASCII.GetBytes("h3-reuse"),
             holdResponsesUntilAllRequestsRead: concurrent,
             sendGoAwayAfterFirstRequest,
+            responseDelay,
+            resetFirstStreamBeforeResponse,
+            closeConnectionAfterFirstRequest,
+            upstreamPeerMaxBidirectionalStreams,
             timeout.Token);
         using var host = BuildProxyHost(temp.Path);
         await host.StartAsync(timeout.Token);
@@ -420,29 +508,29 @@ internal static class UpstreamHttp3Tests
         try
         {
             var request = "GET /reuse HTTP/1.1\r\nHost: home.test\r\nConnection: close\r\n\r\n";
-            string first;
-            string second;
+            List<string> responses = [];
             if (concurrent)
             {
-                var firstTask = SendSingleRequestAsync(proxyPort, request, timeout.Token);
-                var secondTask = SendSingleRequestAsync(proxyPort, request, timeout.Token);
-                first = await firstTask;
-                second = await secondTask;
+                var tasks = Enumerable.Range(0, requestCount)
+                    .Select(_ => SendSingleRequestAsync(proxyPort, request, timeout.Token))
+                    .ToArray();
+                responses.AddRange(await Task.WhenAll(tasks));
             }
             else
             {
-                first = await SendSingleRequestAsync(proxyPort, request, timeout.Token);
-                if (delayBetweenRequests.HasValue)
+                for (var index = 0; index < requestCount; index++)
                 {
-                    await Task.Delay(delayBetweenRequests.Value, timeout.Token);
+                    responses.Add(await SendSingleRequestAsync(proxyPort, request, timeout.Token));
+                    if (delayBetweenRequests.HasValue && index < requestCount - 1)
+                    {
+                        await Task.Delay(delayBetweenRequests.Value, timeout.Token);
+                    }
                 }
-
-                second = await SendSingleRequestAsync(proxyPort, request, timeout.Token);
             }
 
             var upstream = await upstreamTask.WaitAsync(timeout.Token);
             var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
-            return new ReusableProxyScenarioResult(first, second, upstream, metrics);
+            return new ReusableProxyScenarioResult(responses.ToArray(), upstream, metrics);
         }
         finally
         {
@@ -528,9 +616,16 @@ internal static class UpstreamHttp3Tests
         byte[] responseBody,
         bool holdResponsesUntilAllRequestsRead,
         bool sendGoAwayAfterFirstRequest,
+        TimeSpan? responseDelay,
+        bool resetFirstStreamBeforeResponse,
+        bool closeConnectionAfterFirstRequest,
+        int? upstreamPeerMaxBidirectionalStreams,
         CancellationToken cancellationToken)
     {
-        await using var listener = await CreateQuicListenerAsync(port, cancellationToken);
+        await using var listener = await CreateQuicListenerAsync(
+            port,
+            cancellationToken,
+            maxInboundBidirectionalStreams: upstreamPeerMaxBidirectionalStreams ?? 4);
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var requests = new ConcurrentQueue<Http3UpstreamObservation>();
         var connectionTasks = new ConcurrentBag<Task>();
@@ -541,6 +636,8 @@ internal static class UpstreamHttp3Tests
         var allCompleted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var allRead = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var goAwaySent = 0;
+        var resetSent = 0;
+        var closeSent = 0;
 
         async Task HandleStreamAsync(QuicConnection connection, QuicStream stream)
         {
@@ -561,6 +658,35 @@ internal static class UpstreamHttp3Tests
             if (holdResponsesUntilAllRequestsRead)
             {
                 await allRead.Task.WaitAsync(stop.Token);
+            }
+
+            if (resetFirstStreamBeforeResponse
+                && Interlocked.Exchange(ref resetSent, 1) == 0)
+            {
+                stream.Abort(QuicAbortDirection.Write, 0x100);
+                if (Interlocked.Increment(ref completed) >= requestCount)
+                {
+                    allCompleted.TrySetResult();
+                }
+
+                return;
+            }
+
+            if (closeConnectionAfterFirstRequest
+                && Interlocked.Exchange(ref closeSent, 1) == 0)
+            {
+                await connection.CloseAsync(0x100, stop.Token);
+                if (Interlocked.Increment(ref completed) >= requestCount)
+                {
+                    allCompleted.TrySetResult();
+                }
+
+                return;
+            }
+
+            if (responseDelay.HasValue)
+            {
+                await Task.Delay(responseDelay.Value, stop.Token);
             }
 
             await WriteResponseAsync(stream, 200, responseHeaders, responseBody, stop.Token, malformedResponseHeaders: false);
@@ -634,7 +760,8 @@ internal static class UpstreamHttp3Tests
     private static async ValueTask<QuicListener> CreateQuicListenerAsync(
         int port,
         CancellationToken cancellationToken,
-        IReadOnlyList<SslApplicationProtocol>? applicationProtocols = null)
+        IReadOnlyList<SslApplicationProtocol>? applicationProtocols = null,
+        int maxInboundBidirectionalStreams = 4)
     {
         var certificate = CreateServerCertificate("upstream.test");
         return await QuicListener.ListenAsync(
@@ -652,7 +779,7 @@ internal static class UpstreamHttp3Tests
                             ApplicationProtocols = applicationProtocols?.ToList() ?? [Http3Alpn],
                             CertificateRevocationCheckMode = X509RevocationMode.NoCheck
                         },
-                        MaxInboundBidirectionalStreams = 4,
+                        MaxInboundBidirectionalStreams = maxInboundBidirectionalStreams,
                         MaxInboundUnidirectionalStreams = 4,
                         IdleTimeout = TimeSpan.FromSeconds(5),
                         HandshakeTimeout = TimeSpan.FromSeconds(5),
@@ -1034,10 +1161,14 @@ internal static class UpstreamHttp3Tests
         ProxyMetricsSnapshot Metrics);
 
     private sealed record ReusableProxyScenarioResult(
-        string FirstClientResponse,
-        string SecondClientResponse,
+        IReadOnlyList<string> ClientResponses,
         ReusableHttp3UpstreamObservation Upstream,
-        ProxyMetricsSnapshot Metrics);
+        ProxyMetricsSnapshot Metrics)
+    {
+        public string FirstClientResponse => ClientResponses.Count > 0 ? ClientResponses[0] : "";
+
+        public string SecondClientResponse => ClientResponses.Count > 1 ? ClientResponses[1] : "";
+    }
 
     private sealed record Http3UpstreamObservation(
         IReadOnlyDictionary<string, string> RequestHeaders,

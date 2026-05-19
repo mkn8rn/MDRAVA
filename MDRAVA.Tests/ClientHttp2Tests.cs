@@ -427,6 +427,90 @@ internal static class ClientHttp2Tests
             || result.Metrics.Http2ProtocolErrors.ContainsKey("extended_connect_unsupported"));
     }
 
+    public static async Task ConcurrentStreamsReachDifferentRoutes()
+    {
+        var result = await RunHttp2ManualScenarioAsync(
+            SiteWithTwoStaticRoutes,
+            async (client, _, cancellationToken) =>
+                await client.SendRequestsBeforeReadingAsync(
+                    [
+                        new Http2RequestSpec { Authority = "home.test", Path = "/one" },
+                        new Http2RequestSpec { Authority = "home.test", Path = "/two" }
+                    ],
+                    cancellationToken));
+
+        AssertEx.Equal(2, result.Value.Count);
+        AssertEx.Equal(200, result.Value[0].StatusCode);
+        AssertEx.Equal("one", result.Value[0].BodyText);
+        AssertEx.Equal(200, result.Value[1].StatusCode);
+        AssertEx.Equal("two", result.Value[1].BodyText);
+        AssertEx.Equal(0L, result.Metrics.ActiveHttp2Streams);
+    }
+
+    public static async Task DataBeforeHeadersIsRejectedSafely()
+    {
+        var result = await RunHttp2ManualScenarioAsync(
+            SiteWithStaticRoute,
+            async (client, _, cancellationToken) => await client.SendDataBeforeHeadersAsync(cancellationToken));
+
+        AssertEx.Equal(0, result.Value.StatusCode);
+        AssertEx.Equal(1L, result.Metrics.Http2ProtocolErrors["unexpected_data"]);
+        AssertEx.Equal(0L, result.Metrics.ActiveHttp2Streams);
+    }
+
+    public static async Task ContinuationHeaderFragmentationIsAccepted()
+    {
+        var result = await RunHttp2ManualScenarioAsync(
+            SiteWithStaticRoute,
+            async (client, _, cancellationToken) =>
+                await client.SendFragmentedHeadersRequestAsync(
+                    new Http2RequestSpec { Authority = "home.test", Path = "/static" },
+                    cancellationToken));
+
+        AssertEx.Equal(203, result.Value.StatusCode);
+        AssertEx.Equal("static-h2", result.Value.BodyText);
+        AssertEx.Equal(0L, result.Metrics.ActiveHttp2Streams);
+    }
+
+    public static async Task RstStreamReleasesStateAndKeepsConnectionUsable()
+    {
+        var result = await RunHttp2ManualScenarioAsync(
+            SiteWithStaticRoute,
+            async (client, _, cancellationToken) =>
+                await client.SendHeadersThenResetThenRequestAsync(
+                    new Http2RequestSpec { Authority = "home.test", Path = "/static" },
+                    cancellationToken));
+
+        AssertEx.Equal(203, result.Value.StatusCode);
+        AssertEx.Equal("static-h2", result.Value.BodyText);
+        AssertEx.Equal(0L, result.Metrics.ActiveHttp2Streams);
+    }
+
+    public static async Task GoAwayStopsNewStreamsSafely()
+    {
+        var result = await RunHttp2ManualScenarioAsync(
+            SiteWithStaticRoute,
+            async (client, _, cancellationToken) => await client.SendGoAwayThenRequestAsync(cancellationToken));
+
+        AssertEx.True(result.Value);
+    }
+
+    public static async Task OversizedHeaderListIsRejected()
+    {
+        var result = await RunHttp2ManualScenarioAsync(
+            SiteWithLowHeaderLimit,
+            async (client, _, cancellationToken) =>
+            {
+                var request = new Http2RequestSpec { Authority = "home.test", Path = "/static" };
+                request.Headers.Add(("x-too-large", new string('a', 2048)));
+                return await client.SendRequestAsync(request, cancellationToken);
+            });
+
+        AssertEx.Equal(0, result.Value.StatusCode);
+        AssertEx.Equal(1L, result.Metrics.Http2ProtocolErrors["header_list_too_large"]);
+        AssertEx.Equal(0L, result.Metrics.ActiveHttp2Streams);
+    }
+
     public static async Task MetricsIncludeHttp2Counters()
     {
         var result = await RunHttp2ScenarioAsync(
@@ -486,6 +570,44 @@ internal static class ClientHttp2Tests
                     metrics,
                     diagnostics,
                     negotiatedProtocol);
+            }
+            finally
+            {
+                await host.StopAsync(CancellationToken.None);
+            }
+        }
+        finally
+        {
+            DeleteDirectory(dataDirectory);
+        }
+    }
+
+    private static async Task<Http2ManualScenarioResult<T>> RunHttp2ManualScenarioAsync<T>(
+        Action<string, int, int> writeSite,
+        Func<Http2TestClient, IHost, CancellationToken, Task<T>> exercise)
+    {
+        var proxyPort = GetFreeTcpPort();
+        var upstreamPort = GetFreeTcpPort();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var dataDirectory = CreateDataDirectory();
+
+        try
+        {
+            writeSite(dataDirectory, proxyPort, upstreamPort);
+            WriteCertificateConfig(dataDirectory);
+            using var host = BuildProxyHost(dataDirectory);
+            await host.StartAsync(timeout.Token);
+
+            try
+            {
+                T value;
+                await using (var client = await Http2TestClient.ConnectAsync(proxyPort, timeout.Token))
+                {
+                    value = await exercise(client, host, timeout.Token);
+                }
+
+                var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
+                return new Http2ManualScenarioResult<T>(value, metrics);
             }
             finally
             {
@@ -568,6 +690,101 @@ internal static class ClientHttp2Tests
                   "transport": "https",
                   "protocols": "http2",
                   "defaultCertificateId": "home-cert",
+                  "sniCertificates": [
+                    {
+                      "hostName": "home.test",
+                      "certificateId": "home-cert"
+                    }
+                  ]
+                }
+              ],
+              "host": "*",
+              "routes": [
+                {
+                  "name": "static",
+                  "pathPrefix": "/",
+                  "action": "staticResponse",
+                  "staticResponse": {
+                    "statusCode": 203,
+                    "contentType": "text/plain",
+                    "body": "static-h2"
+                  }
+                }
+              ]
+            }
+            """);
+    }
+
+    private static void SiteWithTwoStaticRoutes(string dataDirectory, int proxyPort, int upstreamPort)
+    {
+        _ = upstreamPort;
+        ConfigurationTests.WriteCustomSite(
+            dataDirectory,
+            "h2.json",
+            $$"""
+            {
+              "name": "h2",
+              "listeners": [
+                {
+                  "name": "main",
+                  "address": "127.0.0.1",
+                  "port": {{proxyPort}},
+                  "transport": "https",
+                  "protocols": "http2",
+                  "defaultCertificateId": "home-cert",
+                  "sniCertificates": [
+                    {
+                      "hostName": "home.test",
+                      "certificateId": "home-cert"
+                    }
+                  ]
+                }
+              ],
+              "host": "*",
+              "routes": [
+                {
+                  "name": "one",
+                  "pathPrefix": "/one",
+                  "action": "staticResponse",
+                  "staticResponse": {
+                    "statusCode": 200,
+                    "contentType": "text/plain",
+                    "body": "one"
+                  }
+                },
+                {
+                  "name": "two",
+                  "pathPrefix": "/two",
+                  "action": "staticResponse",
+                  "staticResponse": {
+                    "statusCode": 200,
+                    "contentType": "text/plain",
+                    "body": "two"
+                  }
+                }
+              ]
+            }
+            """);
+    }
+
+    private static void SiteWithLowHeaderLimit(string dataDirectory, int proxyPort, int upstreamPort)
+    {
+        _ = upstreamPort;
+        ConfigurationTests.WriteCustomSite(
+            dataDirectory,
+            "h2.json",
+            $$"""
+            {
+              "name": "h2",
+              "listeners": [
+                {
+                  "name": "main",
+                  "address": "127.0.0.1",
+                  "port": {{proxyPort}},
+                  "transport": "https",
+                  "protocols": "http2",
+                  "defaultCertificateId": "home-cert",
+                  "http2MaxHeaderListBytes": 1024,
                   "sniCertificates": [
                     {
                       "hostName": "home.test",
@@ -955,6 +1172,10 @@ internal static class ClientHttp2Tests
         IReadOnlyList<ProxyRequestDiagnosticEvent> Diagnostics,
         SslApplicationProtocol NegotiatedProtocol);
 
+    private sealed record Http2ManualScenarioResult<T>(
+        T Value,
+        ProxyMetricsSnapshot Metrics);
+
     private sealed class Http2Response
     {
         public Http2Response(int statusCode, IReadOnlyDictionary<string, string> headers, byte[] body)
@@ -1028,6 +1249,108 @@ internal static class ClientHttp2Tests
             }
 
             return await ReadResponseAsync(streamId, cancellationToken);
+        }
+
+        public async Task<IReadOnlyList<Http2Response>> SendRequestsBeforeReadingAsync(
+            IReadOnlyList<Http2RequestSpec> requests,
+            CancellationToken cancellationToken)
+        {
+            List<int> streamIds = [];
+            foreach (var request in requests)
+            {
+                var streamId = _nextStreamId;
+                _nextStreamId += 2;
+                streamIds.Add(streamId);
+                var headers = EncodeRequestHeaders(request);
+                await WriteFrameAsync(
+                    Http2FrameType.Headers,
+                    request.Body.Length == 0 ? (byte)(Http2Flags.EndHeaders | Http2Flags.EndStream) : Http2Flags.EndHeaders,
+                    streamId,
+                    headers,
+                    cancellationToken);
+                if (request.Body.Length > 0)
+                {
+                    await WriteFrameAsync(Http2FrameType.Data, Http2Flags.EndStream, streamId, request.Body, cancellationToken);
+                }
+            }
+
+            return await ReadResponsesAsync(streamIds, cancellationToken);
+        }
+
+        public async Task<Http2Response> SendDataBeforeHeadersAsync(CancellationToken cancellationToken)
+        {
+            var streamId = _nextStreamId;
+            _nextStreamId += 2;
+            await WriteFrameAsync(
+                Http2FrameType.Data,
+                Http2Flags.EndStream,
+                streamId,
+                "bad"u8.ToArray(),
+                cancellationToken);
+            return await ReadResponseAsync(streamId, cancellationToken);
+        }
+
+        public async Task<Http2Response> SendFragmentedHeadersRequestAsync(
+            Http2RequestSpec request,
+            CancellationToken cancellationToken)
+        {
+            var streamId = _nextStreamId;
+            _nextStreamId += 2;
+            var headers = EncodeRequestHeaders(request);
+            var split = Math.Max(1, headers.Length / 2);
+            await WriteFrameAsync(
+                Http2FrameType.Headers,
+                Http2Flags.EndStream,
+                streamId,
+                headers.AsMemory(0, split),
+                cancellationToken);
+            await WriteFrameAsync(
+                Http2FrameType.Continuation,
+                Http2Flags.EndHeaders,
+                streamId,
+                headers.AsMemory(split),
+                cancellationToken);
+            return await ReadResponseAsync(streamId, cancellationToken);
+        }
+
+        public async Task<Http2Response> SendHeadersThenResetThenRequestAsync(
+            Http2RequestSpec goodRequest,
+            CancellationToken cancellationToken)
+        {
+            var resetStreamId = _nextStreamId;
+            _nextStreamId += 2;
+            var resetHeaders = EncodeRequestHeaders(new Http2RequestSpec
+            {
+                Authority = "home.test",
+                Path = "/reset"
+            });
+            await WriteFrameAsync(
+                Http2FrameType.Headers,
+                Http2Flags.EndHeaders,
+                resetStreamId,
+                resetHeaders,
+                cancellationToken);
+            var resetPayload = new byte[4];
+            BinaryPrimitives.WriteUInt32BigEndian(resetPayload, 0x8);
+            await WriteFrameAsync(Http2FrameType.RstStream, 0, resetStreamId, resetPayload, cancellationToken);
+            return await SendRequestAsync(goodRequest, cancellationToken);
+        }
+
+        public async Task<bool> SendGoAwayThenRequestAsync(CancellationToken cancellationToken)
+        {
+            var payload = new byte[8];
+            await WriteFrameAsync(Http2FrameType.GoAway, 0, 0, payload, cancellationToken);
+            try
+            {
+                var response = await SendRequestAsync(
+                    new Http2RequestSpec { Authority = "home.test", Path = "/after-goaway" },
+                    cancellationToken);
+                return response.StatusCode == 0;
+            }
+            catch (IOException)
+            {
+                return true;
+            }
         }
 
         public async ValueTask DisposeAsync()
@@ -1118,6 +1441,65 @@ internal static class ClientHttp2Tests
                     return new Http2Response(0, headers, body.ToArray());
                 }
             }
+        }
+
+        private async Task<IReadOnlyList<Http2Response>> ReadResponsesAsync(
+            IReadOnlyList<int> streamIds,
+            CancellationToken cancellationToken)
+        {
+            var pending = streamIds.ToHashSet();
+            var builders = streamIds.ToDictionary(static id => id, static _ => new Http2ResponseBuilder());
+            Dictionary<int, Http2Response> responses = [];
+
+            while (pending.Count > 0)
+            {
+                var frame = await ReadFrameAsync(cancellationToken);
+                if (frame.Type == Http2FrameType.Settings)
+                {
+                    if ((frame.Flags & Http2Flags.Ack) == 0)
+                    {
+                        await WriteFrameAsync(Http2FrameType.Settings, Http2Flags.Ack, 0, ReadOnlyMemory<byte>.Empty, cancellationToken);
+                    }
+
+                    continue;
+                }
+
+                if (!builders.TryGetValue(frame.StreamId, out var builder))
+                {
+                    continue;
+                }
+
+                if (frame.Type == Http2FrameType.Headers || frame.Type == Http2FrameType.Continuation)
+                {
+                    builder.HeaderBlock.Write(frame.Payload.Span);
+                    if ((frame.Flags & Http2Flags.EndHeaders) != 0)
+                    {
+                        builder.DecodeHeaders();
+                    }
+
+                    if ((frame.Flags & Http2Flags.EndStream) != 0)
+                    {
+                        responses[frame.StreamId] = builder.ToResponse();
+                        pending.Remove(frame.StreamId);
+                    }
+                }
+                else if (frame.Type == Http2FrameType.Data)
+                {
+                    builder.Body.Write(frame.Payload.Span);
+                    if ((frame.Flags & Http2Flags.EndStream) != 0)
+                    {
+                        responses[frame.StreamId] = builder.ToResponse();
+                        pending.Remove(frame.StreamId);
+                    }
+                }
+                else if (frame.Type == Http2FrameType.RstStream)
+                {
+                    responses[frame.StreamId] = builder.ToResponse(statusOverride: 0);
+                    pending.Remove(frame.StreamId);
+                }
+            }
+
+            return streamIds.Select(id => responses[id]).ToArray();
         }
 
         private async Task<Http2Frame> ReadFrameAsync(CancellationToken cancellationToken)
@@ -1481,6 +1863,37 @@ internal static class ClientHttp2Tests
             ("via", ""),
             ("www-authenticate", "")
         ];
+
+        private sealed class Http2ResponseBuilder
+        {
+            public MemoryStream HeaderBlock { get; } = new();
+
+            public MemoryStream Body { get; } = new();
+
+            public Dictionary<string, string> Headers { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+            public int StatusCode { get; private set; }
+
+            public void DecodeHeaders()
+            {
+                foreach (var header in Http2TestClient.DecodeHeaders(HeaderBlock.ToArray()))
+                {
+                    if (string.Equals(header.Name, ":status", StringComparison.Ordinal))
+                    {
+                        StatusCode = int.Parse(header.Value);
+                    }
+                    else
+                    {
+                        Headers[header.Name] = header.Value;
+                    }
+                }
+            }
+
+            public Http2Response ToResponse(int? statusOverride = null)
+            {
+                return new Http2Response(statusOverride ?? StatusCode, Headers, Body.ToArray());
+            }
+        }
     }
 
     private readonly record struct Http2Frame(
