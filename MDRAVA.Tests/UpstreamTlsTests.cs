@@ -247,6 +247,43 @@ internal static class UpstreamTlsTests
         AssertEx.False(observation.Request.StartsWith("GET ", StringComparison.Ordinal), observation.Request);
     }
 
+    public static async Task UpstreamSniOverrideValidationRejectsUrlPortAndWildcard()
+    {
+        using var urlTemp = TemporaryDirectory.Create();
+        WriteHttpsUpstreamSite(
+            urlTemp.Path,
+            "url-sni.json",
+            18080,
+            15443,
+            "\"upstreamTls\": { \"sniHost\": \"https://app.internal\" }");
+        var urlResult = await CreateLoader(urlTemp.Path).LoadAsync(CancellationToken.None);
+
+        using var portTemp = TemporaryDirectory.Create();
+        WriteHttpsUpstreamSite(
+            portTemp.Path,
+            "port-sni.json",
+            18081,
+            15444,
+            "\"upstreamTls\": { \"sniHost\": \"app.internal:443\" }");
+        var portResult = await CreateLoader(portTemp.Path).LoadAsync(CancellationToken.None);
+
+        using var wildcardTemp = TemporaryDirectory.Create();
+        WriteHttpsUpstreamSite(
+            wildcardTemp.Path,
+            "wildcard-sni.json",
+            18082,
+            15445,
+            "\"upstreamTls\": { \"sniHost\": \"*.internal\" }");
+        var wildcardResult = await CreateLoader(wildcardTemp.Path).LoadAsync(CancellationToken.None);
+
+        AssertEx.False(urlResult.Succeeded);
+        AssertEx.False(portResult.Succeeded);
+        AssertEx.False(wildcardResult.Succeeded);
+        AssertEx.True(urlResult.Errors.Any(static error => error.Contains("SniHost", StringComparison.Ordinal)));
+        AssertEx.True(portResult.Errors.Any(static error => error.Contains("SniHost", StringComparison.Ordinal)));
+        AssertEx.True(wildcardResult.Errors.Any(static error => error.Contains("SniHost", StringComparison.Ordinal)));
+    }
+
     private static RuntimeRoute Route(IReadOnlyList<RuntimeUpstream> upstreams)
     {
         return new RuntimeRoute(

@@ -19,6 +19,19 @@ internal static class TestCertificates
         string? password = null,
         int validDays = 30)
     {
+        return CreateSelfSignedPfxBytesForValidity(
+            subjectName,
+            password,
+            DateTimeOffset.UtcNow.AddDays(-1),
+            DateTimeOffset.UtcNow.AddDays(validDays));
+    }
+
+    public static byte[] CreateSelfSignedPfxBytesForValidity(
+        string subjectName,
+        string? password,
+        DateTimeOffset notBefore,
+        DateTimeOffset notAfter)
+    {
         using var key = RSA.Create(2048);
         var request = new CertificateRequest(
             $"CN={subjectName}",
@@ -44,9 +57,7 @@ internal static class TestCertificates
         sanBuilder.AddDnsName(subjectName);
         request.CertificateExtensions.Add(sanBuilder.Build());
 
-        using var certificate = request.CreateSelfSigned(
-            DateTimeOffset.UtcNow.AddDays(-1),
-            DateTimeOffset.UtcNow.AddDays(validDays));
+        using var certificate = request.CreateSelfSigned(notBefore, notAfter);
 
         return certificate.Export(X509ContentType.Pfx, password);
     }

@@ -19,6 +19,23 @@ internal static class HardeningTests
         AssertEx.Equal(1L, metrics.Snapshot().ConnectionAdmissionRejections);
     }
 
+    public static void AdmissionLeaseDisposalReleasesClientSlot()
+    {
+        var metrics = new ProxyMetrics();
+        var admission = new ProxyAdmissionController(metrics);
+
+        using (var lease = admission.TryAcquireClientConnection(1))
+        {
+            AssertEx.True(lease is not null);
+            AssertEx.Equal(1, admission.ActiveClientConnections);
+            AssertEx.Equal(null, admission.TryAcquireClientConnection(1));
+        }
+
+        using var reacquired = admission.TryAcquireClientConnection(1);
+        AssertEx.True(reacquired is not null);
+        AssertEx.Equal(1, admission.ActiveClientConnections);
+    }
+
     public static void AdmissionControllerEnforcesTlsHandshakeLimit()
     {
         var metrics = new ProxyMetrics();
@@ -45,6 +62,29 @@ internal static class HardeningTests
         now = now.AddSeconds(61);
         AssertEx.True(limiter.TryAcquireRequest(ip, 1));
         AssertEx.Equal(1L, metrics.Snapshot().RateLimitedRequests);
+    }
+
+    public static void ConcurrentRateLimiterBoundaryAllowsOnlyConfiguredLimit()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var metrics = new ProxyMetrics();
+        var limiter = new ClientRateLimiter(metrics, () => now);
+        var ip = IPAddress.Parse("127.0.0.1");
+        var allowed = 0;
+
+        Parallel.For(
+            0,
+            32,
+            _ =>
+            {
+                if (limiter.TryAcquireRequest(ip, 5))
+                {
+                    Interlocked.Increment(ref allowed);
+                }
+            });
+
+        AssertEx.Equal(5, allowed);
+        AssertEx.Equal(27L, metrics.Snapshot().RateLimitedRequests);
     }
 
     public static void RateLimiterEnforcesUpgradeLimit()

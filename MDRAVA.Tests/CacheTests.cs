@@ -130,6 +130,21 @@ internal static class CacheTests
         AssertEx.Equal("one", Encoding.ASCII.GetString(AssertEx.NotNull(cached).Body));
     }
 
+    public static void RewriteTargetIsPartOfCacheKey()
+    {
+        var cache = new ResponseCacheStore(new ManualTimeProvider());
+        var route = Route(CachePolicy());
+        var listener = Listener();
+        var request = Request("GET", "/public/item?id=1", "cache.test");
+        var response = Response("200 OK", []);
+
+        cache.Store(route, listener, request, "/internal/item?id=1", response, response.Headers, Encoding.ASCII.GetBytes("internal"));
+
+        AssertEx.False(cache.TryGet(route, listener, request, "/public/item?id=1", out _));
+        AssertEx.True(cache.TryGet(route, listener, request, "/internal/item?id=1", out var cached));
+        AssertEx.Equal("internal", Encoding.ASCII.GetString(AssertEx.NotNull(cached).Body));
+    }
+
     public static void HostAndVaryHeadersAffectCacheKey()
     {
         var cache = new ResponseCacheStore(new ManualTimeProvider());
@@ -165,6 +180,21 @@ internal static class CacheTests
         AssertEx.True(cache.Snapshot(null).StoreRejectionCount > 0);
     }
 
+    public static void CookieRequestIsNotCachedByDefault()
+    {
+        var cache = new ResponseCacheStore(new ManualTimeProvider());
+        var route = Route(CachePolicy());
+        var listener = Listener();
+        var request = Request("GET", "/private", "cache.test", [new Http1HeaderField("Cookie", "sid=secret")]);
+        var response = Response("200 OK", []);
+
+        cache.Store(route, listener, request, "/private", response, response.Headers, Encoding.ASCII.GetBytes("private"));
+
+        AssertEx.False(cache.TryGet(route, listener, request, "/private", out _));
+        var snapshot = cache.Snapshot(null);
+        AssertEx.True(snapshot.Rejections.Any(static rejection => rejection.Reason == "cookie" && rejection.Count == 1));
+    }
+
     public static void SetCookieResponseIsNotCachedByDefault()
     {
         AssertRejectedResponse([new Http1HeaderField("Set-Cookie", "id=1")]);
@@ -173,6 +203,16 @@ internal static class CacheTests
     public static void NoStoreResponseIsNotCached()
     {
         AssertRejectedResponse([new Http1HeaderField("Cache-Control", "no-store")]);
+    }
+
+    public static void NoCacheResponseIsNotCached()
+    {
+        AssertRejectedResponse([new Http1HeaderField("Cache-Control", "no-cache")]);
+    }
+
+    public static void MustRevalidateResponseIsNotCached()
+    {
+        AssertRejectedResponse([new Http1HeaderField("Cache-Control", "must-revalidate")]);
     }
 
     public static void PrivateResponseIsNotCachedByDefault()
@@ -233,6 +273,84 @@ internal static class CacheTests
         AssertEx.False(headers.Any(static header => string.Equals(header.Name, "Connection", StringComparison.OrdinalIgnoreCase)));
         AssertEx.False(headers.Any(static header => string.Equals(header.Name, "Transfer-Encoding", StringComparison.OrdinalIgnoreCase)));
         AssertEx.True(headers.Any(static header => string.Equals(header.Name, "X-Stored", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    public static void VaryHeaderCaseAndDuplicateValuesAffectCacheKeyDeterministically()
+    {
+        var cache = new ResponseCacheStore(new ManualTimeProvider());
+        var route = Route(CachePolicy(varyByHeaders: ["X-Tenant", "x-tenant"]));
+        var listener = Listener();
+        var response = Response("200 OK", []);
+        cache.Store(
+            route,
+            listener,
+            Request(
+                "GET",
+                "/resource",
+                "cache.test",
+                [
+                    new Http1HeaderField("X-Tenant", "one"),
+                    new Http1HeaderField("x-tenant", "two")
+                ]),
+            "/resource",
+            response,
+            response.Headers,
+            Encoding.ASCII.GetBytes("tenant"));
+
+        AssertEx.True(cache.TryGet(
+            route,
+            listener,
+            Request(
+                "GET",
+                "/resource",
+                "cache.test",
+                [
+                    new Http1HeaderField("x-tenant", "one"),
+                    new Http1HeaderField("X-Tenant", "two")
+                ]),
+            "/resource",
+            out var cached));
+        AssertEx.Equal("tenant", Encoding.ASCII.GetString(AssertEx.NotNull(cached).Body));
+        AssertEx.False(cache.TryGet(
+            route,
+            listener,
+            Request("GET", "/resource", "cache.test", [new Http1HeaderField("X-Tenant", "one")]),
+            "/resource",
+            out _));
+    }
+
+    public static void CacheEvictsOldestEntriesAtMaxTotalBytes()
+    {
+        var clock = new ManualTimeProvider();
+        var cache = new ResponseCacheStore(clock);
+        var route = Route(CachePolicy(maxEntryBytes: 128, maxTotalBytes: 15));
+        var listener = Listener();
+        var response = Response("200 OK", []);
+
+        cache.Store(route, listener, Request("GET", "/one", "cache.test"), "/one", response, response.Headers, Encoding.ASCII.GetBytes("1111111111"));
+        clock.Advance(TimeSpan.FromSeconds(1));
+        cache.Store(route, listener, Request("GET", "/two", "cache.test"), "/two", response, response.Headers, Encoding.ASCII.GetBytes("2222222222"));
+
+        var snapshot = cache.Snapshot(CreateStoreWithRoute(route).Snapshot);
+        AssertEx.Equal(1L, snapshot.EvictionCount);
+        AssertEx.False(cache.TryGet(route, listener, Request("GET", "/one", "cache.test"), "/one", out _));
+        AssertEx.True(cache.TryGet(route, listener, Request("GET", "/two", "cache.test"), "/two", out _));
+    }
+
+    public static async Task PartialUpstreamResponseIsNotCached()
+    {
+        var result = await RunTwoRequestProxyScenarioAsync(
+            cacheEnabled: true,
+            responseFactory: count => count == 1
+                ? "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 10\r\nCache-Control: max-age=60\r\n\r\npart"
+                : "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 4\r\nCache-Control: max-age=60\r\n\r\nfull",
+            firstRequest: "GET /partial HTTP/1.1\r\nHost: cache.test\r\nConnection: close\r\n\r\n",
+            secondRequest: "GET /partial HTTP/1.1\r\nHost: cache.test\r\nConnection: close\r\n\r\n",
+            expectedUpstreamRequests: 2);
+
+        AssertEx.Equal(2, result.UpstreamRequests.Count);
+        AssertEx.True(result.FirstResponse.Contains("502 Bad Gateway", StringComparison.Ordinal), result.FirstResponse);
+        AssertEx.True(result.SecondResponse.EndsWith("full", StringComparison.Ordinal), result.SecondResponse);
     }
 
     public static async Task CacheClearEndpointClearsEntries()
@@ -596,12 +714,14 @@ internal static class CacheTests
 
     private static RuntimeCachePolicy CachePolicy(
         int defaultTtlSeconds = 60,
-        IReadOnlyList<string>? varyByHeaders = null)
+        IReadOnlyList<string>? varyByHeaders = null,
+        long maxEntryBytes = 1024 * 1024,
+        long maxTotalBytes = 16 * 1024 * 1024)
     {
         return new RuntimeCachePolicy(
             true,
-            1024 * 1024,
-            16 * 1024 * 1024,
+            maxEntryBytes,
+            maxTotalBytes,
             TimeSpan.FromSeconds(defaultTtlSeconds),
             true,
             varyByHeaders ?? [],

@@ -138,6 +138,20 @@ internal static class MetricsTests
         AssertEx.False(text.Contains("127.0.0.1", StringComparison.Ordinal));
     }
 
+    public static async Task MetricsFailureMatrixDoesNotExposeAuthorizationCookieOrQuerySecrets()
+    {
+        var text = await RunFailedRequestAndExportAsync(
+            "GET /missing/path?token=query-secret HTTP/1.1\r\nHost: other.test\r\nAuthorization: Bearer auth-secret\r\nCookie: session=cookie-secret\r\nConnection: close\r\n\r\n");
+
+        AssertEx.True(text.Contains("mdrava_requests_total 1", StringComparison.Ordinal), text);
+        AssertEx.True(text.Contains("status_class=\"4xx\"", StringComparison.Ordinal), text);
+        AssertEx.False(text.Contains("/missing/path", StringComparison.Ordinal));
+        AssertEx.False(text.Contains("query-secret", StringComparison.Ordinal));
+        AssertEx.False(text.Contains("auth-secret", StringComparison.Ordinal));
+        AssertEx.False(text.Contains("cookie-secret", StringComparison.Ordinal));
+        AssertEx.False(text.Contains("other.test", StringComparison.OrdinalIgnoreCase));
+    }
+
     public static void PublicMetricsExposureIsDisabledByDefault()
     {
         var snapshot = CreateStore().Snapshot;
@@ -198,6 +212,31 @@ internal static class MetricsTests
             var response = await SendSingleRequestAsync(proxyPort, request, timeout.Token);
             AssertEx.True(response.Contains("200 OK", StringComparison.Ordinal), response);
             await upstreamTask.WaitAsync(timeout.Token);
+            var store = host.Services.GetRequiredService<IProxyConfigurationStore>();
+            var exporter = host.Services.GetRequiredService<PrometheusMetricsExporter>();
+            return exporter.Export(store.Snapshot);
+        }
+        finally
+        {
+            await host.StopAsync(CancellationToken.None);
+        }
+    }
+
+    private static async Task<string> RunFailedRequestAndExportAsync(string request)
+    {
+        var proxyPort = GetFreeTcpPort();
+        var upstreamPort = GetFreeTcpPort();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var temp = TemporaryDirectory.Create();
+        WriteMetricsSite(temp.Path, proxyPort, upstreamPort, host: "metrics.test");
+
+        using var host = BuildProxyHost(temp.Path);
+        await host.StartAsync(timeout.Token);
+
+        try
+        {
+            var response = await SendSingleRequestAsync(proxyPort, request, timeout.Token);
+            AssertEx.True(response.Contains("404 Not Found", StringComparison.Ordinal), response);
             var store = host.Services.GetRequiredService<IProxyConfigurationStore>();
             var exporter = host.Services.GetRequiredService<PrometheusMetricsExporter>();
             return exporter.Export(store.Snapshot);
@@ -286,7 +325,11 @@ internal static class MetricsTests
         return Encoding.ASCII.GetString(buffer, 0, total);
     }
 
-    private static void WriteMetricsSite(string dataDirectory, int proxyPort, int upstreamPort)
+    private static void WriteMetricsSite(
+        string dataDirectory,
+        int proxyPort,
+        int upstreamPort,
+        string host = "*")
     {
         ConfigurationTests.WriteCustomSite(
             dataDirectory,
@@ -301,7 +344,7 @@ internal static class MetricsTests
                   "port": {{proxyPort}}
                 }
               ],
-              "host": "*",
+              "host": "{{host}}",
               "pathPrefix": "/",
               "upstreams": [
                 {

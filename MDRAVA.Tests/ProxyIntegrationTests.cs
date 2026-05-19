@@ -5,6 +5,8 @@ using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using MDRAVA.API.Controllers;
+using MDRAVA.API.Proxy.Configuration.Loading;
+using MDRAVA.API.Proxy.Configuration.Storage;
 using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Hosting;
@@ -360,6 +362,22 @@ internal static class ProxyIntegrationTests
         AssertEx.Equal("203.0.113.10", result.Diagnostics[0].ClientEndpoint);
     }
 
+    public static async Task MalformedTrustedForwardedHeadersAreSanitizedBeforeUpstream()
+    {
+        var bad = (char)1;
+        var result = await RunCustomProxyScenarioAsync(
+            SiteWithSingleProxyRoute,
+            $"GET /forwarded HTTP/1.1\r\nHost: forwarded.test\r\nX-Forwarded-For: bad{bad}value\r\nX-Forwarded-Host: bad{bad}host\r\nX-Forwarded-Proto: ftp{bad}\r\nConnection: close\r\n\r\n",
+            "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
+            readBodyFromUpstreamRequest: false,
+            configureOperational: dataDirectory => ConfigurationTests.WriteOperationalConfig(dataDirectory, trustedProxies: ["127.0.0.1"]));
+
+        AssertEx.True(result.UpstreamRequest.Contains("X-Forwarded-For: 127.0.0.1", StringComparison.OrdinalIgnoreCase), result.UpstreamRequest);
+        AssertEx.True(result.UpstreamRequest.Contains("X-Forwarded-Host: forwarded.test", StringComparison.OrdinalIgnoreCase), result.UpstreamRequest);
+        AssertEx.True(result.UpstreamRequest.Contains("X-Forwarded-Proto: http", StringComparison.OrdinalIgnoreCase), result.UpstreamRequest);
+        AssertEx.False(result.UpstreamRequest.Contains("bad", StringComparison.OrdinalIgnoreCase), result.UpstreamRequest);
+    }
+
     public static async Task UntrustedClientForwardedHeadersAreStrippedAndReplaced()
     {
         var result = await RunProxyScenarioAsync(
@@ -635,6 +653,60 @@ internal static class ProxyIntegrationTests
         }
     }
 
+    public static async Task FailedReloadWhileProxyActivePreservesOldSnapshotAndTraffic()
+    {
+        var proxyPort = GetFreeTcpPort();
+        var upstreamPort = GetFreeTcpPort();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var dataDirectory = Path.Combine(Path.GetTempPath(), $"mdrava-active-reload-{Guid.NewGuid():N}");
+
+        try
+        {
+            ConfigurationTests.WriteSite(dataDirectory, "active.json", proxyPort, upstreamPort);
+            using var host = BuildProxyHost(dataDirectory);
+            await host.StartAsync(timeout.Token);
+
+            var firstUpstream = RunScenarioUpstreamAsync(
+                upstreamPort,
+                "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 3\r\n\r\nold",
+                readBody: false,
+                sendResponse: true,
+                timeout.Token);
+            var firstResponse = await SendSingleRequestAsync(
+                proxyPort,
+                "GET /before HTTP/1.1\r\nHost: reload.test\r\nConnection: close\r\n\r\n",
+                timeout.Token);
+            await firstUpstream.WaitAsync(timeout.Token);
+
+            ConfigurationTests.WriteCustomSite(dataDirectory, "broken.json", "{ nope");
+            var reload = await host.Services.GetRequiredService<IProxyConfigurationReloadService>().ReloadAsync(timeout.Token);
+
+            var secondUpstream = RunScenarioUpstreamAsync(
+                upstreamPort,
+                "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 3\r\n\r\nold",
+                readBody: false,
+                sendResponse: true,
+                timeout.Token);
+            var secondResponse = await SendSingleRequestAsync(
+                proxyPort,
+                "GET /after HTTP/1.1\r\nHost: reload.test\r\nConnection: close\r\n\r\n",
+                timeout.Token);
+            await secondUpstream.WaitAsync(timeout.Token);
+            var store = host.Services.GetRequiredService<IProxyConfigurationStore>();
+
+            AssertEx.True(firstResponse.EndsWith("old", StringComparison.Ordinal), firstResponse);
+            AssertEx.False(reload.Succeeded);
+            AssertEx.Equal(1, store.Snapshot.Version);
+            AssertEx.Equal(upstreamPort, store.Snapshot.Routes[0].Upstreams[0].Port);
+            AssertEx.True(secondResponse.EndsWith("old", StringComparison.Ordinal), secondResponse);
+            await host.StopAsync(CancellationToken.None);
+        }
+        finally
+        {
+            DeleteDirectory(dataDirectory);
+        }
+    }
+
     public static async Task OversizedRequestHeadIsRejected()
     {
         var largeHeader = new string('a', 1500);
@@ -883,6 +955,14 @@ internal static class ProxyIntegrationTests
     public static async Task HttpsListenerSelectsCertificateBySni()
     {
         var result = await RunTlsProxyScenarioAsync("alt.test", configureAltSni: true);
+
+        AssertEx.True(result.RemoteCertificateSubject.Contains("CN=alt.test", StringComparison.Ordinal), result.RemoteCertificateSubject);
+        AssertEx.Equal(1L, result.Metrics.TlsHandshakeSuccesses);
+    }
+
+    public static async Task HttpsListenerSelectsCertificateByCaseInsensitiveSni()
+    {
+        var result = await RunTlsProxyScenarioAsync("ALT.TEST", configureAltSni: true);
 
         AssertEx.True(result.RemoteCertificateSubject.Contains("CN=alt.test", StringComparison.Ordinal), result.RemoteCertificateSubject);
         AssertEx.Equal(1L, result.Metrics.TlsHandshakeSuccesses);

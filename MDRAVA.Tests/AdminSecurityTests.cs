@@ -117,6 +117,84 @@ internal static class AdminSecurityTests
         AssertEx.Equal("valid", audit.Recent(1)[0].AuthResult);
     }
 
+    public static async Task KnownAdminEndpointPathsRequireAuthentication()
+    {
+        var paths = new[]
+        {
+            "/admin/proxy/status",
+            "/admin/proxy/config/effective",
+            "/admin/proxy/config/reload",
+            "/admin/proxy/config/lint",
+            "/admin/proxy/routes/match",
+            "/admin/proxy/diagnostics/recent",
+            "/admin/proxy/metrics",
+            "/admin/proxy/cache/status",
+            "/admin/proxy/cache/clear",
+            "/admin/proxy/acme/status",
+            "/admin/proxy/audit/recent"
+        };
+
+        foreach (var path in paths)
+        {
+            var store = CreateStoreWithAdminAuthentication();
+            var audit = new AdminAuditStore();
+            var context = CreateAdminContext(path);
+            var nextCalled = false;
+            var middleware = CreateMiddleware(
+                store,
+                audit,
+                _ =>
+                {
+                    nextCalled = true;
+                    return Task.CompletedTask;
+                });
+
+            await middleware.InvokeAsync(context);
+
+            AssertEx.False(nextCalled, path);
+            AssertEx.Equal(StatusCodes.Status401Unauthorized, context.Response.StatusCode);
+            AssertEx.Equal("missing", audit.Recent(1)[0].AuthResult);
+        }
+    }
+
+    public static void AdminAuditCapacityEvictsOldestEntries()
+    {
+        var audit = new AdminAuditStore();
+        audit.Add(Event("/admin/proxy/status", 200), capacity: 2);
+        audit.Add(Event("/admin/proxy/config/effective", 200), capacity: 2);
+        audit.Add(Event("/admin/proxy/metrics", 200), capacity: 2);
+
+        var recent = audit.Recent(10);
+
+        AssertEx.Equal(2, recent.Count);
+        AssertEx.Equal("/admin/proxy/metrics", recent[0].Path);
+        AssertEx.Equal("/admin/proxy/config/effective", recent[1].Path);
+        AssertEx.False(recent.Any(static item => item.Path == "/admin/proxy/status"));
+    }
+
+    public static async Task AdminAuditPathOmitsQuerySecrets()
+    {
+        var store = CreateStoreWithAdminAuthentication();
+        var audit = new AdminAuditStore();
+        var context = CreateAdminContext("/admin/proxy/status");
+        context.Request.QueryString = new QueryString("?token=query-secret");
+        context.Request.Headers.Authorization = $"Bearer {AdminToken}";
+        var middleware = CreateMiddleware(
+            store,
+            audit,
+            httpContext =>
+            {
+                httpContext.Response.StatusCode = StatusCodes.Status200OK;
+                return Task.CompletedTask;
+            });
+
+        await middleware.InvokeAsync(context);
+
+        var auditText = string.Join(Environment.NewLine, audit.Recent(10));
+        AssertEx.False(auditText.Contains("query-secret", StringComparison.Ordinal));
+        AssertEx.Equal("/admin/proxy/status", audit.Recent(1)[0].Path);
+    }
+
     public static void SensitiveProjectionRedactsConfiguredAdminSecrets()
     {
         var store = CreateStoreWithAdminAuthentication();
@@ -196,12 +274,29 @@ internal static class AdminSecurityTests
 
     private static DefaultHttpContext CreateAdminContext()
     {
+        return CreateAdminContext("/admin/proxy/status");
+    }
+
+    private static DefaultHttpContext CreateAdminContext(string path)
+    {
         var context = new DefaultHttpContext();
         context.Request.Method = HttpMethods.Get;
-        context.Request.Path = "/admin/proxy/status";
+        context.Request.Path = path;
         context.Response.Body = new MemoryStream();
         context.Connection.RemoteIpAddress = IPAddress.Parse("127.0.0.1");
         return context;
+    }
+
+    private static AdminAuditEvent Event(string path, int statusCode)
+    {
+        return new AdminAuditEvent(
+            DateTimeOffset.UtcNow,
+            "GET",
+            path,
+            "127.0.0.1",
+            "valid",
+            statusCode,
+            statusCode < 500);
     }
 
     private static ProxyConfigurationStore CreateStoreWithAdminAuthentication()

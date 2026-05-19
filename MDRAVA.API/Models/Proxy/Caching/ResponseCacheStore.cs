@@ -11,6 +11,7 @@ public sealed class ResponseCacheStore
     private const string ReasonCacheControlNoCache = "cache-control-no-cache";
     private const string ReasonCacheControlNoStore = "cache-control-no-store";
     private const string ReasonCacheControlPrivate = "cache-control-private";
+    private const string ReasonCookie = "cookie";
     private const string ReasonFraming = "framing";
     private const string ReasonMethod = "method";
     private const string ReasonOversized = "oversized";
@@ -238,6 +239,12 @@ public sealed class ResponseCacheStore
         if (ContainsHeader(requestHead.Headers, "Authorization"))
         {
             rejectionReason = ReasonAuthorization;
+            return false;
+        }
+
+        if (ContainsHeader(requestHead.Headers, "Cookie"))
+        {
+            rejectionReason = ReasonCookie;
             return false;
         }
 

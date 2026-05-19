@@ -212,6 +212,89 @@ internal static class ResilienceTests
         }
     }
 
+    public static async Task PartialResponseFailureDoesNotRetrySecondUpstreamAfterDownstreamBytesAreSent()
+    {
+        var proxyPort = GetFreeTcpPort();
+        var firstPort = GetFreeTcpPort();
+        var closedSecondPort = GetFreeTcpPort();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var temp = TemporaryDirectory.Create();
+        WriteResilienceSite(
+            temp.Path,
+            proxyPort,
+            [new TestUpstream("first", firstPort), new TestUpstream("second", closedSecondPort)],
+            RetryJson(maxAttempts: 2, retryOnConnectFailure: true));
+        var firstTask = RunCountingUpstreamAsync(
+            firstPort,
+            1,
+            _ => "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 12\r\n\r\npartial",
+            timeout.Token);
+
+        using var host = BuildProxyHost(temp.Path);
+        await host.StartAsync(timeout.Token);
+
+        try
+        {
+            var response = await SendSingleRequestAsync(
+                proxyPort,
+                "GET /partial HTTP/1.1\r\nHost: resilience.test\r\nConnection: close\r\n\r\n",
+                timeout.Token);
+            var firstRequests = await firstTask.WaitAsync(timeout.Token);
+            var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
+
+            AssertEx.True(response.Contains("200 OK", StringComparison.Ordinal), response);
+            AssertEx.True(response.EndsWith("partial", StringComparison.Ordinal), response);
+            AssertEx.Equal(1, firstRequests.Count);
+            AssertEx.Equal(0L, metrics.RetryAttempts);
+            AssertEx.Equal(1L, metrics.UpstreamBodyRelayFailures);
+        }
+        finally
+        {
+            await host.StopAsync(CancellationToken.None);
+        }
+    }
+
+    public static async Task RetryStatusDoesNotBypassUnsafePostMethod()
+    {
+        var proxyPort = GetFreeTcpPort();
+        var firstPort = GetFreeTcpPort();
+        var closedSecondPort = GetFreeTcpPort();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var temp = TemporaryDirectory.Create();
+        WriteResilienceSite(
+            temp.Path,
+            proxyPort,
+            [new TestUpstream("first", firstPort), new TestUpstream("second", closedSecondPort)],
+            RetryStatusJson(maxAttempts: 2, statusCode: 503));
+        var firstTask = RunCountingUpstreamAsync(
+            firstPort,
+            1,
+            _ => "HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\nContent-Length: 5\r\n\r\nerror",
+            timeout.Token);
+
+        using var host = BuildProxyHost(temp.Path);
+        await host.StartAsync(timeout.Token);
+
+        try
+        {
+            var response = await SendSingleRequestAsync(
+                proxyPort,
+                "POST /status HTTP/1.1\r\nHost: resilience.test\r\nContent-Length: 4\r\nConnection: close\r\n\r\nbody",
+                timeout.Token);
+            var firstRequests = await firstTask.WaitAsync(timeout.Token);
+            var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
+
+            AssertEx.True(response.Contains("503 Service Unavailable", StringComparison.Ordinal), response);
+            AssertEx.Equal(1, firstRequests.Count);
+            AssertEx.Equal(0L, metrics.RetryAttempts);
+            AssertEx.True(metrics.RetrySkipped.Any(static item => item.Reason == "method"));
+        }
+        finally
+        {
+            await host.StopAsync(CancellationToken.None);
+        }
+    }
+
     public static async Task RetryMaxAttemptsIsEnforced()
     {
         var result = await RunClosedUpstreamScenarioAsync(
@@ -272,6 +355,22 @@ internal static class ResilienceTests
 
         AssertEx.True(AssertEx.NotNull(second.CircuitBreakerLease).HalfOpenProbe);
         AssertEx.Equal(CircuitBreakerRuntimeState.HalfOpen, fixture.Circuit.Snapshot(route.Upstreams[0]).State);
+    }
+
+    public static void HalfOpenProbeCountIsBounded()
+    {
+        using var fixture = SelectorFixture.Create();
+        var route = Route([Upstream("first", weight: 1, circuit: Circuit(threshold: 1, openSeconds: 1))]);
+        var first = AssertEx.NotNull(fixture.Selector.Select(route));
+        fixture.Circuit.RecordFailure(first.CircuitBreakerLease, "connect_failure");
+        fixture.Clock.Advance(TimeSpan.FromSeconds(1));
+
+        var probe = AssertEx.NotNull(fixture.Selector.Select(route));
+        var rejected = fixture.Selector.Select(route);
+
+        AssertEx.True(AssertEx.NotNull(probe.CircuitBreakerLease).HalfOpenProbe);
+        AssertEx.Equal(null, rejected);
+        AssertEx.Equal(1L, fixture.Metrics.Snapshot().CircuitRejections);
     }
 
     public static void HalfOpenSuccessClosesCircuit()
@@ -350,6 +449,27 @@ internal static class ResilienceTests
         var afterOpen = AssertEx.NotNull(circuitFixture.Selector.Select(routeWithoutHealth));
 
         AssertEx.Equal("second", afterOpen.Upstream.Name);
+    }
+
+    public static void MixedProtocolUpstreamFailuresIsolateCircuitState()
+    {
+        using var fixture = SelectorFixture.Create();
+        var http1 = Upstream("http1", weight: 1, circuit: Circuit(threshold: 1));
+        var http3 = Upstream("http3", weight: 1, circuit: Circuit(threshold: 1)) with
+        {
+            Scheme = "https",
+            Protocol = RuntimeUpstreamProtocol.Http3,
+            Tls = new RuntimeUpstreamTlsOptions(true, "h3.internal")
+        };
+        var route = Route([http1, http3]);
+        var first = AssertEx.NotNull(fixture.Selector.Select(route));
+        fixture.Circuit.RecordFailure(first.CircuitBreakerLease, "connect_failure");
+
+        var second = AssertEx.NotNull(fixture.Selector.Select(route));
+
+        AssertEx.Equal("http3", second.Upstream.Name);
+        AssertEx.Equal(CircuitBreakerRuntimeState.Open, fixture.Circuit.Snapshot(http1).State);
+        AssertEx.Equal(CircuitBreakerRuntimeState.Closed, fixture.Circuit.Snapshot(http3).State);
     }
 
     public static void AllUpstreamsUnavailableReturnsNoSelection()

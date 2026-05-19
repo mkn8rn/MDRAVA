@@ -570,6 +570,89 @@ internal static class ConfigurationTests
         AssertEx.True(result.Errors.Any(static error => error.Contains("restricted", StringComparison.OrdinalIgnoreCase)), string.Join("; ", result.Errors));
     }
 
+    public static async Task ResponseHeaderPolicyCannotEmitHopByHopHeaders()
+    {
+        using var temp = TemporaryDirectory.Create();
+        WriteCustomSite(
+            temp.Path,
+            "unsafe-response.json",
+            """
+            {
+              "name": "unsafe-response",
+              "listeners": [
+                {
+                  "name": "main",
+                  "address": "127.0.0.1",
+                  "port": 18080
+                }
+              ],
+              "host": "*",
+              "routes": [
+                {
+                  "name": "app",
+                  "pathPrefix": "/",
+                  "action": "proxy",
+                  "headerPolicy": {
+                    "setResponseHeaders": [
+                      {
+                        "name": "Connection",
+                        "value": "keep-alive"
+                      }
+                    ]
+                  },
+                  "upstreams": [
+                    {
+                      "name": "local",
+                      "address": "127.0.0.1",
+                      "port": 15000
+                    }
+                  ]
+                }
+              ]
+            }
+            """);
+
+        var result = await CreateLoader(temp.Path).LoadAsync(CancellationToken.None);
+
+        AssertEx.False(result.Succeeded);
+        AssertEx.True(result.Errors.Any(static error => error.Contains("restricted", StringComparison.OrdinalIgnoreCase)), string.Join("; ", result.Errors));
+    }
+
+    public static async Task MultiFileConfigConflictReportingIsDeterministic()
+    {
+        using var temp = TemporaryDirectory.Create();
+        TestCertificates.WriteSelfSignedPfx(Path.Combine(temp.Path, "certs", "home.pfx"), "home.test");
+        TestCertificates.WriteSelfSignedPfx(Path.Combine(temp.Path, "certs", "alt.pfx"), "alt.test");
+        File.WriteAllText(
+            Path.Combine(Directory.CreateDirectory(Path.Combine(temp.Path, "config")).FullName, "proxy.json"),
+            """
+            {
+              "certificates": [
+                {
+                  "id": "home-cert",
+                  "format": "pfx",
+                  "path": "certs/home.pfx"
+                },
+                {
+                  "id": "alt-cert",
+                  "format": "pfx",
+                  "path": "certs/alt.pfx"
+                }
+              ]
+            }
+            """);
+        WriteHttpsSite(temp.Path, "home-a.json", port: 18443, upstreamPort: 15000, certificateId: "home-cert");
+        WriteHttpsSite(temp.Path, "home-b.json", port: 18443, upstreamPort: 15001, certificateId: "alt-cert");
+
+        var first = await CreateLoader(temp.Path).LoadAsync(CancellationToken.None);
+        var second = await CreateLoader(temp.Path).LoadAsync(CancellationToken.None);
+
+        AssertEx.False(first.Succeeded);
+        AssertEx.False(second.Succeeded);
+        AssertEx.Equal(string.Join("\n", first.Errors), string.Join("\n", second.Errors));
+        AssertEx.True(first.Errors.Any(static error => error.Contains("default certificate", StringComparison.OrdinalIgnoreCase)), string.Join("; ", first.Errors));
+    }
+
     public static async Task ConfigValidateReportsValidWithoutApplying()
     {
         using var temp = TemporaryDirectory.Create();
@@ -653,6 +736,48 @@ internal static class ConfigurationTests
 
         AssertEx.Equal(true, projection.Certificates[0].HasConfiguredPassword);
         AssertEx.False(projection.ToString().Contains("secret", StringComparison.OrdinalIgnoreCase));
+    }
+
+    public static async Task ExpiredCertificateProjectionKeepsValidityWindowVisible()
+    {
+        using var temp = TemporaryDirectory.Create();
+        var notBefore = DateTimeOffset.UtcNow.AddDays(-10);
+        var notAfter = DateTimeOffset.UtcNow.AddDays(-1);
+        var certificatePath = Path.Combine(temp.Path, "certs", "expired.pfx");
+        Directory.CreateDirectory(Path.GetDirectoryName(certificatePath)!);
+        File.WriteAllBytes(
+            certificatePath,
+            TestCertificates.CreateSelfSignedPfxBytesForValidity("expired.test", null, notBefore, notAfter));
+        WriteHttpsSite(temp.Path, "expired.json", port: 18443, upstreamPort: 15000, certificateId: "expired-cert");
+        WriteOperationalConfig(temp.Path, certificateId: "expired-cert", certificatePath: "certs/expired.pfx");
+
+        var result = await CreateLoader(temp.Path).LoadAsync(CancellationToken.None);
+
+        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
+        var projection = ProxyConfigurationMapper.ToProjection(AssertEx.NotNull(result.Snapshot));
+        AssertEx.True(projection.Certificates[0].NotAfter < DateTime.UtcNow);
+        AssertEx.True(projection.Certificates[0].NotBefore < projection.Certificates[0].NotAfter);
+    }
+
+    public static async Task NotYetValidCertificateProjectionKeepsValidityWindowVisible()
+    {
+        using var temp = TemporaryDirectory.Create();
+        var notBefore = DateTimeOffset.UtcNow.AddDays(2);
+        var notAfter = DateTimeOffset.UtcNow.AddDays(30);
+        var certificatePath = Path.Combine(temp.Path, "certs", "future.pfx");
+        Directory.CreateDirectory(Path.GetDirectoryName(certificatePath)!);
+        File.WriteAllBytes(
+            certificatePath,
+            TestCertificates.CreateSelfSignedPfxBytesForValidity("future.test", null, notBefore, notAfter));
+        WriteHttpsSite(temp.Path, "future.json", port: 18443, upstreamPort: 15000, certificateId: "future-cert");
+        WriteOperationalConfig(temp.Path, certificateId: "future-cert", certificatePath: "certs/future.pfx");
+
+        var result = await CreateLoader(temp.Path).LoadAsync(CancellationToken.None);
+
+        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
+        var projection = ProxyConfigurationMapper.ToProjection(AssertEx.NotNull(result.Snapshot));
+        AssertEx.True(projection.Certificates[0].NotBefore > DateTime.UtcNow);
+        AssertEx.True(projection.Certificates[0].NotAfter > projection.Certificates[0].NotBefore);
     }
 
     public static async Task ReloadFailureReportsPerFileErrorAndPreservesActiveConfig()
