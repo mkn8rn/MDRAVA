@@ -29,6 +29,9 @@ jobs:
           New-Item -ItemType Directory -Force -Path artifacts | Out-Null
           dotnet run --project MDRAVA.Tests/MDRAVA.Tests.csproj --no-restore --no-build -- --list-categories | Out-File -FilePath artifacts/correctness-categories.txt -Encoding utf8
 
+      - name: Check test metadata
+        run: dotnet run --project MDRAVA.Tests/MDRAVA.Tests.csproj --no-restore --no-build -- --check-test-metadata | Tee-Object -FilePath artifacts/correctness-metadata.txt
+
       - name: Run full test suite
         run: dotnet run --project MDRAVA.Tests/MDRAVA.Tests.csproj --no-restore --no-build -- --summary-file artifacts/correctness-Full.json
 
@@ -64,6 +67,7 @@ jobs:
           path: |
             artifacts/correctness-Full.json
             artifacts/correctness-categories.txt
+            artifacts/correctness-metadata.txt
           if-no-files-found: ignore
           retention-days: 14
 

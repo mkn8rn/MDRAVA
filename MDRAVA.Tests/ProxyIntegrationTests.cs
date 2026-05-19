@@ -49,6 +49,7 @@ internal static class ProxyIntegrationTests
                 .Build();
 
             await host.StartAsync(timeout.Token);
+            await WaitForProxyRuntimeAsync(host, timeout.Token);
 
             try
             {
@@ -172,7 +173,7 @@ internal static class ProxyIntegrationTests
     public static async Task RejectsInvalidRequestFraming()
     {
         var result = await RunProxyScenarioAsync(
-            "POST /bad HTTP/1.1\r\nHost: bad.test\r\nContent-Length: 1\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n",
+            "POST /bad HTTP/1.1\r\nHost: bad.test\r\nContent-Length: 1\r\nTransfer-Encoding: chunked\r\n\r\n",
             "HTTP/1.1 500 Should Not Happen\r\nContent-Length: 0\r\n\r\n",
             expectUpstreamConnection: false);
 
@@ -626,6 +627,7 @@ internal static class ProxyIntegrationTests
 
             using var host = BuildProxyHost(dataDirectory);
             await host.StartAsync(timeout.Token);
+            await WaitForProxyRuntimeAsync(host, timeout.Token);
 
             try
             {
@@ -1694,6 +1696,7 @@ internal static class ProxyIntegrationTests
                 .Build();
 
             await host.StartAsync(timeout.Token);
+            await WaitForProxyRuntimeAsync(host, timeout.Token);
 
             try
             {
@@ -1753,6 +1756,7 @@ internal static class ProxyIntegrationTests
         {
             using var host = BuildProxyHost(dataDirectory);
             await host.StartAsync(timeout.Token);
+            await WaitForProxyRuntimeAsync(host, timeout.Token);
 
             try
             {
@@ -1781,6 +1785,26 @@ internal static class ProxyIntegrationTests
     private static string SiteWithSingleProxyRoute(int proxyPort, int upstreamPort)
     {
         return SiteWithSingleProxyRoute(proxyPort, upstreamPort, "");
+    }
+
+    private static async Task WaitForProxyRuntimeAsync(IHost host, CancellationToken cancellationToken)
+    {
+        var runtimeState = host.Services.GetRequiredService<ProxyRuntimeState>();
+        while (true)
+        {
+            var snapshot = runtimeState.Snapshot();
+            if (snapshot.IsRunning)
+            {
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(snapshot.LastError))
+            {
+                throw new InvalidOperationException($"Proxy runtime did not start: {snapshot.LastError}");
+            }
+
+            await Task.Delay(10, cancellationToken);
+        }
     }
 
     private static string SiteWithSingleProxyRoute(

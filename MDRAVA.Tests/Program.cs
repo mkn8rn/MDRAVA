@@ -7,434 +7,434 @@ if (PerformanceSmokeRunner.IsPerformanceCommand(args))
     return;
 }
 
-var testDefinitions = new (string Name, Func<Task> Run)[]
+var tests = new TestCase[]
 {
-    ("Http1RequestParser parses a valid GET request", Sync(Http1RequestParserTests.ParsesValidGet)),
-    ("Http1RequestParser rejects missing Host", Sync(Http1RequestParserTests.RejectsMissingHost)),
-    ("Http1RequestParser rejects invalid Content-Length", Sync(Http1RequestParserTests.RejectsInvalidContentLength)),
-    ("Http1RequestParser detects request bodies", Sync(Http1RequestParserTests.DetectsRequestBodyIndicators)),
-    ("Http1RequestParser parses chunked transfer encoding", Sync(Http1RequestParserTests.ParsesChunkedTransferEncoding)),
-    ("Http1RequestParser rejects conflicting Content-Length", Sync(Http1RequestParserTests.RejectsConflictingContentLength)),
-    ("Http1RequestParser rejects Content-Length with Transfer-Encoding", Sync(Http1RequestParserTests.RejectsContentLengthWithTransferEncoding)),
-    ("Http1RequestParser rejects unsupported Transfer-Encoding", Sync(Http1RequestParserTests.RejectsUnsupportedTransferEncoding)),
-    ("Http1ResponseParser parses Content-Length response", Sync(Http1ResponseParserTests.ParsesContentLengthResponse)),
-    ("Http1ResponseParser parses chunked response", Sync(Http1ResponseParserTests.ParsesChunkedResponse)),
-    ("Http1ResponseParser treats HEAD response as no body", Sync(Http1ResponseParserTests.TreatsHeadResponseAsNoBody)),
-    ("Http1ResponseParser treats 204 as no body", Sync(Http1ResponseParserTests.TreatsNoContentAsNoBody)),
-    ("Http1ResponseParser treats 304 as no body", Sync(Http1ResponseParserTests.TreatsNotModifiedAsNoBody)),
-    ("Http1ResponseParser rejects invalid Content-Length", Sync(Http1ResponseParserTests.RejectsInvalidResponseContentLength)),
-    ("Header policy filters standard hop-by-hop headers", Sync(HeaderPolicyTests.FiltersStandardHopByHopHeaders)),
-    ("Header policy filters Connection-nominated headers", Sync(HeaderPolicyTests.FiltersConnectionNominatedHeaders)),
-    ("SingleUpstreamRouteMatcher matches wildcard route", Sync(RouteMatcherTests.MatchesWildcardRoute)),
-    ("SingleUpstreamRouteMatcher matches host without request port", Sync(RouteMatcherTests.MatchesHostWithoutRequestPort)),
-    ("SingleUpstreamRouteMatcher exact host route beats wildcard fallback", Sync(RouteMatcherTests.ExactHostRouteBeatsWildcardFallbackWhenBothCouldMatch)),
-    ("SingleUpstreamRouteMatcher port-specific host route beats host fallback", Sync(RouteMatcherTests.PortSpecificHostRouteBeatsHostFallbackWhenAuthorityIncludesPort)),
-    ("SingleUpstreamRouteMatcher specific route path beats catch-all fallback", Sync(RouteMatcherTests.SpecificRoutePathBeatsCatchAllFallbackWhenBothCouldMatch)),
-    ("Data directory uses configured override", Sync(ConfigurationTests.DataDirectoryUsesConfiguredOverride)),
-    ("Data directory uses environment override", Sync(ConfigurationTests.DataDirectoryUsesEnvironmentOverride)),
-    ("Data directory defaults under local application data when available", Sync(ConfigurationTests.DataDirectoryDefaultsUnderLocalApplicationDataWhenAvailable)),
-    ("Loader loads valid per-site JSON config files", ConfigurationTests.LoaderLoadsValidSiteFiles),
-    ("Loader loads equivalent JSON and YAML site files", ConfigurationTests.LoaderLoadsEquivalentJsonAndYamlSiteFiles),
-    ("Loader reports YAML parse errors with per-file diagnostics", ConfigurationTests.LoaderReportsYamlParseErrorsWithPerFileDiagnostics),
-    ("Loader loads route load-balancing and health-check settings", ConfigurationTests.LoaderLoadsRouteLoadBalancingAndHealthCheckSettings),
-    ("Loader creates missing config directories and loads empty snapshot", ConfigurationTests.LoaderCreatesMissingConfigDirectoriesAndLoadsEmptySnapshot),
-    ("Loader does not overwrite existing placeholder files", ConfigurationTests.LoaderDoesNotOverwriteExistingPlaceholderFiles),
-    ("Loader loads existing empty sites directory", ConfigurationTests.LoaderLoadsExistingEmptySitesDirectory),
-    ("Loader uses defaults when operational config is missing", ConfigurationTests.LoaderUsesDefaultsWhenOperationalConfigIsMissing),
-    ("Loader loads explicit operational timeout settings", ConfigurationTests.LoaderLoadsExplicitOperationalTimeouts),
-    ("Loader loads observability defaults", ConfigurationTests.LoaderLoadsObservabilityDefaults),
-    ("Loader loads explicit observability settings", ConfigurationTests.LoaderLoadsExplicitObservabilitySettings),
-    ("Loader rejects invalid observability capacity", ConfigurationTests.LoaderRejectsInvalidObservabilityCapacity),
-    ("Loader loads hardening limit defaults", ConfigurationTests.LoaderLoadsLimitDefaults),
-    ("Loader rejects invalid hardening limits", ConfigurationTests.LoaderRejectsInvalidLimitSettings),
-    ("Loader rejects invalid operational timeout settings", ConfigurationTests.LoaderRejectsInvalidOperationalTimeouts),
-    ("Loader rejects invalid tunnel connection limit", ConfigurationTests.LoaderRejectsInvalidTunnelLimit),
-    ("Loader loads HTTPS listener with certificate", ConfigurationTests.LoaderLoadsHttpsListenerWithCertificate),
-    ("Loader rejects HTTPS listener with missing certificate reference", ConfigurationTests.LoaderRejectsHttpsListenerWithMissingCertificateReference),
-    ("Loader rejects invalid certificate path", ConfigurationTests.LoaderRejectsInvalidCertificatePath),
-    ("Loader rejects invalid certificate password", ConfigurationTests.LoaderRejectsInvalidCertificatePassword),
-    ("Loader rejects duplicate SNI certificate mapping", ConfigurationTests.LoaderRejectsDuplicateSniCertificateMapping),
-    ("Loader merges SNI mappings from shared HTTPS listener", ConfigurationTests.LoaderMergesSniMappingsFromSharedHttpsListener),
-    ("Loader rejects invalid per-site JSON config files", ConfigurationTests.LoaderRejectsInvalidSiteFile),
-    ("Reload preserves active snapshot when load fails", ConfigurationTests.ReloadPreservesActiveSnapshotWhenLoadFails),
-    ("Reload replaces active snapshot when load succeeds", ConfigurationTests.ReloadReplacesActiveSnapshotWhenLoadSucceeds),
-    ("Reload replaces active snapshot with empty sites directory", ConfigurationTests.ReloadReplacesActiveSnapshotWithEmptySitesDirectory),
-    ("Active inspection projection reflects store", ConfigurationTests.ActiveInspectionProjectionReflectsStore),
-    ("Loader rejects unsafe header policy rule", ConfigurationTests.LoaderRejectsUnsafeHeaderRule),
-    ("Config response header policy cannot emit hop-by-hop headers", ConfigurationTests.ResponseHeaderPolicyCannotEmitHopByHopHeaders),
-    ("Config multi-file conflict reporting is deterministic", ConfigurationTests.MultiFileConfigConflictReportingIsDeterministic),
-    ("Config validate reports valid config without applying", ConfigurationTests.ConfigValidateReportsValidWithoutApplying),
-    ("Config validate reports invalid config without replacing active config", ConfigurationTests.ConfigValidateReportsInvalidWithoutReplacingActiveConfig),
-    ("Config normalize converts YAML to JSON without applying", ConfigurationTests.ConfigNormalizeConvertsYamlToJsonWithoutApplying),
-    ("Effective config projection redacts certificate secrets", ConfigurationTests.EffectiveConfigProjectionRedactsCertificateSecrets),
-    ("Expired certificate projection keeps validity window visible", ConfigurationTests.ExpiredCertificateProjectionKeepsValidityWindowVisible),
-    ("Not-yet-valid certificate projection keeps validity window visible", ConfigurationTests.NotYetValidCertificateProjectionKeepsValidityWindowVisible),
-    ("Reload failure reports per-file error and preserves active config", ConfigurationTests.ReloadFailureReportsPerFileErrorAndPreservesActiveConfig),
-    ("Default admin bind is localhost-only", Sync(AdminSecurityTests.DefaultAdminBindIsLocalhostOnly)),
-    ("Non-local admin bind without auth is rejected", Sync(AdminSecurityTests.NonLocalAdminBindWithoutAuthIsRejected)),
-    ("Operational config rejects non-local admin URL without auth", Sync(AdminSecurityTests.OperationalConfigRejectsNonLocalAdminUrlWithoutAuth)),
-    ("Protected admin endpoint rejects missing auth", AdminSecurityTests.ProtectedEndpointRejectsMissingAuth),
-    ("Protected admin endpoint rejects wrong auth", AdminSecurityTests.ProtectedEndpointRejectsWrongAuth),
-    ("Protected admin endpoint accepts valid bearer token", AdminSecurityTests.ProtectedEndpointAcceptsValidBearerToken),
-    ("Known admin endpoint paths require authentication", AdminSecurityTests.KnownAdminEndpointPathsRequireAuthentication),
-    ("Admin audit capacity evicts oldest entries", Sync(AdminSecurityTests.AdminAuditCapacityEvictsOldestEntries)),
-    ("Admin audit path omits query secrets", AdminSecurityTests.AdminAuditPathOmitsQuerySecrets),
-    ("Sensitive admin projections redact configured secrets", Sync(AdminSecurityTests.SensitiveProjectionRedactsConfiguredAdminSecrets)),
-    ("Effective config does not expose admin token", Sync(AdminSecurityTests.EffectiveConfigDoesNotExposeAdminToken)),
-    ("Generated placeholder config does not contain real secret", Sync(AdminSecurityTests.GeneratedPlaceholderConfigDoesNotContainRealSecret)),
-    ("Admin audit does not log token values", AdminSecurityTests.AdminAuditDoesNotLogTokenValues),
-    ("Manual PFX certificate behavior remains valid", AcmeTests.ManualPfxCertificateBehaviorRemainsValid),
-    ("ACME config validation rejects missing terms acceptance", Sync(AcmeTests.AcmeConfigValidationRejectsMissingTermsAcceptance)),
-    ("HTTP-01 challenge returns exact token response", Sync(AcmeTests.Http01ChallengeReturnsExactTokenResponse)),
-    ("Unknown HTTP-01 challenge returns safe 404", Sync(AcmeTests.UnknownHttp01ChallengeReturnsSafe404)),
-    ("ACME renewal stores material under certs directory", AcmeTests.AcmeRenewalStoresMaterialUnderCertsDirectory),
-    ("Loader loads stored ACME certificate on startup", AcmeTests.LoaderLoadsStoredAcmeCertificateOnStartup),
-    ("Failed ACME renewal preserves current active certificate", AcmeTests.FailedAcmeRenewalPreservesCurrentActiveCertificate),
-    ("ACME status projection does not expose private material", AcmeTests.AcmeStatusProjectionDoesNotExposePrivateMaterial),
-    ("ACME renewal avoids tight retry loop after failure", AcmeTests.AcmeRenewalAvoidsTightRetryLoopAfterFailure),
-    ("Existing HTTP upstream config remains valid", UpstreamTlsTests.ExistingHttpUpstreamConfigRemainsValid),
-    ("HTTPS upstream config parses and validates", UpstreamTlsTests.HttpsUpstreamConfigParsesAndValidates),
-    ("Unsupported upstream scheme is rejected", UpstreamTlsTests.UnsupportedUpstreamSchemeIsRejected),
-    ("Ambiguous upstream address is rejected", UpstreamTlsTests.AmbiguousUpstreamAddressIsRejected),
-    ("Upstream pool key differs for HTTP and HTTPS", Sync(UpstreamTlsTests.PoolKeyDiffersForHttpAndHttps)),
-    ("Upstream pool key differs for SNI and validation", Sync(UpstreamTlsTests.PoolKeyDiffersForDifferentSniAndValidation)),
-    ("HTTPS upstream uses SslStream path", UpstreamTlsTests.HttpsUpstreamUsesSslStreamPath),
-    ("HTTPS upstream proxy forwards through TLS", UpstreamTlsTests.HttpsUpstreamProxyForwardsThroughTls),
-    ("HTTPS health checks use TLS settings", UpstreamTlsTests.HttpsHealthChecksUseTlsSettings),
-    ("Upstream certificate validation is enabled by default", UpstreamTlsTests.CertificateValidationIsEnabledByDefault),
-    ("Explicit unsafe upstream validation projects as unsafe", UpstreamTlsTests.ExplicitUnsafeValidationModeIsProjectedAsUnsafe),
-    ("TLS validation failure does not fall back to plaintext", UpstreamTlsTests.TlsValidationFailureDoesNotFallBackToPlaintext),
-    ("Upstream SNI override validation rejects URL port and wildcard", UpstreamTlsTests.UpstreamSniOverrideValidationRejectsUrlPortAndWildcard),
-    ("Caching disabled by default", CacheTests.CachingDisabledByDefault),
-    ("Disabled cache keeps existing proxy behavior", CacheTests.DisabledCacheKeepsExistingProxyBehavior),
-    ("Invalid cache policy is rejected", Sync(CacheTests.InvalidCachePolicyIsRejected)),
-    ("Enabled GET 200 response is stored and served", CacheTests.EnabledGet200ResponseIsStoredAndServed),
-    ("HEAD cached response returns headers without body", CacheTests.HeadResponseReturnsHeadersWithoutBody),
-    ("Query string is part of cache key", Sync(CacheTests.QueryStringIsPartOfCacheKey)),
-    ("Rewrite target is part of cache key", Sync(CacheTests.RewriteTargetIsPartOfCacheKey)),
-    ("Host and vary headers affect cache key", Sync(CacheTests.HostAndVaryHeadersAffectCacheKey)),
-    ("Authorization request is not cached by default", Sync(CacheTests.AuthorizationRequestIsNotCachedByDefault)),
-    ("Cookie request is not cached by default", Sync(CacheTests.CookieRequestIsNotCachedByDefault)),
-    ("Set-Cookie response is not cached by default", Sync(CacheTests.SetCookieResponseIsNotCachedByDefault)),
-    ("Cache-Control no-store is not cached", Sync(CacheTests.NoStoreResponseIsNotCached)),
-    ("Cache-Control no-cache is not cached", Sync(CacheTests.NoCacheResponseIsNotCached)),
-    ("Cache-Control must-revalidate is not cached", Sync(CacheTests.MustRevalidateResponseIsNotCached)),
-    ("Cache-Control private is not cached by default", Sync(CacheTests.PrivateResponseIsNotCachedByDefault)),
-    ("Cache-Control max-age controls TTL and expiry", Sync(CacheTests.MaxAgeControlsTtlAndExpiredEntryIsNotServed)),
-    ("Oversized response is streamed but not cached", CacheTests.OversizedResponseIsStreamedButNotCached),
-    ("Hop-by-hop cache headers are not stored", Sync(CacheTests.HopByHopHeadersAndTransferEncodingAreNotStored)),
-    ("Vary header case and duplicate values affect cache key deterministically", Sync(CacheTests.VaryHeaderCaseAndDuplicateValuesAffectCacheKeyDeterministically)),
-    ("Cache evicts oldest entries at max total bytes", Sync(CacheTests.CacheEvictsOldestEntriesAtMaxTotalBytes)),
-    ("Partial upstream response is not cached", CacheTests.PartialUpstreamResponseIsNotCached),
-    ("Cache clear endpoint clears entries", CacheTests.CacheClearEndpointClearsEntries),
-    ("Cache clear endpoint is protected", CacheTests.CacheClearEndpointIsProtected),
-    ("Successful config reload clears cache", CacheTests.SuccessfulReloadClearsCache),
-    ("Failed config reload does not clear cache", CacheTests.FailedReloadDoesNotClearCache),
-    ("Metrics endpoint is protected by admin auth", MetricsTests.MetricsEndpointIsProtectedByAdminAuth),
-    ("Metrics endpoint returns Prometheus text", Sync(MetricsTests.MetricsEndpointReturnsPrometheusText)),
-    ("Metrics include request counters after proxied request", MetricsTests.MetricsIncludeRequestCountersAfterProxiedRequest),
-    ("Metrics include cache counters after cache activity", Sync(MetricsTests.MetricsIncludeCacheCountersAfterCacheActivity)),
-    ("Metrics include reload success and failure counters", MetricsTests.MetricsIncludeReloadCounters),
-    ("Metrics do not expose raw request details", MetricsTests.MetricsDoNotExposeRawRequestDetails),
-    ("Metrics failure matrix does not expose authorization cookie or query secrets", MetricsTests.MetricsFailureMatrixDoesNotExposeAuthorizationCookieOrQuerySecrets),
-    ("Public metrics exposure is disabled by default", Sync(MetricsTests.PublicMetricsExposureIsDisabledByDefault)),
-    ("Invalid metrics config is rejected", Sync(MetricsTests.InvalidMetricsConfigIsRejected)),
-    ("Metric labels are bounded and sanitized", Sync(MetricsTests.MetricLabelsAreBoundedAndSanitized)),
-    ("Route dry-run matches dataplane matcher", Sync(RouteDiagnosticsTests.DryRunMatchesSameRouteAsDataplaneMatcher)),
-    ("Route dry-run has no upstream I/O or retry circuit cache mutation", Sync(RouteDiagnosticsTests.DryRunDoesNotPerformUpstreamIoOrMutateRetryCircuitOrCacheState)),
-    ("Route dry-run reports no-match reason", Sync(RouteDiagnosticsTests.DryRunReportsNoMatchReason)),
-    ("Route dry-run reports path rewrite result", Sync(RouteDiagnosticsTests.DryRunReportsPathRewriteResult)),
-    ("Route dry-run can select HTTP/3 protocol listener", Sync(RouteDiagnosticsTests.DryRunCanSelectHttp3ProtocolListener)),
-    ("Route dry-run reports generated route actions", Sync(RouteDiagnosticsTests.DryRunReportsGeneratedRouteActions)),
-    ("Route dry-run redacts sensitive headers", Sync(RouteDiagnosticsTests.DryRunRedactsSensitiveHeaders)),
-    ("Config lint detects route shadowing and broad catch-all", Sync(RouteDiagnosticsTests.LintDetectsRouteShadowingAndBroadCatchAll)),
-    ("Config lint detects canonical redirect loop", Sync(RouteDiagnosticsTests.LintDetectsCanonicalRedirectLoop)),
-    ("Config lint detects HTTPS redirect without HTTPS listener", Sync(RouteDiagnosticsTests.LintDetectsHttpsRedirectWithoutHttpsListener)),
-    ("Config lint warns about unsafe upstream TLS validation", Sync(RouteDiagnosticsTests.LintWarnsAboutUnsafeUpstreamTlsValidation)),
-    ("Config lint omits resolved upstream HTTP/3 pooling limitation", Sync(RouteDiagnosticsTests.LintDoesNotReportResolvedUpstreamHttp3PoolingLimitation)),
-    ("Config lint handles JSON and YAML submitted config without applying", Sync(RouteDiagnosticsTests.LintHandlesJsonAndYamlSubmittedConfigWithoutApplying)),
-    ("Config lint output has stable codes and severities", Sync(RouteDiagnosticsTests.LintOutputHasStableCodesAndSeverities)),
-    ("Diagnostic endpoints require admin auth", RouteDiagnosticsTests.DiagnosticEndpointsRequireAdminAuth),
-    ("Metrics include lint and route dry-run counters", Sync(RouteDiagnosticsTests.MetricsIncludeLintAndRouteDryRunCounters)),
-    ("Route-only reload does not rebind unchanged listener", ListenerRebindingTests.RouteOnlyReloadDoesNotRebindUnchangedListener),
-    ("Adding listener starts only new listener", ListenerRebindingTests.AddingListenerStartsOnlyNewListener),
-    ("Removing listener stops accepting new connections", ListenerRebindingTests.RemovingListenerStopsAcceptingNewConnections),
-    ("Changed listener is replaced safely", ListenerRebindingTests.ChangedListenerIsReplacedSafely),
-    ("Failed new listener start preserves old active listener", ListenerRebindingTests.FailedNewListenerStartPreservesOldActiveListener),
-    ("Failed config reload preserves old active listeners", ListenerRebindingTests.FailedConfigReloadPreservesOldActiveListeners),
-    ("Certificate-only update does not rebind listener", ListenerRebindingTests.CertificateOnlyUpdateDoesNotRebindListener),
-    ("Admin bind is not affected by proxy listener reload", ListenerRebindingTests.AdminBindIsNotAffectedByProxyListenerReload),
-    ("Reload diagnostics report listener diff", ListenerRebindingTests.ReloadDiagnosticsReportListenerDiff),
-    ("Metrics count listener reload outcomes", ListenerRebindingTests.MetricsCountListenerReloadOutcomes),
-    ("HTTP/2 client preserves HTTP/1.1 behavior", ClientHttp2Tests.ExistingHttp1BehaviorRemainsUnchanged),
-    ("HTTP/2 plaintext listener is rejected", Sync(ClientHttp2Tests.PlaintextHttp2ListenerIsRejected)),
-    ("HTTP/2 ALPN selects h2 when enabled", ClientHttp2Tests.AlpnSelectsHttp2WhenEnabled),
-    ("HTTP/2 request maps to route matcher", ClientHttp2Tests.Http2RequestMapsToRouteMatcher),
-    ("HTTP/2 authority maps to host routing", ClientHttp2Tests.AuthorityMapsToHostRouting),
-    ("HTTP/2 query string is preserved", ClientHttp2Tests.QueryStringIsPreserved),
-    ("HTTP/2 invalid pseudo headers are rejected", ClientHttp2Tests.InvalidPseudoHeadersAreRejected),
-    ("HTTP/2 forbidden connection headers are rejected", ClientHttp2Tests.ForbiddenConnectionHeadersAreRejected),
-    ("HTTP/2 Huffman request header values are decoded", ClientHttp2Tests.HuffmanRequestHeaderValuesAreDecoded),
-    ("HTTP/2 response omits hop-by-hop headers", ClientHttp2Tests.ResponseOmitsHopByHopHeaders),
-    ("HTTP/2 static response route works", ClientHttp2Tests.StaticResponseRouteWorksOverHttp2),
-    ("HTTP/2 redirect route works", ClientHttp2Tests.RedirectRouteWorksOverHttp2),
-    ("HTTP/2 maintenance route works", ClientHttp2Tests.MaintenanceRouteWorksOverHttp2),
-    ("HTTP/2 HEAD returns no body", ClientHttp2Tests.HeadReturnsHeadersWithoutBody),
-    ("HTTP/2 cache works", ClientHttp2Tests.CacheWorksOverHttp2),
-    ("HTTP/2 retry works for proxy requests", ClientHttp2Tests.RetryWorksForHttp2ProxyRequests),
-    ("HTTP/2 extended CONNECT is rejected", ClientHttp2Tests.ExtendedConnectIsRejected),
-    ("HTTP/2 concurrent streams reach different routes", ClientHttp2Tests.ConcurrentStreamsReachDifferentRoutes),
-    ("HTTP/2 DATA before HEADERS is rejected safely", ClientHttp2Tests.DataBeforeHeadersIsRejectedSafely),
-    ("HTTP/2 CONTINUATION header fragmentation is accepted", ClientHttp2Tests.ContinuationHeaderFragmentationIsAccepted),
-    ("HTTP/2 RST_STREAM releases state and keeps connection usable", ClientHttp2Tests.RstStreamReleasesStateAndKeepsConnectionUsable),
-    ("HTTP/2 GOAWAY stops new streams safely", ClientHttp2Tests.GoAwayStopsNewStreamsSafely),
-    ("HTTP/2 oversized header list is rejected", ClientHttp2Tests.OversizedHeaderListIsRejected),
-    ("HTTP/2 metrics include counters", ClientHttp2Tests.MetricsIncludeHttp2Counters),
-    ("Upstream HTTP/2 preserves HTTP/1.1 upstream default", UpstreamHttp2Tests.ExistingHttp1UpstreamProtocolRemainsDefault),
-    ("Upstream HTTP/2 requires HTTPS", Sync(UpstreamHttp2Tests.Http2UpstreamRequiresHttps)),
-    ("Unsupported upstream protocol is rejected", Sync(UpstreamHttp2Tests.UnsupportedUpstreamProtocolIsRejected)),
-    ("Upstream pool key differs for HTTP/1.1 and HTTP/2", Sync(UpstreamHttp2Tests.PoolKeyDiffersForHttp1AndHttp2)),
-    ("Upstream HTTP/2 advertises h2 ALPN", UpstreamHttp2Tests.UpstreamAlpnAdvertisesHttp2),
-    ("Upstream HTTP/2 ALPN failure does not fallback", UpstreamHttp2Tests.AlpnFailureDoesNotFallbackToHttp1),
-    ("Upstream HTTP/2 proxy maps headers query and response", UpstreamHttp2Tests.Http2UpstreamProxyMapsHeadersQueryAndResponse),
-    ("Upstream HTTP/2 forwards request body", UpstreamHttp2Tests.Http2UpstreamForwardsRequestBody),
-    ("Upstream HTTP/2 ends zero-length request body", UpstreamHttp2Tests.Http2UpstreamEndsZeroLengthRequestBody),
-    ("Cache works with HTTP/2 upstream", UpstreamHttp2Tests.CacheWorksWithHttp2Upstream),
-    ("HTTP/2 upstream health check uses h2 and rejects wrong ALPN", UpstreamHttp2Tests.Http2HealthCheckUsesH2AndRejectsWrongAlpn),
-    ("Metrics include upstream HTTP/2 counters", UpstreamHttp2Tests.MetricsIncludeUpstreamHttp2Counters),
-    ("Upstream HTTP/3 requires HTTPS", Sync(UpstreamHttp3Tests.Http3UpstreamRequiresHttps)),
-    ("Upstream HTTP/3 config parses and validates", UpstreamHttp3Tests.Http3UpstreamConfigParsesAndValidates),
-    ("Upstream HTTP/3 effective projection reports reused multiplexed pooling", UpstreamHttp3Tests.Http3EffectiveProjectionReportsReusedMultiplexedPooling),
-    ("Upstream pool key differs for HTTP/1.1 HTTP/2 and HTTP/3", Sync(UpstreamHttp3Tests.PoolKeyDiffersForHttp1Http2AndHttp3)),
-    ("Upstream HTTP/3 pool key includes SNI and validation", Sync(UpstreamHttp3Tests.PoolKeyIncludesHttp3SniAndValidation)),
-    ("Upstream HTTP/3 proxy maps headers query and response", UpstreamHttp3Tests.Http3UpstreamProxyMapsHeadersQueryAndResponse),
-    ("Sequential upstream HTTP/3 requests reuse a pooled connection", UpstreamHttp3Tests.SequentialHttp3UpstreamRequestsReuseConnection),
-    ("Concurrent upstream HTTP/3 requests share a pooled connection", UpstreamHttp3Tests.ConcurrentHttp3UpstreamRequestsShareConnection),
-    ("Idle upstream HTTP/3 pooled connections expire", UpstreamHttp3Tests.IdleHttp3UpstreamConnectionsExpire),
-    ("Upstream HTTP/3 GOAWAY drains connection without breaking active stream", UpstreamHttp3Tests.UpstreamHttp3GoAwayDrainsConnectionWithoutBreakingActiveStream),
-    ("Upstream HTTP/3 pool stream-limit exhaustion returns safe failure", UpstreamHttp3Tests.UpstreamHttp3PoolStreamLimitExhaustionReturnsSafeFailure),
-    ("Upstream HTTP/3 concurrent reuse releases active stream gauge", UpstreamHttp3Tests.ConcurrentHttp3UpstreamReuseReleasesActiveStreamGauge),
-    ("Upstream HTTP/3 stream reset does not poison unrelated active stream", UpstreamHttp3Tests.UpstreamHttp3StreamResetDoesNotPoisonUnrelatedActiveStream),
-    ("Upstream HTTP/3 failed connection does not receive new streams", UpstreamHttp3Tests.FailedHttp3UpstreamConnectionDoesNotReceiveNewStreams),
-    ("Upstream HTTP/3 ALPN failure does not downgrade", UpstreamHttp3Tests.Http3UpstreamAlpnFailureDoesNotDowngrade),
-    ("Upstream HTTP/3 malformed response headers are rejected", UpstreamHttp3Tests.Http3UpstreamMalformedResponseHeadersAreRejected),
-    ("Upstream HTTP/3 forwards request body", UpstreamHttp3Tests.Http3UpstreamForwardsRequestBody),
-    ("Upstream HTTP/3 health check uses h3", UpstreamHttp3Tests.Http3HealthCheckUsesH3),
-    ("Cache works with HTTP/3 upstream", UpstreamHttp3Tests.CacheWorksWithHttp3Upstream),
-    ("Metrics include upstream HTTP/3 counters", UpstreamHttp3Tests.MetricsIncludeUpstreamHttp3Counters),
-    ("Existing HTTP/1.1 and HTTP/2 listener protocols still validate", Sync(Http3InfrastructureTests.ExistingHttp1AndHttp2ProtocolsStillValidate)),
-    ("Listener protocol config parsing preserves HTTP/3 compatibility names", Sync(Http3InfrastructureTests.ListenerProtocolConfigParsingPreservesCompatibility)),
-    ("HTTP/3 defaults on for eligible TLS listeners", Sync(Http3InfrastructureTests.Http3DefaultEnabledForEligibleTlsListener)),
-    ("HTTP/3 defaults off for plaintext listeners", Sync(Http3InfrastructureTests.Http3DefaultDisabledForPlaintextListener)),
-    ("Legacy HTTP/3 protocol token no longer requires experimental gate for default enablement", Sync(Http3InfrastructureTests.Http3PreviewProtocolDoesNotRequireExperimentalGateForDefaultEnablement)),
-    ("Legacy HTTP/3 protocol token requires TLS certificate capable listener", Sync(Http3InfrastructureTests.Http3PreviewRequiresTlsCertificateCapableListener)),
-    ("Legacy HTTP/3 config is accepted with gate and enables traffic", Sync(Http3InfrastructureTests.Http3PreviewConfigIsAcceptedWithExplicitGateAndEnablesPreviewTraffic)),
-    ("HTTP/3-only legacy config does not enable TCP traffic", Sync(Http3InfrastructureTests.Http3OnlyPreviewDoesNotEnableTcpTraffic)),
-    ("TCP listener identity remains unchanged", Sync(Http3InfrastructureTests.TcpListenerIdentityRemainsUnchanged)),
-    ("Future QUIC listener identity is separate from TCP identity", Sync(Http3InfrastructureTests.FutureQuicListenerIdentityIsSeparateFromTcpIdentity)),
-    ("TCP ALPN does not advertise HTTP/3", Sync(Http3InfrastructureTests.TcpAlpnDoesNotAdvertiseHttp3)),
-    ("Status and effective projection report legacy HTTP/3 config enabled", Sync(Http3InfrastructureTests.StatusAndEffectiveProjectionReportLegacyHttp3PreviewEnabled)),
-    ("Final HTTP/3 support projection reports matrix and final naming", Sync(Http3InfrastructureTests.FinalSupportProjectionReportsHttp3MatrixAndFinalNaming)),
-    ("HTTP/3 upstream protocol accepts explicit config", Sync(Http3InfrastructureTests.UpstreamProtocolAcceptsExplicitHttp3)),
-    ("HTTP/3 defaults on for eligible TLS runtime listener", Sync(ClientHttp3PreviewTests.Http3DefaultEnabledForEligibleTlsListener)),
-    ("Explicit HTTP/3 disable prevents traffic", Sync(ClientHttp3PreviewTests.ExplicitHttp3DisablePreventsTraffic)),
-    ("HTTP/3 QUIC listener identity is separate from TCP identity", Sync(ClientHttp3PreviewTests.QuicListenerIdentityIsSeparateFromTcpIdentity)),
-    ("Failed HTTP/3 QUIC listener start does not break TCP listener", ClientHttp3PreviewTests.FailedQuicListenerStartDoesNotBreakTcpListener),
-    ("Default HTTP/3 TLS listener starts QUIC and emits Alt-Svc", ClientHttp3PreviewTests.DefaultHttp3TlsListenerStartsQuicAndEmitsAltSvc),
-    ("Successful reload can add and remove HTTP/3 QUIC listener", ClientHttp3PreviewTests.SuccessfulReloadCanAddAndRemovePreviewQuicListener),
-    ("Failed reload preserves old HTTP/3 listener set", ClientHttp3PreviewTests.FailedReloadPreservesOldPreviewQuicListenerSet),
-    ("Status and effective config mark HTTP/3 as experimental preview", Sync(ClientHttp3PreviewTests.StatusAndEffectiveConfigMarkHttp3AsExperimentalPreview)),
-    ("HTTP/3 beta enablement is explicitly projected", Sync(ClientHttp3PreviewTests.Http3BetaEnablementIsExplicitlyProjected)),
-    ("HTTP/3 Alt-Svc is absent when HTTP/3 is explicitly disabled", ClientHttp3PreviewTests.AltSvcIsAbsentWhenHttp3ExplicitlyDisabled),
-    ("HTTP/3 Alt-Svc is emitted only when configured and ready", ClientHttp3PreviewTests.AltSvcIsEmittedOnlyWhenConfiguredAndReady),
-    ("HTTP/3 Alt-Svc is not emitted when QUIC listener is not ready", ClientHttp3PreviewTests.AltSvcIsNotEmittedWhenQuicListenerIsNotReady),
-    ("Admin responses do not emit HTTP/3 Alt-Svc", Sync(ClientHttp3PreviewTests.AdminResponsesDoNotEmitAltSvc)),
-    ("Minimal HTTP/3 GET can reach generated route", ClientHttp3PreviewTests.MinimalHttp3GetCanReachGeneratedRoute),
-    ("HTTP/3 HEAD returns headers without body", ClientHttp3PreviewTests.HeadReturnsHeadersWithoutBody),
-    ("HTTP/3 generated redirect route works", ClientHttp3PreviewTests.Http3GeneratedRedirectRouteWorks),
-    ("HTTP/3 generated maintenance route works", ClientHttp3PreviewTests.Http3GeneratedMaintenanceRouteWorks),
-    ("HTTP/3 route miss returns safe 404", ClientHttp3PreviewTests.Http3RouteMissReturnsSafe404),
-    ("HTTP/3 route miss remains stable across repeated ready-listener requests", ClientHttp3PreviewTests.Http3RouteMissRemainsStableAcrossRepeatedReadyListenerRequests),
-    ("HTTP/3 GET proxy route works", ClientHttp3PreviewTests.Http3GetProxyRouteWorks),
-    ("HTTP/3 HEAD proxy route works", ClientHttp3PreviewTests.Http3HeadProxyRouteWorks),
-    ("HTTP/3 proxy preserves query string", ClientHttp3PreviewTests.Http3ProxyPreservesQueryString),
-    ("HTTP/3 proxy strips pseudo headers before upstream", ClientHttp3PreviewTests.Http3ProxyStripsPseudoHeadersBeforeUpstream),
-    ("HTTP/3 response headers are encoded safely", ClientHttp3PreviewTests.Http3ResponseHeadersAreEncodedSafely),
-    ("HTTP/3 chunked response streams body without Transfer-Encoding", ClientHttp3PreviewTests.Http3ChunkedResponseStreamsBodyWithoutTransferEncoding),
-    ("HTTP/3 response streams before upstream completes", ClientHttp3PreviewTests.Http3ResponseStreamsBeforeUpstreamCompletes),
-    ("HTTP/3 cache interaction uses stored response", ClientHttp3PreviewTests.Http3CacheInteractionUsesStoredResponse),
-    ("HTTP/3 oversized cache candidate streams but is not cached", ClientHttp3PreviewTests.Http3OversizedCacheCandidateStreamsButIsNotCached),
-    ("HTTP/3 retry for GET can reach second upstream", ClientHttp3PreviewTests.Http3RetryForGetCanReachSecondUpstream),
-    ("HTTP/3 unsupported CONNECT is rejected", ClientHttp3PreviewTests.UnsupportedConnectIsRejected),
-    ("HTTP/3 malformed CONNECT is rejected", ClientHttp3PreviewTests.MalformedHttp3ConnectIsRejected),
-    ("HTTP/3 extended CONNECT WebSocket form is rejected", ClientHttp3PreviewTests.ExtendedHttp3ConnectWebSocketIsRejected),
-    ("HTTP/3 POST with bounded body reaches upstream", ClientHttp3PreviewTests.Http3PostWithBoundedBodyReachesUpstream),
-    ("HTTP/3 PUT PATCH and DELETE bodies reach upstream", ClientHttp3PreviewTests.Http3PutPatchAndDeleteBodiesReachUpstream),
-    ("HTTP/3 path rewrite applies to proxy route", ClientHttp3PreviewTests.Http3PathRewriteAppliesToProxyRoute),
-    ("HTTP/3 body size limit applies", ClientHttp3PreviewTests.Http3BodySizeLimitApplies),
-    ("HTTP/3 legacy buffered request body limit does not block streaming", ClientHttp3PreviewTests.Http3LegacyBufferedRequestBodyLimitDoesNotBlockStreaming),
-    ("HTTP/3 request with body is not retried", ClientHttp3PreviewTests.Http3RequestWithBodyIsNotRetried),
-    ("HTTP/3 invalid frame sequence is rejected", ClientHttp3PreviewTests.InvalidFrameSequenceIsRejected),
-    ("HTTP/3 unexpected control frame on request stream is rejected", ClientHttp3PreviewTests.UnexpectedControlFrameOnRequestStreamIsRejected),
-    ("HTTP/3 GOAWAY frame on request stream is rejected", ClientHttp3PreviewTests.GoAwayFrameOnRequestStreamIsRejected),
-    ("HTTP/3 duplicate HEADERS after request headers are rejected", ClientHttp3PreviewTests.DuplicateHeadersAfterHeadersIsRejected),
-    ("HTTP/3 unknown frame before headers is rejected", ClientHttp3PreviewTests.UnknownFrameBeforeHeadersIsRejected),
-    ("HTTP/3 MAX_PUSH frame on request stream is rejected", ClientHttp3PreviewTests.MaxPushFrameOnRequestStreamIsRejected),
-    ("HTTP/3 stream-level protocol error does not poison connection", ClientHttp3PreviewTests.StreamLevelProtocolErrorDoesNotPoisonConnection),
-    ("HTTP/3 concurrent stream reset does not leak active streams", ClientHttp3PreviewTests.ConcurrentStreamResetDoesNotLeakActiveStreams),
-    ("HTTP/3 QPACK decode failure does not reach route selection", ClientHttp3PreviewTests.QpackDecodeFailureDoesNotReachRouteSelection),
-    ("HTTP/3 protocol error budget closes abusive connection", ClientHttp3PreviewTests.ProtocolErrorBudgetClosesAbusiveConnection),
-    ("HTTP/3 malformed pseudo headers are rejected", Sync(ClientHttp3PreviewTests.MalformedPseudoHeadersAreRejected)),
-    ("HTTP/3 pseudo header after regular header is rejected", Sync(ClientHttp3PreviewTests.PseudoHeaderAfterRegularHeaderIsRejected)),
-    ("HTTP/3 forbidden pseudo header is rejected", Sync(ClientHttp3PreviewTests.ForbiddenPseudoHeaderIsRejected)),
-    ("HTTP/3 missing pseudo headers are rejected", Sync(ClientHttp3PreviewTests.MissingPseudoHeadersAreRejected)),
-    ("HTTP/3 forbidden connection headers are rejected", Sync(ClientHttp3PreviewTests.ForbiddenConnectionHeadersAreRejected)),
-    ("HTTP/3 invalid regular header name is rejected", Sync(ClientHttp3PreviewTests.InvalidRegularHeaderNameIsRejected)),
-    ("HTTP/3 invalid pseudo header values are rejected", Sync(ClientHttp3PreviewTests.InvalidPseudoHeaderValuesAreRejected)),
-    ("HTTP/3 malformed authority and path are rejected", Sync(ClientHttp3PreviewTests.MalformedAuthorityAndPathAreRejected)),
-    ("HTTP/3 CONNECT pseudo header rules are enforced", Sync(ClientHttp3PreviewTests.ConnectSpecificPseudoHeaderRulesAreEnforced)),
-    ("HTTP/3 oversized header block is rejected", Sync(ClientHttp3PreviewTests.OversizedHeaderBlockIsRejected)),
-    ("HTTP/3 QPACK header block exact boundary is accepted", Sync(ClientHttp3PreviewTests.QpackHeaderBlockAtExactLimitIsAccepted)),
-    ("HTTP/3 unsupported QPACK dynamic table usage is rejected", Sync(ClientHttp3PreviewTests.UnsupportedQpackDynamicTableUsageIsRejected)),
-    ("HTTP/3 invalid QPACK static table reference is rejected", Sync(ClientHttp3PreviewTests.InvalidQpackStaticTableReferenceIsRejected)),
-    ("HTTP/3 unsupported QPACK dynamic table prefix is rejected", Sync(ClientHttp3PreviewTests.UnsupportedQpackDynamicTablePrefixIsRejected)),
-    ("HTTP/3 QPACK Huffman static name reference decodes", Sync(ClientHttp3PreviewTests.QpackHuffmanStaticNameReferenceDecodes)),
-    ("Metrics include HTTP/3 counters", Sync(ClientHttp3PreviewTests.MetricsIncludeHttp3PreviewCounters)),
-    ("Config lint reports HTTP/3 default readiness issues", Sync(ClientHttp3PreviewTests.ConfigLintReportsHttp3DefaultReadinessIssues)),
-    ("Resilience disabled preserves existing behavior", ResilienceTests.ExistingBehaviorUnchangedWhenResilienceDisabled),
-    ("GET retry occurs on connect failure when enabled", ResilienceTests.GetRetryOccursOnConnectFailureWhenEnabled),
-    ("GET retry occurs on configured status when enabled", ResilienceTests.GetRetryOccursOnConfiguredStatusWhenEnabled),
-    ("POST is not retried by default", ResilienceTests.PostIsNotRetriedByDefault),
-    ("Upgrade requests are not retried", ResilienceTests.UpgradeIsNotRetried),
-    ("Request is not retried after response streaming starts", ResilienceTests.RequestIsNotRetriedAfterResponseStreamingStarts),
-    ("Partial response failure does not retry second upstream after downstream bytes are sent", ResilienceTests.PartialResponseFailureDoesNotRetrySecondUpstreamAfterDownstreamBytesAreSent),
-    ("Retry status does not bypass unsafe POST method", ResilienceTests.RetryStatusDoesNotBypassUnsafePostMethod),
-    ("Retry maxAttempts is enforced", ResilienceTests.RetryMaxAttemptsIsEnforced),
-    ("Retry exhausted returns clear failure", ResilienceTests.RetryExhaustedReturnsClearFailure),
-    ("Circuit opens after threshold failures", Sync(ResilienceTests.CircuitOpensAfterThresholdFailures)),
-    ("Circuit rejects traffic while open", Sync(ResilienceTests.CircuitRejectsTrafficWhileOpen)),
-    ("Circuit transitions to half-open after open duration", Sync(ResilienceTests.CircuitTransitionsToHalfOpenAfterOpenDuration)),
-    ("Circuit half-open probe count is bounded", Sync(ResilienceTests.HalfOpenProbeCountIsBounded)),
-    ("Half-open success closes circuit", Sync(ResilienceTests.HalfOpenSuccessClosesCircuit)),
-    ("Half-open failure reopens circuit", Sync(ResilienceTests.HalfOpenFailureReopensCircuit)),
-    ("Weighted round-robin honors weights", Sync(ResilienceTests.WeightedRoundRobinHonorsWeights)),
-    ("Equal weights preserve round-robin order", Sync(ResilienceTests.EqualWeightRoundRobinPreservesExistingOrder)),
-    ("Unhealthy and open-circuit upstreams are skipped", Sync(ResilienceTests.UnhealthyAndOpenCircuitUpstreamsAreSkipped)),
-    ("Mixed protocol upstream failures isolate circuit state", Sync(ResilienceTests.MixedProtocolUpstreamFailuresIsolateCircuitState)),
-    ("All unavailable upstreams return no selection", Sync(ResilienceTests.AllUpstreamsUnavailableReturnsNoSelection)),
-    ("All unavailable upstreams return safe failure", ResilienceTests.AllUnavailableUpstreamsReturnSafeFailure),
-    ("Metrics include retry circuit and balancing counters", Sync(ResilienceTests.MetricsIncludeRetryCircuitAndBalancingCounters)),
-    ("Effective and status projections show resilience state", Sync(ResilienceTests.EffectiveAndStatusProjectionsShowSafeResilienceState)),
-    ("Host startup succeeds from fresh data directory", StartupSmokeTests.StartsFromFreshDataDirectory),
-    ("Host startup fails when existing site config is invalid", StartupSmokeTests.FailsStartupWhenExistingSiteConfigIsInvalid),
-    ("Host startup succeeds with valid site config", StartupSmokeTests.StartsWithValidSiteConfig),
-    ("Proxy dataplane proxies one GET request end to end", ProxyIntegrationTests.ProxiesSingleGetToUpstream),
-    ("Proxy dataplane proxies fixed-length request and response", ProxyIntegrationTests.ProxiesFixedLengthRequestAndResponse),
-    ("Proxy dataplane proxies chunked request and response", ProxyIntegrationTests.ProxiesChunkedRequestAndResponse),
-    ("HTTP/1.1 chunk extensions are accepted and forwarded", ProxyIntegrationTests.AcceptsChunkExtensionsAndForwardsChunkedBody),
-    ("HTTP/1.1 declared chunked request trailer is forwarded", ProxyIntegrationTests.ForwardsDeclaredChunkedRequestTrailer),
-    ("Proxy dataplane does not relay HEAD response body", ProxyIntegrationTests.DoesNotRelayHeadResponseBody),
-    ("Proxy dataplane proxies 204 without response body", ProxyIntegrationTests.ProxiesNoContentWithoutBody),
-    ("Proxy dataplane proxies 304 without response body", ProxyIntegrationTests.ProxiesNotModifiedWithoutBody),
-    ("Proxy dataplane rejects invalid request framing", ProxyIntegrationTests.RejectsInvalidRequestFraming),
-    ("Proxy dataplane rejects malformed chunked request body", ProxyIntegrationTests.RejectsMalformedChunkedRequestBody),
-    ("Proxy dataplane filters hop-by-hop request headers", ProxyIntegrationTests.FiltersHopByHopRequestHeaders),
-    ("Proxy dataplane preserves Host header", ProxyIntegrationTests.PreservesHostHeader),
-    ("Proxy dataplane emits generated response request ID", ProxyIntegrationTests.ResponseIncludesGeneratedRequestId),
-    ("Proxy dataplane preserves external request ID in diagnostics", ProxyIntegrationTests.ExternalRequestIdIsPreservedInDiagnostics),
-    ("Proxy dataplane records successful diagnostics", ProxyIntegrationTests.SuccessfulRequestProducesDiagnosticRouteAndUpstream),
-    ("Proxy dataplane records upstream connect failure diagnostics", ProxyIntegrationTests.UpstreamConnectFailureProducesDiagnosticClassification),
-    ("Proxy dataplane can disable access logs while keeping diagnostics", ProxyIntegrationTests.AccessLoggingCanBeDisabledWhileDiagnosticsRemainEnabled),
-    ("HTTP to HTTPS redirect preserves path and query", ProxyIntegrationTests.HttpToHttpsRedirectPreservesPathAndQuery),
-    ("Canonical host redirect works", ProxyIntegrationTests.CanonicalHostRedirectWorks),
-    ("Canonical host redirect does not loop", ProxyIntegrationTests.CanonicalHostRedirectDoesNotLoop),
-    ("Forwarded headers generated for untrusted direct client", ProxyIntegrationTests.ForwardedHeadersGeneratedForUntrustedDirectClient),
-    ("Trusted proxy accepts prior forwarded chain", ProxyIntegrationTests.TrustedProxyAcceptsPriorForwardedChain),
-    ("Malformed trusted Forwarded headers are sanitized before upstream", ProxyIntegrationTests.MalformedTrustedForwardedHeadersAreSanitizedBeforeUpstream),
-    ("Untrusted client forwarded headers are stripped and replaced", ProxyIntegrationTests.UntrustedClientForwardedHeadersAreStrippedAndReplaced),
-    ("Request header set/remove rules apply upstream", ProxyIntegrationTests.RequestHeaderSetAndRemoveRulesApplyUpstream),
-    ("Response header set/remove rules apply downstream", ProxyIntegrationTests.ResponseHeaderSetAndRemoveRulesApplyDownstream),
-    ("Path prefix stripping preserves query string", ProxyIntegrationTests.PathPrefixStrippingPreservesQueryString),
-    ("Path prefix replacement works", ProxyIntegrationTests.PathPrefixReplacementWorks),
-    ("Path rewrite no-match forwards original target", ProxyIntegrationTests.PathRewriteNoMatchForwardsOriginalTarget),
-    ("Redirect route returns configured redirect", ProxyIntegrationTests.RedirectRouteReturnsConfiguredRedirect),
-    ("Static response route returns configured response", ProxyIntegrationTests.StaticResponseRouteReturnsConfiguredResponse),
-    ("Maintenance mode returns 503 and does not contact upstream", ProxyIntegrationTests.MaintenanceModeReturns503AndDoesNotContactUpstream),
-    ("Per-route body-size override works", ProxyIntegrationTests.PerRouteBodySizeOverrideWorks),
-    ("Per-route access-log disable is reflected in diagnostics", ProxyIntegrationTests.PerRouteAccessLogDisableIsReflectedInDiagnostics),
-    ("Proxy dataplane records no-route diagnostics and status summary", ProxyIntegrationTests.NoMatchingRouteProducesDiagnosticClassification),
-    ("Failed reload while proxy active preserves old snapshot and traffic", ProxyIntegrationTests.FailedReloadWhileProxyActivePreservesOldSnapshotAndTraffic),
-    ("Proxy dataplane rejects oversized request head", ProxyIntegrationTests.OversizedRequestHeadIsRejected),
-    ("Proxy dataplane rejects excessive header count", ProxyIntegrationTests.ExcessiveHeaderCountIsRejected),
-    ("Proxy dataplane rejects excessive header line", ProxyIntegrationTests.ExcessiveHeaderLineIsRejected),
-    ("Proxy dataplane rejects excessive request body size", ProxyIntegrationTests.ExcessiveRequestBodySizeIsRejected),
-    ("HTTP/1.1 request body exactly at configured limit is accepted", ProxyIntegrationTests.RequestBodyExactlyAtConfiguredMaxIsAccepted),
-    ("HTTP/1.1 chunked request body exactly at configured limit is accepted", ProxyIntegrationTests.ChunkedRequestBodyExactlyAtConfiguredMaxIsAccepted),
-    ("HTTP/1.1 request body configured limit plus one is rejected", ProxyIntegrationTests.RequestBodyConfiguredMaxPlusOneIsRejected),
-    ("Proxy dataplane rejects oversized chunked request body", ProxyIntegrationTests.ChunkedRequestBodySizeIsRejected),
-    ("Proxy dataplane enforces per-IP request rate limit", ProxyIntegrationTests.PerIpRequestRateLimitIsEnforced),
-    ("Proxy dataplane times out incomplete request head", ProxyIntegrationTests.TimesOutIncompleteRequestHead),
-    ("Proxy dataplane times out incomplete Content-Length request body", ProxyIntegrationTests.TimesOutIncompleteContentLengthRequestBody),
-    ("Proxy dataplane times out incomplete chunked request body", ProxyIntegrationTests.TimesOutIncompleteChunkedRequestBody),
-    ("HTTP/1.1 missing terminating chunk times out safely", ProxyIntegrationTests.TimesOutMissingTerminatingChunkAfterCompleteChunk),
-    ("Proxy dataplane maps unavailable upstream to 502", ProxyIntegrationTests.UnavailableUpstreamProducesBadGateway),
-    ("Proxy dataplane maps upstream response-head timeout to 504", ProxyIntegrationTests.UpstreamResponseHeadTimeoutProducesGatewayTimeout),
-    ("Proxy dataplane closes after started response on upstream early close", ProxyIntegrationTests.UpstreamContentLengthEarlyCloseClosesAfterStartedResponse),
-    ("HTTP/1.1 upstream chunked early close is contained", ProxyIntegrationTests.UpstreamChunkedEarlyCloseClosesAfterStartedResponse),
-    ("HTTPS listener proxies GET to upstream", ProxyIntegrationTests.HttpsListenerProxiesGetToUpstream),
-    ("HTTPS listener selects certificate by SNI", ProxyIntegrationTests.HttpsListenerSelectsCertificateBySni),
-    ("HTTPS listener selects certificate by case-insensitive SNI", ProxyIntegrationTests.HttpsListenerSelectsCertificateByCaseInsensitiveSni),
-    ("HTTPS listener uses default certificate for unmatched SNI", ProxyIntegrationTests.HttpsListenerUsesDefaultCertificateForUnmatchedSni),
-    ("HTTPS listener uses default certificate without SNI", ProxyIntegrationTests.HttpsListenerUsesDefaultCertificateWithoutSni),
-    ("HTTPS listener fails handshake when no certificate matches", ProxyIntegrationTests.HttpsListenerFailsHandshakeWhenNoCertificateMatches),
-    ("HTTPS listener times out incomplete TLS handshake", ProxyIntegrationTests.HttpsListenerTimesOutIncompleteTlsHandshake),
-    ("Persistent client processes two sequential GETs and reuses upstream", ProxyIntegrationTests.PersistentClientProcessesTwoSequentialGetsAndReusesUpstream),
-    ("Client Connection close header closes after response", ProxyIntegrationTests.ClientConnectionCloseHeaderClosesAfterResponse),
-    ("HTTP/1.0 client closes by default", ProxyIntegrationTests.Http10ClientClosesByDefault),
-    ("Max requests per client connection is enforced", ProxyIntegrationTests.MaxRequestsPerClientConnectionIsEnforced),
-    ("Client keep-alive idle timeout closes connection", ProxyIntegrationTests.ClientKeepAliveIdleTimeoutClosesConnection),
-    ("Malformed second request closes connection", ProxyIntegrationTests.MalformedSecondRequestClosesConnection),
-    ("HTTP/1.1 pipelined valid then malformed request does not reach upstream twice", ProxyIntegrationTests.PipelinedValidThenMalformedRequestDoesNotReachUpstreamTwice),
-    ("Persistent client proxies Content-Length POST", ProxyIntegrationTests.PersistentClientProxiesContentLengthPost),
-    ("Persistent client proxies chunked POST", ProxyIntegrationTests.PersistentClientProxiesChunkedPost),
-    ("Upstream connection is not reused after response Connection close", ProxyIntegrationTests.UpstreamConnectionIsNotReusedAfterResponseConnectionClose),
-    ("Upstream connection is not reused after premature disconnect", ProxyIntegrationTests.UpstreamConnectionIsNotReusedAfterPrematureDisconnect),
-    ("Upstream connection is not reused after framing error", ProxyIntegrationTests.UpstreamConnectionIsNotReusedAfterFramingError),
-    ("WebSocket Upgrade over plaintext returns 101", ProxyIntegrationTests.WebSocketUpgradeOverPlaintextReturnsSwitchingProtocols),
-    ("WebSocket Upgrade produces tunnel diagnostic", ProxyIntegrationTests.WebSocketUpgradeProducesTunnelDiagnostic),
-    ("WebSocket tunnel relays client bytes upstream", ProxyIntegrationTests.WebSocketTunnelRelaysClientBytesToUpstream),
-    ("WebSocket tunnel relays upstream bytes client", ProxyIntegrationTests.WebSocketTunnelRelaysUpstreamBytesToClient),
-    ("WebSocket tunnel closes when client closes", ProxyIntegrationTests.WebSocketTunnelClosesWhenClientCloses),
-    ("WebSocket tunnel closes when upstream closes", ProxyIntegrationTests.WebSocketTunnelClosesWhenUpstreamCloses),
-    ("WebSocket tunnel idle timeout closes tunnel", ProxyIntegrationTests.WebSocketTunnelIdleTimeoutClosesTunnel),
-    ("WebSocket Upgrade over HTTPS returns 101", ProxyIntegrationTests.WebSocketUpgradeOverHttpsReturnsSwitchingProtocols),
-    ("Upgrade does not use normal upstream pool", ProxyIntegrationTests.UpgradeDoesNotUseNormalUpstreamPool),
-    ("Missing WebSocket headers are rejected", ProxyIntegrationTests.MissingWebSocketHeadersAreRejected),
-    ("Upstream non-101 Upgrade response is forwarded and closed", ProxyIntegrationTests.UpstreamNon101UpgradeResponseIsForwardedAndClosed),
-    ("Malformed 101 Upgrade response produces bad gateway", ProxyIntegrationTests.MalformedSwitchingProtocolsResponseProducesBadGateway),
-    ("Health check 2xx response is healthy", HealthCheckTests.HealthCheck2xxIsHealthy),
-    ("Health check 3xx response is healthy", HealthCheckTests.HealthCheck3xxIsHealthy),
-    ("Health check 4xx response is unhealthy", HealthCheckTests.HealthCheck4xxIsUnhealthy),
-    ("Health check 5xx response is unhealthy", HealthCheckTests.HealthCheck5xxIsUnhealthy),
-    ("Health check timeout is unhealthy", HealthCheckTests.HealthCheckTimeoutIsUnhealthy),
-    ("Health state transitions to unhealthy after threshold", Sync(HealthCheckTests.HealthStateTransitionsToUnhealthyAfterThreshold)),
-    ("Health state transitions to healthy after recovery threshold", Sync(HealthCheckTests.HealthStateTransitionsToHealthyAfterRecoveryThreshold)),
-    ("Round-robin distributes sequential requests across two upstreams", ProxyIntegrationTests.RoundRobinDistributesSequentialRequestsAcrossTwoUpstreams),
-    ("Unhealthy upstream is not selected", ProxyIntegrationTests.UnhealthyUpstreamIsNotSelected),
-    ("All unhealthy upstreams return service unavailable", ProxyIntegrationTests.AllUnhealthyUpstreamsReturnServiceUnavailable),
-    ("WebSocket Upgrade uses round-robin upstream selection", ProxyIntegrationTests.WebSocketUpgradeUsesRoundRobinUpstreamSelection),
-    ("Upstream pool uses distinct endpoint keys", ProxyIntegrationTests.UpstreamPoolUsesDistinctEndpointKeys),
-    ("Recent diagnostics store is bounded", Sync(ObservabilityTests.RecentDiagnosticsStoreIsBounded)),
-    ("Diagnostics controller honors safe limit", Sync(ObservabilityTests.DiagnosticsControllerHonorsSafeLimit)),
-    ("Diagnostics event omits bodies and secrets", Sync(ObservabilityTests.DiagnosticsEventDoesNotCarryBodiesOrSecrets)),
-    ("Admission controller enforces client limit", Sync(HardeningTests.AdmissionControllerEnforcesClientLimit)),
-    ("Admission lease disposal releases client slot", Sync(HardeningTests.AdmissionLeaseDisposalReleasesClientSlot)),
-    ("Admission controller enforces TLS handshake limit", Sync(HardeningTests.AdmissionControllerEnforcesTlsHandshakeLimit)),
-    ("Rate limiter enforces request limit and refill", Sync(HardeningTests.RateLimiterEnforcesRequestLimitAndRefills)),
-    ("Concurrent rate limiter boundary allows only configured limit", Sync(HardeningTests.ConcurrentRateLimiterBoundaryAllowsOnlyConfiguredLimit)),
-    ("Rate limiter enforces upgrade limit", Sync(HardeningTests.RateLimiterEnforcesUpgradeLimit)),
-    ("Rate limiter cleans stale entries", Sync(HardeningTests.RateLimiterCleansStaleEntries)),
-    ("Shutdown coordinator exposes grace deadline", Sync(HardeningTests.ShutdownCoordinatorExposesGraceDeadlineAndCancels))
+    Test("Http1RequestParser parses a valid GET request", Sync(Http1RequestParserTests.ParsesValidGet), TestTaxonomy.Http1),
+    Test("Http1RequestParser rejects missing Host", Sync(Http1RequestParserTests.RejectsMissingHost), TestTaxonomy.Http1, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
+    Test("Http1RequestParser rejects invalid Content-Length", Sync(Http1RequestParserTests.RejectsInvalidContentLength), TestTaxonomy.Http1, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
+    Test("Http1RequestParser detects request bodies", Sync(Http1RequestParserTests.DetectsRequestBodyIndicators), TestTaxonomy.Http1),
+    Test("Http1RequestParser parses chunked transfer encoding", Sync(Http1RequestParserTests.ParsesChunkedTransferEncoding), TestTaxonomy.Http1, TestTaxonomy.Headers),
+    Test("Http1RequestParser rejects conflicting Content-Length", Sync(Http1RequestParserTests.RejectsConflictingContentLength), TestTaxonomy.Http1, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
+    Test("Http1RequestParser rejects Content-Length with Transfer-Encoding", Sync(Http1RequestParserTests.RejectsContentLengthWithTransferEncoding), TestTaxonomy.Http1, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
+    Test("Http1RequestParser rejects unsupported Transfer-Encoding", Sync(Http1RequestParserTests.RejectsUnsupportedTransferEncoding), TestTaxonomy.Http1, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
+    Test("Http1ResponseParser parses Content-Length response", Sync(Http1ResponseParserTests.ParsesContentLengthResponse), TestTaxonomy.Http1, TestTaxonomy.Headers),
+    Test("Http1ResponseParser parses chunked response", Sync(Http1ResponseParserTests.ParsesChunkedResponse), TestTaxonomy.Http1, TestTaxonomy.Headers),
+    Test("Http1ResponseParser treats HEAD response as no body", Sync(Http1ResponseParserTests.TreatsHeadResponseAsNoBody), TestTaxonomy.Http1),
+    Test("Http1ResponseParser treats 204 as no body", Sync(Http1ResponseParserTests.TreatsNoContentAsNoBody), TestTaxonomy.Http1),
+    Test("Http1ResponseParser treats 304 as no body", Sync(Http1ResponseParserTests.TreatsNotModifiedAsNoBody), TestTaxonomy.Http1),
+    Test("Http1ResponseParser rejects invalid Content-Length", Sync(Http1ResponseParserTests.RejectsInvalidResponseContentLength), TestTaxonomy.Http1, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
+    Test("Header policy filters standard hop-by-hop headers", Sync(HeaderPolicyTests.FiltersStandardHopByHopHeaders), TestTaxonomy.Headers),
+    Test("Header policy filters Connection-nominated headers", Sync(HeaderPolicyTests.FiltersConnectionNominatedHeaders), TestTaxonomy.Headers),
+    Test("SingleUpstreamRouteMatcher matches wildcard route", Sync(RouteMatcherTests.MatchesWildcardRoute), TestTaxonomy.Routing),
+    Test("SingleUpstreamRouteMatcher matches host without request port", Sync(RouteMatcherTests.MatchesHostWithoutRequestPort), TestTaxonomy.Routing, TestTaxonomy.Headers),
+    Test("SingleUpstreamRouteMatcher exact host route beats wildcard fallback", Sync(RouteMatcherTests.ExactHostRouteBeatsWildcardFallbackWhenBothCouldMatch), TestTaxonomy.Routing, TestTaxonomy.Headers),
+    Test("SingleUpstreamRouteMatcher port-specific host route beats host fallback", Sync(RouteMatcherTests.PortSpecificHostRouteBeatsHostFallbackWhenAuthorityIncludesPort), TestTaxonomy.Routing, TestTaxonomy.Headers),
+    Test("SingleUpstreamRouteMatcher specific route path beats catch-all fallback", Sync(RouteMatcherTests.SpecificRoutePathBeatsCatchAllFallbackWhenBothCouldMatch), TestTaxonomy.Routing),
+    Test("Data directory uses configured override", Sync(ConfigurationTests.DataDirectoryUsesConfiguredOverride), TestTaxonomy.Config),
+    Test("Data directory uses environment override", Sync(ConfigurationTests.DataDirectoryUsesEnvironmentOverride), TestTaxonomy.Config),
+    Test("Data directory defaults under local application data when available", Sync(ConfigurationTests.DataDirectoryDefaultsUnderLocalApplicationDataWhenAvailable), TestTaxonomy.Config),
+    Test("Loader loads valid per-site JSON config files", ConfigurationTests.LoaderLoadsValidSiteFiles, TestTaxonomy.Config),
+    Test("Loader loads equivalent JSON and YAML site files", ConfigurationTests.LoaderLoadsEquivalentJsonAndYamlSiteFiles, TestTaxonomy.Config),
+    Test("Loader reports YAML parse errors with per-file diagnostics", ConfigurationTests.LoaderReportsYamlParseErrorsWithPerFileDiagnostics, TestTaxonomy.Config, TestTaxonomy.Metrics),
+    Test("Loader loads route load-balancing and health-check settings", ConfigurationTests.LoaderLoadsRouteLoadBalancingAndHealthCheckSettings, TestTaxonomy.Config, TestTaxonomy.Routing),
+    Test("Loader creates missing config directories and loads empty snapshot", ConfigurationTests.LoaderCreatesMissingConfigDirectoriesAndLoadsEmptySnapshot, TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
+    Test("Loader does not overwrite existing placeholder files", ConfigurationTests.LoaderDoesNotOverwriteExistingPlaceholderFiles, TestTaxonomy.Config),
+    Test("Loader loads existing empty sites directory", ConfigurationTests.LoaderLoadsExistingEmptySitesDirectory, TestTaxonomy.Config),
+    Test("Loader uses defaults when operational config is missing", ConfigurationTests.LoaderUsesDefaultsWhenOperationalConfigIsMissing, TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
+    Test("Loader loads explicit operational timeout settings", ConfigurationTests.LoaderLoadsExplicitOperationalTimeouts, TestTaxonomy.Config, TestTaxonomy.Limits, TestTaxonomy.SecurityNegativePaths),
+    Test("Loader loads observability defaults", ConfigurationTests.LoaderLoadsObservabilityDefaults, TestTaxonomy.Config, TestTaxonomy.Metrics),
+    Test("Loader loads explicit observability settings", ConfigurationTests.LoaderLoadsExplicitObservabilitySettings, TestTaxonomy.Config, TestTaxonomy.Metrics),
+    Test("Loader rejects invalid observability capacity", ConfigurationTests.LoaderRejectsInvalidObservabilityCapacity, TestTaxonomy.Config, TestTaxonomy.Limits, TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),
+    Test("Loader loads hardening limit defaults", ConfigurationTests.LoaderLoadsLimitDefaults, TestTaxonomy.Config, TestTaxonomy.Limits),
+    Test("Loader rejects invalid hardening limits", ConfigurationTests.LoaderRejectsInvalidLimitSettings, TestTaxonomy.Config, TestTaxonomy.Limits, TestTaxonomy.SecurityNegativePaths),
+    Test("Loader rejects invalid operational timeout settings", ConfigurationTests.LoaderRejectsInvalidOperationalTimeouts, TestTaxonomy.Config, TestTaxonomy.Limits, TestTaxonomy.SecurityNegativePaths),
+    Test("Loader rejects invalid tunnel connection limit", ConfigurationTests.LoaderRejectsInvalidTunnelLimit, TestTaxonomy.Config, TestTaxonomy.Limits, TestTaxonomy.SecurityNegativePaths),
+    Test("Loader loads HTTPS listener with certificate", ConfigurationTests.LoaderLoadsHttpsListenerWithCertificate, TestTaxonomy.Config, TestTaxonomy.Tls),
+    Test("Loader rejects HTTPS listener with missing certificate reference", ConfigurationTests.LoaderRejectsHttpsListenerWithMissingCertificateReference, TestTaxonomy.Config, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
+    Test("Loader rejects invalid certificate path", ConfigurationTests.LoaderRejectsInvalidCertificatePath, TestTaxonomy.Config, TestTaxonomy.Routing, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
+    Test("Loader rejects invalid certificate password", ConfigurationTests.LoaderRejectsInvalidCertificatePassword, TestTaxonomy.Config, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
+    Test("Loader rejects duplicate SNI certificate mapping", ConfigurationTests.LoaderRejectsDuplicateSniCertificateMapping, TestTaxonomy.Config, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
+    Test("Loader merges SNI mappings from shared HTTPS listener", ConfigurationTests.LoaderMergesSniMappingsFromSharedHttpsListener, TestTaxonomy.Config, TestTaxonomy.Tls),
+    Test("Loader rejects invalid per-site JSON config files", ConfigurationTests.LoaderRejectsInvalidSiteFile, TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
+    Test("Reload preserves active snapshot when load fails", ConfigurationTests.ReloadPreservesActiveSnapshotWhenLoadFails, TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
+    Test("Reload replaces active snapshot when load succeeds", ConfigurationTests.ReloadReplacesActiveSnapshotWhenLoadSucceeds, TestTaxonomy.Config),
+    Test("Reload replaces active snapshot with empty sites directory", ConfigurationTests.ReloadReplacesActiveSnapshotWithEmptySitesDirectory, TestTaxonomy.Config),
+    Test("Active inspection projection reflects store", ConfigurationTests.ActiveInspectionProjectionReflectsStore, TestTaxonomy.Config),
+    Test("Loader rejects unsafe header policy rule", ConfigurationTests.LoaderRejectsUnsafeHeaderRule, TestTaxonomy.Config, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
+    Test("Config response header policy cannot emit hop-by-hop headers", ConfigurationTests.ResponseHeaderPolicyCannotEmitHopByHopHeaders, TestTaxonomy.Config, TestTaxonomy.Headers),
+    Test("Config multi-file conflict reporting is deterministic", ConfigurationTests.MultiFileConfigConflictReportingIsDeterministic, TestTaxonomy.Config),
+    Test("Config validate reports valid config without applying", ConfigurationTests.ConfigValidateReportsValidWithoutApplying, TestTaxonomy.Config),
+    Test("Config validate reports invalid config without replacing active config", ConfigurationTests.ConfigValidateReportsInvalidWithoutReplacingActiveConfig, TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
+    Test("Config normalize converts YAML to JSON without applying", ConfigurationTests.ConfigNormalizeConvertsYamlToJsonWithoutApplying, TestTaxonomy.Config),
+    Test("Effective config projection redacts certificate secrets", ConfigurationTests.EffectiveConfigProjectionRedactsCertificateSecrets, TestTaxonomy.Config, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
+    Test("Expired certificate projection keeps validity window visible", ConfigurationTests.ExpiredCertificateProjectionKeepsValidityWindowVisible, TestTaxonomy.Config, TestTaxonomy.Tls),
+    Test("Not-yet-valid certificate projection keeps validity window visible", ConfigurationTests.NotYetValidCertificateProjectionKeepsValidityWindowVisible, TestTaxonomy.Config, TestTaxonomy.Tls),
+    Test("Reload failure reports per-file error and preserves active config", ConfigurationTests.ReloadFailureReportsPerFileErrorAndPreservesActiveConfig, TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
+    Test("Default admin bind is localhost-only", Sync(AdminSecurityTests.DefaultAdminBindIsLocalhostOnly), TestTaxonomy.Headers, TestTaxonomy.Admin),
+    Test("Non-local admin bind without auth is rejected", Sync(AdminSecurityTests.NonLocalAdminBindWithoutAuthIsRejected), TestTaxonomy.Admin, TestTaxonomy.SecurityNegativePaths),
+    Test("Operational config rejects non-local admin URL without auth", Sync(AdminSecurityTests.OperationalConfigRejectsNonLocalAdminUrlWithoutAuth), TestTaxonomy.Admin, TestTaxonomy.SecurityNegativePaths),
+    Test("Protected admin endpoint rejects missing auth", AdminSecurityTests.ProtectedEndpointRejectsMissingAuth, TestTaxonomy.Admin, TestTaxonomy.SecurityNegativePaths),
+    Test("Protected admin endpoint rejects wrong auth", AdminSecurityTests.ProtectedEndpointRejectsWrongAuth, TestTaxonomy.Admin, TestTaxonomy.SecurityNegativePaths),
+    Test("Protected admin endpoint accepts valid bearer token", AdminSecurityTests.ProtectedEndpointAcceptsValidBearerToken, TestTaxonomy.Admin),
+    Test("Known admin endpoint paths require authentication", AdminSecurityTests.KnownAdminEndpointPathsRequireAuthentication, TestTaxonomy.Routing, TestTaxonomy.Admin),
+    Test("Admin audit capacity evicts oldest entries", Sync(AdminSecurityTests.AdminAuditCapacityEvictsOldestEntries), TestTaxonomy.Limits, TestTaxonomy.Admin),
+    Test("Admin audit path omits query secrets", AdminSecurityTests.AdminAuditPathOmitsQuerySecrets, TestTaxonomy.Routing, TestTaxonomy.Admin),
+    Test("Sensitive admin projections redact configured secrets", Sync(AdminSecurityTests.SensitiveProjectionRedactsConfiguredAdminSecrets), TestTaxonomy.Config, TestTaxonomy.Admin, TestTaxonomy.SecurityNegativePaths),
+    Test("Effective config does not expose admin token", Sync(AdminSecurityTests.EffectiveConfigDoesNotExposeAdminToken), TestTaxonomy.Config, TestTaxonomy.Admin, TestTaxonomy.SecurityNegativePaths),
+    Test("Generated placeholder config does not contain real secret", Sync(AdminSecurityTests.GeneratedPlaceholderConfigDoesNotContainRealSecret), TestTaxonomy.Config, TestTaxonomy.Admin),
+    Test("Admin audit does not log token values", AdminSecurityTests.AdminAuditDoesNotLogTokenValues, TestTaxonomy.Admin),
+    Test("Manual PFX certificate behavior remains valid", AcmeTests.ManualPfxCertificateBehaviorRemainsValid, TestTaxonomy.Tls),
+    Test("ACME config validation rejects missing terms acceptance", Sync(AcmeTests.AcmeConfigValidationRejectsMissingTermsAcceptance), TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP-01 challenge returns exact token response", Sync(AcmeTests.Http01ChallengeReturnsExactTokenResponse), TestTaxonomy.Tls, TestTaxonomy.Admin),
+    Test("Unknown HTTP-01 challenge returns safe 404", Sync(AcmeTests.UnknownHttp01ChallengeReturnsSafe404), TestTaxonomy.Tls),
+    Test("ACME renewal stores material under certs directory", AcmeTests.AcmeRenewalStoresMaterialUnderCertsDirectory, TestTaxonomy.Tls),
+    Test("Loader loads stored ACME certificate on startup", AcmeTests.LoaderLoadsStoredAcmeCertificateOnStartup, TestTaxonomy.Config, TestTaxonomy.Tls),
+    Test("Failed ACME renewal preserves current active certificate", AcmeTests.FailedAcmeRenewalPreservesCurrentActiveCertificate, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
+    Test("ACME status projection does not expose private material", AcmeTests.AcmeStatusProjectionDoesNotExposePrivateMaterial, TestTaxonomy.Config, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
+    Test("ACME renewal avoids tight retry loop after failure", AcmeTests.AcmeRenewalAvoidsTightRetryLoopAfterFailure, TestTaxonomy.Tls, TestTaxonomy.RetryCircuit, TestTaxonomy.SecurityNegativePaths),
+    Test("Existing HTTP upstream config remains valid", UpstreamTlsTests.ExistingHttpUpstreamConfigRemainsValid, TestTaxonomy.UpstreamHttp1, TestTaxonomy.Tls),
+    Test("HTTPS upstream config parses and validates", UpstreamTlsTests.HttpsUpstreamConfigParsesAndValidates, TestTaxonomy.UpstreamHttp1, TestTaxonomy.Tls),
+    Test("Unsupported upstream scheme is rejected", UpstreamTlsTests.UnsupportedUpstreamSchemeIsRejected, TestTaxonomy.UpstreamHttp1, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
+    Test("Ambiguous upstream address is rejected", UpstreamTlsTests.AmbiguousUpstreamAddressIsRejected, TestTaxonomy.UpstreamHttp1, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
+    Test("Upstream pool key differs for HTTP and HTTPS", Sync(UpstreamTlsTests.PoolKeyDiffersForHttpAndHttps), TestTaxonomy.UpstreamHttp1, TestTaxonomy.Tls),
+    Test("Upstream pool key differs for SNI and validation", Sync(UpstreamTlsTests.PoolKeyDiffersForDifferentSniAndValidation), TestTaxonomy.UpstreamHttp1, TestTaxonomy.Tls),
+    Test("HTTPS upstream uses SslStream path", UpstreamTlsTests.HttpsUpstreamUsesSslStreamPath, TestTaxonomy.UpstreamHttp1, TestTaxonomy.Routing, TestTaxonomy.Tls),
+    Test("HTTPS upstream proxy forwards through TLS", UpstreamTlsTests.HttpsUpstreamProxyForwardsThroughTls, TestTaxonomy.UpstreamHttp1, TestTaxonomy.Tls),
+    Test("HTTPS health checks use TLS settings", UpstreamTlsTests.HttpsHealthChecksUseTlsSettings, TestTaxonomy.UpstreamHttp1, TestTaxonomy.Tls, TestTaxonomy.HealthChecks),
+    Test("Upstream certificate validation is enabled by default", UpstreamTlsTests.CertificateValidationIsEnabledByDefault, TestTaxonomy.UpstreamHttp1, TestTaxonomy.Tls),
+    Test("Explicit unsafe upstream validation projects as unsafe", UpstreamTlsTests.ExplicitUnsafeValidationModeIsProjectedAsUnsafe, TestTaxonomy.UpstreamHttp1, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
+    Test("TLS validation failure does not fall back to plaintext", UpstreamTlsTests.TlsValidationFailureDoesNotFallBackToPlaintext, TestTaxonomy.UpstreamHttp1, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
+    Test("Upstream SNI override validation rejects URL port and wildcard", UpstreamTlsTests.UpstreamSniOverrideValidationRejectsUrlPortAndWildcard, TestTaxonomy.UpstreamHttp1, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
+    Test("Caching disabled by default", CacheTests.CachingDisabledByDefault, TestTaxonomy.Caching),
+    Test("Disabled cache keeps existing proxy behavior", CacheTests.DisabledCacheKeepsExistingProxyBehavior, TestTaxonomy.Caching),
+    Test("Invalid cache policy is rejected", Sync(CacheTests.InvalidCachePolicyIsRejected), TestTaxonomy.Caching, TestTaxonomy.SecurityNegativePaths),
+    Test("Enabled GET 200 response is stored and served", CacheTests.EnabledGet200ResponseIsStoredAndServed, TestTaxonomy.Caching),
+    Test("HEAD cached response returns headers without body", CacheTests.HeadResponseReturnsHeadersWithoutBody, TestTaxonomy.Headers, TestTaxonomy.Caching),
+    Test("Query string is part of cache key", Sync(CacheTests.QueryStringIsPartOfCacheKey), TestTaxonomy.Caching),
+    Test("Rewrite target is part of cache key", Sync(CacheTests.RewriteTargetIsPartOfCacheKey), TestTaxonomy.Caching),
+    Test("Host and vary headers affect cache key", Sync(CacheTests.HostAndVaryHeadersAffectCacheKey), TestTaxonomy.Headers, TestTaxonomy.Caching),
+    Test("Authorization request is not cached by default", Sync(CacheTests.AuthorizationRequestIsNotCachedByDefault), TestTaxonomy.Caching, TestTaxonomy.SecurityNegativePaths),
+    Test("Cookie request is not cached by default", Sync(CacheTests.CookieRequestIsNotCachedByDefault), TestTaxonomy.Caching, TestTaxonomy.SecurityNegativePaths),
+    Test("Set-Cookie response is not cached by default", Sync(CacheTests.SetCookieResponseIsNotCachedByDefault), TestTaxonomy.Caching, TestTaxonomy.SecurityNegativePaths),
+    Test("Cache-Control no-store is not cached", Sync(CacheTests.NoStoreResponseIsNotCached), TestTaxonomy.Caching, TestTaxonomy.SecurityNegativePaths),
+    Test("Cache-Control no-cache is not cached", Sync(CacheTests.NoCacheResponseIsNotCached), TestTaxonomy.Caching, TestTaxonomy.SecurityNegativePaths),
+    Test("Cache-Control must-revalidate is not cached", Sync(CacheTests.MustRevalidateResponseIsNotCached), TestTaxonomy.Caching, TestTaxonomy.SecurityNegativePaths),
+    Test("Cache-Control private is not cached by default", Sync(CacheTests.PrivateResponseIsNotCachedByDefault), TestTaxonomy.Caching, TestTaxonomy.SecurityNegativePaths),
+    Test("Cache-Control max-age controls TTL and expiry", Sync(CacheTests.MaxAgeControlsTtlAndExpiredEntryIsNotServed), TestTaxonomy.Caching),
+    Test("Oversized response is streamed but not cached", CacheTests.OversizedResponseIsStreamedButNotCached, TestTaxonomy.Caching, TestTaxonomy.Limits, TestTaxonomy.SecurityNegativePaths),
+    Test("Hop-by-hop cache headers are not stored", Sync(CacheTests.HopByHopHeadersAndTransferEncodingAreNotStored), TestTaxonomy.Headers, TestTaxonomy.Caching),
+    Test("Vary header case and duplicate values affect cache key deterministically", Sync(CacheTests.VaryHeaderCaseAndDuplicateValuesAffectCacheKeyDeterministically), TestTaxonomy.Headers, TestTaxonomy.Caching),
+    Test("Cache evicts oldest entries at max total bytes", Sync(CacheTests.CacheEvictsOldestEntriesAtMaxTotalBytes), TestTaxonomy.Caching),
+    Test("Partial upstream response is not cached", CacheTests.PartialUpstreamResponseIsNotCached, TestTaxonomy.Caching, TestTaxonomy.SecurityNegativePaths),
+    Test("Cache clear endpoint clears entries", CacheTests.CacheClearEndpointClearsEntries, TestTaxonomy.Caching),
+    Test("Cache clear endpoint is protected", CacheTests.CacheClearEndpointIsProtected, TestTaxonomy.Caching),
+    Test("Successful config reload clears cache", CacheTests.SuccessfulReloadClearsCache, TestTaxonomy.Caching),
+    Test("Failed config reload does not clear cache", CacheTests.FailedReloadDoesNotClearCache, TestTaxonomy.Caching, TestTaxonomy.SecurityNegativePaths),
+    Test("Metrics endpoint is protected by admin auth", MetricsTests.MetricsEndpointIsProtectedByAdminAuth, TestTaxonomy.Admin, TestTaxonomy.Metrics),
+    Test("Metrics endpoint returns Prometheus text", Sync(MetricsTests.MetricsEndpointReturnsPrometheusText), TestTaxonomy.Metrics),
+    Test("Metrics include request counters after proxied request", MetricsTests.MetricsIncludeRequestCountersAfterProxiedRequest, TestTaxonomy.Metrics),
+    Test("Metrics include cache counters after cache activity", Sync(MetricsTests.MetricsIncludeCacheCountersAfterCacheActivity), TestTaxonomy.Caching, TestTaxonomy.Metrics),
+    Test("Metrics include reload success and failure counters", MetricsTests.MetricsIncludeReloadCounters, TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),
+    Test("Metrics do not expose raw request details", MetricsTests.MetricsDoNotExposeRawRequestDetails, TestTaxonomy.Metrics),
+    Test("Metrics failure matrix does not expose authorization cookie or query secrets", MetricsTests.MetricsFailureMatrixDoesNotExposeAuthorizationCookieOrQuerySecrets, TestTaxonomy.Admin, TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),
+    Test("Public metrics exposure is disabled by default", Sync(MetricsTests.PublicMetricsExposureIsDisabledByDefault), TestTaxonomy.Metrics),
+    Test("Invalid metrics config is rejected", Sync(MetricsTests.InvalidMetricsConfigIsRejected), TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),
+    Test("Metric labels are bounded and sanitized", Sync(MetricsTests.MetricLabelsAreBoundedAndSanitized), TestTaxonomy.Limits, TestTaxonomy.Metrics),
+    Test("Route dry-run matches dataplane matcher", Sync(RouteDiagnosticsTests.DryRunMatchesSameRouteAsDataplaneMatcher), TestTaxonomy.Routing),
+    Test("Route dry-run has no upstream I/O or retry circuit cache mutation", Sync(RouteDiagnosticsTests.DryRunDoesNotPerformUpstreamIoOrMutateRetryCircuitOrCacheState), TestTaxonomy.Routing, TestTaxonomy.Caching, TestTaxonomy.RetryCircuit),
+    Test("Route dry-run reports no-match reason", Sync(RouteDiagnosticsTests.DryRunReportsNoMatchReason), TestTaxonomy.Routing),
+    Test("Route dry-run reports path rewrite result", Sync(RouteDiagnosticsTests.DryRunReportsPathRewriteResult), TestTaxonomy.Routing),
+    Test("Route dry-run can select HTTP/3 protocol listener", Sync(RouteDiagnosticsTests.DryRunCanSelectHttp3ProtocolListener), TestTaxonomy.Http3, TestTaxonomy.Routing),
+    Test("Route dry-run reports generated route actions", Sync(RouteDiagnosticsTests.DryRunReportsGeneratedRouteActions), TestTaxonomy.Routing),
+    Test("Route dry-run redacts sensitive headers", Sync(RouteDiagnosticsTests.DryRunRedactsSensitiveHeaders), TestTaxonomy.Routing, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
+    Test("Config lint detects route shadowing and broad catch-all", Sync(RouteDiagnosticsTests.LintDetectsRouteShadowingAndBroadCatchAll), TestTaxonomy.Config, TestTaxonomy.Routing),
+    Test("Config lint detects canonical redirect loop", Sync(RouteDiagnosticsTests.LintDetectsCanonicalRedirectLoop), TestTaxonomy.Config, TestTaxonomy.Routing),
+    Test("Config lint detects HTTPS redirect without HTTPS listener", Sync(RouteDiagnosticsTests.LintDetectsHttpsRedirectWithoutHttpsListener), TestTaxonomy.Config, TestTaxonomy.Routing, TestTaxonomy.Tls),
+    Test("Config lint warns about unsafe upstream TLS validation", Sync(RouteDiagnosticsTests.LintWarnsAboutUnsafeUpstreamTlsValidation), TestTaxonomy.UpstreamHttp1, TestTaxonomy.Config, TestTaxonomy.Routing, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
+    Test("Config lint omits resolved upstream HTTP/3 pooling limitation", Sync(RouteDiagnosticsTests.LintDoesNotReportResolvedUpstreamHttp3PoolingLimitation), TestTaxonomy.Http3, TestTaxonomy.Config, TestTaxonomy.Routing, TestTaxonomy.Limits),
+    Test("Config lint handles JSON and YAML submitted config without applying", Sync(RouteDiagnosticsTests.LintHandlesJsonAndYamlSubmittedConfigWithoutApplying), TestTaxonomy.Config, TestTaxonomy.Routing),
+    Test("Config lint output has stable codes and severities", Sync(RouteDiagnosticsTests.LintOutputHasStableCodesAndSeverities), TestTaxonomy.Config, TestTaxonomy.Routing),
+    Test("Diagnostic endpoints require admin auth", RouteDiagnosticsTests.DiagnosticEndpointsRequireAdminAuth, TestTaxonomy.Routing, TestTaxonomy.Admin, TestTaxonomy.Metrics),
+    Test("Metrics include lint and route dry-run counters", Sync(RouteDiagnosticsTests.MetricsIncludeLintAndRouteDryRunCounters), TestTaxonomy.Routing, TestTaxonomy.Metrics),
+    Test("Route-only reload does not rebind unchanged listener", ListenerRebindingTests.RouteOnlyReloadDoesNotRebindUnchangedListener, TestTaxonomy.Config, TestTaxonomy.Routing),
+    Test("Adding listener starts only new listener", ListenerRebindingTests.AddingListenerStartsOnlyNewListener, TestTaxonomy.Config),
+    Test("Removing listener stops accepting new connections", ListenerRebindingTests.RemovingListenerStopsAcceptingNewConnections, TestTaxonomy.Config),
+    Test("Changed listener is replaced safely", ListenerRebindingTests.ChangedListenerIsReplacedSafely, TestTaxonomy.Config),
+    Test("Failed new listener start preserves old active listener", ListenerRebindingTests.FailedNewListenerStartPreservesOldActiveListener, TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
+    Test("Failed config reload preserves old active listeners", ListenerRebindingTests.FailedConfigReloadPreservesOldActiveListeners, TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
+    Test("Certificate-only update does not rebind listener", ListenerRebindingTests.CertificateOnlyUpdateDoesNotRebindListener, TestTaxonomy.Config, TestTaxonomy.Tls),
+    Test("Admin bind is not affected by proxy listener reload", ListenerRebindingTests.AdminBindIsNotAffectedByProxyListenerReload, TestTaxonomy.Config, TestTaxonomy.Admin),
+    Test("Reload diagnostics report listener diff", ListenerRebindingTests.ReloadDiagnosticsReportListenerDiff, TestTaxonomy.Config, TestTaxonomy.Metrics),
+    Test("Metrics count listener reload outcomes", ListenerRebindingTests.MetricsCountListenerReloadOutcomes, TestTaxonomy.Config, TestTaxonomy.Metrics),
+    Test("HTTP/2 client preserves HTTP/1.1 behavior", ClientHttp2Tests.ExistingHttp1BehaviorRemainsUnchanged, TestTaxonomy.Http1, TestTaxonomy.Http2),
+    Test("HTTP/2 plaintext listener is rejected", Sync(ClientHttp2Tests.PlaintextHttp2ListenerIsRejected), TestTaxonomy.Http2, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/2 ALPN selects h2 when enabled", ClientHttp2Tests.AlpnSelectsHttp2WhenEnabled, TestTaxonomy.Http2, TestTaxonomy.Tls),
+    Test("HTTP/2 request maps to route matcher", ClientHttp2Tests.Http2RequestMapsToRouteMatcher, TestTaxonomy.Http2, TestTaxonomy.Routing),
+    Test("HTTP/2 authority maps to host routing", ClientHttp2Tests.AuthorityMapsToHostRouting, TestTaxonomy.Http2, TestTaxonomy.Headers, TestTaxonomy.Admin),
+    Test("HTTP/2 query string is preserved", ClientHttp2Tests.QueryStringIsPreserved, TestTaxonomy.Http2),
+    Test("HTTP/2 invalid pseudo headers are rejected", ClientHttp2Tests.InvalidPseudoHeadersAreRejected, TestTaxonomy.Http2, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/2 forbidden connection headers are rejected", ClientHttp2Tests.ForbiddenConnectionHeadersAreRejected, TestTaxonomy.Http2, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/2 Huffman request header values are decoded", ClientHttp2Tests.HuffmanRequestHeaderValuesAreDecoded, TestTaxonomy.Http2, TestTaxonomy.Headers),
+    Test("HTTP/2 response omits hop-by-hop headers", ClientHttp2Tests.ResponseOmitsHopByHopHeaders, TestTaxonomy.Http2, TestTaxonomy.Headers),
+    Test("HTTP/2 static response route works", ClientHttp2Tests.StaticResponseRouteWorksOverHttp2, TestTaxonomy.Http2, TestTaxonomy.Routing),
+    Test("HTTP/2 redirect route works", ClientHttp2Tests.RedirectRouteWorksOverHttp2, TestTaxonomy.Http2, TestTaxonomy.Routing),
+    Test("HTTP/2 maintenance route works", ClientHttp2Tests.MaintenanceRouteWorksOverHttp2, TestTaxonomy.Http2, TestTaxonomy.Routing),
+    Test("HTTP/2 HEAD returns no body", ClientHttp2Tests.HeadReturnsHeadersWithoutBody, TestTaxonomy.Http2),
+    Test("HTTP/2 cache works", ClientHttp2Tests.CacheWorksOverHttp2, TestTaxonomy.Http2, TestTaxonomy.Caching),
+    Test("HTTP/2 retry works for proxy requests", ClientHttp2Tests.RetryWorksForHttp2ProxyRequests, TestTaxonomy.Http2, TestTaxonomy.RetryCircuit),
+    Test("HTTP/2 extended CONNECT is rejected", ClientHttp2Tests.ExtendedConnectIsRejected, TestTaxonomy.Http2, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/2 concurrent streams reach different routes", ClientHttp2Tests.ConcurrentStreamsReachDifferentRoutes, TestTaxonomy.Http2, TestTaxonomy.Routing),
+    Test("HTTP/2 DATA before HEADERS is rejected safely", ClientHttp2Tests.DataBeforeHeadersIsRejectedSafely, TestTaxonomy.Http2, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/2 CONTINUATION header fragmentation is accepted", ClientHttp2Tests.ContinuationHeaderFragmentationIsAccepted, TestTaxonomy.Http2, TestTaxonomy.Headers),
+    Test("HTTP/2 RST_STREAM releases state and keeps connection usable", ClientHttp2Tests.RstStreamReleasesStateAndKeepsConnectionUsable, TestTaxonomy.Http2),
+    Test("HTTP/2 GOAWAY stops new streams safely", ClientHttp2Tests.GoAwayStopsNewStreamsSafely, TestTaxonomy.Http2),
+    Test("HTTP/2 oversized header list is rejected", ClientHttp2Tests.OversizedHeaderListIsRejected, TestTaxonomy.Http2, TestTaxonomy.Headers, TestTaxonomy.Limits, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/2 metrics include counters", ClientHttp2Tests.MetricsIncludeHttp2Counters, TestTaxonomy.Http2, TestTaxonomy.Metrics),
+    Test("Upstream HTTP/2 preserves HTTP/1.1 upstream default", UpstreamHttp2Tests.ExistingHttp1UpstreamProtocolRemainsDefault, TestTaxonomy.Http1, TestTaxonomy.Http2, TestTaxonomy.UpstreamHttp2),
+    Test("Upstream HTTP/2 requires HTTPS", Sync(UpstreamHttp2Tests.Http2UpstreamRequiresHttps), TestTaxonomy.Http2, TestTaxonomy.UpstreamHttp2, TestTaxonomy.Tls),
+    Test("Unsupported upstream protocol is rejected", Sync(UpstreamHttp2Tests.UnsupportedUpstreamProtocolIsRejected), TestTaxonomy.Http2, TestTaxonomy.UpstreamHttp2, TestTaxonomy.SecurityNegativePaths),
+    Test("Upstream pool key differs for HTTP/1.1 and HTTP/2", Sync(UpstreamHttp2Tests.PoolKeyDiffersForHttp1AndHttp2), TestTaxonomy.Http1, TestTaxonomy.Http2, TestTaxonomy.UpstreamHttp2),
+    Test("Upstream HTTP/2 advertises h2 ALPN", UpstreamHttp2Tests.UpstreamAlpnAdvertisesHttp2, TestTaxonomy.Http2, TestTaxonomy.UpstreamHttp2, TestTaxonomy.Tls),
+    Test("Upstream HTTP/2 ALPN failure does not fallback", UpstreamHttp2Tests.AlpnFailureDoesNotFallbackToHttp1, TestTaxonomy.Http2, TestTaxonomy.UpstreamHttp2, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
+    Test("Upstream HTTP/2 proxy maps headers query and response", UpstreamHttp2Tests.Http2UpstreamProxyMapsHeadersQueryAndResponse, TestTaxonomy.Http2, TestTaxonomy.UpstreamHttp2, TestTaxonomy.Headers),
+    Test("Upstream HTTP/2 forwards request body", UpstreamHttp2Tests.Http2UpstreamForwardsRequestBody, TestTaxonomy.Http2, TestTaxonomy.UpstreamHttp2),
+    Test("Upstream HTTP/2 ends zero-length request body", UpstreamHttp2Tests.Http2UpstreamEndsZeroLengthRequestBody, TestTaxonomy.Http2, TestTaxonomy.UpstreamHttp2),
+    Test("Cache works with HTTP/2 upstream", UpstreamHttp2Tests.CacheWorksWithHttp2Upstream, TestTaxonomy.Http2, TestTaxonomy.UpstreamHttp2, TestTaxonomy.Caching),
+    Test("HTTP/2 upstream health check uses h2 and rejects wrong ALPN", UpstreamHttp2Tests.Http2HealthCheckUsesH2AndRejectsWrongAlpn, TestTaxonomy.Http2, TestTaxonomy.UpstreamHttp2, TestTaxonomy.Tls, TestTaxonomy.HealthChecks, TestTaxonomy.SecurityNegativePaths),
+    Test("Metrics include upstream HTTP/2 counters", UpstreamHttp2Tests.MetricsIncludeUpstreamHttp2Counters, TestTaxonomy.Http2, TestTaxonomy.UpstreamHttp2, TestTaxonomy.Metrics),
+    Test("Upstream HTTP/3 requires HTTPS", Sync(UpstreamHttp3Tests.Http3UpstreamRequiresHttps), TestTaxonomy.Http3, TestTaxonomy.UpstreamHttp3, TestTaxonomy.Tls),
+    Test("Upstream HTTP/3 config parses and validates", UpstreamHttp3Tests.Http3UpstreamConfigParsesAndValidates, TestTaxonomy.Http3, TestTaxonomy.UpstreamHttp3),
+    Test("Upstream HTTP/3 effective projection reports reused multiplexed pooling", UpstreamHttp3Tests.Http3EffectiveProjectionReportsReusedMultiplexedPooling, TestTaxonomy.Http3, TestTaxonomy.UpstreamHttp3, TestTaxonomy.Config),
+    Test("Upstream pool key differs for HTTP/1.1 HTTP/2 and HTTP/3", Sync(UpstreamHttp3Tests.PoolKeyDiffersForHttp1Http2AndHttp3), TestTaxonomy.Http1, TestTaxonomy.Http2, TestTaxonomy.Http3, TestTaxonomy.UpstreamHttp3),
+    Test("Upstream HTTP/3 pool key includes SNI and validation", Sync(UpstreamHttp3Tests.PoolKeyIncludesHttp3SniAndValidation), TestTaxonomy.Http3, TestTaxonomy.UpstreamHttp3, TestTaxonomy.Tls),
+    Test("Upstream HTTP/3 proxy maps headers query and response", UpstreamHttp3Tests.Http3UpstreamProxyMapsHeadersQueryAndResponse, TestTaxonomy.Http3, TestTaxonomy.UpstreamHttp3, TestTaxonomy.Headers),
+    Test("Sequential upstream HTTP/3 requests reuse a pooled connection", UpstreamHttp3Tests.SequentialHttp3UpstreamRequestsReuseConnection, TestTaxonomy.Http3, TestTaxonomy.UpstreamHttp3),
+    Test("Concurrent upstream HTTP/3 requests share a pooled connection", UpstreamHttp3Tests.ConcurrentHttp3UpstreamRequestsShareConnection, TestTaxonomy.Http3, TestTaxonomy.UpstreamHttp3),
+    Test("Idle upstream HTTP/3 pooled connections expire", UpstreamHttp3Tests.IdleHttp3UpstreamConnectionsExpire, TestTaxonomy.Http3, TestTaxonomy.UpstreamHttp3),
+    Test("Upstream HTTP/3 GOAWAY drains connection without breaking active stream", UpstreamHttp3Tests.UpstreamHttp3GoAwayDrainsConnectionWithoutBreakingActiveStream, TestTaxonomy.Http3, TestTaxonomy.UpstreamHttp3),
+    Test("Upstream HTTP/3 pool stream-limit exhaustion returns safe failure", UpstreamHttp3Tests.UpstreamHttp3PoolStreamLimitExhaustionReturnsSafeFailure, TestTaxonomy.Http3, TestTaxonomy.UpstreamHttp3, TestTaxonomy.Limits, TestTaxonomy.SecurityNegativePaths),
+    Test("Upstream HTTP/3 concurrent reuse releases active stream gauge", UpstreamHttp3Tests.ConcurrentHttp3UpstreamReuseReleasesActiveStreamGauge, TestTaxonomy.Http3, TestTaxonomy.UpstreamHttp3),
+    Test("Upstream HTTP/3 stream reset does not poison unrelated active stream", UpstreamHttp3Tests.UpstreamHttp3StreamResetDoesNotPoisonUnrelatedActiveStream, TestTaxonomy.Http3, TestTaxonomy.UpstreamHttp3),
+    Test("Upstream HTTP/3 failed connection does not receive new streams", UpstreamHttp3Tests.FailedHttp3UpstreamConnectionDoesNotReceiveNewStreams, TestTaxonomy.Http3, TestTaxonomy.UpstreamHttp3, TestTaxonomy.SecurityNegativePaths),
+    Test("Upstream HTTP/3 ALPN failure does not downgrade", UpstreamHttp3Tests.Http3UpstreamAlpnFailureDoesNotDowngrade, TestTaxonomy.Http3, TestTaxonomy.UpstreamHttp3, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
+    Test("Upstream HTTP/3 malformed response headers are rejected", UpstreamHttp3Tests.Http3UpstreamMalformedResponseHeadersAreRejected, TestTaxonomy.Http3, TestTaxonomy.UpstreamHttp3, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
+    Test("Upstream HTTP/3 forwards request body", UpstreamHttp3Tests.Http3UpstreamForwardsRequestBody, TestTaxonomy.Http3, TestTaxonomy.UpstreamHttp3),
+    Test("Upstream HTTP/3 health check uses h3", UpstreamHttp3Tests.Http3HealthCheckUsesH3, TestTaxonomy.Http3, TestTaxonomy.UpstreamHttp3, TestTaxonomy.HealthChecks),
+    Test("Cache works with HTTP/3 upstream", UpstreamHttp3Tests.CacheWorksWithHttp3Upstream, TestTaxonomy.Http3, TestTaxonomy.UpstreamHttp3, TestTaxonomy.Caching),
+    Test("Metrics include upstream HTTP/3 counters", UpstreamHttp3Tests.MetricsIncludeUpstreamHttp3Counters, TestTaxonomy.Http3, TestTaxonomy.UpstreamHttp3, TestTaxonomy.Metrics),
+    Test("Existing HTTP/1.1 and HTTP/2 listener protocols still validate", Sync(Http3InfrastructureTests.ExistingHttp1AndHttp2ProtocolsStillValidate), TestTaxonomy.Http1, TestTaxonomy.Http2, TestTaxonomy.Http3, TestTaxonomy.Config),
+    Test("Listener protocol config parsing preserves HTTP/3 compatibility names", Sync(Http3InfrastructureTests.ListenerProtocolConfigParsingPreservesCompatibility), TestTaxonomy.Http3, TestTaxonomy.Config),
+    Test("HTTP/3 defaults on for eligible TLS listeners", Sync(Http3InfrastructureTests.Http3DefaultEnabledForEligibleTlsListener), TestTaxonomy.Http3, TestTaxonomy.Config, TestTaxonomy.Tls),
+    Test("HTTP/3 defaults off for plaintext listeners", Sync(Http3InfrastructureTests.Http3DefaultDisabledForPlaintextListener), TestTaxonomy.Http3, TestTaxonomy.Config),
+    Test("Legacy HTTP/3 protocol token no longer requires experimental gate for default enablement", Sync(Http3InfrastructureTests.Http3PreviewProtocolDoesNotRequireExperimentalGateForDefaultEnablement), TestTaxonomy.Http3, TestTaxonomy.Config, TestTaxonomy.Admin),
+    Test("Legacy HTTP/3 protocol token requires TLS certificate capable listener", Sync(Http3InfrastructureTests.Http3PreviewRequiresTlsCertificateCapableListener), TestTaxonomy.Http3, TestTaxonomy.Config, TestTaxonomy.Tls, TestTaxonomy.Admin),
+    Test("Legacy HTTP/3 config is accepted with gate and enables traffic", Sync(Http3InfrastructureTests.Http3PreviewConfigIsAcceptedWithExplicitGateAndEnablesPreviewTraffic), TestTaxonomy.Http3, TestTaxonomy.Config),
+    Test("HTTP/3-only legacy config does not enable TCP traffic", Sync(Http3InfrastructureTests.Http3OnlyPreviewDoesNotEnableTcpTraffic), TestTaxonomy.Http3, TestTaxonomy.Config),
+    Test("TCP listener identity remains unchanged", Sync(Http3InfrastructureTests.TcpListenerIdentityRemainsUnchanged), TestTaxonomy.Http3, TestTaxonomy.Config),
+    Test("Future QUIC listener identity is separate from TCP identity", Sync(Http3InfrastructureTests.FutureQuicListenerIdentityIsSeparateFromTcpIdentity), TestTaxonomy.Http3, TestTaxonomy.Config),
+    Test("TCP ALPN does not advertise HTTP/3", Sync(Http3InfrastructureTests.TcpAlpnDoesNotAdvertiseHttp3), TestTaxonomy.Http3, TestTaxonomy.Config, TestTaxonomy.Tls),
+    Test("Status and effective projection report legacy HTTP/3 config enabled", Sync(Http3InfrastructureTests.StatusAndEffectiveProjectionReportLegacyHttp3PreviewEnabled), TestTaxonomy.Http3, TestTaxonomy.Config),
+    Test("Final HTTP/3 support projection reports matrix and final naming", Sync(Http3InfrastructureTests.FinalSupportProjectionReportsHttp3MatrixAndFinalNaming), TestTaxonomy.Http3, TestTaxonomy.Config),
+    Test("HTTP/3 upstream protocol accepts explicit config", Sync(Http3InfrastructureTests.UpstreamProtocolAcceptsExplicitHttp3), TestTaxonomy.Http3, TestTaxonomy.UpstreamHttp3, TestTaxonomy.Config),
+    Test("HTTP/3 defaults on for eligible TLS runtime listener", Sync(ClientHttp3PreviewTests.Http3DefaultEnabledForEligibleTlsListener), TestTaxonomy.Http3, TestTaxonomy.Tls),
+    Test("Explicit HTTP/3 disable prevents traffic", Sync(ClientHttp3PreviewTests.ExplicitHttp3DisablePreventsTraffic), TestTaxonomy.Http3),
+    Test("HTTP/3 QUIC listener identity is separate from TCP identity", Sync(ClientHttp3PreviewTests.QuicListenerIdentityIsSeparateFromTcpIdentity), TestTaxonomy.Http3),
+    Test("Failed HTTP/3 QUIC listener start does not break TCP listener", ClientHttp3PreviewTests.FailedQuicListenerStartDoesNotBreakTcpListener, TestTaxonomy.Http3, TestTaxonomy.SecurityNegativePaths),
+    Test("Default HTTP/3 TLS listener starts QUIC and emits Alt-Svc", ClientHttp3PreviewTests.DefaultHttp3TlsListenerStartsQuicAndEmitsAltSvc, TestTaxonomy.Http3, TestTaxonomy.Tls),
+    Test("Successful reload can add and remove HTTP/3 QUIC listener", ClientHttp3PreviewTests.SuccessfulReloadCanAddAndRemovePreviewQuicListener, TestTaxonomy.Http3),
+    Test("Failed reload preserves old HTTP/3 listener set", ClientHttp3PreviewTests.FailedReloadPreservesOldPreviewQuicListenerSet, TestTaxonomy.Http3, TestTaxonomy.SecurityNegativePaths),
+    Test("Status and effective config mark HTTP/3 as experimental preview", Sync(ClientHttp3PreviewTests.StatusAndEffectiveConfigMarkHttp3AsExperimentalPreview), TestTaxonomy.Http3, TestTaxonomy.Config),
+    Test("HTTP/3 beta enablement is explicitly projected", Sync(ClientHttp3PreviewTests.Http3BetaEnablementIsExplicitlyProjected), TestTaxonomy.Http3),
+    Test("HTTP/3 Alt-Svc is absent when HTTP/3 is explicitly disabled", ClientHttp3PreviewTests.AltSvcIsAbsentWhenHttp3ExplicitlyDisabled, TestTaxonomy.Http3, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/3 Alt-Svc is emitted only when configured and ready", ClientHttp3PreviewTests.AltSvcIsEmittedOnlyWhenConfiguredAndReady, TestTaxonomy.Http3),
+    Test("HTTP/3 Alt-Svc is not emitted when QUIC listener is not ready", ClientHttp3PreviewTests.AltSvcIsNotEmittedWhenQuicListenerIsNotReady, TestTaxonomy.Http3),
+    Test("Admin responses do not emit HTTP/3 Alt-Svc", Sync(ClientHttp3PreviewTests.AdminResponsesDoNotEmitAltSvc), TestTaxonomy.Http3, TestTaxonomy.Admin),
+    Test("Minimal HTTP/3 GET can reach generated route", ClientHttp3PreviewTests.MinimalHttp3GetCanReachGeneratedRoute, TestTaxonomy.Http3, TestTaxonomy.Routing),
+    Test("HTTP/3 HEAD returns headers without body", ClientHttp3PreviewTests.HeadReturnsHeadersWithoutBody, TestTaxonomy.Http3, TestTaxonomy.Headers),
+    Test("HTTP/3 generated redirect route works", ClientHttp3PreviewTests.Http3GeneratedRedirectRouteWorks, TestTaxonomy.Http3, TestTaxonomy.Routing),
+    Test("HTTP/3 generated maintenance route works", ClientHttp3PreviewTests.Http3GeneratedMaintenanceRouteWorks, TestTaxonomy.Http3, TestTaxonomy.Routing),
+    Test("HTTP/3 route miss returns safe 404", ClientHttp3PreviewTests.Http3RouteMissReturnsSafe404, TestTaxonomy.Http3, TestTaxonomy.Routing),
+    Test("HTTP/3 route miss remains stable across repeated ready-listener requests", ClientHttp3PreviewTests.Http3RouteMissRemainsStableAcrossRepeatedReadyListenerRequests, TestTaxonomy.Http3, TestTaxonomy.Routing),
+    Test("HTTP/3 GET proxy route works", ClientHttp3PreviewTests.Http3GetProxyRouteWorks, TestTaxonomy.Http3, TestTaxonomy.Routing),
+    Test("HTTP/3 HEAD proxy route works", ClientHttp3PreviewTests.Http3HeadProxyRouteWorks, TestTaxonomy.Http3, TestTaxonomy.Routing),
+    Test("HTTP/3 proxy preserves query string", ClientHttp3PreviewTests.Http3ProxyPreservesQueryString, TestTaxonomy.Http3),
+    Test("HTTP/3 proxy strips pseudo headers before upstream", ClientHttp3PreviewTests.Http3ProxyStripsPseudoHeadersBeforeUpstream, TestTaxonomy.Http3, TestTaxonomy.Headers),
+    Test("HTTP/3 response headers are encoded safely", ClientHttp3PreviewTests.Http3ResponseHeadersAreEncodedSafely, TestTaxonomy.Http3, TestTaxonomy.Headers),
+    Test("HTTP/3 chunked response streams body without Transfer-Encoding", ClientHttp3PreviewTests.Http3ChunkedResponseStreamsBodyWithoutTransferEncoding, TestTaxonomy.Http3, TestTaxonomy.Headers),
+    Test("HTTP/3 response streams before upstream completes", ClientHttp3PreviewTests.Http3ResponseStreamsBeforeUpstreamCompletes, TestTaxonomy.Http3),
+    Test("HTTP/3 cache interaction uses stored response", ClientHttp3PreviewTests.Http3CacheInteractionUsesStoredResponse, TestTaxonomy.Http3, TestTaxonomy.Caching),
+    Test("HTTP/3 oversized cache candidate streams but is not cached", ClientHttp3PreviewTests.Http3OversizedCacheCandidateStreamsButIsNotCached, TestTaxonomy.Http3, TestTaxonomy.Caching, TestTaxonomy.Limits, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/3 retry for GET can reach second upstream", ClientHttp3PreviewTests.Http3RetryForGetCanReachSecondUpstream, TestTaxonomy.Http3, TestTaxonomy.RetryCircuit),
+    Test("HTTP/3 unsupported CONNECT is rejected", ClientHttp3PreviewTests.UnsupportedConnectIsRejected, TestTaxonomy.Http3, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/3 malformed CONNECT is rejected", ClientHttp3PreviewTests.MalformedHttp3ConnectIsRejected, TestTaxonomy.Http3, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/3 extended CONNECT WebSocket form is rejected", ClientHttp3PreviewTests.ExtendedHttp3ConnectWebSocketIsRejected, TestTaxonomy.Http1, TestTaxonomy.Http3, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/3 POST with bounded body reaches upstream", ClientHttp3PreviewTests.Http3PostWithBoundedBodyReachesUpstream, TestTaxonomy.Http3, TestTaxonomy.Limits),
+    Test("HTTP/3 PUT PATCH and DELETE bodies reach upstream", ClientHttp3PreviewTests.Http3PutPatchAndDeleteBodiesReachUpstream, TestTaxonomy.Http3),
+    Test("HTTP/3 path rewrite applies to proxy route", ClientHttp3PreviewTests.Http3PathRewriteAppliesToProxyRoute, TestTaxonomy.Http3, TestTaxonomy.Routing),
+    Test("HTTP/3 body size limit applies", ClientHttp3PreviewTests.Http3BodySizeLimitApplies, TestTaxonomy.Http3, TestTaxonomy.Limits),
+    Test("HTTP/3 legacy buffered request body limit does not block streaming", ClientHttp3PreviewTests.Http3LegacyBufferedRequestBodyLimitDoesNotBlockStreaming, TestTaxonomy.Http3, TestTaxonomy.Limits),
+    Test("HTTP/3 request with body is not retried", ClientHttp3PreviewTests.Http3RequestWithBodyIsNotRetried, TestTaxonomy.Http3, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/3 invalid frame sequence is rejected", ClientHttp3PreviewTests.InvalidFrameSequenceIsRejected, TestTaxonomy.Http3, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/3 unexpected control frame on request stream is rejected", ClientHttp3PreviewTests.UnexpectedControlFrameOnRequestStreamIsRejected, TestTaxonomy.Http3, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/3 GOAWAY frame on request stream is rejected", ClientHttp3PreviewTests.GoAwayFrameOnRequestStreamIsRejected, TestTaxonomy.Http3, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/3 duplicate HEADERS after request headers are rejected", ClientHttp3PreviewTests.DuplicateHeadersAfterHeadersIsRejected, TestTaxonomy.Http3, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/3 unknown frame before headers is rejected", ClientHttp3PreviewTests.UnknownFrameBeforeHeadersIsRejected, TestTaxonomy.Http3, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/3 MAX_PUSH frame on request stream is rejected", ClientHttp3PreviewTests.MaxPushFrameOnRequestStreamIsRejected, TestTaxonomy.Http3, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/3 stream-level protocol error does not poison connection", ClientHttp3PreviewTests.StreamLevelProtocolErrorDoesNotPoisonConnection, TestTaxonomy.Http3),
+    Test("HTTP/3 concurrent stream reset does not leak active streams", ClientHttp3PreviewTests.ConcurrentStreamResetDoesNotLeakActiveStreams, TestTaxonomy.Http3),
+    Test("HTTP/3 QPACK decode failure does not reach route selection", ClientHttp3PreviewTests.QpackDecodeFailureDoesNotReachRouteSelection, TestTaxonomy.Http3, TestTaxonomy.Routing, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/3 protocol error budget closes abusive connection", ClientHttp3PreviewTests.ProtocolErrorBudgetClosesAbusiveConnection, TestTaxonomy.Http3),
+    Test("HTTP/3 malformed pseudo headers are rejected", Sync(ClientHttp3PreviewTests.MalformedPseudoHeadersAreRejected), TestTaxonomy.Http3, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/3 pseudo header after regular header is rejected", Sync(ClientHttp3PreviewTests.PseudoHeaderAfterRegularHeaderIsRejected), TestTaxonomy.Http3, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/3 forbidden pseudo header is rejected", Sync(ClientHttp3PreviewTests.ForbiddenPseudoHeaderIsRejected), TestTaxonomy.Http3, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/3 missing pseudo headers are rejected", Sync(ClientHttp3PreviewTests.MissingPseudoHeadersAreRejected), TestTaxonomy.Http3, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/3 forbidden connection headers are rejected", Sync(ClientHttp3PreviewTests.ForbiddenConnectionHeadersAreRejected), TestTaxonomy.Http3, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/3 invalid regular header name is rejected", Sync(ClientHttp3PreviewTests.InvalidRegularHeaderNameIsRejected), TestTaxonomy.Http3, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/3 invalid pseudo header values are rejected", Sync(ClientHttp3PreviewTests.InvalidPseudoHeaderValuesAreRejected), TestTaxonomy.Http3, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/3 malformed authority and path are rejected", Sync(ClientHttp3PreviewTests.MalformedAuthorityAndPathAreRejected), TestTaxonomy.Http3, TestTaxonomy.Routing, TestTaxonomy.Admin, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/3 CONNECT pseudo header rules are enforced", Sync(ClientHttp3PreviewTests.ConnectSpecificPseudoHeaderRulesAreEnforced), TestTaxonomy.Http3, TestTaxonomy.Headers),
+    Test("HTTP/3 oversized header block is rejected", Sync(ClientHttp3PreviewTests.OversizedHeaderBlockIsRejected), TestTaxonomy.Http3, TestTaxonomy.Headers, TestTaxonomy.Limits, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/3 QPACK header block exact boundary is accepted", Sync(ClientHttp3PreviewTests.QpackHeaderBlockAtExactLimitIsAccepted), TestTaxonomy.Http3, TestTaxonomy.Headers),
+    Test("HTTP/3 unsupported QPACK dynamic table usage is rejected", Sync(ClientHttp3PreviewTests.UnsupportedQpackDynamicTableUsageIsRejected), TestTaxonomy.Http3, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/3 invalid QPACK static table reference is rejected", Sync(ClientHttp3PreviewTests.InvalidQpackStaticTableReferenceIsRejected), TestTaxonomy.Http3, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/3 unsupported QPACK dynamic table prefix is rejected", Sync(ClientHttp3PreviewTests.UnsupportedQpackDynamicTablePrefixIsRejected), TestTaxonomy.Http3, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/3 QPACK Huffman static name reference decodes", Sync(ClientHttp3PreviewTests.QpackHuffmanStaticNameReferenceDecodes), TestTaxonomy.Http3, TestTaxonomy.Headers),
+    Test("Metrics include HTTP/3 counters", Sync(ClientHttp3PreviewTests.MetricsIncludeHttp3PreviewCounters), TestTaxonomy.Http3, TestTaxonomy.Metrics),
+    Test("Config lint reports HTTP/3 default readiness issues", Sync(ClientHttp3PreviewTests.ConfigLintReportsHttp3DefaultReadinessIssues), TestTaxonomy.Http3, TestTaxonomy.Config),
+    Test("Resilience disabled preserves existing behavior", ResilienceTests.ExistingBehaviorUnchangedWhenResilienceDisabled, TestTaxonomy.RetryCircuit),
+    Test("GET retry occurs on connect failure when enabled", ResilienceTests.GetRetryOccursOnConnectFailureWhenEnabled, TestTaxonomy.RetryCircuit, TestTaxonomy.SecurityNegativePaths),
+    Test("GET retry occurs on configured status when enabled", ResilienceTests.GetRetryOccursOnConfiguredStatusWhenEnabled, TestTaxonomy.RetryCircuit),
+    Test("POST is not retried by default", ResilienceTests.PostIsNotRetriedByDefault, TestTaxonomy.RetryCircuit, TestTaxonomy.SecurityNegativePaths),
+    Test("Upgrade requests are not retried", ResilienceTests.UpgradeIsNotRetried, TestTaxonomy.Http1, TestTaxonomy.RetryCircuit, TestTaxonomy.SecurityNegativePaths),
+    Test("Request is not retried after response streaming starts", ResilienceTests.RequestIsNotRetriedAfterResponseStreamingStarts, TestTaxonomy.RetryCircuit, TestTaxonomy.SecurityNegativePaths),
+    Test("Partial response failure does not retry second upstream after downstream bytes are sent", ResilienceTests.PartialResponseFailureDoesNotRetrySecondUpstreamAfterDownstreamBytesAreSent, TestTaxonomy.RetryCircuit, TestTaxonomy.SecurityNegativePaths),
+    Test("Retry status does not bypass unsafe POST method", ResilienceTests.RetryStatusDoesNotBypassUnsafePostMethod, TestTaxonomy.RetryCircuit, TestTaxonomy.SecurityNegativePaths),
+    Test("Retry maxAttempts is enforced", ResilienceTests.RetryMaxAttemptsIsEnforced, TestTaxonomy.RetryCircuit),
+    Test("Retry exhausted returns clear failure", ResilienceTests.RetryExhaustedReturnsClearFailure, TestTaxonomy.RetryCircuit, TestTaxonomy.SecurityNegativePaths),
+    Test("Circuit opens after threshold failures", Sync(ResilienceTests.CircuitOpensAfterThresholdFailures), TestTaxonomy.RetryCircuit, TestTaxonomy.SecurityNegativePaths),
+    Test("Circuit rejects traffic while open", Sync(ResilienceTests.CircuitRejectsTrafficWhileOpen), TestTaxonomy.RetryCircuit, TestTaxonomy.SecurityNegativePaths),
+    Test("Circuit transitions to half-open after open duration", Sync(ResilienceTests.CircuitTransitionsToHalfOpenAfterOpenDuration), TestTaxonomy.RetryCircuit),
+    Test("Circuit half-open probe count is bounded", Sync(ResilienceTests.HalfOpenProbeCountIsBounded), TestTaxonomy.RetryCircuit, TestTaxonomy.Limits),
+    Test("Half-open success closes circuit", Sync(ResilienceTests.HalfOpenSuccessClosesCircuit), TestTaxonomy.RetryCircuit),
+    Test("Half-open failure reopens circuit", Sync(ResilienceTests.HalfOpenFailureReopensCircuit), TestTaxonomy.RetryCircuit, TestTaxonomy.SecurityNegativePaths),
+    Test("Weighted round-robin honors weights", Sync(ResilienceTests.WeightedRoundRobinHonorsWeights), TestTaxonomy.RetryCircuit),
+    Test("Equal weights preserve round-robin order", Sync(ResilienceTests.EqualWeightRoundRobinPreservesExistingOrder), TestTaxonomy.RetryCircuit),
+    Test("Unhealthy and open-circuit upstreams are skipped", Sync(ResilienceTests.UnhealthyAndOpenCircuitUpstreamsAreSkipped), TestTaxonomy.RetryCircuit, TestTaxonomy.HealthChecks, TestTaxonomy.SecurityNegativePaths),
+    Test("Mixed protocol upstream failures isolate circuit state", Sync(ResilienceTests.MixedProtocolUpstreamFailuresIsolateCircuitState), TestTaxonomy.RetryCircuit, TestTaxonomy.SecurityNegativePaths),
+    Test("All unavailable upstreams return no selection", Sync(ResilienceTests.AllUpstreamsUnavailableReturnsNoSelection), TestTaxonomy.Routing, TestTaxonomy.RetryCircuit, TestTaxonomy.SecurityNegativePaths),
+    Test("All unavailable upstreams return safe failure", ResilienceTests.AllUnavailableUpstreamsReturnSafeFailure, TestTaxonomy.RetryCircuit, TestTaxonomy.SecurityNegativePaths),
+    Test("Metrics include retry circuit and balancing counters", Sync(ResilienceTests.MetricsIncludeRetryCircuitAndBalancingCounters), TestTaxonomy.RetryCircuit, TestTaxonomy.Metrics),
+    Test("Effective and status projections show resilience state", Sync(ResilienceTests.EffectiveAndStatusProjectionsShowSafeResilienceState), TestTaxonomy.Config, TestTaxonomy.RetryCircuit),
+    Test("Host startup succeeds from fresh data directory", StartupSmokeTests.StartsFromFreshDataDirectory, TestTaxonomy.Config, TestTaxonomy.Headers),
+    Test("Host startup fails when existing site config is invalid", StartupSmokeTests.FailsStartupWhenExistingSiteConfigIsInvalid, TestTaxonomy.Config, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
+    Test("Host startup succeeds with valid site config", StartupSmokeTests.StartsWithValidSiteConfig, TestTaxonomy.Config, TestTaxonomy.Headers),
+    Test("Proxy dataplane proxies one GET request end to end", ProxyIntegrationTests.ProxiesSingleGetToUpstream, TestTaxonomy.Http1),
+    Test("Proxy dataplane proxies fixed-length request and response", ProxyIntegrationTests.ProxiesFixedLengthRequestAndResponse, TestTaxonomy.Http1),
+    Test("Proxy dataplane proxies chunked request and response", ProxyIntegrationTests.ProxiesChunkedRequestAndResponse, TestTaxonomy.Http1, TestTaxonomy.Headers),
+    Test("HTTP/1.1 chunk extensions are accepted and forwarded", ProxyIntegrationTests.AcceptsChunkExtensionsAndForwardsChunkedBody, TestTaxonomy.Http1, TestTaxonomy.Headers),
+    Test("HTTP/1.1 declared chunked request trailer is forwarded", ProxyIntegrationTests.ForwardsDeclaredChunkedRequestTrailer, TestTaxonomy.Http1, TestTaxonomy.Headers),
+    Test("Proxy dataplane does not relay HEAD response body", ProxyIntegrationTests.DoesNotRelayHeadResponseBody, TestTaxonomy.Http1),
+    Test("Proxy dataplane proxies 204 without response body", ProxyIntegrationTests.ProxiesNoContentWithoutBody, TestTaxonomy.Http1),
+    Test("Proxy dataplane proxies 304 without response body", ProxyIntegrationTests.ProxiesNotModifiedWithoutBody, TestTaxonomy.Http1),
+    Test("Proxy dataplane rejects invalid request framing", ProxyIntegrationTests.RejectsInvalidRequestFraming, TestTaxonomy.Http1, TestTaxonomy.SecurityNegativePaths),
+    Test("Proxy dataplane rejects malformed chunked request body", ProxyIntegrationTests.RejectsMalformedChunkedRequestBody, TestTaxonomy.Http1, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
+    Test("Proxy dataplane filters hop-by-hop request headers", ProxyIntegrationTests.FiltersHopByHopRequestHeaders, TestTaxonomy.Http1, TestTaxonomy.Headers),
+    Test("Proxy dataplane preserves Host header", ProxyIntegrationTests.PreservesHostHeader, TestTaxonomy.Http1, TestTaxonomy.Headers),
+    Test("Proxy dataplane emits generated response request ID", ProxyIntegrationTests.ResponseIncludesGeneratedRequestId, TestTaxonomy.Http1),
+    Test("Proxy dataplane preserves external request ID in diagnostics", ProxyIntegrationTests.ExternalRequestIdIsPreservedInDiagnostics, TestTaxonomy.Http1, TestTaxonomy.Metrics),
+    Test("Proxy dataplane records successful diagnostics", ProxyIntegrationTests.SuccessfulRequestProducesDiagnosticRouteAndUpstream, TestTaxonomy.Http1, TestTaxonomy.Metrics),
+    Test("Proxy dataplane records upstream connect failure diagnostics", ProxyIntegrationTests.UpstreamConnectFailureProducesDiagnosticClassification, TestTaxonomy.Http1, TestTaxonomy.UpstreamHttp1, TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),
+    Test("Proxy dataplane can disable access logs while keeping diagnostics", ProxyIntegrationTests.AccessLoggingCanBeDisabledWhileDiagnosticsRemainEnabled, TestTaxonomy.Http1, TestTaxonomy.Metrics),
+    Test("HTTP to HTTPS redirect preserves path and query", ProxyIntegrationTests.HttpToHttpsRedirectPreservesPathAndQuery, TestTaxonomy.Routing, TestTaxonomy.Tls),
+    Test("Canonical host redirect works", ProxyIntegrationTests.CanonicalHostRedirectWorks, TestTaxonomy.Routing, TestTaxonomy.Headers),
+    Test("Canonical host redirect does not loop", ProxyIntegrationTests.CanonicalHostRedirectDoesNotLoop, TestTaxonomy.Routing, TestTaxonomy.Headers),
+    Test("Forwarded headers generated for untrusted direct client", ProxyIntegrationTests.ForwardedHeadersGeneratedForUntrustedDirectClient, TestTaxonomy.Headers),
+    Test("Trusted proxy accepts prior forwarded chain", ProxyIntegrationTests.TrustedProxyAcceptsPriorForwardedChain, TestTaxonomy.Config),
+    Test("Malformed trusted Forwarded headers are sanitized before upstream", ProxyIntegrationTests.MalformedTrustedForwardedHeadersAreSanitizedBeforeUpstream, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
+    Test("Untrusted client forwarded headers are stripped and replaced", ProxyIntegrationTests.UntrustedClientForwardedHeadersAreStrippedAndReplaced, TestTaxonomy.Headers),
+    Test("Request header set/remove rules apply upstream", ProxyIntegrationTests.RequestHeaderSetAndRemoveRulesApplyUpstream, TestTaxonomy.Headers),
+    Test("Response header set/remove rules apply downstream", ProxyIntegrationTests.ResponseHeaderSetAndRemoveRulesApplyDownstream, TestTaxonomy.Headers),
+    Test("Path prefix stripping preserves query string", ProxyIntegrationTests.PathPrefixStrippingPreservesQueryString, TestTaxonomy.Routing),
+    Test("Path prefix replacement works", ProxyIntegrationTests.PathPrefixReplacementWorks, TestTaxonomy.Routing),
+    Test("Path rewrite no-match forwards original target", ProxyIntegrationTests.PathRewriteNoMatchForwardsOriginalTarget, TestTaxonomy.Routing),
+    Test("Redirect route returns configured redirect", ProxyIntegrationTests.RedirectRouteReturnsConfiguredRedirect, TestTaxonomy.Routing),
+    Test("Static response route returns configured response", ProxyIntegrationTests.StaticResponseRouteReturnsConfiguredResponse, TestTaxonomy.Routing),
+    Test("Maintenance mode returns 503 and does not contact upstream", ProxyIntegrationTests.MaintenanceModeReturns503AndDoesNotContactUpstream, TestTaxonomy.Routing),
+    Test("Per-route body-size override works", ProxyIntegrationTests.PerRouteBodySizeOverrideWorks, TestTaxonomy.Routing),
+    Test("Per-route access-log disable is reflected in diagnostics", ProxyIntegrationTests.PerRouteAccessLogDisableIsReflectedInDiagnostics, TestTaxonomy.Routing, TestTaxonomy.Metrics),
+    Test("Proxy dataplane records no-route diagnostics and status summary", ProxyIntegrationTests.NoMatchingRouteProducesDiagnosticClassification, TestTaxonomy.Http1, TestTaxonomy.Routing, TestTaxonomy.Metrics),
+    Test("Failed reload while proxy active preserves old snapshot and traffic", ProxyIntegrationTests.FailedReloadWhileProxyActivePreservesOldSnapshotAndTraffic, TestTaxonomy.SecurityNegativePaths),
+    Test("Proxy dataplane rejects oversized request head", ProxyIntegrationTests.OversizedRequestHeadIsRejected, TestTaxonomy.Http1, TestTaxonomy.Limits, TestTaxonomy.SecurityNegativePaths),
+    Test("Proxy dataplane rejects excessive header count", ProxyIntegrationTests.ExcessiveHeaderCountIsRejected, TestTaxonomy.Http1, TestTaxonomy.Headers, TestTaxonomy.Limits, TestTaxonomy.SecurityNegativePaths),
+    Test("Proxy dataplane rejects excessive header line", ProxyIntegrationTests.ExcessiveHeaderLineIsRejected, TestTaxonomy.Http1, TestTaxonomy.Headers, TestTaxonomy.Limits, TestTaxonomy.SecurityNegativePaths),
+    Test("Proxy dataplane rejects excessive request body size", ProxyIntegrationTests.ExcessiveRequestBodySizeIsRejected, TestTaxonomy.Http1, TestTaxonomy.Limits, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/1.1 request body exactly at configured limit is accepted", ProxyIntegrationTests.RequestBodyExactlyAtConfiguredMaxIsAccepted, TestTaxonomy.Http1, TestTaxonomy.Limits),
+    Test("HTTP/1.1 chunked request body exactly at configured limit is accepted", ProxyIntegrationTests.ChunkedRequestBodyExactlyAtConfiguredMaxIsAccepted, TestTaxonomy.Http1, TestTaxonomy.Headers, TestTaxonomy.Limits),
+    Test("HTTP/1.1 request body configured limit plus one is rejected", ProxyIntegrationTests.RequestBodyConfiguredMaxPlusOneIsRejected, TestTaxonomy.Http1, TestTaxonomy.Limits, TestTaxonomy.SecurityNegativePaths),
+    Test("Proxy dataplane rejects oversized chunked request body", ProxyIntegrationTests.ChunkedRequestBodySizeIsRejected, TestTaxonomy.Http1, TestTaxonomy.Headers, TestTaxonomy.Limits, TestTaxonomy.SecurityNegativePaths),
+    Test("Proxy dataplane enforces per-IP request rate limit", ProxyIntegrationTests.PerIpRequestRateLimitIsEnforced, TestTaxonomy.Http1, TestTaxonomy.Limits),
+    Test("Proxy dataplane times out incomplete request head", ProxyIntegrationTests.TimesOutIncompleteRequestHead, TestTaxonomy.Http1),
+    Test("Proxy dataplane times out incomplete Content-Length request body", ProxyIntegrationTests.TimesOutIncompleteContentLengthRequestBody, TestTaxonomy.Http1, TestTaxonomy.Headers),
+    Test("Proxy dataplane times out incomplete chunked request body", ProxyIntegrationTests.TimesOutIncompleteChunkedRequestBody, TestTaxonomy.Http1, TestTaxonomy.Headers),
+    Test("HTTP/1.1 missing terminating chunk times out safely", ProxyIntegrationTests.TimesOutMissingTerminatingChunkAfterCompleteChunk, TestTaxonomy.Http1, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
+    Test("Proxy dataplane maps unavailable upstream to 502", ProxyIntegrationTests.UnavailableUpstreamProducesBadGateway, TestTaxonomy.Http1, TestTaxonomy.RetryCircuit, TestTaxonomy.SecurityNegativePaths),
+    Test("Proxy dataplane maps upstream response-head timeout to 504", ProxyIntegrationTests.UpstreamResponseHeadTimeoutProducesGatewayTimeout, TestTaxonomy.Http1, TestTaxonomy.RetryCircuit, TestTaxonomy.Limits, TestTaxonomy.SecurityNegativePaths),
+    Test("Proxy dataplane closes after started response on upstream early close", ProxyIntegrationTests.UpstreamContentLengthEarlyCloseClosesAfterStartedResponse, TestTaxonomy.Http1, TestTaxonomy.UpstreamHttp1),
+    Test("HTTP/1.1 upstream chunked early close is contained", ProxyIntegrationTests.UpstreamChunkedEarlyCloseClosesAfterStartedResponse, TestTaxonomy.Http1, TestTaxonomy.Headers),
+    Test("HTTPS listener proxies GET to upstream", ProxyIntegrationTests.HttpsListenerProxiesGetToUpstream, TestTaxonomy.Tls),
+    Test("HTTPS listener selects certificate by SNI", ProxyIntegrationTests.HttpsListenerSelectsCertificateBySni, TestTaxonomy.Tls),
+    Test("HTTPS listener selects certificate by case-insensitive SNI", ProxyIntegrationTests.HttpsListenerSelectsCertificateByCaseInsensitiveSni, TestTaxonomy.Tls),
+    Test("HTTPS listener uses default certificate for unmatched SNI", ProxyIntegrationTests.HttpsListenerUsesDefaultCertificateForUnmatchedSni, TestTaxonomy.Tls),
+    Test("HTTPS listener uses default certificate without SNI", ProxyIntegrationTests.HttpsListenerUsesDefaultCertificateWithoutSni, TestTaxonomy.Tls),
+    Test("HTTPS listener fails handshake when no certificate matches", ProxyIntegrationTests.HttpsListenerFailsHandshakeWhenNoCertificateMatches, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTPS listener times out incomplete TLS handshake", ProxyIntegrationTests.HttpsListenerTimesOutIncompleteTlsHandshake, TestTaxonomy.Tls),
+    Test("Persistent client processes two sequential GETs and reuses upstream", ProxyIntegrationTests.PersistentClientProcessesTwoSequentialGetsAndReusesUpstream, TestTaxonomy.Http1),
+    Test("Client Connection close header closes after response", ProxyIntegrationTests.ClientConnectionCloseHeaderClosesAfterResponse, TestTaxonomy.Http1, TestTaxonomy.Headers),
+    Test("HTTP/1.0 client closes by default", ProxyIntegrationTests.Http10ClientClosesByDefault, TestTaxonomy.Http1),
+    Test("Max requests per client connection is enforced", ProxyIntegrationTests.MaxRequestsPerClientConnectionIsEnforced, TestTaxonomy.Limits),
+    Test("Client keep-alive idle timeout closes connection", ProxyIntegrationTests.ClientKeepAliveIdleTimeoutClosesConnection, TestTaxonomy.Http1, TestTaxonomy.Limits, TestTaxonomy.SecurityNegativePaths),
+    Test("Malformed second request closes connection", ProxyIntegrationTests.MalformedSecondRequestClosesConnection, TestTaxonomy.Http1, TestTaxonomy.SecurityNegativePaths),
+    Test("HTTP/1.1 pipelined valid then malformed request does not reach upstream twice", ProxyIntegrationTests.PipelinedValidThenMalformedRequestDoesNotReachUpstreamTwice, TestTaxonomy.Http1, TestTaxonomy.SecurityNegativePaths),
+    Test("Persistent client proxies Content-Length POST", ProxyIntegrationTests.PersistentClientProxiesContentLengthPost, TestTaxonomy.Http1, TestTaxonomy.Headers),
+    Test("Persistent client proxies chunked POST", ProxyIntegrationTests.PersistentClientProxiesChunkedPost, TestTaxonomy.Http1, TestTaxonomy.Headers),
+    Test("Upstream connection is not reused after response Connection close", ProxyIntegrationTests.UpstreamConnectionIsNotReusedAfterResponseConnectionClose, TestTaxonomy.UpstreamHttp1, TestTaxonomy.Headers),
+    Test("Upstream connection is not reused after premature disconnect", ProxyIntegrationTests.UpstreamConnectionIsNotReusedAfterPrematureDisconnect, TestTaxonomy.UpstreamHttp1),
+    Test("Upstream connection is not reused after framing error", ProxyIntegrationTests.UpstreamConnectionIsNotReusedAfterFramingError, TestTaxonomy.UpstreamHttp1),
+    Test("WebSocket Upgrade over plaintext returns 101", ProxyIntegrationTests.WebSocketUpgradeOverPlaintextReturnsSwitchingProtocols, TestTaxonomy.Http1),
+    Test("WebSocket Upgrade produces tunnel diagnostic", ProxyIntegrationTests.WebSocketUpgradeProducesTunnelDiagnostic, TestTaxonomy.Http1, TestTaxonomy.Metrics),
+    Test("WebSocket tunnel relays client bytes upstream", ProxyIntegrationTests.WebSocketTunnelRelaysClientBytesToUpstream, TestTaxonomy.Http1),
+    Test("WebSocket tunnel relays upstream bytes client", ProxyIntegrationTests.WebSocketTunnelRelaysUpstreamBytesToClient, TestTaxonomy.Http1),
+    Test("WebSocket tunnel closes when client closes", ProxyIntegrationTests.WebSocketTunnelClosesWhenClientCloses, TestTaxonomy.Http1),
+    Test("WebSocket tunnel closes when upstream closes", ProxyIntegrationTests.WebSocketTunnelClosesWhenUpstreamCloses, TestTaxonomy.Http1),
+    Test("WebSocket tunnel idle timeout closes tunnel", ProxyIntegrationTests.WebSocketTunnelIdleTimeoutClosesTunnel, TestTaxonomy.Http1, TestTaxonomy.Limits, TestTaxonomy.SecurityNegativePaths),
+    Test("WebSocket Upgrade over HTTPS returns 101", ProxyIntegrationTests.WebSocketUpgradeOverHttpsReturnsSwitchingProtocols, TestTaxonomy.Http1, TestTaxonomy.Tls),
+    Test("Upgrade does not use normal upstream pool", ProxyIntegrationTests.UpgradeDoesNotUseNormalUpstreamPool, TestTaxonomy.Http1, TestTaxonomy.UpstreamHttp1),
+    Test("Missing WebSocket headers are rejected", ProxyIntegrationTests.MissingWebSocketHeadersAreRejected, TestTaxonomy.Http1, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
+    Test("Upstream non-101 Upgrade response is forwarded and closed", ProxyIntegrationTests.UpstreamNon101UpgradeResponseIsForwardedAndClosed, TestTaxonomy.Http1),
+    Test("Malformed 101 Upgrade response produces bad gateway", ProxyIntegrationTests.MalformedSwitchingProtocolsResponseProducesBadGateway, TestTaxonomy.Http1, TestTaxonomy.SecurityNegativePaths),
+    Test("Health check 2xx response is healthy", HealthCheckTests.HealthCheck2xxIsHealthy, TestTaxonomy.HealthChecks),
+    Test("Health check 3xx response is healthy", HealthCheckTests.HealthCheck3xxIsHealthy, TestTaxonomy.HealthChecks),
+    Test("Health check 4xx response is unhealthy", HealthCheckTests.HealthCheck4xxIsUnhealthy, TestTaxonomy.HealthChecks, TestTaxonomy.SecurityNegativePaths),
+    Test("Health check 5xx response is unhealthy", HealthCheckTests.HealthCheck5xxIsUnhealthy, TestTaxonomy.HealthChecks, TestTaxonomy.SecurityNegativePaths),
+    Test("Health check timeout is unhealthy", HealthCheckTests.HealthCheckTimeoutIsUnhealthy, TestTaxonomy.HealthChecks, TestTaxonomy.Limits, TestTaxonomy.SecurityNegativePaths),
+    Test("Health state transitions to unhealthy after threshold", Sync(HealthCheckTests.HealthStateTransitionsToUnhealthyAfterThreshold), TestTaxonomy.HealthChecks, TestTaxonomy.SecurityNegativePaths),
+    Test("Health state transitions to healthy after recovery threshold", Sync(HealthCheckTests.HealthStateTransitionsToHealthyAfterRecoveryThreshold), TestTaxonomy.HealthChecks),
+    Test("Round-robin distributes sequential requests across two upstreams", ProxyIntegrationTests.RoundRobinDistributesSequentialRequestsAcrossTwoUpstreams, TestTaxonomy.Routing),
+    Test("Unhealthy upstream is not selected", ProxyIntegrationTests.UnhealthyUpstreamIsNotSelected, TestTaxonomy.HealthChecks, TestTaxonomy.SecurityNegativePaths),
+    Test("All unhealthy upstreams return service unavailable", ProxyIntegrationTests.AllUnhealthyUpstreamsReturnServiceUnavailable, TestTaxonomy.RetryCircuit, TestTaxonomy.HealthChecks, TestTaxonomy.SecurityNegativePaths),
+    Test("WebSocket Upgrade uses round-robin upstream selection", ProxyIntegrationTests.WebSocketUpgradeUsesRoundRobinUpstreamSelection, TestTaxonomy.Http1, TestTaxonomy.Routing),
+    Test("Upstream pool uses distinct endpoint keys", ProxyIntegrationTests.UpstreamPoolUsesDistinctEndpointKeys, TestTaxonomy.UpstreamHttp1),
+    Test("Recent diagnostics store is bounded", Sync(ObservabilityTests.RecentDiagnosticsStoreIsBounded), TestTaxonomy.Limits, TestTaxonomy.Metrics),
+    Test("Diagnostics controller honors safe limit", Sync(ObservabilityTests.DiagnosticsControllerHonorsSafeLimit), TestTaxonomy.Limits, TestTaxonomy.Metrics),
+    Test("Diagnostics event omits bodies and secrets", Sync(ObservabilityTests.DiagnosticsEventDoesNotCarryBodiesOrSecrets), TestTaxonomy.Metrics),
+    Test("Admission controller enforces client limit", Sync(HardeningTests.AdmissionControllerEnforcesClientLimit), TestTaxonomy.Limits),
+    Test("Admission lease disposal releases client slot", Sync(HardeningTests.AdmissionLeaseDisposalReleasesClientSlot), TestTaxonomy.Limits),
+    Test("Admission controller enforces TLS handshake limit", Sync(HardeningTests.AdmissionControllerEnforcesTlsHandshakeLimit), TestTaxonomy.Tls, TestTaxonomy.Limits),
+    Test("Rate limiter enforces request limit and refill", Sync(HardeningTests.RateLimiterEnforcesRequestLimitAndRefills), TestTaxonomy.Limits),
+    Test("Concurrent rate limiter boundary allows only configured limit", Sync(HardeningTests.ConcurrentRateLimiterBoundaryAllowsOnlyConfiguredLimit), TestTaxonomy.Limits),
+    Test("Rate limiter enforces upgrade limit", Sync(HardeningTests.RateLimiterEnforcesUpgradeLimit), TestTaxonomy.Limits),
+    Test("Rate limiter cleans stale entries", Sync(HardeningTests.RateLimiterCleansStaleEntries), TestTaxonomy.Limits),
+    Test("Shutdown coordinator exposes grace deadline", Sync(HardeningTests.ShutdownCoordinatorExposesGraceDeadlineAndCancels), TestTaxonomy.Limits)
 };
 
 TestRunOptions options;
@@ -450,15 +450,33 @@ catch (ArgumentException exception)
     return;
 }
 
-var tests = testDefinitions
-    .Select(static definition => new TestCase(
-        definition.Name,
-        definition.Run,
-        TestTaxonomy.CategoriesFor(definition.Name)))
-    .ToArray();
-
 if (options.ListCategories)
 {
+    foreach (var category in TestTaxonomy.Categories)
+    {
+        var count = tests.Count(test => test.Categories.Contains(category));
+        Console.WriteLine($"{category} {count}");
+    }
+
+    return;
+}
+
+if (options.CheckMetadata)
+{
+    var metadataErrors = TestMetadataIntegrity.Validate(tests);
+    if (metadataErrors.Count > 0)
+    {
+        Console.Error.WriteLine("Test metadata integrity check failed.");
+        foreach (var error in metadataErrors)
+        {
+            Console.Error.WriteLine(error);
+        }
+
+        Environment.ExitCode = 1;
+        return;
+    }
+
+    Console.WriteLine("Test metadata integrity check passed.");
     foreach (var category in TestTaxonomy.Categories)
     {
         var count = tests.Count(test => test.Categories.Contains(category));
@@ -513,6 +531,11 @@ if (failures > 0)
 
 Console.WriteLine($"Passed {selectedTests.Length} tests.");
 
+static TestCase Test(string name, Func<Task> run, params string[] categories)
+{
+    return new TestCase(name, run, TestTaxonomy.CanonicalCategories(categories));
+}
+
 static Func<Task> Sync(Action test)
 {
     return () =>
@@ -559,12 +582,13 @@ static void WriteCorrectnessSummary(
 
 internal sealed record TestCase(string Name, Func<Task> Run, IReadOnlySet<string> Categories);
 
-internal sealed record TestRunOptions(IReadOnlySet<string> Categories, bool ListCategories, string? SummaryFile)
+internal sealed record TestRunOptions(IReadOnlySet<string> Categories, bool ListCategories, bool CheckMetadata, string? SummaryFile)
 {
     public static TestRunOptions Parse(string[] args)
     {
         HashSet<string> categories = new(StringComparer.OrdinalIgnoreCase);
         var listCategories = false;
+        var checkMetadata = false;
         string? summaryFile = null;
 
         for (var index = 0; index < args.Length; index++)
@@ -573,6 +597,12 @@ internal sealed record TestRunOptions(IReadOnlySet<string> Categories, bool List
             if (string.Equals(arg, "--list-categories", StringComparison.OrdinalIgnoreCase))
             {
                 listCategories = true;
+                continue;
+            }
+
+            if (string.Equals(arg, "--check-test-metadata", StringComparison.OrdinalIgnoreCase))
+            {
+                checkMetadata = true;
                 continue;
             }
 
@@ -627,7 +657,7 @@ internal sealed record TestRunOptions(IReadOnlySet<string> Categories, bool List
             .Select(TestTaxonomy.CanonicalCategory)
             .OrderBy(static category => category, StringComparer.Ordinal)
             .ToArray();
-        return new TestRunOptions(canonical.ToHashSet(StringComparer.Ordinal), listCategories, summaryFile);
+        return new TestRunOptions(canonical.ToHashSet(StringComparer.Ordinal), listCategories, checkMetadata, summaryFile);
     }
 
     private static void AddCategories(string value, HashSet<string> categories)
@@ -702,111 +732,62 @@ internal static class TestTaxonomy
             : throw new ArgumentException($"Unknown test category: {category}");
     }
 
-    public static IReadOnlySet<string> CategoriesFor(string name)
+    public static IReadOnlySet<string> CanonicalCategories(params string[] categories)
     {
-        HashSet<string> categories = new(StringComparer.Ordinal);
-        AddProtocolCategories(name, categories);
-        AddSubsystemCategories(name, categories);
-        AddNegativePathCategory(name, categories);
-        return categories;
+        HashSet<string> canonical = new(StringComparer.Ordinal);
+        foreach (var category in categories)
+        {
+            canonical.Add(CanonicalCategory(category));
+        }
+
+        if (canonical.Count == 0)
+        {
+            throw new ArgumentException("Each test registration must declare at least one correctness category.");
+        }
+
+        return canonical;
     }
+}
 
-    private static void AddProtocolCategories(string name, HashSet<string> categories)
+internal static class TestMetadataIntegrity
+{
+    public static IReadOnlyList<string> Validate(IReadOnlyList<TestCase> tests)
     {
-        if (ContainsAny(name, "Http1", "HTTP/1.0", "HTTP/1.1", "Proxy dataplane", "Persistent client", "WebSocket", "Upgrade", "Client Connection close", "keep-alive", "Malformed second request"))
+        List<string> errors = [];
+
+        foreach (var test in tests)
         {
-            categories.Add(Http1);
+            if (test.Categories.Count == 0)
+            {
+                errors.Add($"Test has no correctness category: {test.Name}");
+            }
+
+            foreach (var category in test.Categories)
+            {
+                if (!TestTaxonomy.IsKnownCategory(category))
+                {
+                    errors.Add($"Test uses unknown correctness category '{category}': {test.Name}");
+                }
+            }
         }
 
-        if (ContainsAny(name, "HTTP/2", "Http2"))
+        foreach (var category in TestTaxonomy.Categories)
         {
-            categories.Add(Http2);
+            if (!tests.Any(test => test.Categories.Contains(category)))
+            {
+                errors.Add($"Correctness category has zero tests: {category}");
+            }
         }
 
-        if (ContainsAny(name, "HTTP/3", "Http3", "QUIC", "QPACK", "Alt-Svc"))
+        var duplicateNames = tests
+            .GroupBy(static test => test.Name, StringComparer.Ordinal)
+            .Where(static group => group.Count() > 1)
+            .Select(static group => group.Key);
+        foreach (var name in duplicateNames)
         {
-            categories.Add(Http3);
+            errors.Add($"Duplicate test name: {name}");
         }
 
-        if (ContainsAny(name, "Existing HTTP upstream", "HTTPS upstream", "Upstream certificate", "TLS validation", "Upstream pool key differs for HTTP and HTTPS", "Upstream connection", "upstream connect", "upstream early close", "normal upstream pool", "distinct endpoint keys"))
-        {
-            categories.Add(UpstreamHttp1);
-        }
-
-        if (ContainsAny(name, "Upstream HTTP/2", "HTTP/2 upstream", "Http2Upstream"))
-        {
-            categories.Add(UpstreamHttp2);
-        }
-
-        if (ContainsAny(name, "Upstream HTTP/3", "HTTP/3 upstream", "Http3Upstream"))
-        {
-            categories.Add(UpstreamHttp3);
-        }
-    }
-
-    private static void AddSubsystemCategories(string name, HashSet<string> categories)
-    {
-        if (ContainsAny(name, "Config", "configuration", "Loader", "Reload", "Data directory", "Active inspection", "Effective config", "Status and effective", "projection", "placeholder", "startup"))
-        {
-            categories.Add(Config);
-        }
-
-        if (ContainsAny(name, "Route", "route", "Matcher", "No matching", "no-route", "Path", "path", "Redirect", "redirect", "Maintenance", "maintenance", "Static response", "canonical host", "Round-robin", "weighted", "selection"))
-        {
-            categories.Add(Routing);
-        }
-
-        if (ContainsAny(name, "TLS", "HTTPS", "certificate", "Certificate", "SNI", "ACME", "PFX", "SslStream", "ALPN", "Alpn", "handshake"))
-        {
-            categories.Add(Tls);
-        }
-
-        if (ContainsAny(name, "Header", "header", "Host", "host", "Forwarded", "Content-Length", "Transfer-Encoding", "hop-by-hop", "Connection", "pseudo", "QPACK", "Huffman"))
-        {
-            categories.Add(Headers);
-        }
-
-        if (ContainsAny(name, "Cache", "cache", "Caching", "cached", "Cache-Control", "Set-Cookie", "Authorization request", "Vary"))
-        {
-            categories.Add(Caching);
-        }
-
-        if (ContainsAny(name, "Retry", "retry", "Circuit", "circuit", "Resilience", "resilience", "unavailable", "Unavailable", "upstream response-head timeout", "502", "504"))
-        {
-            categories.Add(RetryCircuit);
-        }
-
-        if (ContainsAny(name, "Health check", "health check", "healthy", "unhealthy", "Health state", "health state"))
-        {
-            categories.Add(HealthChecks);
-        }
-
-        if (ContainsAny(name, "Limit", "limit", "limits", "capacity", "oversized", "Oversized", "excessive", "Excessive", "timeout", "Timeout", "Admission", "Rate limiter", "bounded", "Max requests", "idle timeout"))
-        {
-            categories.Add(Limits);
-        }
-
-        if (ContainsAny(name, "Admin", "admin", "Protected", "auth", "token", "audit", "Diagnostic endpoints require admin auth"))
-        {
-            categories.Add(Admin);
-        }
-
-        if (ContainsAny(name, "Metric", "metric", "Metrics", "metrics", "diagnostic", "Diagnostic", "observability", "Observability", "logs", "access-log"))
-        {
-            categories.Add(Metrics);
-        }
-    }
-
-    private static void AddNegativePathCategory(string name, HashSet<string> categories)
-    {
-        if (ContainsAny(name, "reject", "Reject", "invalid", "Invalid", "malformed", "Malformed", "missing", "Missing", "forbidden", "Forbidden", "unsupported", "Unsupported", "fails", "Fails", "failure", "Failure", "wrong auth", "does not expose", "redact", "Redact", "unsafe", "Unsafe", "no-store", "not cached", "not retried", "does not", "absent", "mismatch", "timeout", "Timeout", "unavailable", "Unhealthy", "unhealthy", "not selected", "closes", "failed"))
-        {
-            categories.Add(SecurityNegativePaths);
-        }
-    }
-
-    private static bool ContainsAny(string value, params string[] patterns)
-    {
-        return patterns.Any(pattern => value.Contains(pattern, StringComparison.Ordinal));
+        return errors;
     }
 }

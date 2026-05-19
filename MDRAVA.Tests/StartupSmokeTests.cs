@@ -56,7 +56,20 @@ internal static class StartupSmokeTests
 
         using var host = BuildProxyHost(temp.Path);
 
-        await AssertEx.ThrowsAsync<InvalidOperationException>(() => host.StartAsync(CancellationToken.None));
+        try
+        {
+            await AssertEx.ThrowsAsync<InvalidOperationException>(() => host.StartAsync(CancellationToken.None));
+        }
+        finally
+        {
+            try
+            {
+                await host.StopAsync(CancellationToken.None);
+            }
+            catch
+            {
+            }
+        }
     }
 
     public static async Task StartsWithValidSiteConfig()
