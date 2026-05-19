@@ -1,0 +1,72 @@
+name: Correctness
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  full:
+    name: Correctness / Full Suite
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore MDRAVA.slnx
+
+      - name: Build
+        run: dotnet build MDRAVA.slnx --no-restore
+
+      - name: Run full test suite
+        run: dotnet run --project MDRAVA.Tests/MDRAVA.Tests.csproj --no-restore --no-build
+
+  domain:
+    name: Correctness / ${{ matrix.category }}
+    runs-on: windows-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        category:
+          - HTTP1
+          - HTTP2
+          - HTTP3
+          - UpstreamHTTP1
+          - UpstreamHTTP2
+          - UpstreamHTTP3
+          - Config
+          - Routing
+          - TLS
+          - Headers
+          - Caching
+          - RetryCircuit
+          - HealthChecks
+          - Limits
+          - Admin
+          - Metrics
+          - SecurityNegativePaths
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore MDRAVA.slnx
+
+      - name: Build
+        run: dotnet build MDRAVA.slnx --no-restore
+
+      - name: Run ${{ matrix.category }} tests
+        run: dotnet run --project MDRAVA.Tests/MDRAVA.Tests.csproj --no-restore --no-build -- --category ${{ matrix.category }}

@@ -1,6 +1,6 @@
 using MDRAVA.Tests;
 
-var tests = new (string Name, Func<Task> Run)[]
+var testDefinitions = new (string Name, Func<Task> Run)[]
 {
     ("Http1RequestParser parses a valid GET request", Sync(Http1RequestParserTests.ParsesValidGet)),
     ("Http1RequestParser rejects missing Host", Sync(Http1RequestParserTests.RejectsMissingHost)),
@@ -377,9 +377,56 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Shutdown coordinator exposes grace deadline", Sync(HardeningTests.ShutdownCoordinatorExposesGraceDeadlineAndCancels))
 };
 
+TestRunOptions options;
+try
+{
+    options = TestRunOptions.Parse(args);
+}
+catch (ArgumentException exception)
+{
+    Console.Error.WriteLine(exception.Message);
+    Console.Error.WriteLine("Use --list-categories to see supported categories.");
+    Environment.ExitCode = 2;
+    return;
+}
+
+var tests = testDefinitions
+    .Select(static definition => new TestCase(
+        definition.Name,
+        definition.Run,
+        TestTaxonomy.CategoriesFor(definition.Name)))
+    .ToArray();
+
+if (options.ListCategories)
+{
+    foreach (var category in TestTaxonomy.Categories)
+    {
+        var count = tests.Count(test => test.Categories.Contains(category));
+        Console.WriteLine($"{category} {count}");
+    }
+
+    return;
+}
+
+var selectedTests = options.Categories.Count == 0
+    ? tests
+    : tests.Where(test => test.Categories.Any(options.Categories.Contains)).ToArray();
+
+if (selectedTests.Length == 0)
+{
+    Console.Error.WriteLine($"No tests matched categories: {string.Join(", ", options.Categories)}");
+    Environment.ExitCode = 2;
+    return;
+}
+
+if (options.Categories.Count > 0)
+{
+    Console.WriteLine($"Running {selectedTests.Length} of {tests.Length} tests for categories: {string.Join(", ", options.Categories)}.");
+}
+
 var failures = 0;
 
-foreach (var test in tests)
+foreach (var test in selectedTests)
 {
     try
     {
@@ -400,7 +447,7 @@ if (failures > 0)
     return;
 }
 
-Console.WriteLine($"Passed {tests.Length} tests.");
+Console.WriteLine($"Passed {selectedTests.Length} tests.");
 
 static Func<Task> Sync(Action test)
 {
@@ -409,4 +456,239 @@ static Func<Task> Sync(Action test)
         test();
         return Task.CompletedTask;
     };
+}
+
+internal sealed record TestCase(string Name, Func<Task> Run, IReadOnlySet<string> Categories);
+
+internal sealed record TestRunOptions(IReadOnlySet<string> Categories, bool ListCategories)
+{
+    public static TestRunOptions Parse(string[] args)
+    {
+        HashSet<string> categories = new(StringComparer.OrdinalIgnoreCase);
+        var listCategories = false;
+
+        for (var index = 0; index < args.Length; index++)
+        {
+            var arg = args[index];
+            if (string.Equals(arg, "--list-categories", StringComparison.OrdinalIgnoreCase))
+            {
+                listCategories = true;
+                continue;
+            }
+
+            if (string.Equals(arg, "--category", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(arg, "--categories", StringComparison.OrdinalIgnoreCase))
+            {
+                if (index + 1 >= args.Length)
+                {
+                    throw new ArgumentException($"{arg} requires a category value.");
+                }
+
+                AddCategories(args[++index], categories);
+                continue;
+            }
+
+            const string categoryPrefix = "--category=";
+            const string categoriesPrefix = "--categories=";
+            if (arg.StartsWith(categoryPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                AddCategories(arg[categoryPrefix.Length..], categories);
+                continue;
+            }
+
+            if (arg.StartsWith(categoriesPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                AddCategories(arg[categoriesPrefix.Length..], categories);
+                continue;
+            }
+
+            throw new ArgumentException($"Unknown test runner argument: {arg}");
+        }
+
+        var canonical = categories
+            .Select(TestTaxonomy.CanonicalCategory)
+            .OrderBy(static category => category, StringComparer.Ordinal)
+            .ToArray();
+        return new TestRunOptions(canonical.ToHashSet(StringComparer.Ordinal), listCategories);
+    }
+
+    private static void AddCategories(string value, HashSet<string> categories)
+    {
+        foreach (var category in value.Split([',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (!TestTaxonomy.IsKnownCategory(category))
+            {
+                throw new ArgumentException($"Unknown test category: {category}");
+            }
+
+            categories.Add(category);
+        }
+    }
+}
+
+internal static class TestTaxonomy
+{
+    public const string Http1 = "HTTP1";
+    public const string Http2 = "HTTP2";
+    public const string Http3 = "HTTP3";
+    public const string UpstreamHttp1 = "UpstreamHTTP1";
+    public const string UpstreamHttp2 = "UpstreamHTTP2";
+    public const string UpstreamHttp3 = "UpstreamHTTP3";
+    public const string Config = "Config";
+    public const string Routing = "Routing";
+    public const string Tls = "TLS";
+    public const string Headers = "Headers";
+    public const string Caching = "Caching";
+    public const string RetryCircuit = "RetryCircuit";
+    public const string HealthChecks = "HealthChecks";
+    public const string Limits = "Limits";
+    public const string Admin = "Admin";
+    public const string Metrics = "Metrics";
+    public const string SecurityNegativePaths = "SecurityNegativePaths";
+
+    public static readonly string[] Categories =
+    [
+        Http1,
+        Http2,
+        Http3,
+        UpstreamHttp1,
+        UpstreamHttp2,
+        UpstreamHttp3,
+        Config,
+        Routing,
+        Tls,
+        Headers,
+        Caching,
+        RetryCircuit,
+        HealthChecks,
+        Limits,
+        Admin,
+        Metrics,
+        SecurityNegativePaths
+    ];
+
+    private static readonly Dictionary<string, string> CategoryLookup = Categories.ToDictionary(
+        static category => category,
+        static category => category,
+        StringComparer.OrdinalIgnoreCase);
+
+    public static bool IsKnownCategory(string category)
+    {
+        return CategoryLookup.ContainsKey(category);
+    }
+
+    public static string CanonicalCategory(string category)
+    {
+        return CategoryLookup.TryGetValue(category, out var canonical)
+            ? canonical
+            : throw new ArgumentException($"Unknown test category: {category}");
+    }
+
+    public static IReadOnlySet<string> CategoriesFor(string name)
+    {
+        HashSet<string> categories = new(StringComparer.Ordinal);
+        AddProtocolCategories(name, categories);
+        AddSubsystemCategories(name, categories);
+        AddNegativePathCategory(name, categories);
+        return categories;
+    }
+
+    private static void AddProtocolCategories(string name, HashSet<string> categories)
+    {
+        if (ContainsAny(name, "Http1", "HTTP/1.0", "HTTP/1.1", "Proxy dataplane", "Persistent client", "WebSocket", "Upgrade", "Client Connection close", "keep-alive", "Malformed second request"))
+        {
+            categories.Add(Http1);
+        }
+
+        if (ContainsAny(name, "HTTP/2", "Http2"))
+        {
+            categories.Add(Http2);
+        }
+
+        if (ContainsAny(name, "HTTP/3", "Http3", "QUIC", "QPACK", "Alt-Svc"))
+        {
+            categories.Add(Http3);
+        }
+
+        if (ContainsAny(name, "Existing HTTP upstream", "HTTPS upstream", "Upstream certificate", "TLS validation", "Upstream pool key differs for HTTP and HTTPS", "Upstream connection", "upstream connect", "upstream early close", "normal upstream pool", "distinct endpoint keys"))
+        {
+            categories.Add(UpstreamHttp1);
+        }
+
+        if (ContainsAny(name, "Upstream HTTP/2", "HTTP/2 upstream", "Http2Upstream"))
+        {
+            categories.Add(UpstreamHttp2);
+        }
+
+        if (ContainsAny(name, "Upstream HTTP/3", "HTTP/3 upstream", "Http3Upstream"))
+        {
+            categories.Add(UpstreamHttp3);
+        }
+    }
+
+    private static void AddSubsystemCategories(string name, HashSet<string> categories)
+    {
+        if (ContainsAny(name, "Config", "configuration", "Loader", "Reload", "Data directory", "Active inspection", "Effective config", "Status and effective", "projection", "placeholder", "startup"))
+        {
+            categories.Add(Config);
+        }
+
+        if (ContainsAny(name, "Route", "route", "Matcher", "No matching", "no-route", "Path", "path", "Redirect", "redirect", "Maintenance", "maintenance", "Static response", "canonical host", "Round-robin", "weighted", "selection"))
+        {
+            categories.Add(Routing);
+        }
+
+        if (ContainsAny(name, "TLS", "HTTPS", "certificate", "Certificate", "SNI", "ACME", "PFX", "SslStream", "ALPN", "Alpn", "handshake"))
+        {
+            categories.Add(Tls);
+        }
+
+        if (ContainsAny(name, "Header", "header", "Host", "host", "Forwarded", "Content-Length", "Transfer-Encoding", "hop-by-hop", "Connection", "pseudo", "QPACK", "Huffman"))
+        {
+            categories.Add(Headers);
+        }
+
+        if (ContainsAny(name, "Cache", "cache", "Caching", "cached", "Cache-Control", "Set-Cookie", "Authorization request", "Vary"))
+        {
+            categories.Add(Caching);
+        }
+
+        if (ContainsAny(name, "Retry", "retry", "Circuit", "circuit", "Resilience", "resilience", "unavailable", "Unavailable", "upstream response-head timeout", "502", "504"))
+        {
+            categories.Add(RetryCircuit);
+        }
+
+        if (ContainsAny(name, "Health check", "health check", "healthy", "unhealthy", "Health state", "health state"))
+        {
+            categories.Add(HealthChecks);
+        }
+
+        if (ContainsAny(name, "Limit", "limit", "limits", "capacity", "oversized", "Oversized", "excessive", "Excessive", "timeout", "Timeout", "Admission", "Rate limiter", "bounded", "Max requests", "idle timeout"))
+        {
+            categories.Add(Limits);
+        }
+
+        if (ContainsAny(name, "Admin", "admin", "Protected", "auth", "token", "audit", "Diagnostic endpoints require admin auth"))
+        {
+            categories.Add(Admin);
+        }
+
+        if (ContainsAny(name, "Metric", "metric", "Metrics", "metrics", "diagnostic", "Diagnostic", "observability", "Observability", "logs", "access-log"))
+        {
+            categories.Add(Metrics);
+        }
+    }
+
+    private static void AddNegativePathCategory(string name, HashSet<string> categories)
+    {
+        if (ContainsAny(name, "reject", "Reject", "invalid", "Invalid", "malformed", "Malformed", "missing", "Missing", "forbidden", "Forbidden", "unsupported", "Unsupported", "fails", "Fails", "failure", "Failure", "wrong auth", "does not expose", "redact", "Redact", "unsafe", "Unsafe", "no-store", "not cached", "not retried", "does not", "absent", "mismatch", "timeout", "Timeout", "unavailable", "Unhealthy", "unhealthy", "not selected", "closes", "failed"))
+        {
+            categories.Add(SecurityNegativePaths);
+        }
+    }
+
+    private static bool ContainsAny(string value, params string[] patterns)
+    {
+        return patterns.Any(pattern => value.Contains(pattern, StringComparison.Ordinal));
+    }
 }
