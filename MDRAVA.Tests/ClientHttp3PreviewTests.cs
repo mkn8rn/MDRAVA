@@ -1500,7 +1500,9 @@ internal static class ClientHttp3PreviewTests
 
             var badResponse = DecodeHttp3Response(await ReadToEndAsync(badStream, timeout.Token));
             var goodResponse = DecodeHttp3Response(await ReadToEndAsync(goodStream, timeout.Token));
-            var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
+            var metricsStore = host.Services.GetRequiredService<ProxyMetrics>();
+            await WaitForHttp3StreamsToDrainAsync(metricsStore, timeout.Token);
+            var metrics = metricsStore.Snapshot();
 
             AssertEx.Equal("400", HeaderValue(badResponse.Headers, ":status"));
             AssertEx.Equal("200", HeaderValue(goodResponse.Headers, ":status"));
@@ -1559,7 +1561,9 @@ internal static class ClientHttp3PreviewTests
                 _ = await ReadToEndAsync(stream, timeout.Token);
             }
 
-            var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
+            var metricsStore = host.Services.GetRequiredService<ProxyMetrics>();
+            await WaitForHttp3StreamsToDrainAsync(metricsStore, timeout.Token);
+            var metrics = metricsStore.Snapshot();
 
             AssertEx.True(metrics.Http3ProtocolErrors.TryGetValue("unexpected_data", out var errors), "missing unexpected_data metric");
             AssertEx.True(errors >= 8);
@@ -2016,7 +2020,9 @@ internal static class ClientHttp3PreviewTests
             duplicateHeadersAfterHeaders: duplicateHeadersAfterHeaders,
             unknownFrameBeforeHeaders: unknownFrameBeforeHeaders,
             maxPushAfterHeaders: maxPushAfterHeaders);
-        var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
+        var metricsStore = host.Services.GetRequiredService<ProxyMetrics>();
+        await WaitForHttp3StreamsToDrainAsync(metricsStore, timeout.Token);
+        var metrics = metricsStore.Snapshot();
         return new Http3ScenarioResult(temp, host, response.Headers, response.Body, metrics, "");
     }
 
@@ -2034,7 +2040,9 @@ internal static class ClientHttp3PreviewTests
         var runtime = host.Services.GetRequiredService<ProxyRuntimeState>();
         await WaitForListenerAsync(runtime, "main", "quic", ProxyListenerState.Active, timeout.Token);
         var response = await SendHttp3RawHeaderBlockAsync(port, headerBlock, timeout.Token);
-        var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
+        var metricsStore = host.Services.GetRequiredService<ProxyMetrics>();
+        await WaitForHttp3StreamsToDrainAsync(metricsStore, timeout.Token);
+        var metrics = metricsStore.Snapshot();
         return new Http3ScenarioResult(temp, host, response.Headers, response.Body, metrics, "");
     }
 
@@ -2052,7 +2060,9 @@ internal static class ClientHttp3PreviewTests
         var runtime = host.Services.GetRequiredService<ProxyRuntimeState>();
         await WaitForListenerAsync(runtime, "main", "quic", ProxyListenerState.Active, timeout.Token);
         var response = await SendHttp3RequestAsync(port, headers, timeout.Token);
-        var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
+        var metricsStore = host.Services.GetRequiredService<ProxyMetrics>();
+        await WaitForHttp3StreamsToDrainAsync(metricsStore, timeout.Token);
+        var metrics = metricsStore.Snapshot();
         return new Http3ScenarioResult(temp, host, response.Headers, response.Body, metrics, "");
     }
 
@@ -2080,7 +2090,9 @@ internal static class ClientHttp3PreviewTests
         await WaitForListenerAsync(runtime, "main", "quic", ProxyListenerState.Active, timeout.Token);
         var response = await SendHttp3RequestAsync(proxyPort, method, target, timeout.Token, body: requestBody);
         var upstreamRequest = await upstreamTask.WaitAsync(timeout.Token);
-        var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
+        var metricsStore = host.Services.GetRequiredService<ProxyMetrics>();
+        await WaitForHttp3StreamsToDrainAsync(metricsStore, timeout.Token);
+        var metrics = metricsStore.Snapshot();
         return new Http3ScenarioResult(temp, host, response.Headers, response.Body, metrics, upstreamRequest);
     }
 
@@ -2767,6 +2779,14 @@ internal static class ClientHttp3PreviewTests
                     $"Timed out waiting for listener {name}/{kind}/{state}. Observed listeners: {observed}",
                     exception);
             }
+        }
+    }
+
+    private static async Task WaitForHttp3StreamsToDrainAsync(ProxyMetrics metrics, CancellationToken cancellationToken)
+    {
+        while (metrics.Snapshot().ActiveHttp3Streams != 0)
+        {
+            await Task.Delay(10, cancellationToken);
         }
     }
 

@@ -46,6 +46,7 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<RequestIdGenerator>();
         services.AddSingleton<ResponseCacheStore>();
         services.AddSingleton<RecentRequestDiagnosticsStore>();
+        services.AddSingleton<ProxyPersistentLogWriter>();
         services.AddSingleton<AccessLogEmitter>();
         services.AddSingleton<AdminAuditStore>();
         services.AddSingleton(TimeProvider.System);

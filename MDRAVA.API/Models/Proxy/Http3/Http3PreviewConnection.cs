@@ -832,7 +832,8 @@ public sealed class Http3PreviewConnection
             _listener.Name,
             _listener.Transport,
             _connection.RemoteEndPoint?.ToString(),
-            _configurationSnapshot.Version);
+            _configurationSnapshot.Version,
+            "http3");
     }
 
     private void CompleteContext(ref ProxyRequestContext? context)

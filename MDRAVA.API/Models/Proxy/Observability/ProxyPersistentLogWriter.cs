@@ -1,0 +1,201 @@
+using System.Text;
+using System.Text.Json;
+using MDRAVA.API.Proxy.Configuration.Paths;
+using MDRAVA.API.Proxy.Configuration.Storage;
+
+namespace MDRAVA.API.Proxy.Observability;
+
+public sealed class ProxyPersistentLogWriter
+{
+    private const int MaxTextLength = 256;
+    private const int MaxPathLength = 512;
+    private static readonly Encoding LogEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        WriteIndented = false
+    };
+
+    private readonly IMdravaDataDirectoryProvider _dataDirectoryProvider;
+    private readonly IProxyConfigurationStore _configurationStore;
+    private readonly ILogger<ProxyPersistentLogWriter> _logger;
+    private readonly object _accessGate = new();
+    private readonly object _auditGate = new();
+
+    public ProxyPersistentLogWriter(
+        IMdravaDataDirectoryProvider dataDirectoryProvider,
+        IProxyConfigurationStore configurationStore,
+        ILogger<ProxyPersistentLogWriter> logger)
+    {
+        _dataDirectoryProvider = dataDirectoryProvider;
+        _configurationStore = configurationStore;
+        _logger = logger;
+    }
+
+    public void WriteAccess(ProxyRequestContext context, ProxyRequestDiagnosticEvent diagnostic)
+    {
+        if (!TryGetOptions(out var options) || !options.AccessLogEnabled)
+        {
+            return;
+        }
+
+        var entry = new
+        {
+            timestampUtc = diagnostic.TimestampUtc,
+            kind = "access",
+            requestId = SafeValue(diagnostic.RequestId),
+            configVersion = diagnostic.ConfigVersion,
+            listener = SafeValue(diagnostic.ListenerName),
+            transport = SafeValue(diagnostic.Transport?.ToLowerInvariant()),
+            protocol = SafeValue(context.Protocol),
+            method = SafeValue(diagnostic.Method),
+            host = SafeValue(diagnostic.Host),
+            targetPath = SafeTargetPath(diagnostic.Target),
+            site = SafeValue(context.SiteName),
+            route = SafeValue(diagnostic.RouteName),
+            action = SafeValue(context.RouteAction),
+            upstream = SafeValue(diagnostic.UpstreamName),
+            upstreamEndpoint = SafeValue(diagnostic.UpstreamEndpoint),
+            status = diagnostic.ResponseStatusCode,
+            durationMs = diagnostic.DurationMilliseconds,
+            failure = SafeValue(diagnostic.FailureKind),
+            responseStarted = diagnostic.ResponseStarted,
+            keepAlive = diagnostic.KeepClientConnectionOpen,
+            upgrade = diagnostic.IsUpgrade,
+            tunnel = diagnostic.TunnelEstablished
+        };
+
+        WriteLine("access", JsonSerializer.Serialize(entry, JsonOptions), options, _accessGate);
+    }
+
+    public void WriteAdminAudit(AdminAuditEvent auditEvent)
+    {
+        if (!TryGetOptions(out var options) || !options.AdminAuditEnabled)
+        {
+            return;
+        }
+
+        var entry = new
+        {
+            timestampUtc = auditEvent.TimestampUtc,
+            kind = "admin_audit",
+            method = SafeValue(auditEvent.Method),
+            path = SafeTargetPath(auditEvent.Path),
+            authResult = SafeValue(auditEvent.AuthResult),
+            status = auditEvent.StatusCode,
+            succeeded = auditEvent.Succeeded
+        };
+
+        WriteLine("audit", JsonSerializer.Serialize(entry, JsonOptions), options, _auditGate);
+    }
+
+    private bool TryGetOptions(out RuntimeLogPersistenceOptions options)
+    {
+        if (_configurationStore.TryGetSnapshot(out var snapshot) && snapshot is not null)
+        {
+            options = snapshot.Observability.LogPersistence;
+            return true;
+        }
+
+        options = new RuntimeLogPersistenceOptions(
+            AccessLogEnabled: false,
+            AdminAuditEnabled: false,
+            MaxFileBytes: 1_048_576,
+            MaxFiles: 8);
+        return false;
+    }
+
+    private void WriteLine(
+        string logName,
+        string line,
+        RuntimeLogPersistenceOptions options,
+        object gate)
+    {
+        try
+        {
+            lock (gate)
+            {
+                var logsDirectory = _dataDirectoryProvider.GetLogsDirectory();
+                Directory.CreateDirectory(logsDirectory);
+                var path = Path.Combine(logsDirectory, $"{logName}.log");
+                var lineBytes = LogEncoding.GetByteCount(line) + LogEncoding.GetByteCount(Environment.NewLine);
+                RotateIfNeeded(path, options.MaxFileBytes, options.MaxFiles, lineBytes);
+                File.AppendAllText(path, line + Environment.NewLine, LogEncoding);
+            }
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            _logger.LogWarning(exception, "Failed to persist {LogName} log entry.", logName);
+        }
+    }
+
+    private static void RotateIfNeeded(string path, long maxFileBytes, int maxFiles, int nextLineBytes)
+    {
+        if (!File.Exists(path) || new FileInfo(path).Length + nextLineBytes <= maxFileBytes)
+        {
+            return;
+        }
+
+        if (maxFiles <= 1)
+        {
+            File.Delete(path);
+            return;
+        }
+
+        for (var index = maxFiles - 1; index >= 1; index--)
+        {
+            var destination = RotatedPath(path, index);
+            if (File.Exists(destination))
+            {
+                File.Delete(destination);
+            }
+
+            var source = index == 1 ? path : RotatedPath(path, index - 1);
+            if (File.Exists(source))
+            {
+                File.Move(source, destination);
+            }
+        }
+    }
+
+    private static string RotatedPath(string path, int index)
+    {
+        var directory = Path.GetDirectoryName(path)!;
+        var fileName = Path.GetFileNameWithoutExtension(path);
+        var extension = Path.GetExtension(path);
+        return Path.Combine(directory, $"{fileName}.{index}{extension}");
+    }
+
+    private static string? SafeTargetPath(string? value)
+    {
+        var safe = SafeValue(value, MaxPathLength);
+        if (string.IsNullOrWhiteSpace(safe))
+        {
+            return safe;
+        }
+
+        var queryIndex = safe.IndexOfAny(['?', '#']);
+        return queryIndex >= 0 ? safe[..queryIndex] : safe;
+    }
+
+    private static string? SafeValue(string? value, int maxLength = MaxTextLength)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var trimmed = value.Trim();
+        var builder = new StringBuilder(Math.Min(trimmed.Length, maxLength));
+        foreach (var character in trimmed)
+        {
+            if (builder.Length >= maxLength)
+            {
+                break;
+            }
+
+            builder.Append(char.IsControl(character) ? ' ' : character);
+        }
+
+        return builder.Length == 0 ? null : builder.ToString();
+    }
+}

@@ -1001,7 +1001,8 @@ public sealed class Http2ClientConnection
             _listener.Name,
             _listener.Transport,
             _remoteEndPoint?.ToString(),
-            _configurationSnapshot.Version);
+            _configurationSnapshot.Version,
+            "http2");
     }
 
     private void CompleteContext(ref ProxyRequestContext context)

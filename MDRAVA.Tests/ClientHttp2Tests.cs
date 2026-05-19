@@ -653,6 +653,7 @@ internal static class ClientHttp2Tests
                 }
 
                 var metricsStore = host.Services.GetRequiredService<ProxyMetrics>();
+                await WaitForHttp2StreamsToDrainAsync(metricsStore, timeout.Token);
                 var metrics = metricsStore.Snapshot();
                 var diagnostics = host.Services.GetRequiredService<RecentRequestDiagnosticsStore>().Recent(50);
                 return new Http2ScenarioResult(
@@ -697,7 +698,9 @@ internal static class ClientHttp2Tests
                     value = await exercise(client, host, timeout.Token);
                 }
 
-                var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
+                var metricsStore = host.Services.GetRequiredService<ProxyMetrics>();
+                await WaitForHttp2StreamsToDrainAsync(metricsStore, timeout.Token);
+                var metrics = metricsStore.Snapshot();
                 return new Http2ManualScenarioResult<T>(value, metrics);
             }
             finally
@@ -708,6 +711,14 @@ internal static class ClientHttp2Tests
         finally
         {
             DeleteDirectory(dataDirectory);
+        }
+    }
+
+    private static async Task WaitForHttp2StreamsToDrainAsync(ProxyMetrics metrics, CancellationToken cancellationToken)
+    {
+        while (metrics.Snapshot().ActiveHttp2Streams != 0)
+        {
+            await Task.Delay(10, cancellationToken);
         }
     }
 

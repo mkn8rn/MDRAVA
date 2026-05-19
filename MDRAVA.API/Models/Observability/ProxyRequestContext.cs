@@ -11,13 +11,15 @@ public sealed class ProxyRequestContext
         string listenerName,
         RuntimeListenerTransport transport,
         string? clientEndpoint,
-        int configVersion)
+        int configVersion,
+        string protocol = "http1")
     {
         RequestId = requestId;
         ListenerName = listenerName;
         Transport = transport.ToString();
         ClientEndpoint = clientEndpoint;
         ConfigVersion = configVersion;
+        Protocol = protocol;
         StartedAtUtc = DateTimeOffset.UtcNow;
     }
 
@@ -28,6 +30,8 @@ public sealed class ProxyRequestContext
     public string ListenerName { get; }
 
     public string Transport { get; }
+
+    public string Protocol { get; }
 
     public string? ClientEndpoint { get; private set; }
 

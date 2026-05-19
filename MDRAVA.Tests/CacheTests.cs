@@ -653,7 +653,7 @@ internal static class CacheTests
             new RuntimeAcmeOptions(false, true, "", [], false, "acme", 30, 720, 60, []),
             Timeouts(),
             new RuntimeConnectionLimits(100, 16, 1024),
-            new RuntimeObservabilityOptions(true, 100),
+            new RuntimeObservabilityOptions(true, 100, new RuntimeLogPersistenceOptions(true, true, 1_048_576, 8)),
             new RuntimeLimits(4096, 128, 240, 30, 32768, 128, 8192, 104857600, 8192, TimeSpan.FromSeconds(15)),
             new RuntimeForwardedHeadersOptions(true, []),
             new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),

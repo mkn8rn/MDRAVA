@@ -71,7 +71,12 @@ public static class ProxyConfigurationMapper
 
         var observability = new RuntimeObservabilityOptions(
             operationalOptions.Observability.AccessLogEnabled,
-            operationalOptions.Observability.RecentDiagnosticsCapacity);
+            operationalOptions.Observability.RecentDiagnosticsCapacity,
+            new RuntimeLogPersistenceOptions(
+                operationalOptions.Observability.LogPersistence.AccessLogEnabled,
+                operationalOptions.Observability.LogPersistence.AdminAuditEnabled,
+                operationalOptions.Observability.LogPersistence.MaxFileBytes,
+                operationalOptions.Observability.LogPersistence.MaxFiles));
 
         var limits = new RuntimeLimits(
             operationalOptions.Limits.MaxActiveClientConnections,

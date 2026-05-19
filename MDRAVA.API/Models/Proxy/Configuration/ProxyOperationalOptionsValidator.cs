@@ -10,6 +10,10 @@ public static class ProxyOperationalOptionsValidator
     private const int MaximumDiagnosticsCapacity = 10_000;
     private const int MinimumAuditCapacity = 1;
     private const int MaximumAuditCapacity = 10_000;
+    private const long MinimumLogFileBytes = 4 * 1024;
+    private const long MaximumLogFileBytes = 1024L * 1024 * 1024;
+    private const int MinimumLogFileCount = 1;
+    private const int MaximumLogFileCount = 128;
 
     public static IReadOnlyList<string> Validate(ProxyOperationalOptions options)
     {
@@ -194,6 +198,16 @@ public static class ProxyOperationalOptionsValidator
         if (options.RecentDiagnosticsCapacity is < MinimumDiagnosticsCapacity or > MaximumDiagnosticsCapacity)
         {
             failures.Add($"Proxy observability setting RecentDiagnosticsCapacity must be between {MinimumDiagnosticsCapacity} and {MaximumDiagnosticsCapacity}.");
+        }
+
+        if (options.LogPersistence.MaxFileBytes is < MinimumLogFileBytes or > MaximumLogFileBytes)
+        {
+            failures.Add($"Proxy observability log persistence setting MaxFileBytes must be between {MinimumLogFileBytes} and {MaximumLogFileBytes}.");
+        }
+
+        if (options.LogPersistence.MaxFiles is < MinimumLogFileCount or > MaximumLogFileCount)
+        {
+            failures.Add($"Proxy observability log persistence setting MaxFiles must be between {MinimumLogFileCount} and {MaximumLogFileCount}.");
         }
     }
 

@@ -7,15 +7,18 @@ public sealed class AccessLogEmitter
     private readonly RecentRequestDiagnosticsStore _diagnostics;
     private readonly Metrics.ProxyMetrics _metrics;
     private readonly ILogger<AccessLogEmitter> _logger;
+    private readonly ProxyPersistentLogWriter? _persistentLogWriter;
 
     public AccessLogEmitter(
         RecentRequestDiagnosticsStore diagnostics,
         Metrics.ProxyMetrics metrics,
-        ILogger<AccessLogEmitter> logger)
+        ILogger<AccessLogEmitter> logger,
+        ProxyPersistentLogWriter? persistentLogWriter = null)
     {
         _diagnostics = diagnostics;
         _metrics = metrics;
         _logger = logger;
+        _persistentLogWriter = persistentLogWriter;
     }
 
     public void Complete(ProxyRequestContext context, bool accessLogEnabled, int diagnosticsCapacity)
@@ -64,16 +67,17 @@ public sealed class AccessLogEmitter
         }
 
         _metrics.AccessLogEmitted();
+        _persistentLogWriter?.WriteAccess(context, diagnostic);
         _logger.LogInformation(
-            "Proxy access {RequestId} externalRequestId={ExternalRequestId} listener={ListenerName} transport={Transport} client={ClientEndpoint} method={Method} host={Host} target={Target} route={RouteName} upstream={UpstreamName} upstreamEndpoint={UpstreamEndpoint} status={StatusCode} durationMs={DurationMilliseconds} failure={FailureKind} responseStarted={ResponseStarted} keepAlive={KeepAlive} upgrade={IsUpgrade} tunnel={TunnelEstablished} configVersion={ConfigVersion}",
+            "Proxy access {RequestId} listener={ListenerName} transport={Transport} protocol={Protocol} client={ClientEndpoint} method={Method} host={Host} targetPath={TargetPath} route={RouteName} upstream={UpstreamName} upstreamEndpoint={UpstreamEndpoint} status={StatusCode} durationMs={DurationMilliseconds} failure={FailureKind} responseStarted={ResponseStarted} keepAlive={KeepAlive} upgrade={IsUpgrade} tunnel={TunnelEstablished} configVersion={ConfigVersion}",
             diagnostic.RequestId,
-            diagnostic.ExternalRequestId,
             diagnostic.ListenerName,
             diagnostic.Transport,
+            context.Protocol,
             diagnostic.ClientEndpoint,
             diagnostic.Method,
             diagnostic.Host,
-            diagnostic.Target,
+            StripQuery(diagnostic.Target),
             diagnostic.RouteName,
             diagnostic.UpstreamName,
             diagnostic.UpstreamEndpoint,
@@ -85,6 +89,17 @@ public sealed class AccessLogEmitter
             diagnostic.IsUpgrade,
             diagnostic.TunnelEstablished,
             diagnostic.ConfigVersion);
+    }
+
+    private static string? StripQuery(string? value)
+    {
+        if (value is null)
+        {
+            return null;
+        }
+
+        var queryIndex = value.IndexOfAny(['?', '#']);
+        return queryIndex >= 0 ? value[..queryIndex] : value;
     }
 
     private static string? Truncate(string? value)

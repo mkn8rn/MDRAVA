@@ -244,13 +244,24 @@ internal static class ConfigurationTests
         var observability = AssertEx.NotNull(result.Snapshot).Observability;
         AssertEx.True(observability.AccessLogEnabled);
         AssertEx.Equal(500, observability.RecentDiagnosticsCapacity);
+        AssertEx.True(observability.LogPersistence.AccessLogEnabled);
+        AssertEx.True(observability.LogPersistence.AdminAuditEnabled);
+        AssertEx.Equal(1_048_576L, observability.LogPersistence.MaxFileBytes);
+        AssertEx.Equal(8, observability.LogPersistence.MaxFiles);
     }
 
     public static async Task LoaderLoadsExplicitObservabilitySettings()
     {
         using var temp = TemporaryDirectory.Create();
         WriteSite(temp.Path, "home.json", port: 18080, upstreamPort: 15000);
-        WriteOperationalConfig(temp.Path, accessLogEnabled: false, recentDiagnosticsCapacity: 12);
+        WriteOperationalConfig(
+            temp.Path,
+            accessLogEnabled: false,
+            recentDiagnosticsCapacity: 12,
+            accessLogFileEnabled: false,
+            adminAuditLogFileEnabled: false,
+            logMaxFileBytes: 8192,
+            logMaxFiles: 3);
         var loader = CreateLoader(temp.Path);
 
         var result = await loader.LoadAsync(CancellationToken.None);
@@ -259,6 +270,10 @@ internal static class ConfigurationTests
         var observability = AssertEx.NotNull(result.Snapshot).Observability;
         AssertEx.False(observability.AccessLogEnabled);
         AssertEx.Equal(12, observability.RecentDiagnosticsCapacity);
+        AssertEx.False(observability.LogPersistence.AccessLogEnabled);
+        AssertEx.False(observability.LogPersistence.AdminAuditEnabled);
+        AssertEx.Equal(8192L, observability.LogPersistence.MaxFileBytes);
+        AssertEx.Equal(3, observability.LogPersistence.MaxFiles);
     }
 
     public static async Task LoaderRejectsInvalidObservabilityCapacity()
@@ -272,6 +287,20 @@ internal static class ConfigurationTests
 
         AssertEx.False(result.Succeeded);
         AssertEx.True(result.Errors.Any(static error => error.Contains("RecentDiagnosticsCapacity", StringComparison.Ordinal)));
+    }
+
+    public static async Task LoaderRejectsInvalidLogPersistenceSettings()
+    {
+        using var temp = TemporaryDirectory.Create();
+        WriteSite(temp.Path, "home.json", port: 18080, upstreamPort: 15000);
+        WriteOperationalConfig(temp.Path, logMaxFileBytes: 1024, logMaxFiles: 0);
+        var loader = CreateLoader(temp.Path);
+
+        var result = await loader.LoadAsync(CancellationToken.None);
+
+        AssertEx.False(result.Succeeded);
+        AssertEx.True(result.Errors.Any(static error => error.Contains("MaxFileBytes", StringComparison.Ordinal)), string.Join("; ", result.Errors));
+        AssertEx.True(result.Errors.Any(static error => error.Contains("MaxFiles", StringComparison.Ordinal)), string.Join("; ", result.Errors));
     }
 
     public static async Task LoaderLoadsLimitDefaults()
@@ -800,6 +829,27 @@ internal static class ConfigurationTests
         AssertEx.True(second.FileErrors.Any(error => error.Path?.EndsWith("broken.json", StringComparison.OrdinalIgnoreCase) == true));
     }
 
+    public static async Task ReloadWithInvalidLogPersistenceConfigPreservesActiveSnapshot()
+    {
+        using var temp = TemporaryDirectory.Create();
+        WriteSite(temp.Path, "home.json", port: 18080, upstreamPort: 15000);
+        WriteOperationalConfig(temp.Path, logMaxFileBytes: 8192, logMaxFiles: 2);
+        var store = new ProxyConfigurationStore();
+        var service = CreateReloadService(temp.Path, store);
+        var first = await service.ReloadAsync(CancellationToken.None);
+        AssertEx.True(first.Succeeded);
+
+        WriteOperationalConfig(temp.Path, logMaxFileBytes: 1024, logMaxFiles: 0);
+        var second = await service.ReloadAsync(CancellationToken.None);
+
+        AssertEx.False(second.Succeeded);
+        AssertEx.Equal(1, store.Snapshot.Version);
+        AssertEx.Equal(8192L, store.Snapshot.Observability.LogPersistence.MaxFileBytes);
+        AssertEx.Equal(2, store.Snapshot.Observability.LogPersistence.MaxFiles);
+        AssertEx.True(second.Errors.Any(static error => error.Contains("MaxFileBytes", StringComparison.Ordinal)), string.Join("; ", second.Errors));
+        AssertEx.True(second.Errors.Any(static error => error.Contains("MaxFiles", StringComparison.Ordinal)), string.Join("; ", second.Errors));
+    }
+
     internal static void WriteSite(string dataDirectory, string fileName, int port, int upstreamPort)
     {
         var sites = Directory.CreateDirectory(Path.Combine(dataDirectory, "config", "sites")).FullName;
@@ -964,6 +1014,10 @@ internal static class ConfigurationTests
         int maxActiveUpgradedTunnels = 1024,
         bool accessLogEnabled = true,
         int recentDiagnosticsCapacity = 500,
+        bool accessLogFileEnabled = true,
+        bool adminAuditLogFileEnabled = true,
+        long logMaxFileBytes = 1_048_576,
+        int logMaxFiles = 8,
         int maxActiveClientConnections = 4096,
         int maxConcurrentTlsHandshakes = 128,
         int requestsPerMinutePerIp = 240,
@@ -1022,7 +1076,13 @@ internal static class ConfigurationTests
               },
               "observability": {
                 "accessLogEnabled": {{accessLogEnabled.ToString().ToLowerInvariant()}},
-                "recentDiagnosticsCapacity": {{recentDiagnosticsCapacity}}
+                "recentDiagnosticsCapacity": {{recentDiagnosticsCapacity}},
+                "logPersistence": {
+                  "accessLogEnabled": {{accessLogFileEnabled.ToString().ToLowerInvariant()}},
+                  "adminAuditEnabled": {{adminAuditLogFileEnabled.ToString().ToLowerInvariant()}},
+                  "maxFileBytes": {{logMaxFileBytes}},
+                  "maxFiles": {{logMaxFiles}}
+                }
               },
               "limits": {
                 "maxActiveClientConnections": {{maxActiveClientConnections}},
