@@ -361,7 +361,7 @@ public sealed class Http3PreviewConnection
                 return Http3HeaderReadResult.Failure("unexpected_data");
             }
 
-            if (frame.Type == Http3PreviewCodec.SettingsFrame)
+            if (frame.Type is Http3PreviewCodec.SettingsFrame or Http3PreviewCodec.GoAwayFrame)
             {
                 return Http3HeaderReadResult.Failure("unexpected_control_frame");
             }

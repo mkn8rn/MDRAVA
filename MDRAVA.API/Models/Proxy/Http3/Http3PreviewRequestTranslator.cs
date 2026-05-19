@@ -57,6 +57,12 @@ public static class Http3PreviewRequestTranslator
             }
 
             regularHeaderSeen = true;
+            if (!IsValidHeaderName(header.Name))
+            {
+                rejectionReason = "invalid_header_name";
+                return false;
+            }
+
             if (ForbiddenHeaders.Contains(header.Name))
             {
                 rejectionReason = "forbidden_header";
@@ -233,7 +239,9 @@ public static class Http3PreviewRequestTranslator
     private static bool IsValidAuthority(string authority)
     {
         return !string.IsNullOrWhiteSpace(authority)
-            && authority.All(static character => character > 0x20 && character != 0x7f && character != '/');
+            && authority.All(static character => character > 0x20
+                && character != 0x7f
+                && character is not '/' and not '\\' and not '?' and not '#' and not '@');
     }
 
     private static bool IsValidConnectAuthority(string authority)
@@ -270,7 +278,16 @@ public static class Http3PreviewRequestTranslator
     {
         return !string.IsNullOrWhiteSpace(target)
             && target.StartsWith("/", StringComparison.Ordinal)
-            && target.All(static character => character > 0x20 && character != 0x7f);
+            && target.All(static character => character > 0x20 && character != 0x7f && character != '#');
+    }
+
+    private static bool IsValidHeaderName(string name)
+    {
+        return !string.IsNullOrWhiteSpace(name)
+            && name.All(static character => character is '!' or '#' or '$' or '%' or '&' or '\'' or '*' or '+'
+                or '-' or '.' or '^' or '_' or '`' or '|' or '~'
+                || character is >= '0' and <= '9'
+                || character is >= 'a' and <= 'z');
     }
 
     private static bool TryGetRequestFraming(
