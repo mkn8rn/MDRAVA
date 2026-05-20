@@ -180,9 +180,94 @@ internal static class OperatorStatusTests
         AssertEx.True(protocols.UnsupportedHttp3Features.Contains("webtransport"), string.Join(",", protocols.UnsupportedHttp3Features));
     }
 
+    public static void StatusReadinessReportsCertificateIssueSummaryWithoutSecrets()
+    {
+        const string missingCertificateId = "public-cert";
+        using var fixture = StatusFixture.Create();
+        var listener = Listener() with
+        {
+            Transport = RuntimeListenerTransport.Https,
+            DefaultCertificateId = missingCertificateId,
+            Http3Enablement = RuntimeHttp3Enablement.Disabled
+        };
+        fixture.Store.Replace(Snapshot([listener], [StaticRoute()]));
+        fixture.Runtime.ReplaceListeners([ListenerStatus(listener, ProxyListenerState.Active)], null);
+
+        var status = fixture.Controller().Get();
+        var text = JsonSerializer.Serialize(status.Readiness) + JsonSerializer.Serialize(status.Subsystems);
+
+        AssertEx.Equal("degraded", status.Readiness.State);
+        AssertEx.True(status.Readiness.Reasons.Contains("certificate_reference_missing"), string.Join(",", status.Readiness.Reasons));
+        AssertEx.Equal(1, status.Subsystems.Certificates.MissingReferences);
+        AssertEx.NotNull(status.Subsystems.Certificates.LastIssue);
+        AssertEx.Equal("certificate", status.Subsystems.Certificates.LastIssue!.Category);
+        AssertEx.Equal("missing_reference", status.Subsystems.Certificates.LastIssue.Reason);
+        AssertEx.Equal(missingCertificateId, status.Subsystems.Certificates.LastIssue.AffectedIdentity);
+        AssertEx.False(text.Contains(AdminToken, StringComparison.Ordinal), text);
+        AssertEx.False(text.Contains("Authorization", StringComparison.OrdinalIgnoreCase), text);
+        AssertEx.False(text.Contains("Cookie", StringComparison.OrdinalIgnoreCase), text);
+        AssertEx.False(text.Contains("private-key", StringComparison.OrdinalIgnoreCase), text);
+    }
+
+    public static void StatusReadinessReportsAcmeLastIssueWithoutRawErrorSummary()
+    {
+        const string rawErrorSecret = "phase-50-acme-token-secret";
+        using var fixture = StatusFixture.Create();
+        var listener = Listener();
+        var acme = new RuntimeAcmeOptions(
+            true,
+            true,
+            "https://acme.invalid/directory",
+            [],
+            true,
+            "acme",
+            30,
+            720,
+            60,
+            [new RuntimeAcmeCertificateOptions("acme-cert", true, ["example.test"], 30)]);
+        fixture.Store.Replace(Snapshot([listener], [StaticRoute()], acme: acme));
+        fixture.Runtime.ReplaceListeners([ListenerStatus(listener, ProxyListenerState.Active)], null);
+        fixture.Acme.Upsert(new AcmeCertificateLifecycleStatus(
+            "acme-cert",
+            true,
+            ["example.test"],
+            false,
+            "acme",
+            null,
+            null,
+            null,
+            DateTimeOffset.UtcNow.AddMinutes(-2),
+            null,
+            DateTimeOffset.UtcNow.AddMinutes(-2),
+            DateTimeOffset.UtcNow.AddMinutes(30),
+            "failed",
+            $"raw ACME exception with {rawErrorSecret} and C:\\private\\account.json"));
+
+        var status = fixture.Controller().Get();
+        var text = JsonSerializer.Serialize(status.Readiness) + JsonSerializer.Serialize(status.Subsystems);
+
+        AssertEx.Equal("degraded", status.Readiness.State);
+        AssertEx.True(status.Readiness.Reasons.Contains("acme_degraded"), string.Join(",", status.Readiness.Reasons));
+        AssertEx.True(status.Subsystems.Acme.Enabled);
+        AssertEx.Equal(1, status.Subsystems.Acme.Configured);
+        AssertEx.Equal(1, status.Subsystems.Acme.Failed);
+        AssertEx.Equal(1, status.Subsystems.Acme.RenewalBackoff);
+        AssertEx.NotNull(status.Subsystems.Acme.LastIssue);
+        AssertEx.Equal("acme", status.Subsystems.Acme.LastIssue!.Category);
+        AssertEx.Equal("failed", status.Subsystems.Acme.LastIssue.Reason);
+        AssertEx.Equal("acme-cert", status.Subsystems.Acme.LastIssue.AffectedIdentity);
+        AssertEx.False(text.Contains(rawErrorSecret, StringComparison.Ordinal), text);
+        AssertEx.False(text.Contains("account.json", StringComparison.OrdinalIgnoreCase), text);
+        AssertEx.False(text.Contains("example.test", StringComparison.OrdinalIgnoreCase), text);
+        AssertEx.False(text.Contains("Authorization", StringComparison.OrdinalIgnoreCase), text);
+        AssertEx.False(text.Contains("Cookie", StringComparison.OrdinalIgnoreCase), text);
+    }
+
     private static ProxyConfigurationSnapshot Snapshot(
         IReadOnlyList<RuntimeListener> listeners,
-        IReadOnlyList<RuntimeRoute> routes)
+        IReadOnlyList<RuntimeRoute> routes,
+        IReadOnlyDictionary<string, RuntimeCertificate>? certificates = null,
+        RuntimeAcmeOptions? acme = null)
     {
         return new ProxyConfigurationSnapshot(
             1,
@@ -195,13 +280,13 @@ internal static class OperatorStatusTests
                 [],
                 []),
             new RuntimeAdminSecurityOptions([], true, true, AdminToken, "MDRAVA_ADMIN_TOKEN", "configured", 100),
-            new RuntimeAcmeOptions(false, true, "", [], false, "acme", 30, 720, 60, []),
+            acme ?? new RuntimeAcmeOptions(false, true, "", [], false, "acme", 30, 720, 60, []),
             Timeouts(),
             new RuntimeConnectionLimits(100, 16, 1024),
             new RuntimeObservabilityOptions(true, 100, new RuntimeLogPersistenceOptions(true, true, 1_048_576, 8)),
             new RuntimeLimits(4096, 128, 240, 30, 32768, 128, 8192, 104857600, 8192, TimeSpan.FromSeconds(15)),
             new RuntimeForwardedHeadersOptions(true, []),
-            new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),
+            certificates ?? new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),
             listeners,
             routes);
     }

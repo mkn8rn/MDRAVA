@@ -63,15 +63,22 @@ public sealed record ProxyRouteSubsystemSummary(
     public static ProxyRouteSubsystemSummary Unknown { get; } = new(0, 0, 0, 0, 0);
 }
 
+public sealed record ProxySubsystemIssueSummary(
+    DateTimeOffset TimestampUtc,
+    string Category,
+    string Reason,
+    string? AffectedIdentity);
+
 public sealed record ProxyCertificateSubsystemSummary(
     int Configured,
     int Loaded,
     int MissingReferences,
     int Expired,
     int NotYetValid,
-    int ExpiringSoon)
+    int ExpiringSoon,
+    ProxySubsystemIssueSummary? LastIssue)
 {
-    public static ProxyCertificateSubsystemSummary Unknown { get; } = new(0, 0, 0, 0, 0, 0);
+    public static ProxyCertificateSubsystemSummary Unknown { get; } = new(0, 0, 0, 0, 0, 0, null);
 }
 
 public sealed record ProxyAcmeSubsystemSummary(
@@ -79,9 +86,10 @@ public sealed record ProxyAcmeSubsystemSummary(
     int Configured,
     int Active,
     int Failed,
-    int RenewalBackoff)
+    int RenewalBackoff,
+    ProxySubsystemIssueSummary? LastIssue)
 {
-    public static ProxyAcmeSubsystemSummary Unknown { get; } = new(false, 0, 0, 0, 0);
+    public static ProxyAcmeSubsystemSummary Unknown { get; } = new(false, 0, 0, 0, 0, null);
 }
 
 public sealed record ProxyUpstreamSubsystemSummary(

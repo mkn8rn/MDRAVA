@@ -462,6 +462,8 @@ var tests = new TestCase[]
     Test("Status readiness summarizes unhealthy upstreams", Sync(OperatorStatusTests.StatusReadinessSummarizesUnhealthyUpstreams), TestTaxonomy.Admin, TestTaxonomy.HealthChecks, TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),
     Test("Status readiness summarizes open circuits", Sync(OperatorStatusTests.StatusReadinessSummarizesOpenCircuits), TestTaxonomy.Admin, TestTaxonomy.RetryCircuit, TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),
     Test("Status subsystems keep unsupported HTTP/3 features explicit", Sync(OperatorStatusTests.StatusSubsystemsKeepUnsupportedHttp3FeaturesExplicit), TestTaxonomy.Admin, TestTaxonomy.Http3, TestTaxonomy.SecurityNegativePaths),
+    Test("Status readiness reports certificate issue summary without secrets", Sync(OperatorStatusTests.StatusReadinessReportsCertificateIssueSummaryWithoutSecrets), TestTaxonomy.Admin, TestTaxonomy.Config, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
+    Test("Status readiness reports ACME last issue without raw error summary", Sync(OperatorStatusTests.StatusReadinessReportsAcmeLastIssueWithoutRawErrorSummary), TestTaxonomy.Admin, TestTaxonomy.Config, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
     Test("Admission controller enforces client limit", Sync(HardeningTests.AdmissionControllerEnforcesClientLimit), TestTaxonomy.Limits),
     Test("Admission lease disposal releases client slot", Sync(HardeningTests.AdmissionLeaseDisposalReleasesClientSlot), TestTaxonomy.Limits),
     Test("Admission controller enforces TLS handshake limit", Sync(HardeningTests.AdmissionControllerEnforcesTlsHandshakeLimit), TestTaxonomy.Tls, TestTaxonomy.Limits),
