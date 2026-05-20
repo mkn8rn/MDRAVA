@@ -52,15 +52,7 @@ public sealed record RuntimeHttp3SupportProjection(
         "request_response_header_policies"
     ];
 
-    public IReadOnlyList<string> UnsupportedFeatures { get; init; } =
-    [
-        "h3c",
-        "connect_over_http3",
-        "websocket_over_http3",
-        "connect_udp_over_http3",
-        "masque",
-        "webtransport_over_http3"
-    ];
+    public IReadOnlyList<string> UnsupportedFeatures { get; init; } = RuntimeHttp3UnsupportedFeatureCodes.EffectiveConfig;
 
     public bool UpstreamHttp3Configured { get; init; }
 

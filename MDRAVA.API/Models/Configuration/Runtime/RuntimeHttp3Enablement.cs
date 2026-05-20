@@ -4,6 +4,7 @@ public enum RuntimeHttp3Enablement
 {
     Default,
     Disabled,
+    // Legacy explicit modes are still accepted for config compatibility.
     Preview,
     Beta
 }

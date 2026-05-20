@@ -174,11 +174,9 @@ internal static class OperatorStatusTests
         var protocols = fixture.Controller().Get().Subsystems.Protocols;
 
         AssertEx.False(protocols.ClientHttp3Enabled);
-        AssertEx.True(protocols.UnsupportedHttp3Features.Contains("h3c"), string.Join(",", protocols.UnsupportedHttp3Features));
-        AssertEx.True(protocols.UnsupportedHttp3Features.Contains("connect"), string.Join(",", protocols.UnsupportedHttp3Features));
-        AssertEx.True(protocols.UnsupportedHttp3Features.Contains("websocket"), string.Join(",", protocols.UnsupportedHttp3Features));
-        AssertEx.True(protocols.UnsupportedHttp3Features.Contains("masque"), string.Join(",", protocols.UnsupportedHttp3Features));
-        AssertEx.True(protocols.UnsupportedHttp3Features.Contains("webtransport"), string.Join(",", protocols.UnsupportedHttp3Features));
+        AssertEx.True(
+            protocols.UnsupportedHttp3Features.SequenceEqual(RuntimeHttp3UnsupportedFeatureCodes.StatusSummary),
+            string.Join(",", protocols.UnsupportedHttp3Features));
     }
 
     public static void StatusReadinessReportsCertificateIssueSummaryWithoutSecrets()

@@ -6,6 +6,8 @@ public enum RuntimeListenerProtocols
     None = 0,
     Http1 = 1,
     Http2 = 2,
+    // Compatibility name for existing config files. Runtime/status code should
+    // use HasHttp3 when describing stable HTTP/3 behavior.
     Http3Preview = 4,
     Http1AndHttp2 = Http1 | Http2,
     Http1AndHttp3Preview = Http1 | Http3Preview,
@@ -38,6 +40,7 @@ public static class RuntimeListenerProtocolExtensions
 
     public static bool HasHttp3Preview(this RuntimeListenerProtocols protocols)
     {
+        // Legacy alias retained for old call sites and compatibility tests.
         return protocols.HasHttp3();
     }
 

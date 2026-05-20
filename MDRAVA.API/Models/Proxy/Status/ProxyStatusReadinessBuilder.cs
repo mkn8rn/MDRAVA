@@ -6,16 +6,6 @@ namespace MDRAVA.API.Proxy.Status;
 
 public static class ProxyStatusReadinessBuilder
 {
-    private static readonly string[] UnsupportedHttp3Features =
-    [
-        "h3c",
-        "connect",
-        "websocket",
-        "connect-udp",
-        "masque",
-        "webtransport"
-    ];
-
     public static (ProxyReadinessStatus Readiness, ProxySubsystemSummaries Subsystems) Build(
         ProxyConfigurationSnapshot? snapshot,
         ProxyRuntimeSnapshot runtime,
@@ -109,7 +99,7 @@ public static class ProxyStatusReadinessBuilder
             http3.QuicListenerReady,
             routes.SelectMany(static route => route.Upstreams)
                 .Any(static upstream => RuntimeUpstreamProtocol.IsHttp3(upstream.Protocol)),
-            UnsupportedHttp3Features.ToArray());
+            RuntimeHttp3UnsupportedFeatureCodes.StatusSummary);
         var configSummary = new ProxyConfigSubsystemSummary(
             snapshot is not null,
             snapshot?.Version,

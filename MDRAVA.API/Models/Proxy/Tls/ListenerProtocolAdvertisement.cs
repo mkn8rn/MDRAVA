@@ -20,20 +20,6 @@ public static class ListenerProtocolAdvertisement
         return advertised;
     }
 
-    public static IReadOnlyList<SslApplicationProtocol> FutureHttp3Alpn(RuntimeListenerProtocols protocols)
-    {
-        return protocols.HasHttp3()
-            ? [new SslApplicationProtocol("h3")]
-            : [];
-    }
-
-    public static List<SslApplicationProtocol> BuildHttp3PreviewAlpn(RuntimeListenerProtocols protocols)
-    {
-        return protocols.HasHttp3()
-            ? [new SslApplicationProtocol("h3")]
-            : [];
-    }
-
     public static List<SslApplicationProtocol> BuildHttp3Alpn(RuntimeListener listener)
     {
         return listener.Http3.EnabledForTraffic

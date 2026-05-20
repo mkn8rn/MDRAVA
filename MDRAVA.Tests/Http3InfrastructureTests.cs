@@ -182,7 +182,7 @@ internal static class Http3InfrastructureTests
         AssertEx.Equal("127.0.0.1|8443|https", identity.BindKey);
     }
 
-    public static void FutureQuicListenerIdentityIsSeparateFromTcpIdentity()
+    public static void QuicListenerIdentityIsSeparateFromTcpIdentity()
     {
         var listener = RuntimeListenerFor("http1AndHttp2AndHttp3Preview", experimentalHttp3: true);
         var tcpIdentity = listener.Identity;
@@ -195,14 +195,15 @@ internal static class Http3InfrastructureTests
 
     public static void TcpAlpnDoesNotAdvertiseHttp3()
     {
-        var protocols = RuntimeListenerProtocols.Http1AndHttp2AndHttp3Preview;
+        var listener = RuntimeListenerFor("http1AndHttp2AndHttp3Preview", experimentalHttp3: true);
+        var protocols = listener.Protocols;
         var tcpAlpn = ListenerProtocolAdvertisement.BuildTcpAlpn(protocols);
-        var futureQuicAlpn = ListenerProtocolAdvertisement.FutureHttp3Alpn(protocols);
+        var quicAlpn = ListenerProtocolAdvertisement.BuildHttp3Alpn(listener);
 
         AssertEx.True(tcpAlpn.Contains(SslApplicationProtocol.Http2));
         AssertEx.True(tcpAlpn.Contains(SslApplicationProtocol.Http11));
         AssertEx.False(tcpAlpn.Any(static protocol => protocol.Protocol.Span.SequenceEqual("h3"u8)));
-        AssertEx.True(futureQuicAlpn.Any(static protocol => protocol.Protocol.Span.SequenceEqual("h3"u8)));
+        AssertEx.True(quicAlpn.Any(static protocol => protocol.Protocol.Span.SequenceEqual("h3"u8)));
     }
 
     public static void StatusAndEffectiveProjectionReportLegacyHttp3PreviewEnabled()
@@ -267,12 +268,7 @@ internal static class Http3InfrastructureTests
         AssertEx.True(projection.SupportedPolicyFeatures.Contains("retry_circuit_safe_methods", StringComparer.Ordinal));
         AssertEx.True(projection.SupportedPolicyFeatures.Contains("weighted_balancing", StringComparer.Ordinal));
         AssertEx.True(projection.SupportedPolicyFeatures.Contains("health_checks", StringComparer.Ordinal));
-        AssertEx.True(projection.UnsupportedFeatures.Contains("h3c", StringComparer.Ordinal));
-        AssertEx.True(projection.UnsupportedFeatures.Contains("connect_over_http3", StringComparer.Ordinal));
-        AssertEx.True(projection.UnsupportedFeatures.Contains("websocket_over_http3", StringComparer.Ordinal));
-        AssertEx.True(projection.UnsupportedFeatures.Contains("connect_udp_over_http3", StringComparer.Ordinal));
-        AssertEx.True(projection.UnsupportedFeatures.Contains("masque", StringComparer.Ordinal));
-        AssertEx.True(projection.UnsupportedFeatures.Contains("webtransport_over_http3", StringComparer.Ordinal));
+        AssertEx.True(projection.UnsupportedFeatures.SequenceEqual(RuntimeHttp3UnsupportedFeatureCodes.EffectiveConfig));
         AssertEx.False(projection.UnsupportedFeatures.Contains("upstream_http3_multiplexing", StringComparer.Ordinal));
         AssertEx.Equal("reused_multiplexed", projection.UpstreamPoolingMode);
         AssertEx.True(projection.UpstreamMultiplexingEnabled);

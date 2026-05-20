@@ -26,7 +26,7 @@ using Microsoft.Extensions.Logging;
 
 namespace MDRAVA.Tests;
 
-internal static class ClientHttp3PreviewTests
+internal static class ClientHttp3Tests
 {
     private static readonly SslApplicationProtocol Http3Alpn = new("h3");
 
@@ -108,7 +108,7 @@ internal static class ClientHttp3PreviewTests
 
     public static void QuicListenerIdentityIsSeparateFromTcpIdentity()
     {
-        var listener = PreviewListener("http1AndHttp2AndHttp3Preview", experimental: true);
+        var listener = LegacyHttp3Listener("http1AndHttp2AndHttp3Preview", experimental: true);
         var tcp = listener.Identity;
         var quic = AssertEx.NotNull(listener.QuicIdentity);
 
@@ -194,7 +194,7 @@ internal static class ClientHttp3PreviewTests
         }
     }
 
-    public static async Task SuccessfulReloadCanAddAndRemovePreviewQuicListener()
+    public static async Task SuccessfulReloadCanAddAndRemoveQuicListener()
     {
         if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
         {
@@ -233,7 +233,7 @@ internal static class ClientHttp3PreviewTests
         }
     }
 
-    public static async Task FailedReloadPreservesOldPreviewQuicListenerSet()
+    public static async Task FailedReloadPreservesOldQuicListenerSet()
     {
         if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
         {
@@ -380,7 +380,7 @@ internal static class ClientHttp3PreviewTests
         }
     }
 
-    public static void StatusAndEffectiveConfigMarkHttp3AsExperimentalPreview()
+    public static void StatusAndEffectiveConfigPreserveLegacyHttp3PreviewProjection()
     {
         var snapshot = ProxyConfigurationMapper.ToRuntimeSnapshot(
             new ProxyOptions
@@ -1691,7 +1691,7 @@ internal static class ClientHttp3PreviewTests
 
         var ok = Http3PreviewRequestTranslator.TryBuildRequest(
             headers,
-            PreviewListener("http3Preview", experimental: true),
+            LegacyHttp3Listener("http3Preview", experimental: true),
             out _,
             out var reason);
 
@@ -1712,7 +1712,7 @@ internal static class ClientHttp3PreviewTests
 
         var ok = Http3PreviewRequestTranslator.TryBuildRequest(
             headers,
-            PreviewListener("http3Preview", experimental: true),
+            LegacyHttp3Listener("http3Preview", experimental: true),
             out _,
             out var reason);
 
@@ -1733,7 +1733,7 @@ internal static class ClientHttp3PreviewTests
 
         var ok = Http3PreviewRequestTranslator.TryBuildRequest(
             headers,
-            PreviewListener("http3Preview", experimental: true),
+            LegacyHttp3Listener("http3Preview", experimental: true),
             out _,
             out var reason);
 
@@ -1752,7 +1752,7 @@ internal static class ClientHttp3PreviewTests
 
         var ok = Http3PreviewRequestTranslator.TryBuildRequest(
             headers,
-            PreviewListener("http3Preview", experimental: true),
+            LegacyHttp3Listener("http3Preview", experimental: true),
             out _,
             out var reason);
 
@@ -1773,7 +1773,7 @@ internal static class ClientHttp3PreviewTests
 
         var ok = Http3PreviewRequestTranslator.TryBuildRequest(
             headers,
-            PreviewListener("http3Preview", experimental: true),
+            LegacyHttp3Listener("http3Preview", experimental: true),
             out _,
             out var reason);
 
@@ -1794,7 +1794,7 @@ internal static class ClientHttp3PreviewTests
 
         var ok = Http3PreviewRequestTranslator.TryBuildRequest(
             headers,
-            PreviewListener("http3Preview", experimental: true),
+            LegacyHttp3Listener("http3Preview", experimental: true),
             out _,
             out var reason);
 
@@ -1814,7 +1814,7 @@ internal static class ClientHttp3PreviewTests
 
         var ok = Http3PreviewRequestTranslator.TryBuildRequest(
             headers,
-            PreviewListener("http3Preview", experimental: true),
+            LegacyHttp3Listener("http3Preview", experimental: true),
             out _,
             out var reason);
 
@@ -1841,12 +1841,12 @@ internal static class ClientHttp3PreviewTests
 
         var authorityOk = Http3PreviewRequestTranslator.TryBuildRequest(
             badAuthority,
-            PreviewListener("http3Preview", experimental: true),
+            LegacyHttp3Listener("http3Preview", experimental: true),
             out _,
             out var authorityReason);
         var pathOk = Http3PreviewRequestTranslator.TryBuildRequest(
             badPath,
-            PreviewListener("http3Preview", experimental: true),
+            LegacyHttp3Listener("http3Preview", experimental: true),
             out _,
             out var pathReason);
 
@@ -1873,12 +1873,12 @@ internal static class ClientHttp3PreviewTests
 
         var pathOk = Http3PreviewRequestTranslator.TryBuildRequest(
             connectWithPath,
-            PreviewListener("http3Preview", experimental: true),
+            LegacyHttp3Listener("http3Preview", experimental: true),
             out _,
             out var pathReason);
         var bodyOk = Http3PreviewRequestTranslator.TryBuildRequest(
             connectWithBody,
-            PreviewListener("http3Preview", experimental: true),
+            LegacyHttp3Listener("http3Preview", experimental: true),
             out _,
             out var bodyReason);
 
@@ -1888,7 +1888,7 @@ internal static class ClientHttp3PreviewTests
         AssertEx.Equal("connect_body_unsupported", bodyReason);
     }
 
-    public static void MetricsIncludeHttp3PreviewCounters()
+    public static void MetricsIncludeHttp3Counters()
     {
         var metrics = new ProxyMetrics();
         metrics.QuicListenerStarted();
@@ -2552,7 +2552,7 @@ internal static class ClientHttp3PreviewTests
             .Build();
     }
 
-    private static RuntimeListener PreviewListener(string protocols, bool experimental)
+    private static RuntimeListener LegacyHttp3Listener(string protocols, bool experimental)
     {
         return new RuntimeListener(
             "main",
