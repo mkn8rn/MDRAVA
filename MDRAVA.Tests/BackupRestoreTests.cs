@@ -127,6 +127,23 @@ internal static class BackupRestoreTests
         AssertEx.Equal(loadedAt, store.Snapshot.LoadedAtUtc);
     }
 
+    public static async Task RestoreValidationSucceedsWithBootstrapLayout()
+    {
+        using var temp = TemporaryDirectory.Create();
+        var loader = CreateLoader(temp.Path);
+        var load = await loader.LoadAsync(CancellationToken.None);
+        AssertEx.True(load.Succeeded, string.Join(";", load.Errors));
+
+        var result = await CreateService(temp.Path, loader: loader).ValidateAsync(CancellationToken.None);
+
+        AssertEx.True(result.Succeeded, string.Join(",", result.Errors.Select(static error => error.Code)));
+        AssertEx.True(result.Manifest.Directories
+            .Where(static directory => directory.RelativePath != "certs/acme")
+            .All(static directory => directory.Exists));
+        AssertEx.True(File.Exists(Path.Combine(temp.Path, "config", "proxy.json")));
+        AssertEx.True(File.Exists(Path.Combine(temp.Path, "config", "sites", "example.site.yaml")));
+    }
+
     private static ProxyBackupReadinessService CreateService(
         string dataDirectory,
         ProxyConfigurationStore? store = null,

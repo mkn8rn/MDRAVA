@@ -47,4 +47,6 @@ public sealed record ProxyStatusResponse(
     public ProxyReadinessStatus Readiness { get; init; } = ProxyReadinessStatus.Unknown;
 
     public ProxySubsystemSummaries Subsystems { get; init; } = ProxySubsystemSummaries.Unknown;
+
+    public ProxyRuntimePreflightStatus RuntimePreflight { get; init; } = ProxyRuntimePreflightStatus.Unknown;
 }

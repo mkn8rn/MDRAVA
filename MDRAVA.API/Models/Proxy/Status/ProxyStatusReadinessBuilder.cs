@@ -24,11 +24,12 @@ public static class ProxyStatusReadinessBuilder
         RuntimeHttp3SupportProjection http3,
         ProxyLogPersistenceStatus logPersistence,
         ProxyCacheStatusResponse? cacheStatus,
-        IReadOnlyList<AcmeCertificateLifecycleStatus> acmeStatuses)
+        IReadOnlyList<AcmeCertificateLifecycleStatus> acmeStatuses,
+        ProxyRuntimePreflightStatus? runtimePreflight = null)
     {
         var now = DateTimeOffset.UtcNow;
         var subsystems = BuildSubsystems(snapshot, runtime, metrics, upstreams, http3, logPersistence, cacheStatus, acmeStatuses, now);
-        var readiness = Classify(snapshot, runtime, subsystems, logPersistence, now);
+        var readiness = Classify(snapshot, runtime, subsystems, logPersistence, runtimePreflight ?? ProxyRuntimePreflightStatus.Unknown, now);
         return (readiness, subsystems);
     }
 
@@ -329,6 +330,7 @@ public static class ProxyStatusReadinessBuilder
         ProxyRuntimeSnapshot runtime,
         ProxySubsystemSummaries subsystems,
         ProxyLogPersistenceStatus logPersistence,
+        ProxyRuntimePreflightStatus runtimePreflight,
         DateTimeOffset now)
     {
         List<string> notReadyReasons = [];
@@ -366,6 +368,15 @@ public static class ProxyStatusReadinessBuilder
         if (string.Equals(logPersistence.State, "degraded", StringComparison.OrdinalIgnoreCase))
         {
             degradedReasons.Add("log_persistence_degraded");
+        }
+
+        if (string.Equals(runtimePreflight.State, "failed", StringComparison.OrdinalIgnoreCase))
+        {
+            notReadyReasons.Add("runtime_preflight_failed");
+        }
+        else if (string.Equals(runtimePreflight.State, "degraded", StringComparison.OrdinalIgnoreCase))
+        {
+            degradedReasons.Add("runtime_preflight_degraded");
         }
 
         if (subsystems.Upstreams.Unhealthy > 0)

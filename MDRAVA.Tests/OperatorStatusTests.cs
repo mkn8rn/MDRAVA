@@ -10,6 +10,7 @@ using MDRAVA.API.Proxy.Hosting;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Observability;
 using MDRAVA.API.Proxy.Resilience;
+using MDRAVA.API.Proxy.Runtime;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -263,6 +264,52 @@ internal static class OperatorStatusTests
         AssertEx.False(text.Contains("Cookie", StringComparison.OrdinalIgnoreCase), text);
     }
 
+    public static void StatusReadinessReportsRuntimePreflightWarningsWithoutSecrets()
+    {
+        const string secret = "phase-52-preflight-secret";
+        using var fixture = StatusFixture.Create();
+        var listener = Listener();
+        fixture.Store.Replace(Snapshot([listener], [StaticRoute()]));
+        fixture.Runtime.ReplaceListeners([ListenerStatus(listener, ProxyListenerState.Active)], null);
+        var preflight = new ProxyRuntimePreflightService(
+            new MdravaDataDirectoryProvider(Options.Create(new MdravaDataDirectoryOptions
+            {
+                DataDirectory = fixture.DataDirectory
+            })),
+            new RuntimePreflightProbe(path =>
+                path.EndsWith("logs", StringComparison.OrdinalIgnoreCase)
+                    ? new ProxyRuntimeDirectoryProbeResult(true, false, true, false, secret)
+                    : new ProxyRuntimeDirectoryProbeResult(true, false, true, true, null)));
+        preflight.RunStartupChecks();
+
+        var status = fixture.Controller(preflight).Get();
+        var text = JsonSerializer.Serialize(status.Readiness) + JsonSerializer.Serialize(status.RuntimePreflight);
+
+        AssertEx.Equal("degraded", status.Readiness.State);
+        AssertEx.True(status.Readiness.Reasons.Contains("runtime_preflight_degraded"), string.Join(",", status.Readiness.Reasons));
+        AssertEx.Equal("degraded", status.RuntimePreflight.State);
+        AssertEx.True(status.RuntimePreflight.Reasons.Contains("directory_not_writable"), string.Join(",", status.RuntimePreflight.Reasons));
+        AssertEx.False(text.Contains(secret, StringComparison.Ordinal), text);
+        AssertEx.False(text.Contains(fixture.DataDirectory, StringComparison.OrdinalIgnoreCase), text);
+        AssertEx.False(text.Contains("Authorization", StringComparison.OrdinalIgnoreCase), text);
+        AssertEx.False(text.Contains("Cookie", StringComparison.OrdinalIgnoreCase), text);
+    }
+
+    private sealed class RuntimePreflightProbe : IProxyRuntimeDirectoryProbe
+    {
+        private readonly Func<string, ProxyRuntimeDirectoryProbeResult> _probe;
+
+        public RuntimePreflightProbe(Func<string, ProxyRuntimeDirectoryProbeResult> probe)
+        {
+            _probe = probe;
+        }
+
+        public ProxyRuntimeDirectoryProbeResult Probe(string path, bool createIfMissing)
+        {
+            return _probe(path);
+        }
+    }
+
     private static ProxyConfigurationSnapshot Snapshot(
         IReadOnlyList<RuntimeListener> listeners,
         IReadOnlyList<RuntimeRoute> routes,
@@ -460,7 +507,7 @@ internal static class OperatorStatusTests
             return new StatusFixture(path);
         }
 
-        public ProxyStatusController Controller()
+        public ProxyStatusController Controller(ProxyRuntimePreflightService? preflight = null)
         {
             return new ProxyStatusController(
                 Runtime,
@@ -469,7 +516,8 @@ internal static class OperatorStatusTests
                 Health,
                 logWriter: Writer,
                 cacheStore: Cache,
-                acmeStatusStore: Acme);
+                acmeStatusStore: Acme,
+                preflightService: preflight);
         }
 
         public void Dispose()

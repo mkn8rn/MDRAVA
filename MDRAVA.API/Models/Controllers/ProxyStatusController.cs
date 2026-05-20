@@ -7,6 +7,7 @@ using MDRAVA.API.Proxy.Hosting;
 using MDRAVA.API.Proxy.Http3;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Observability;
+using MDRAVA.API.Proxy.Runtime;
 using MDRAVA.API.Proxy.Status;
 using Microsoft.AspNetCore.Mvc;
 
@@ -24,6 +25,7 @@ public sealed class ProxyStatusController : ControllerBase
     private readonly ProxyPersistentLogWriter? _logWriter;
     private readonly ResponseCacheStore? _cacheStore;
     private readonly AcmeCertificateStatusStore? _acmeStatusStore;
+    private readonly ProxyRuntimePreflightService? _preflightService;
 
     public ProxyStatusController(
         ProxyRuntimeState runtimeState,
@@ -33,7 +35,8 @@ public sealed class ProxyStatusController : ControllerBase
         ConfigLintService? lintService = null,
         ProxyPersistentLogWriter? logWriter = null,
         ResponseCacheStore? cacheStore = null,
-        AcmeCertificateStatusStore? acmeStatusStore = null)
+        AcmeCertificateStatusStore? acmeStatusStore = null,
+        ProxyRuntimePreflightService? preflightService = null)
     {
         _runtimeState = runtimeState;
         _metrics = metrics;
@@ -43,6 +46,7 @@ public sealed class ProxyStatusController : ControllerBase
         _logWriter = logWriter;
         _cacheStore = cacheStore;
         _acmeStatusStore = acmeStatusStore;
+        _preflightService = preflightService;
     }
 
     [HttpGet("status")]
@@ -79,6 +83,7 @@ public sealed class ProxyStatusController : ControllerBase
         var metrics = _metrics.Snapshot();
         var http3 = Http3RuntimeSupport.Project(snapshot?.Listeners ?? [], runtime.Listeners, snapshot?.Routes);
         var logPersistence = _logWriter?.GetStatus() ?? ProxyLogPersistenceStatus.Unknown;
+        var runtimePreflight = _preflightService?.LastStatus ?? ProxyRuntimePreflightStatus.Unknown;
         var cacheStatus = _cacheStore?.Snapshot(snapshot);
         var acmeStatuses = _acmeStatusStore?.Snapshot() ?? [];
         var (readiness, subsystems) = ProxyStatusReadinessBuilder.Build(
@@ -89,7 +94,8 @@ public sealed class ProxyStatusController : ControllerBase
             http3,
             logPersistence,
             cacheStatus,
-            acmeStatuses);
+            acmeStatuses,
+            runtimePreflight);
 
         return new ProxyStatusResponse(
             runtime.IsRunning,
@@ -115,7 +121,8 @@ public sealed class ProxyStatusController : ControllerBase
             ConfigLint = _lintService?.LastActiveStatus ?? ConfigLintStatus.Empty,
             LogPersistence = logPersistence,
             Readiness = readiness,
-            Subsystems = subsystems
+            Subsystems = subsystems,
+            RuntimePreflight = runtimePreflight
         };
     }
 }

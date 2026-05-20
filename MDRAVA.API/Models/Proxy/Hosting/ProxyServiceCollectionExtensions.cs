@@ -58,6 +58,8 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<IAcmeCertificateIssuer, DisabledAcmeCertificateIssuer>();
         services.AddSingleton<AcmeCertificateManager>();
         services.AddSingleton<ProxyAdmissionController>();
+        services.AddSingleton<IProxyRuntimeDirectoryProbe, ProxyRuntimeDirectoryProbe>();
+        services.AddSingleton<ProxyRuntimePreflightService>();
         services.AddSingleton<CircuitBreakerStore>();
         services.AddSingleton<ProxyShutdownCoordinator>();
         services.AddSingleton<ClientRateLimiter>();
