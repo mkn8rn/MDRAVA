@@ -34,7 +34,9 @@ internal static class AdminSecurityTests
         "/admin/proxy/cache/status",
         "/admin/proxy/cache/clear",
         "/admin/proxy/acme/status",
-        "/admin/proxy/audit/recent"
+        "/admin/proxy/audit/recent",
+        "/admin/proxy/backup/manifest",
+        "/admin/proxy/backup/validate"
     ];
 
     public static void DefaultAdminBindIsLocalhostOnly()

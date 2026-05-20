@@ -44,6 +44,29 @@ public sealed class ProxyDataDirectoryBootstrapper
         return new ProxyConfigurationDiscovery(layout, [], created, existing);
     }
 
+    public ProxyConfigurationDiscovery InspectLayout()
+    {
+        var layout = new ProxyFilesystemLayout(
+            _dataDirectoryProvider.GetDataDirectory(),
+            _dataDirectoryProvider.GetProxyConfigDirectory(),
+            _dataDirectoryProvider.GetSitesConfigDirectory(),
+            _dataDirectoryProvider.GetLogsDirectory(),
+            _dataDirectoryProvider.GetCertificatesDirectory(),
+            _dataDirectoryProvider.GetStateDirectory(),
+            _dataDirectoryProvider.GetProxyOperationalConfigPath());
+
+        List<string> existing = [];
+        RecordExisting(layout.DataDirectory, existing);
+        RecordExisting(layout.ConfigDirectory, existing);
+        RecordExisting(layout.SitesDirectory, existing);
+        RecordExisting(layout.LogsDirectory, existing);
+        RecordExisting(layout.CertificatesDirectory, existing);
+        RecordExisting(layout.StateDirectory, existing);
+        RecordExisting(layout.ProxyConfigPath, existing);
+
+        return new ProxyConfigurationDiscovery(layout, [], [], existing);
+    }
+
     private static void EnsureDirectory(string path, List<string> created, List<string> existing)
     {
         if (Directory.Exists(path))
@@ -67,6 +90,14 @@ public sealed class ProxyDataDirectoryBootstrapper
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, content);
         created.Add(path);
+    }
+
+    private static void RecordExisting(string path, List<string> existing)
+    {
+        if (Directory.Exists(path) || File.Exists(path))
+        {
+            existing.Add(path);
+        }
     }
 
     private static string ExampleSiteText()

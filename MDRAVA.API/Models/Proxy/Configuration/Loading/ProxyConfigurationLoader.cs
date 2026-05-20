@@ -34,23 +34,29 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader
 
     public async ValueTask<ProxyConfigurationLoadResult> LoadAsync(CancellationToken cancellationToken)
     {
-        return await LoadCoreAsync(allocateVersion: true, cancellationToken);
+        return await LoadCoreAsync(allocateVersion: true, ensureLayout: true, cancellationToken);
     }
 
     public async ValueTask<ProxyConfigurationLoadResult> ValidateAsync(CancellationToken cancellationToken)
     {
-        return await LoadCoreAsync(allocateVersion: false, cancellationToken);
+        return await LoadCoreAsync(allocateVersion: false, ensureLayout: true, cancellationToken);
+    }
+
+    public async ValueTask<ProxyConfigurationLoadResult> ValidateExistingLayoutAsync(CancellationToken cancellationToken)
+    {
+        return await LoadCoreAsync(allocateVersion: false, ensureLayout: false, cancellationToken);
     }
 
     private async ValueTask<ProxyConfigurationLoadResult> LoadCoreAsync(
         bool allocateVersion,
+        bool ensureLayout,
         CancellationToken cancellationToken)
     {
         var sourceDirectory = _dataDirectoryProvider.GetSitesConfigDirectory();
         var operationalConfigPath = _dataDirectoryProvider.GetProxyOperationalConfigPath();
         var attemptedAtUtc = DateTimeOffset.UtcNow;
         var wouldBeVersion = Volatile.Read(ref _nextVersion) + 1;
-        var bootstrapDiscovery = _bootstrapper.EnsureLayout();
+        var bootstrapDiscovery = ensureLayout ? _bootstrapper.EnsureLayout() : _bootstrapper.InspectLayout();
         List<ProxyConfigurationFileDiscovery> discoveredFiles = [.. bootstrapDiscovery.Files];
 
         var discoveredSiteFiles = SiteConfigurationFileDiscovery.DiscoverLoadableSiteFiles(

@@ -13,6 +13,16 @@ public static class SiteConfigurationFileDiscovery
         string sitesDirectory,
         List<ProxyConfigurationFileDiscovery> discoveries)
     {
+        if (!Directory.Exists(sitesDirectory))
+        {
+            discoveries.Add(new ProxyConfigurationFileDiscovery(
+                sitesDirectory,
+                "directory",
+                "missing",
+                "Sites configuration directory does not exist."));
+            return [];
+        }
+
         var files = Directory
             .EnumerateFiles(sitesDirectory, "*.*", SearchOption.TopDirectoryOnly)
             .Order(StringComparer.OrdinalIgnoreCase)
