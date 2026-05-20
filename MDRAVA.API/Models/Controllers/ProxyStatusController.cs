@@ -1,10 +1,13 @@
 using MDRAVA.API.Proxy.Configuration.Storage;
+using MDRAVA.API.Proxy.Acme;
+using MDRAVA.API.Proxy.Caching;
 using MDRAVA.API.Proxy.Diagnostics;
 using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Hosting;
 using MDRAVA.API.Proxy.Http3;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Observability;
+using MDRAVA.API.Proxy.Status;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MDRAVA.API.Controllers;
@@ -19,6 +22,8 @@ public sealed class ProxyStatusController : ControllerBase
     private readonly UpstreamHealthStore _healthStore;
     private readonly ConfigLintService? _lintService;
     private readonly ProxyPersistentLogWriter? _logWriter;
+    private readonly ResponseCacheStore? _cacheStore;
+    private readonly AcmeCertificateStatusStore? _acmeStatusStore;
 
     public ProxyStatusController(
         ProxyRuntimeState runtimeState,
@@ -26,7 +31,9 @@ public sealed class ProxyStatusController : ControllerBase
         IProxyConfigurationStore configurationStore,
         UpstreamHealthStore healthStore,
         ConfigLintService? lintService = null,
-        ProxyPersistentLogWriter? logWriter = null)
+        ProxyPersistentLogWriter? logWriter = null,
+        ResponseCacheStore? cacheStore = null,
+        AcmeCertificateStatusStore? acmeStatusStore = null)
     {
         _runtimeState = runtimeState;
         _metrics = metrics;
@@ -34,6 +41,8 @@ public sealed class ProxyStatusController : ControllerBase
         _healthStore = healthStore;
         _lintService = lintService;
         _logWriter = logWriter;
+        _cacheStore = cacheStore;
+        _acmeStatusStore = acmeStatusStore;
     }
 
     [HttpGet("status")]
@@ -67,6 +76,20 @@ public sealed class ProxyStatusController : ControllerBase
                 CircuitBreaker = upstream.CircuitBreaker
             })
             .ToArray();
+        var metrics = _metrics.Snapshot();
+        var http3 = Http3RuntimeSupport.Project(snapshot?.Listeners ?? [], runtime.Listeners, snapshot?.Routes);
+        var logPersistence = _logWriter?.GetStatus() ?? ProxyLogPersistenceStatus.Unknown;
+        var cacheStatus = _cacheStore?.Snapshot(snapshot);
+        var acmeStatuses = _acmeStatusStore?.Snapshot() ?? [];
+        var (readiness, subsystems) = ProxyStatusReadinessBuilder.Build(
+            snapshot,
+            runtime,
+            metrics,
+            upstreams,
+            http3,
+            logPersistence,
+            cacheStatus,
+            acmeStatuses);
 
         return new ProxyStatusResponse(
             runtime.IsRunning,
@@ -82,15 +105,17 @@ public sealed class ProxyStatusController : ControllerBase
             snapshot?.LoadedAtUtc,
             listenerCount,
             routeCount,
-            _metrics.Snapshot(),
+            metrics,
             upstreams)
         {
             Listeners = runtime.Listeners,
             LastListenerReload = runtime.LastListenerReload,
-            Http3 = Http3RuntimeSupport.Project(snapshot?.Listeners ?? [], runtime.Listeners, snapshot?.Routes),
+            Http3 = http3,
             RouteDiagnostics = RouteDiagnosticsStatus.Enabled,
             ConfigLint = _lintService?.LastActiveStatus ?? ConfigLintStatus.Empty,
-            LogPersistence = _logWriter?.GetStatus() ?? ProxyLogPersistenceStatus.Unknown
+            LogPersistence = logPersistence,
+            Readiness = readiness,
+            Subsystems = subsystems
         };
     }
 }

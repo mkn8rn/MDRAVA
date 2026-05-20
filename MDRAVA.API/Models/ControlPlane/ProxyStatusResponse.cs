@@ -43,4 +43,8 @@ public sealed record ProxyStatusResponse(
     public ConfigLintStatus ConfigLint { get; init; } = ConfigLintStatus.Empty;
 
     public ProxyLogPersistenceStatus LogPersistence { get; init; } = ProxyLogPersistenceStatus.Unknown;
+
+    public ProxyReadinessStatus Readiness { get; init; } = ProxyReadinessStatus.Unknown;
+
+    public ProxySubsystemSummaries Subsystems { get; init; } = ProxySubsystemSummaries.Unknown;
 }
