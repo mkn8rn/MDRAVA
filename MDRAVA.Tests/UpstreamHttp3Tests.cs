@@ -738,6 +738,7 @@ internal static class UpstreamHttp3Tests
         var connections = 0;
         var allCompleted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var allRead = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var resetCanRun = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var goAwaySent = 0;
         var resetSent = 0;
         var closeSent = 0;
@@ -747,6 +748,8 @@ internal static class UpstreamHttp3Tests
             await using var ownedStream = stream;
             var observation = await ReadRequestAsync(stream, stop.Token);
             requests.Enqueue(observation);
+            var resetThisStream = resetFirstStreamBeforeResponse
+                && Interlocked.Exchange(ref resetSent, 1) == 0;
             if (sendGoAwayAfterFirstRequest
                 && Interlocked.Exchange(ref goAwaySent, 1) == 0)
             {
@@ -763,9 +766,13 @@ internal static class UpstreamHttp3Tests
                 await allRead.Task.WaitAsync(stop.Token);
             }
 
-            if (resetFirstStreamBeforeResponse
-                && Interlocked.Exchange(ref resetSent, 1) == 0)
+            if (resetThisStream)
             {
+                if (requestCount > 1)
+                {
+                    await resetCanRun.Task.WaitAsync(stop.Token);
+                }
+
                 stream.Abort(QuicAbortDirection.Write, 0x100);
                 if (Interlocked.Increment(ref completed) >= requestCount)
                 {
@@ -793,6 +800,7 @@ internal static class UpstreamHttp3Tests
             }
 
             await WriteResponseAsync(stream, 200, responseHeaders, responseBody, stop.Token, malformedResponseHeaders: false);
+            resetCanRun.TrySetResult();
             if (Interlocked.Increment(ref completed) >= requestCount)
             {
                 allCompleted.TrySetResult();
@@ -1241,27 +1249,9 @@ internal static class UpstreamHttp3Tests
             X509KeyStorageFlags.UserKeySet);
     }
 
-    private static int GetFreeTcpPort()
-    {
-        var listener = new TcpListener(IPAddress.Loopback, 0);
-        listener.Start();
+    private static int GetFreeTcpPort() => TestPortAllocator.GetFreeTcpPort();
 
-        try
-        {
-            return ((IPEndPoint)listener.LocalEndpoint).Port;
-        }
-        finally
-        {
-            listener.Stop();
-        }
-    }
-
-    private static int GetFreeUdpPort()
-    {
-        using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-        socket.Bind(new IPEndPoint(IPAddress.Loopback, 0));
-        return ((IPEndPoint)socket.LocalEndPoint!).Port;
-    }
+    private static int GetFreeUdpPort() => TestPortAllocator.GetFreeUdpPort();
 
     private sealed record ProxyScenarioResult(
         string ClientResponse,

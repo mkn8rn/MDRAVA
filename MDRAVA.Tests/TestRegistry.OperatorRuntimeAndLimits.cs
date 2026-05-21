@@ -1,0 +1,51 @@
+namespace MDRAVA.Tests;
+
+internal static partial class TestRegistry
+{
+    private static TestCase[] OperatorRuntimeAndLimits() =>
+    [
+    Test("Recent diagnostics store is bounded", Sync(ObservabilityTests.RecentDiagnosticsStoreIsBounded), TestTaxonomy.Limits, TestTaxonomy.Metrics),
+    Test("Diagnostics controller honors safe limit", Sync(ObservabilityTests.DiagnosticsControllerHonorsSafeLimit), TestTaxonomy.Limits, TestTaxonomy.Metrics),
+    Test("Diagnostics event omits bodies and secrets", Sync(ObservabilityTests.DiagnosticsEventDoesNotCarryBodiesOrSecrets), TestTaxonomy.Metrics),
+    Test("Access log persistence writes redacted JSON line", Sync(LogPersistenceTests.AccessLogPersistenceWritesRedactedJsonLine), TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),
+    Test("Access log persistence honors access log disable", Sync(LogPersistenceTests.AccessLogPersistenceHonorsAccessLogDisable), TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),
+    Test("Admin audit persistence writes failed auth without secrets", LogPersistenceTests.AdminAuditPersistenceWritesFailedAuthWithoutSecrets, TestTaxonomy.Admin, TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),
+    Test("Log persistence creates logs directory", Sync(LogPersistenceTests.LogPersistenceCreatesLogsDirectory), TestTaxonomy.Config, TestTaxonomy.Metrics),
+    Test("Log persistence rotates and bounds files", Sync(LogPersistenceTests.LogPersistenceRotatesAndBoundsFiles), TestTaxonomy.Limits, TestTaxonomy.Metrics),
+    Test("Log persistence truncates long fields", Sync(LogPersistenceTests.LogPersistenceTruncatesLongFields), TestTaxonomy.Limits, TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),
+    Test("Log persistence write failure does not crash", Sync(LogPersistenceTests.LogPersistenceWriteFailureDoesNotCrash), TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),
+    Test("Log persistence status reports enabled settings", Sync(LogPersistenceTests.LogPersistenceStatusReportsEnabledSettings), TestTaxonomy.Config, TestTaxonomy.Metrics),
+    Test("Log persistence status reports disabled settings", Sync(LogPersistenceTests.LogPersistenceStatusReportsDisabledSettings), TestTaxonomy.Config, TestTaxonomy.Metrics),
+    Test("Log persistence status records last write failure without secrets", Sync(LogPersistenceTests.LogPersistenceStatusRecordsLastWriteFailureWithoutSecrets), TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),
+    Test("Status controller includes log persistence health without secrets", Sync(LogPersistenceTests.StatusControllerIncludesLogPersistenceHealthWithoutSecrets), TestTaxonomy.Admin, TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),
+    Test("Status readiness reports healthy for active snapshot", Sync(OperatorStatusTests.StatusReadinessReportsHealthyForActiveSnapshot), TestTaxonomy.Admin, TestTaxonomy.Config, TestTaxonomy.Caching, TestTaxonomy.Metrics),
+    Test("Status readiness reports log persistence failure as degraded", Sync(OperatorStatusTests.StatusReadinessReportsLogPersistenceFailureAsDegraded), TestTaxonomy.Admin, TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),
+    Test("Status readiness reports no active listener as not ready", Sync(OperatorStatusTests.StatusReadinessReportsNoActiveListenerAsNotReady), TestTaxonomy.Admin, TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
+    Test("Status readiness reports failed listener reload without losing active config", Sync(OperatorStatusTests.StatusReadinessReportsFailedListenerReloadWithoutLosingActiveConfig), TestTaxonomy.Admin, TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
+    Test("Status readiness summarizes unhealthy upstreams", Sync(OperatorStatusTests.StatusReadinessSummarizesUnhealthyUpstreams), TestTaxonomy.Admin, TestTaxonomy.HealthChecks, TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),
+    Test("Status readiness summarizes open circuits", Sync(OperatorStatusTests.StatusReadinessSummarizesOpenCircuits), TestTaxonomy.Admin, TestTaxonomy.RetryCircuit, TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),
+    Test("Status subsystems keep unsupported HTTP/3 features explicit", Sync(OperatorStatusTests.StatusSubsystemsKeepUnsupportedHttp3FeaturesExplicit), TestTaxonomy.Admin, TestTaxonomy.Http3, TestTaxonomy.SecurityNegativePaths),
+    Test("Status readiness reports certificate issue summary without secrets", Sync(OperatorStatusTests.StatusReadinessReportsCertificateIssueSummaryWithoutSecrets), TestTaxonomy.Admin, TestTaxonomy.Config, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
+    Test("Status readiness reports ACME last issue without raw error summary", Sync(OperatorStatusTests.StatusReadinessReportsAcmeLastIssueWithoutRawErrorSummary), TestTaxonomy.Admin, TestTaxonomy.Config, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
+    Test("Status readiness reports runtime preflight warnings without secrets", Sync(OperatorStatusTests.StatusReadinessReportsRuntimePreflightWarningsWithoutSecrets), TestTaxonomy.Admin, TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
+    Test("Backup manifest classifies data directory without file contents or secrets", Sync(BackupRestoreTests.BackupManifestClassifiesDataDirectoryWithoutFileContentsOrSecrets), TestTaxonomy.Admin, TestTaxonomy.Config, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
+    Test("Backup manifest reports missing directories with bounded warnings", Sync(BackupRestoreTests.BackupManifestReportsMissingDirectoriesWithBoundedWarnings), TestTaxonomy.Admin, TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
+    Test("Backup path safety rejects traversal outside data directory", Sync(BackupRestoreTests.BackupPathSafetyRejectsTraversalOutsideDataDirectory), TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
+    Test("Restore validation catches invalid config without creating bootstrap files", BackupRestoreTests.RestoreValidationCatchesInvalidConfigWithoutCreatingBootstrapFiles, TestTaxonomy.Admin, TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
+    Test("Restore validation catches missing referenced certificate material", BackupRestoreTests.RestoreValidationCatchesMissingReferencedCertificateMaterial, TestTaxonomy.Admin, TestTaxonomy.Config, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
+    Test("Restore validation preserves existing active runtime state", BackupRestoreTests.RestoreValidationPreservesExistingActiveRuntimeState, TestTaxonomy.Admin, TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
+    Test("Restore validation succeeds with bootstrap layout", BackupRestoreTests.RestoreValidationSucceedsWithBootstrapLayout, TestTaxonomy.Admin, TestTaxonomy.Config),
+    Test("Runtime preflight creates owned directories safely", Sync(RuntimePreflightTests.RuntimePreflightCreatesOwnedDirectoriesSafely), TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
+    Test("Runtime preflight reports unwritable directory safely", Sync(RuntimePreflightTests.RuntimePreflightReportsUnwritableDirectorySafely), TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
+    Test("Runtime preflight rejects unsafe child path", Sync(RuntimePreflightTests.RuntimePreflightRejectsUnsafeChildPath), TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
+    Test("Runtime preflight inspect does not create missing directories", Sync(RuntimePreflightTests.RuntimePreflightInspectDoesNotCreateMissingDirectories), TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
+    Test("Admission controller enforces client limit", Sync(HardeningTests.AdmissionControllerEnforcesClientLimit), TestTaxonomy.Limits),
+    Test("Admission lease disposal releases client slot", Sync(HardeningTests.AdmissionLeaseDisposalReleasesClientSlot), TestTaxonomy.Limits),
+    Test("Admission controller enforces TLS handshake limit", Sync(HardeningTests.AdmissionControllerEnforcesTlsHandshakeLimit), TestTaxonomy.Tls, TestTaxonomy.Limits),
+    Test("Rate limiter enforces request limit and refill", Sync(HardeningTests.RateLimiterEnforcesRequestLimitAndRefills), TestTaxonomy.Limits),
+    Test("Concurrent rate limiter boundary allows only configured limit", Sync(HardeningTests.ConcurrentRateLimiterBoundaryAllowsOnlyConfiguredLimit), TestTaxonomy.Limits),
+    Test("Rate limiter enforces upgrade limit", Sync(HardeningTests.RateLimiterEnforcesUpgradeLimit), TestTaxonomy.Limits),
+    Test("Rate limiter cleans stale entries", Sync(HardeningTests.RateLimiterCleansStaleEntries), TestTaxonomy.Limits),
+    Test("Shutdown coordinator exposes grace deadline", Sync(HardeningTests.ShutdownCoordinatorExposesGraceDeadlineAndCancels), TestTaxonomy.Limits)
+    ];
+}

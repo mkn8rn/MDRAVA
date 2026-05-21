@@ -2733,110 +2733,33 @@ internal static class ClientHttp3Tests
             """);
     }
 
-    private static async Task<ProxyListenerStatus> WaitForListenerAsync(
+    private static Task<ProxyListenerStatus> WaitForListenerAsync(
         ProxyRuntimeState runtimeState,
         string name,
         string kind,
         ProxyListenerState state,
         CancellationToken cancellationToken)
     {
-        var observed = "";
-        while (true)
-        {
-            var snapshot = runtimeState.Snapshot();
-            observed = string.Join(
-                ", ",
-                snapshot.Listeners.Select(static listener =>
-                    $"{listener.Name}/{listener.Kind}/{listener.State}/{listener.LastError ?? "no-error"}"));
-            var listener = snapshot.Listeners.FirstOrDefault(candidate =>
-                string.Equals(candidate.Name, name, StringComparison.OrdinalIgnoreCase)
-                && string.Equals(candidate.Kind, kind, StringComparison.OrdinalIgnoreCase)
-                && candidate.State == state);
-            if (listener is not null)
-            {
-                return listener;
-            }
-
-            try
-            {
-                await Task.Delay(25, cancellationToken);
-            }
-            catch (OperationCanceledException exception) when (cancellationToken.IsCancellationRequested)
-            {
-                throw new TimeoutException(
-                    $"Timed out waiting for listener {name}/{kind}/{state}. Observed listeners: {observed}",
-                    exception);
-            }
-        }
+        return TestWaiters.WaitForListenerAsync(runtimeState, name, kind, state, cancellationToken);
     }
 
-    private static async Task WaitForHttp3StreamsToDrainAsync(ProxyMetrics metrics, CancellationToken cancellationToken)
+    private static Task WaitForHttp3StreamsToDrainAsync(ProxyMetrics metrics, CancellationToken cancellationToken)
     {
-        while (metrics.Snapshot().ActiveHttp3Streams != 0)
-        {
-            await Task.Delay(10, cancellationToken);
-        }
+        return TestWaiters.WaitForHttp3StreamsToDrainAsync(metrics, cancellationToken);
     }
 
-    private static async Task WaitForNoListenerAsync(
+    private static Task WaitForNoListenerAsync(
         ProxyRuntimeState runtimeState,
         string name,
         string kind,
         CancellationToken cancellationToken)
     {
-        while (true)
-        {
-            if (!runtimeState.Snapshot().Listeners.Any(candidate =>
-                    string.Equals(candidate.Name, name, StringComparison.OrdinalIgnoreCase)
-                    && string.Equals(candidate.Kind, kind, StringComparison.OrdinalIgnoreCase)))
-            {
-                return;
-            }
-
-            await Task.Delay(25, cancellationToken);
-        }
+        return TestWaiters.WaitForNoListenerAsync(runtimeState, name, kind, cancellationToken);
     }
 
-    private static int GetFreeTcpUdpPort()
-    {
-        for (var attempt = 0; attempt < 1000; attempt++)
-        {
-            var listener = new TcpListener(IPAddress.Loopback, 0);
-            listener.Start();
-            var port = ((IPEndPoint)listener.LocalEndpoint).Port;
-            Socket? udp = null;
-            try
-            {
-                udp = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-                udp.Bind(new IPEndPoint(IPAddress.Loopback, port));
-                return port;
-            }
-            catch (SocketException)
-            {
-            }
-            finally
-            {
-                udp?.Dispose();
-                listener.Stop();
-            }
-        }
+    private static int GetFreeTcpUdpPort() => TestPortAllocator.GetFreeTcpUdpPort();
 
-        throw new InvalidOperationException("Could not find a free TCP/UDP port pair.");
-    }
-
-    private static int GetFreeTcpPort()
-    {
-        var listener = new TcpListener(IPAddress.Loopback, 0);
-        listener.Start();
-        try
-        {
-            return ((IPEndPoint)listener.LocalEndpoint).Port;
-        }
-        finally
-        {
-            listener.Stop();
-        }
-    }
+    private static int GetFreeTcpPort() => TestPortAllocator.GetFreeTcpPort();
 
     private static string HeaderValue(IReadOnlyList<Http1HeaderField> headers, string name)
     {
