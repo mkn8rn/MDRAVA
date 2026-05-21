@@ -60,11 +60,11 @@ public sealed class ProxyRuntimePreflightService
         checks.Add(Check("certificates_directory", _dataDirectoryProvider.GetCertificatesDirectory(), "certs", critical: false, createMissingOwnedDirectories));
         checks.Add(Check("state_directory", _dataDirectoryProvider.GetStateDirectory(), "state", critical: false, createMissingOwnedDirectories));
 
-        var failed = checks.Any(static check => string.Equals(check.Severity, "error", StringComparison.OrdinalIgnoreCase));
-        var degraded = checks.Any(static check => string.Equals(check.Severity, "warning", StringComparison.OrdinalIgnoreCase));
-        var state = failed ? "failed" : degraded ? "degraded" : "healthy";
+        var failed = checks.Any(static check => string.Equals(check.Severity, ProxyStatusText.Error, StringComparison.OrdinalIgnoreCase));
+        var degraded = checks.Any(static check => string.Equals(check.Severity, ProxyStatusText.Warning, StringComparison.OrdinalIgnoreCase));
+        var state = failed ? ProxyStatusText.Failed : degraded ? ProxyStatusText.Degraded : ProxyStatusText.Healthy;
         var reasons = checks
-            .Where(static check => !string.Equals(check.Reason, "ok", StringComparison.OrdinalIgnoreCase))
+            .Where(static check => !string.Equals(check.Reason, ProxyStatusText.Ok, StringComparison.OrdinalIgnoreCase))
             .Select(static check => check.Reason)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Take(MaxReasons)
@@ -88,15 +88,15 @@ public sealed class ProxyRuntimePreflightService
                     Created: false,
                     CanRead: false,
                     CanWrite: false,
-                    critical ? "error" : "warning",
+                    critical ? ProxyStatusText.Error : ProxyStatusText.Warning,
                     "unsafe_path");
             }
 
             var result = _directoryProbe.Probe(path, createMissing);
             var reason = Reason(result);
-            var severity = string.Equals(reason, "ok", StringComparison.OrdinalIgnoreCase)
-                ? "info"
-                : critical ? "error" : "warning";
+            var severity = string.Equals(reason, ProxyStatusText.Ok, StringComparison.OrdinalIgnoreCase)
+                ? ProxyStatusText.Info
+                : critical ? ProxyStatusText.Error : ProxyStatusText.Warning;
             return new ProxyRuntimePreflightCheck(
                 name,
                 name == "data_directory" ? "." : relativePath,
@@ -136,6 +136,6 @@ public sealed class ProxyRuntimePreflightService
             return "directory_not_writable";
         }
 
-        return "ok";
+        return ProxyStatusText.Ok;
     }
 }

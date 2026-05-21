@@ -7,8 +7,8 @@ public sealed record ProxyReadinessStatus(
     int? ConfigGeneration)
 {
     public static ProxyReadinessStatus Unknown { get; } = new(
-        "unknown",
-        ["not_available"],
+        ProxyStatusText.Unknown,
+        [ProxyStatusText.NotAvailable],
         DateTimeOffset.UnixEpoch,
         null);
 }

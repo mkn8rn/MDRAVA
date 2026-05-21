@@ -6,7 +6,7 @@ public sealed record ProxyRuntimePreflightStatus(
     IReadOnlyList<string> Reasons,
     IReadOnlyList<ProxyRuntimePreflightCheck> Checks)
 {
-    public static ProxyRuntimePreflightStatus Unknown { get; } = new("unknown", null, [], []);
+    public static ProxyRuntimePreflightStatus Unknown { get; } = new(ProxyStatusText.Unknown, null, [], []);
 }
 
 public sealed record ProxyRuntimePreflightCheck(

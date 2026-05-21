@@ -144,12 +144,12 @@ internal static class BackupRestoreTests
         AssertEx.True(File.Exists(Path.Combine(temp.Path, "config", "sites", "example.site.yaml")));
     }
 
-    private static ProxyBackupReadinessService CreateService(
+    private static ProxyBackupService CreateService(
         string dataDirectory,
         ProxyConfigurationStore? store = null,
         ProxyConfigurationLoader? loader = null)
     {
-        return new ProxyBackupReadinessService(
+        return new ProxyBackupService(
             Provider(dataDirectory),
             loader ?? CreateLoader(dataDirectory),
             store ?? new ProxyConfigurationStore());

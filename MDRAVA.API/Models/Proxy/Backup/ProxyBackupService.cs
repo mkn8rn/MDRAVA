@@ -4,7 +4,7 @@ using MDRAVA.API.Proxy.Configuration.Storage;
 
 namespace MDRAVA.API.Proxy.Backup;
 
-public sealed class ProxyBackupReadinessService
+public sealed class ProxyBackupService
 {
     private const int MaxEntries = 256;
     private const int MaxWarnings = 64;
@@ -18,7 +18,7 @@ public sealed class ProxyBackupReadinessService
     private readonly IProxyConfigurationLoader _configurationLoader;
     private readonly IProxyConfigurationStore _configurationStore;
 
-    public ProxyBackupReadinessService(
+    public ProxyBackupService(
         IMdravaDataDirectoryProvider dataDirectoryProvider,
         IProxyConfigurationLoader configurationLoader,
         IProxyConfigurationStore configurationStore)
@@ -97,7 +97,7 @@ public sealed class ProxyBackupReadinessService
         List<ProxyRestoreValidationFinding> errors = [];
         List<ProxyRestoreValidationFinding> warnings = manifest.Warnings
             .Select(static warning => new ProxyRestoreValidationFinding(
-                "warning",
+                ProxyStatusText.Warning,
                 warning.Code,
                 warning.Message,
                 warning.RelativePath))
@@ -108,7 +108,7 @@ public sealed class ProxyBackupReadinessService
             && string.Equals(directory.Classification, MustBackup, StringComparison.OrdinalIgnoreCase)))
         {
             errors.Add(new ProxyRestoreValidationFinding(
-                "error",
+                ProxyStatusText.Error,
                 "required_directory_missing",
                 "A required restore directory is missing.",
                 directory.RelativePath));
@@ -123,7 +123,7 @@ public sealed class ProxyBackupReadinessService
         foreach (var error in loadResult.Errors.Except(loadResult.FileErrors.Select(static fileError => fileError.Message)))
         {
             errors.Add(new ProxyRestoreValidationFinding(
-                "error",
+                ProxyStatusText.Error,
                 ClassifyConfigErrorCode(error),
                 ClassifyConfigErrorMessage(error),
                 null));
@@ -322,7 +322,7 @@ public sealed class ProxyBackupReadinessService
     private static ProxyRestoreValidationFinding ClassifyConfigError(string root, ProxyConfigurationFileError fileError)
     {
         return new ProxyRestoreValidationFinding(
-            "error",
+            ProxyStatusText.Error,
             ClassifyConfigErrorCode(fileError.Message),
             ClassifyConfigErrorMessage(fileError.Message),
             SafeRelativeOrNull(root, fileError.Path));

@@ -111,22 +111,22 @@ public sealed class ProxyPersistentLogWriter
             lastFailure = _lastWriteFailure;
         }
 
-        var state = "healthy";
-        var reason = "ready";
+        var state = ProxyStatusText.Healthy;
+        var reason = ProxyStatusText.Ready;
         if (!hasSnapshot)
         {
-            state = "unknown";
-            reason = "no_active_config";
+            state = ProxyStatusText.Unknown;
+            reason = ProxyStatusText.NoActiveConfig;
         }
         else if (!options.AccessLogEnabled && !options.AdminAuditEnabled)
         {
-            state = "disabled";
-            reason = "disabled";
+            state = ProxyStatusText.Disabled;
+            reason = ProxyStatusText.Disabled;
         }
         else if (lastFailure is not null && (lastSuccess is null || lastFailure.TimestampUtc >= lastSuccess))
         {
-            state = "degraded";
-            reason = "last_write_failed";
+            state = ProxyStatusText.Degraded;
+            reason = ProxyStatusText.LastWriteFailed;
         }
 
         return new ProxyLogPersistenceStatus(

@@ -21,7 +21,7 @@ public sealed class ProxyConfigurationStartupService : IHostedService
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         var preflight = _preflight.RunStartupChecks();
-        if (string.Equals(preflight.State, "failed", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(preflight.State, ProxyStatusText.Failed, StringComparison.OrdinalIgnoreCase))
         {
             var message = "MDRAVA runtime preflight failed: "
                 + string.Join(", ", preflight.Reasons);
@@ -29,7 +29,7 @@ public sealed class ProxyConfigurationStartupService : IHostedService
             throw new InvalidOperationException(message);
         }
 
-        if (string.Equals(preflight.State, "degraded", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(preflight.State, ProxyStatusText.Degraded, StringComparison.OrdinalIgnoreCase))
         {
             _logger.LogWarning(
                 "MDRAVA runtime preflight completed with warnings: {Reasons}",

@@ -36,7 +36,7 @@ public sealed record ProxyConfigSubsystemSummary(
     bool? LastListenerReloadSucceeded,
     string? LastListenerReloadReason)
 {
-    public static ProxyConfigSubsystemSummary Unknown { get; } = new(false, null, null, null, "not_available");
+    public static ProxyConfigSubsystemSummary Unknown { get; } = new(false, null, null, null, ProxyStatusText.NotAvailable);
 }
 
 public sealed record ProxyListenerSubsystemSummary(
@@ -139,7 +139,7 @@ public sealed record ProxyLogSubsystemSummary(
     string State,
     string Reason)
 {
-    public static ProxyLogSubsystemSummary Unknown { get; } = new(false, false, "unknown", "not_available");
+    public static ProxyLogSubsystemSummary Unknown { get; } = new(false, false, ProxyStatusText.Unknown, ProxyStatusText.NotAvailable);
 }
 
 public sealed record ProxyShutdownSubsystemSummary(

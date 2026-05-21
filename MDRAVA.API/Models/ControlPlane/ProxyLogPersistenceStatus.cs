@@ -17,8 +17,8 @@ public sealed record ProxyLogPersistenceStatus(
         LogDirectory: null,
         MaxFileBytes: 0,
         MaxFiles: 0,
-        "unknown",
-        "not_available",
+        ProxyStatusText.Unknown,
+        ProxyStatusText.NotAvailable,
         LastSuccessfulWriteAtUtc: null,
         LastWriteFailure: null);
 }

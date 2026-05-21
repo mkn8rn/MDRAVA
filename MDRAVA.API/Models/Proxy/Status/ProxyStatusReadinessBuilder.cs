@@ -285,11 +285,11 @@ public static class ProxyStatusReadinessBuilder
         return value?.Trim().ToLowerInvariant() switch
         {
             "attempting" => "attempting",
-            "disabled" => "disabled",
-            "failed" => "failed",
+            "disabled" => ProxyStatusText.Disabled,
+            "failed" => ProxyStatusText.Failed,
             "not-due" => "not_due",
             "succeeded" => "succeeded",
-            _ => "unknown"
+            _ => ProxyStatusText.Unknown
         };
     }
 
@@ -355,16 +355,16 @@ public static class ProxyStatusReadinessBuilder
             degradedReasons.Add("last_listener_reload_failed");
         }
 
-        if (string.Equals(logPersistence.State, "degraded", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(logPersistence.State, ProxyStatusText.Degraded, StringComparison.OrdinalIgnoreCase))
         {
             degradedReasons.Add("log_persistence_degraded");
         }
 
-        if (string.Equals(runtimePreflight.State, "failed", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(runtimePreflight.State, ProxyStatusText.Failed, StringComparison.OrdinalIgnoreCase))
         {
             notReadyReasons.Add("runtime_preflight_failed");
         }
-        else if (string.Equals(runtimePreflight.State, "degraded", StringComparison.OrdinalIgnoreCase))
+        else if (string.Equals(runtimePreflight.State, ProxyStatusText.Degraded, StringComparison.OrdinalIgnoreCase))
         {
             degradedReasons.Add("runtime_preflight_degraded");
         }
@@ -415,7 +415,7 @@ public static class ProxyStatusReadinessBuilder
             degradedReasons.Add("http3_not_ready");
         }
 
-        var state = notReadyReasons.Count > 0 ? "not_ready" : degradedReasons.Count > 0 ? "degraded" : "healthy";
+        var state = notReadyReasons.Count > 0 ? ProxyStatusText.NotReady : degradedReasons.Count > 0 ? ProxyStatusText.Degraded : ProxyStatusText.Healthy;
         var reasons = notReadyReasons.Count > 0 ? notReadyReasons : degradedReasons;
         return new ProxyReadinessStatus(
             state,
