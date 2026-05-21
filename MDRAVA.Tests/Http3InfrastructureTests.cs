@@ -52,31 +52,148 @@ internal static class Http3InfrastructureTests
 
     public static void ListenerProtocolConfigParsingPreservesCompatibility()
     {
-        var cases = new (string Text, RuntimeListenerProtocols Protocols)[]
+        var cases = new (string Text, RuntimeListenerProtocols Protocols, string CanonicalText, bool StableAlias, bool LegacyAlias)[]
         {
-            ("http1", RuntimeListenerProtocols.Http1),
-            ("http2", RuntimeListenerProtocols.Http2),
-            ("http1AndHttp2", RuntimeListenerProtocols.Http1AndHttp2),
-            ("http3Preview", RuntimeListenerProtocols.Http3Preview),
-            ("http1AndHttp3Preview", RuntimeListenerProtocols.Http1AndHttp3Preview),
-            ("http2AndHttp3Preview", RuntimeListenerProtocols.Http2AndHttp3Preview),
-            ("http1AndHttp2AndHttp3Preview", RuntimeListenerProtocols.Http1AndHttp2AndHttp3Preview)
+            ("http1", RuntimeListenerProtocols.Http1, "http1", false, false),
+            ("http2", RuntimeListenerProtocols.Http2, "http2", false, false),
+            ("http1AndHttp2", RuntimeListenerProtocols.Http1AndHttp2, "http1AndHttp2", false, false),
+            ("http3", RuntimeListenerProtocols.Http3Preview, "http3Preview", true, false),
+            ("http1AndHttp3", RuntimeListenerProtocols.Http1AndHttp3Preview, "http1AndHttp3Preview", true, false),
+            ("http2AndHttp3", RuntimeListenerProtocols.Http2AndHttp3Preview, "http2AndHttp3Preview", true, false),
+            ("http1AndHttp2AndHttp3", RuntimeListenerProtocols.Http1AndHttp2AndHttp3Preview, "http1AndHttp2AndHttp3Preview", true, false),
+            ("http3Preview", RuntimeListenerProtocols.Http3Preview, "http3Preview", false, true),
+            ("http1AndHttp3Preview", RuntimeListenerProtocols.Http1AndHttp3Preview, "http1AndHttp3Preview", false, true),
+            ("http2AndHttp3Preview", RuntimeListenerProtocols.Http2AndHttp3Preview, "http2AndHttp3Preview", false, true),
+            ("http1AndHttp2AndHttp3Preview", RuntimeListenerProtocols.Http1AndHttp2AndHttp3Preview, "http1AndHttp2AndHttp3Preview", false, true)
         };
 
         foreach (var entry in cases)
         {
             var parsed = RuntimeListenerProtocolExtensions.TryParseConfigText(entry.Text, out var protocols);
+            var compatibilityParsed = RuntimeHttp3Compatibility.TryParseProtocols(
+                entry.Text,
+                out var compatibilityProtocols,
+                out var stableAlias,
+                out var legacyAlias);
 
             AssertEx.True(parsed, entry.Text);
+            AssertEx.True(compatibilityParsed, entry.Text);
             AssertEx.Equal(entry.Protocols, protocols);
-            AssertEx.Equal(entry.Text, protocols.ToConfigText());
+            AssertEx.Equal(entry.Protocols, compatibilityProtocols);
+            AssertEx.Equal(entry.StableAlias, stableAlias);
+            AssertEx.Equal(entry.LegacyAlias, legacyAlias);
+            AssertEx.Equal(entry.CanonicalText, protocols.ToConfigText());
         }
 
-        AssertEx.False(RuntimeListenerProtocolExtensions.TryParseConfigText("http3", out _));
         AssertEx.True(RuntimeListenerProtocols.Http1AndHttp2AndHttp3Preview.HasHttp3());
         AssertEx.Equal(
             RuntimeListenerProtocolExtensions.SupportedConfigValues.Count,
             cases.Length);
+    }
+
+    public static void Http3CompatibilityNormalizerCentralizesEnablementSemantics()
+    {
+        var stable = RuntimeHttp3Compatibility.From(Http3Listener("stable", "http1AndHttp3", experimental: false));
+        var legacy = RuntimeHttp3Compatibility.From(Http3Listener("legacy", "http1AndHttp3Preview", experimental: true));
+        var beta = new ListenerOptions
+        {
+            Name = "beta",
+            Address = "127.0.0.1",
+            Port = 8443,
+            Transport = "https",
+            Protocols = "http3Preview",
+            ExperimentalHttp3 = true,
+            Http3Enablement = "beta",
+            Http3MaxBufferedRequestBodyBytes = 4096,
+            DefaultCertificateId = "default"
+        };
+        var betaCompatibility = RuntimeHttp3Compatibility.From(beta);
+
+        AssertEx.True(stable.ProtocolsValid);
+        AssertEx.True(stable.StableProtocolAliasUsed);
+        AssertEx.False(stable.LegacyAliasUsed);
+        AssertEx.Equal(RuntimeHttp3Enablement.Default, stable.EffectiveEnablement);
+        AssertEx.True(stable.ExplicitHttp3Requested);
+        AssertEx.True(legacy.LegacyAliasUsed);
+        AssertEx.Equal(RuntimeHttp3Enablement.Preview, legacy.EffectiveEnablement);
+        AssertEx.True(betaCompatibility.LegacyEnablementAliasUsed);
+        AssertEx.True(betaCompatibility.LegacyBufferedRequestBodyLimitConfigured);
+        AssertEx.Equal(RuntimeHttp3Enablement.Beta, betaCompatibility.EffectiveEnablement);
+    }
+
+    public static void StableHttp3AliasesValidateMapAndAggregateConsistently()
+    {
+        var stableListener = Http3Listener("main", "http1AndHttp2AndHttp3", experimental: false);
+        var validation = new ProxyOptionsValidator().Validate(null, ValidProxyOptions(stableListener));
+        var snapshot = ProxyConfigurationMapper.ToRuntimeSnapshot(
+            ValidProxyOptions(stableListener),
+            new ProxyOperationalOptions(),
+            new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),
+            1,
+            DateTimeOffset.UtcNow,
+            "memory",
+            [],
+            Discovery());
+
+        var aggregated = SiteOptionsAggregator.ToProxyOptions(
+            [
+                new SiteConfigurationSource(
+                    "stable",
+                    new SiteOptions
+                    {
+                        Name = "stable",
+                        Host = "stable.test",
+                        Upstreams =
+                        [
+                            new UpstreamOptions
+                            {
+                                Name = "local",
+                                Address = "127.0.0.1",
+                                Port = 5000
+                            }
+                        ],
+                        Listeners =
+                        [
+                            stableListener
+                        ]
+                    }),
+                new SiteConfigurationSource(
+                    "stable2",
+                    new SiteOptions
+                    {
+                        Name = "stable2",
+                        Host = "stable2.test",
+                        Upstreams =
+                        [
+                            new UpstreamOptions
+                            {
+                                Name = "local",
+                                Address = "127.0.0.1",
+                                Port = 5001
+                            }
+                        ],
+                        Listeners =
+                        [
+                            new ListenerOptions
+                            {
+                                Name = "main",
+                                Address = "127.0.0.1",
+                                Port = 8443,
+                                Transport = "https",
+                                Protocols = "http1AndHttp2",
+                                DefaultCertificateId = "default"
+                            }
+                        ]
+                    })
+            ]);
+        var aggregateValidation = new ProxyOptionsValidator().Validate(null, aggregated);
+
+        AssertEx.False(validation.Failed, string.Join("; ", validation.Failures ?? []));
+        AssertEx.Equal(RuntimeListenerProtocols.Http1AndHttp2AndHttp3Preview, snapshot.Listeners[0].Protocols);
+        AssertEx.Equal("default", snapshot.Listeners[0].Http3.EnablementLevel);
+        AssertEx.True(snapshot.Listeners[0].Http3.EnabledForTraffic);
+        AssertEx.False(aggregateValidation.Failed, string.Join("; ", aggregateValidation.Failures ?? []));
+        AssertEx.Equal("http1AndHttp2AndHttp3Preview", aggregated.Listeners[0].Protocols);
     }
 
     public static void Http3DefaultEnabledForEligibleTlsListener()

@@ -16,35 +16,39 @@ public static class ProxyConfigurationMapper
         ProxyConfigurationDiscovery discovery)
     {
         var listeners = options.Listeners
-            .Select(static listener => new RuntimeListener(
-                listener.Name,
-                listener.Address,
-                listener.Port,
-                listener.Enabled,
-                ParseTransport(listener.Transport),
-                string.IsNullOrWhiteSpace(listener.DefaultCertificateId) ? null : listener.DefaultCertificateId,
-                listener.SniCertificates
-                    .Select(static binding => new RuntimeSniCertificateBinding(
-                        binding.HostName,
-                        binding.CertificateId))
-                    .ToArray(),
-                listener.Backlog,
-                listener.MaxRequestHeadBytes,
-                listener.MaxResponseHeadBytes,
-                listener.MaxChunkLineBytes,
-                listener.ForwardingBufferBytes)
+            .Select(static listener =>
             {
-                Protocols = RuntimeListenerProtocolExtensions.ParseConfigTextOrDefault(listener.Protocols),
-                ExperimentalHttp3 = listener.ExperimentalHttp3,
-                Http3Enablement = ResolveHttp3Enablement(listener),
-                Http3AltSvc = new RuntimeHttp3AltSvcOptions(
-                    listener.Http3AltSvcEnabled,
-                    listener.Http3AltSvcMaxAgeSeconds),
-                Http3MaxBufferedRequestBodyBytes = listener.Http3MaxBufferedRequestBodyBytes,
-                Http2Limits = new RuntimeHttp2Limits(
-                    listener.Http2MaxConcurrentStreams,
-                    listener.Http2MaxHeaderListBytes,
-                    listener.Http2MaxFrameSize)
+                var http3Compatibility = RuntimeHttp3Compatibility.From(listener);
+                return new RuntimeListener(
+                    listener.Name,
+                    listener.Address,
+                    listener.Port,
+                    listener.Enabled,
+                    ParseTransport(listener.Transport),
+                    string.IsNullOrWhiteSpace(listener.DefaultCertificateId) ? null : listener.DefaultCertificateId,
+                    listener.SniCertificates
+                        .Select(static binding => new RuntimeSniCertificateBinding(
+                            binding.HostName,
+                            binding.CertificateId))
+                        .ToArray(),
+                    listener.Backlog,
+                    listener.MaxRequestHeadBytes,
+                    listener.MaxResponseHeadBytes,
+                    listener.MaxChunkLineBytes,
+                    listener.ForwardingBufferBytes)
+                {
+                    Protocols = http3Compatibility.Protocols,
+                    ExperimentalHttp3 = listener.ExperimentalHttp3,
+                    Http3Enablement = http3Compatibility.EffectiveEnablement,
+                    Http3AltSvc = new RuntimeHttp3AltSvcOptions(
+                        listener.Http3AltSvcEnabled,
+                        listener.Http3AltSvcMaxAgeSeconds),
+                    Http3MaxBufferedRequestBodyBytes = listener.Http3MaxBufferedRequestBodyBytes,
+                    Http2Limits = new RuntimeHttp2Limits(
+                        listener.Http2MaxConcurrentStreams,
+                        listener.Http2MaxHeaderListBytes,
+                        listener.Http2MaxFrameSize)
+                };
             })
             .ToArray();
 
@@ -372,23 +376,4 @@ public static class ProxyConfigurationMapper
             : RuntimeListenerTransport.Http;
     }
 
-    private static RuntimeHttp3Enablement ResolveHttp3Enablement(ListenerOptions listener)
-    {
-        if (!string.IsNullOrWhiteSpace(listener.Http3Enablement))
-        {
-            return listener.Http3Enablement.Trim().ToLowerInvariant() switch
-            {
-                "default" => RuntimeHttp3Enablement.Default,
-                "disabled" => RuntimeHttp3Enablement.Disabled,
-                "preview" => RuntimeHttp3Enablement.Preview,
-                "beta" => RuntimeHttp3Enablement.Beta,
-                _ => RuntimeHttp3Enablement.Default
-            };
-        }
-
-        return RuntimeListenerProtocolExtensions.ParseConfigTextOrDefault(listener.Protocols).HasHttp3()
-            && listener.ExperimentalHttp3
-            ? RuntimeHttp3Enablement.Preview
-            : RuntimeHttp3Enablement.Default;
-    }
 }

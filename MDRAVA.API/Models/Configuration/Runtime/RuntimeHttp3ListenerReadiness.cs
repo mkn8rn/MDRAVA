@@ -13,10 +13,13 @@ public sealed record RuntimeHttp3ListenerReadiness(
 {
     public static RuntimeHttp3ListenerReadiness From(RuntimeListener listener)
     {
-        var legacyHttp3ProtocolConfigured = listener.Protocols.HasHttp3();
+        var http3ProtocolConfigured = listener.Protocols.HasHttp3();
         var certificateCapable = !string.IsNullOrWhiteSpace(listener.DefaultCertificateId)
             || listener.SniCertificates.Count > 0;
-        var enablement = EffectiveEnablement(listener, legacyHttp3ProtocolConfigured);
+        var enablement = RuntimeHttp3Compatibility.ResolveEffectiveEnablement(
+            listener.Protocols,
+            listener.ExperimentalHttp3,
+            listener.Http3Enablement);
         var configured = enablement != RuntimeHttp3Enablement.Disabled
             && listener.Transport == RuntimeListenerTransport.Https
             && certificateCapable;
@@ -24,7 +27,7 @@ public sealed record RuntimeHttp3ListenerReadiness(
             && enablement != RuntimeHttp3Enablement.Disabled
             && listener.Transport == RuntimeListenerTransport.Https
             && certificateCapable;
-        var reason = DisabledReasonFor(listener, legacyHttp3ProtocolConfigured, configured, certificateCapable, enablement, enabledForTraffic);
+        var reason = DisabledReasonFor(listener, http3ProtocolConfigured, configured, certificateCapable, enablement, enabledForTraffic);
 
         return new RuntimeHttp3ListenerReadiness(
             configured,
@@ -40,7 +43,7 @@ public sealed record RuntimeHttp3ListenerReadiness(
 
     private static string DisabledReasonFor(
         RuntimeListener listener,
-        bool legacyHttp3ProtocolConfigured,
+        bool http3ProtocolConfigured,
         bool configured,
         bool certificateCapable,
         RuntimeHttp3Enablement enablement,
@@ -61,7 +64,7 @@ public sealed record RuntimeHttp3ListenerReadiness(
             return "disabled";
         }
 
-        if (legacyHttp3ProtocolConfigured && !listener.ExperimentalHttp3)
+        if (http3ProtocolConfigured && !listener.ExperimentalHttp3)
         {
             return "experimental_gate_missing";
         }
@@ -77,17 +80,5 @@ public sealed record RuntimeHttp3ListenerReadiness(
         }
 
         return configured ? "configured_but_inactive" : "not_configured";
-    }
-
-    private static RuntimeHttp3Enablement EffectiveEnablement(RuntimeListener listener, bool configured)
-    {
-        return listener.Http3Enablement switch
-        {
-            RuntimeHttp3Enablement.Disabled => RuntimeHttp3Enablement.Disabled,
-            RuntimeHttp3Enablement.Preview or RuntimeHttp3Enablement.Beta => listener.Http3Enablement,
-            _ => configured && listener.ExperimentalHttp3
-                ? RuntimeHttp3Enablement.Preview
-                : RuntimeHttp3Enablement.Default
-        };
     }
 }

@@ -123,28 +123,7 @@ public static class SiteOptionsAggregator
 
     private static string MergeHttp3Enablement(string existing, string next)
     {
-        if (string.Equals(existing, "disabled", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(next, "disabled", StringComparison.OrdinalIgnoreCase))
-        {
-            return "disabled";
-        }
-
-        if (string.Equals(existing, "beta", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(next, "beta", StringComparison.OrdinalIgnoreCase))
-        {
-            return "beta";
-        }
-
-        if (string.Equals(existing, "preview", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(next, "preview", StringComparison.OrdinalIgnoreCase))
-        {
-            return "preview";
-        }
-
-        return string.Equals(existing, "default", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(next, "default", StringComparison.OrdinalIgnoreCase)
-            ? "default"
-            : "";
+        return RuntimeHttp3Compatibility.MergeEnablementConfigText(existing, next);
     }
 
     private static string MergeListenerProtocols(string existing, string next)

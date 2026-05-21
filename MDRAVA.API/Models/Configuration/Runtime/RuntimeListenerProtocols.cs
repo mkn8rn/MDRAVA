@@ -17,16 +17,7 @@ public enum RuntimeListenerProtocols
 
 public static class RuntimeListenerProtocolExtensions
 {
-    public static readonly IReadOnlyList<string> SupportedConfigValues =
-    [
-        "http1",
-        "http2",
-        "http1AndHttp2",
-        "http3Preview",
-        "http1AndHttp3Preview",
-        "http2AndHttp3Preview",
-        "http1AndHttp2AndHttp3Preview"
-    ];
+    public static readonly IReadOnlyList<string> SupportedConfigValues = RuntimeHttp3Compatibility.SupportedProtocolConfigValues;
 
     public static bool HasTcpProtocols(this RuntimeListenerProtocols protocols)
     {
@@ -46,27 +37,12 @@ public static class RuntimeListenerProtocolExtensions
 
     public static bool TryParseConfigText(string? protocols, out RuntimeListenerProtocols parsed)
     {
-        parsed = string.IsNullOrWhiteSpace(protocols)
-            ? RuntimeListenerProtocols.Http1
-            : protocols.Trim().ToLowerInvariant() switch
-            {
-                "http2" => RuntimeListenerProtocols.Http2,
-                "http1andhttp2" => RuntimeListenerProtocols.Http1AndHttp2,
-                "http3preview" => RuntimeListenerProtocols.Http3Preview,
-                "http1andhttp3preview" => RuntimeListenerProtocols.Http1AndHttp3Preview,
-                "http2andhttp3preview" => RuntimeListenerProtocols.Http2AndHttp3Preview,
-                "http1andhttp2andhttp3preview" => RuntimeListenerProtocols.Http1AndHttp2AndHttp3Preview,
-                "http1" => RuntimeListenerProtocols.Http1,
-                _ => RuntimeListenerProtocols.None
-            };
-        return parsed != RuntimeListenerProtocols.None;
+        return RuntimeHttp3Compatibility.TryParseProtocols(protocols, out parsed);
     }
 
     public static RuntimeListenerProtocols ParseConfigTextOrDefault(string? protocols)
     {
-        return TryParseConfigText(protocols, out var parsed)
-            ? parsed
-            : RuntimeListenerProtocols.Http1;
+        return RuntimeHttp3Compatibility.ParseProtocolsOrDefault(protocols);
     }
 
     public static string ToConfigText(this RuntimeListenerProtocols protocols)
