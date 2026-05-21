@@ -18,8 +18,6 @@ public sealed record RuntimeListener(
 
     public RuntimeListenerProtocols Protocols { get; init; } = RuntimeListenerProtocols.Http1;
 
-    public bool ExperimentalHttp3 { get; init; }
-
     public RuntimeHttp3Enablement Http3Enablement { get; init; } = RuntimeHttp3Enablement.Default;
 
     public RuntimeHttp3AltSvcOptions Http3AltSvc { get; init; } = RuntimeHttp3AltSvcOptions.Disabled;
@@ -31,8 +29,6 @@ public sealed record RuntimeListener(
     public bool TcpTrafficEnabled => Protocols.HasTcpProtocols();
 
     public bool Http3ProtocolConfigured => Protocols.HasHttp3();
-
-    public bool Http3PreviewConfigured => Http3ProtocolConfigured;
 
     public RuntimeQuicListenerIdentity? QuicIdentity => Http3.EnabledForTraffic
         ? RuntimeQuicListenerIdentity.From(this)

@@ -773,7 +773,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
         using var ownedAdmission = admissionLease;
         try
         {
-            var http3Connection = new Http3PreviewConnection(
+            var http3Connection = new Http3Connection(
                 connection,
                 snapshot,
                 listener,
@@ -824,7 +824,6 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
         return string.Equals(current.Address, next.Address, StringComparison.OrdinalIgnoreCase)
             && current.Port == next.Port
             && current.Transport == next.Transport
-            && current.ExperimentalHttp3 == next.ExperimentalHttp3
             && current.Http3Enablement == next.Http3Enablement;
     }
 

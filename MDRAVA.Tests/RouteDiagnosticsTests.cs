@@ -111,9 +111,8 @@ internal static class RouteDiagnosticsTests
                     Address = "127.0.0.1",
                     Port = 8443,
                     Transport = "https",
-                    Protocols = "http1AndHttp2AndHttp3Preview",
-                    ExperimentalHttp3 = true,
-                    Http3Enablement = "preview",
+                    Protocols = "http1AndHttp2AndHttp3",
+                    Http3Enablement = "default",
                     DefaultCertificateId = "home-cert"
                 }
             ],
@@ -137,7 +136,7 @@ internal static class RouteDiagnosticsTests
         AssertEx.Equal("api", AssertEx.NotNull(result.Route).Name);
         var listener = AssertEx.NotNull(result.Listener);
         AssertEx.Equal("https", listener.Transport);
-        AssertEx.True(listener.Protocols.Contains("Http3Preview", StringComparison.Ordinal));
+        AssertEx.True(listener.Protocols.Contains("Http3", StringComparison.Ordinal));
     }
 
     public static void DryRunReportsGeneratedRouteActions()

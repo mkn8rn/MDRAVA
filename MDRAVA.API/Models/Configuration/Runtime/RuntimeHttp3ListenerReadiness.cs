@@ -2,7 +2,7 @@ namespace MDRAVA.API.Models.Configuration.Runtime;
 
 public sealed record RuntimeHttp3ListenerReadiness(
     bool Configured,
-    bool ExperimentalGateEnabled,
+    bool DefaultEnabled,
     string EnablementLevel,
     bool EnabledForTraffic,
     string DisabledReason,
@@ -13,13 +13,9 @@ public sealed record RuntimeHttp3ListenerReadiness(
 {
     public static RuntimeHttp3ListenerReadiness From(RuntimeListener listener)
     {
-        var http3ProtocolConfigured = listener.Protocols.HasHttp3();
         var certificateCapable = !string.IsNullOrWhiteSpace(listener.DefaultCertificateId)
             || listener.SniCertificates.Count > 0;
-        var enablement = RuntimeHttp3Compatibility.ResolveEffectiveEnablement(
-            listener.Protocols,
-            listener.ExperimentalHttp3,
-            listener.Http3Enablement);
+        var enablement = RuntimeHttp3Compatibility.ResolveEffectiveEnablement(listener.Http3Enablement);
         var configured = enablement != RuntimeHttp3Enablement.Disabled
             && listener.Transport == RuntimeListenerTransport.Https
             && certificateCapable;
@@ -27,11 +23,11 @@ public sealed record RuntimeHttp3ListenerReadiness(
             && enablement != RuntimeHttp3Enablement.Disabled
             && listener.Transport == RuntimeListenerTransport.Https
             && certificateCapable;
-        var reason = DisabledReasonFor(listener, http3ProtocolConfigured, configured, certificateCapable, enablement, enabledForTraffic);
+        var reason = DisabledReasonFor(listener, configured, certificateCapable, enablement, enabledForTraffic);
 
         return new RuntimeHttp3ListenerReadiness(
             configured,
-            listener.ExperimentalHttp3 || enablement == RuntimeHttp3Enablement.Default,
+            enablement == RuntimeHttp3Enablement.Default,
             enablement.ToConfigText(),
             enabledForTraffic,
             reason,
@@ -43,7 +39,6 @@ public sealed record RuntimeHttp3ListenerReadiness(
 
     private static string DisabledReasonFor(
         RuntimeListener listener,
-        bool http3ProtocolConfigured,
         bool configured,
         bool certificateCapable,
         RuntimeHttp3Enablement enablement,
@@ -53,8 +48,6 @@ public sealed record RuntimeHttp3ListenerReadiness(
         {
             return enablement switch
             {
-                RuntimeHttp3Enablement.Beta => "beta_enabled",
-                RuntimeHttp3Enablement.Preview => "preview_enabled",
                 _ => "default_enabled"
             };
         }
@@ -62,11 +55,6 @@ public sealed record RuntimeHttp3ListenerReadiness(
         if (enablement == RuntimeHttp3Enablement.Disabled)
         {
             return "disabled";
-        }
-
-        if (http3ProtocolConfigured && !listener.ExperimentalHttp3)
-        {
-            return "experimental_gate_missing";
         }
 
         if (listener.Transport != RuntimeListenerTransport.Https)

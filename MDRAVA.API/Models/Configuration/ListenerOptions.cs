@@ -14,8 +14,8 @@ public sealed class ListenerOptions
 
     public string Protocols { get; init; } = "http1";
 
-    // Legacy compatibility gate for older HTTP/3 preview configs.
-    public bool ExperimentalHttp3 { get; init; }
+    // Old configs should fail validation explicitly instead of being ignored.
+    public bool? ExperimentalHttp3 { get; init; }
 
     public string Http3Enablement { get; init; } = "";
 

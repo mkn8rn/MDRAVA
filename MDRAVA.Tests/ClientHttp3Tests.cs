@@ -46,7 +46,6 @@ internal static class ClientHttp3Tests
             1024,
             64 * 1024);
 
-        AssertEx.False(listener.Http3PreviewConfigured);
         AssertEx.True(listener.Http3.Configured);
         AssertEx.True(listener.Http3.EnabledForTraffic);
         AssertEx.Equal("default", listener.Http3.EnablementLevel);
@@ -108,7 +107,7 @@ internal static class ClientHttp3Tests
 
     public static void QuicListenerIdentityIsSeparateFromTcpIdentity()
     {
-        var listener = LegacyHttp3Listener("http1AndHttp2AndHttp3Preview", experimental: true);
+        var listener = TestHttp3Listener("http1AndHttp2AndHttp3");
         var tcp = listener.Identity;
         var quic = AssertEx.NotNull(listener.QuicIdentity);
 
@@ -122,7 +121,7 @@ internal static class ClientHttp3Tests
         using var temp = TemporaryDirectory.Create();
         var port = GetFreeTcpUdpPort();
         WriteCertificateConfig(temp.Path);
-        WriteHttp3Site(temp.Path, port, "http1AndHttp3Preview", staticBody: "unused");
+        WriteHttp3Site(temp.Path, port, "http1AndHttp3", staticBody: "unused");
         using var host = BuildProxyHost(
             temp.Path,
             services => services.AddSingleton<IHttp3QuicListenerFactory, FailingQuicListenerFactory>());
@@ -161,7 +160,6 @@ internal static class ClientHttp3Tests
             port,
             "http1AndHttp2",
             staticBody: "default-h3",
-            experimental: false,
             altSvcMaxAgeSeconds: 60,
             http3EnablementOverride: "default");
         using var host = BuildProxyHost(temp.Path);
@@ -204,7 +202,7 @@ internal static class ClientHttp3Tests
         using var temp = TemporaryDirectory.Create();
         var port = GetFreeTcpUdpPort();
         WriteCertificateConfig(temp.Path);
-        WriteHttp3Site(temp.Path, port, "http1", staticBody: "unused", experimental: false);
+        WriteHttp3Site(temp.Path, port, "http1", staticBody: "unused");
         using var host = BuildProxyHost(temp.Path);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 
@@ -214,11 +212,11 @@ internal static class ClientHttp3Tests
             var runtime = host.Services.GetRequiredService<ProxyRuntimeState>();
             await WaitForListenerAsync(runtime, "main", "tcp", ProxyListenerState.Active, timeout.Token);
 
-            WriteHttp3Site(temp.Path, port, "http1AndHttp3Preview", staticBody: "unused");
+            WriteHttp3Site(temp.Path, port, "http1AndHttp3", staticBody: "unused");
             var add = await host.Services.GetRequiredService<IProxyConfigurationReloadService>().ReloadAsync(timeout.Token);
             await WaitForListenerAsync(runtime, "main", "quic", ProxyListenerState.Active, timeout.Token);
 
-            WriteHttp3Site(temp.Path, port, "http1", staticBody: "unused", experimental: false);
+            WriteHttp3Site(temp.Path, port, "http1", staticBody: "unused");
             var remove = await host.Services.GetRequiredService<IProxyConfigurationReloadService>().ReloadAsync(timeout.Token);
             await WaitForNoListenerAsync(runtime, "main", "quic", timeout.Token);
 
@@ -243,7 +241,7 @@ internal static class ClientHttp3Tests
         using var temp = TemporaryDirectory.Create();
         var port = GetFreeTcpUdpPort();
         WriteCertificateConfig(temp.Path);
-        WriteHttp3Site(temp.Path, port, "http1AndHttp3Preview", staticBody: "live");
+        WriteHttp3Site(temp.Path, port, "http1AndHttp3", staticBody: "live");
         using var host = BuildProxyHost(temp.Path);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 
@@ -276,7 +274,7 @@ internal static class ClientHttp3Tests
         using var temp = TemporaryDirectory.Create();
         var port = GetFreeTcpUdpPort();
         WriteCertificateConfig(temp.Path);
-        WriteHttp3Site(temp.Path, port, "http1AndHttp3Preview", staticBody: "cert-live");
+        WriteHttp3Site(temp.Path, port, "http1AndHttp3", staticBody: "cert-live");
         using var host = BuildProxyHost(temp.Path);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 
@@ -338,7 +336,7 @@ internal static class ClientHttp3Tests
         using var temp = TemporaryDirectory.Create();
         var port = GetFreeTcpUdpPort();
         WriteCertificateConfig(temp.Path);
-        WriteHttp3Site(temp.Path, port, "http1AndHttp3Preview", staticBody: "cert-live");
+        WriteHttp3Site(temp.Path, port, "http1AndHttp3", staticBody: "cert-live");
         using var host = BuildProxyHost(temp.Path);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 
@@ -380,7 +378,7 @@ internal static class ClientHttp3Tests
         }
     }
 
-    public static void StatusAndEffectiveConfigPreserveLegacyHttp3PreviewProjection()
+    public static void StatusAndEffectiveConfigUseCurrentHttp3Projection()
     {
         var snapshot = ProxyConfigurationMapper.ToRuntimeSnapshot(
             new ProxyOptions
@@ -393,8 +391,7 @@ internal static class ClientHttp3Tests
                         Address = "127.0.0.1",
                         Port = 8443,
                         Transport = "https",
-                        Protocols = "http3Preview",
-                        ExperimentalHttp3 = true,
+                        Protocols = "http3",
                         DefaultCertificateId = "default"
                     }
                 ],
@@ -423,21 +420,22 @@ internal static class ClientHttp3Tests
 
         var projection = ProxyConfigurationMapper.ToProjection(snapshot);
 
-        AssertEx.Equal("preview", projection.Http3.Configured);
+        AssertEx.Equal("default", projection.Http3.Configured);
         AssertEx.True(projection.Http3.EnabledForTraffic);
-        AssertEx.Equal("preview_enabled", projection.Http3.DisabledReason);
+        AssertEx.Equal("default_enabled", projection.Http3.DisabledReason);
         AssertEx.False(projection.Http3.DefaultReadinessBlockers.Contains("qpack_dynamic_table_unsupported"));
         AssertEx.False(projection.Http3.DefaultReadinessBlockers.Contains("request_body_buffered_not_streamed"));
         AssertEx.Equal("static_with_zero_dynamic_table", projection.Http3.QpackMode);
         AssertEx.Equal(0, projection.Http3.QpackDynamicTableCapacity);
         AssertEx.Equal(0, projection.Http3.QpackBlockedStreams);
         AssertEx.Equal("streaming", projection.Http3.RequestBodyMode);
-        AssertEx.True(snapshot.Listeners[0].Http3.ExperimentalGateEnabled);
+        AssertEx.True(snapshot.Listeners[0].Http3.DefaultEnabled);
     }
 
-    public static void Http3BetaEnablementIsExplicitlyProjected()
+    public static void Http3LegacyEnablementValuesAreRejected()
     {
-        var snapshot = ProxyConfigurationMapper.ToRuntimeSnapshot(
+        var validation = new ProxyOptionsValidator().Validate(
+            null,
             new ProxyOptions
             {
                 Listeners =
@@ -448,9 +446,9 @@ internal static class ClientHttp3Tests
                         Address = "127.0.0.1",
                         Port = 8443,
                         Transport = "https",
-                        Protocols = "http3Preview",
+                        Protocols = "http3",
                         ExperimentalHttp3 = true,
-                        Http3Enablement = "beta",
+                        Http3Enablement = "preview",
                         DefaultCertificateId = "default"
                     }
                 ],
@@ -464,24 +462,12 @@ internal static class ClientHttp3Tests
                         Action = "staticResponse"
                     }
                 ]
-            },
-            new ProxyOperationalOptions(),
-            new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),
-            1,
-            DateTimeOffset.UtcNow,
-            "memory",
-            [],
-            new ProxyConfigurationDiscovery(
-                new ProxyFilesystemLayout("data", "config", "sites", "logs", "certs", "state", "proxy.json"),
-                [],
-                [],
-                []));
+            });
+        var failures = AssertEx.NotNull(validation.Failures);
 
-        var projection = ProxyConfigurationMapper.ToProjection(snapshot);
-
-        AssertEx.Equal("beta", projection.Http3.EnablementLevel);
-        AssertEx.Equal("beta", snapshot.Listeners[0].Http3.EnablementLevel);
-        AssertEx.Equal("beta_enabled", snapshot.Listeners[0].Http3.DisabledReason);
+        AssertEx.True(validation.Failed);
+        AssertEx.True(failures.Any(static failure => failure.Contains("ExperimentalHttp3 is no longer supported", StringComparison.Ordinal)), string.Join("; ", failures));
+        AssertEx.True(failures.Any(static failure => failure.Contains("Http3Enablement must be", StringComparison.Ordinal)), string.Join("; ", failures));
     }
 
     public static async Task AltSvcIsAbsentWhenHttp3ExplicitlyDisabled()
@@ -494,7 +480,7 @@ internal static class ClientHttp3Tests
         using var temp = TemporaryDirectory.Create();
         var port = GetFreeTcpUdpPort();
         WriteCertificateConfig(temp.Path);
-        WriteHttp3Site(temp.Path, port, "http1", staticBody: "alt-disabled", experimental: false);
+        WriteHttp3Site(temp.Path, port, "http1", staticBody: "alt-disabled");
         using var host = BuildProxyHost(temp.Path);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 
@@ -526,7 +512,7 @@ internal static class ClientHttp3Tests
         WriteHttp3Site(
             temp.Path,
             port,
-            "http1AndHttp3Preview",
+            "http1AndHttp3",
             staticBody: "alt-ready",
             altSvcEnabled: true,
             altSvcMaxAgeSeconds: 60);
@@ -568,7 +554,7 @@ internal static class ClientHttp3Tests
         WriteHttp3Site(
             temp.Path,
             port,
-            "http1AndHttp3Preview",
+            "http1AndHttp3",
             staticBody: "alt-failed",
             altSvcEnabled: true);
         using var host = BuildProxyHost(
@@ -749,7 +735,7 @@ internal static class ClientHttp3Tests
         WriteHttp3Site(
             temp.Path,
             port,
-            "http3Preview",
+            "http3",
             "unused",
             routeJson:
             """
@@ -1442,7 +1428,7 @@ internal static class ClientHttp3Tests
         using var temp = TemporaryDirectory.Create();
         var port = GetFreeTcpUdpPort();
         WriteCertificateConfig(temp.Path);
-        WriteHttp3Site(temp.Path, port, "http3Preview", staticBody: "still-open");
+        WriteHttp3Site(temp.Path, port, "http3", staticBody: "still-open");
         using var host = BuildProxyHost(temp.Path);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         await host.StartAsync(timeout.Token);
@@ -1453,7 +1439,7 @@ internal static class ClientHttp3Tests
         await using (var badStream = await connection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional, timeout.Token))
         {
             using var request = new MemoryStream();
-            Http3PreviewCodec.WriteFrame(request, Http3PreviewCodec.DataFrame, ReadOnlySpan<byte>.Empty);
+            Http3Codec.WriteFrame(request, Http3Codec.DataFrame, ReadOnlySpan<byte>.Empty);
             await badStream.WriteAsync(request.ToArray(), completeWrites: true, timeout.Token);
             var badResponse = DecodeHttp3Response(await ReadToEndAsync(badStream, timeout.Token));
             AssertEx.Equal("400", HeaderValue(badResponse.Headers, ":status"));
@@ -1480,7 +1466,7 @@ internal static class ClientHttp3Tests
         using var temp = TemporaryDirectory.Create();
         var port = GetFreeTcpUdpPort();
         WriteCertificateConfig(temp.Path);
-        WriteHttp3Site(temp.Path, port, "http3Preview", staticBody: "good");
+        WriteHttp3Site(temp.Path, port, "http3", staticBody: "good");
         using var host = BuildProxyHost(temp.Path);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         await host.StartAsync(timeout.Token);
@@ -1494,7 +1480,7 @@ internal static class ClientHttp3Tests
             await using var goodStream = await connection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional, timeout.Token);
 
             using var badRequest = new MemoryStream();
-            Http3PreviewCodec.WriteFrame(badRequest, Http3PreviewCodec.DataFrame, ReadOnlySpan<byte>.Empty);
+            Http3Codec.WriteFrame(badRequest, Http3Codec.DataFrame, ReadOnlySpan<byte>.Empty);
             await badStream.WriteAsync(badRequest.ToArray(), completeWrites: true, timeout.Token);
             await WriteHttp3RequestAsync(goodStream, "GET", "/good", null, timeout.Token);
 
@@ -1542,7 +1528,7 @@ internal static class ClientHttp3Tests
         using var temp = TemporaryDirectory.Create();
         var port = GetFreeTcpUdpPort();
         WriteCertificateConfig(temp.Path);
-        WriteHttp3Site(temp.Path, port, "http3Preview", staticBody: "budget");
+        WriteHttp3Site(temp.Path, port, "http3", staticBody: "budget");
         using var host = BuildProxyHost(temp.Path);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         await host.StartAsync(timeout.Token);
@@ -1556,7 +1542,7 @@ internal static class ClientHttp3Tests
             {
                 await using var stream = await connection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional, timeout.Token);
                 using var request = new MemoryStream();
-                Http3PreviewCodec.WriteFrame(request, Http3PreviewCodec.DataFrame, ReadOnlySpan<byte>.Empty);
+                Http3Codec.WriteFrame(request, Http3Codec.DataFrame, ReadOnlySpan<byte>.Empty);
                 await stream.WriteAsync(request.ToArray(), completeWrites: true, timeout.Token);
                 _ = await ReadToEndAsync(stream, timeout.Token);
             }
@@ -1577,7 +1563,7 @@ internal static class ClientHttp3Tests
 
     public static void OversizedHeaderBlockIsRejected()
     {
-        var headerBlock = Http3PreviewCodec.EncodeHeaderBlock(
+        var headerBlock = Http3Codec.EncodeHeaderBlock(
         [
             new Http1HeaderField(":method", "GET"),
             new Http1HeaderField(":scheme", "https"),
@@ -1586,7 +1572,7 @@ internal static class ClientHttp3Tests
             new Http1HeaderField("x-large", new string('a', 256))
         ]);
 
-        var ok = Http3PreviewCodec.TryDecodeHeaderBlock(
+        var ok = Http3Codec.TryDecodeHeaderBlock(
             headerBlock,
             maxHeaderBytes: 32,
             out _,
@@ -1598,7 +1584,7 @@ internal static class ClientHttp3Tests
 
     public static void QpackHeaderBlockAtExactLimitIsAccepted()
     {
-        var headerBlock = Http3PreviewCodec.EncodeHeaderBlock(
+        var headerBlock = Http3Codec.EncodeHeaderBlock(
         [
             new Http1HeaderField(":method", "GET"),
             new Http1HeaderField(":scheme", "https"),
@@ -1607,7 +1593,7 @@ internal static class ClientHttp3Tests
             new Http1HeaderField("x-boundary", "ok")
         ]);
 
-        var ok = Http3PreviewCodec.TryDecodeHeaderBlock(
+        var ok = Http3Codec.TryDecodeHeaderBlock(
             headerBlock,
             maxHeaderBytes: headerBlock.Length,
             out var headers,
@@ -1621,7 +1607,7 @@ internal static class ClientHttp3Tests
     {
         var block = new byte[] { 0, 0, 0x80 };
 
-        var ok = Http3PreviewCodec.TryDecodeHeaderBlock(
+        var ok = Http3Codec.TryDecodeHeaderBlock(
             block,
             maxHeaderBytes: 32,
             out _,
@@ -1635,7 +1621,7 @@ internal static class ClientHttp3Tests
     {
         var block = new byte[] { 0, 0, 0xff, 0x7f };
 
-        var ok = Http3PreviewCodec.TryDecodeHeaderBlock(
+        var ok = Http3Codec.TryDecodeHeaderBlock(
             block,
             maxHeaderBytes: 1024,
             out _,
@@ -1649,7 +1635,7 @@ internal static class ClientHttp3Tests
     {
         var block = new byte[] { 1, 0 };
 
-        var ok = Http3PreviewCodec.TryDecodeHeaderBlock(
+        var ok = Http3Codec.TryDecodeHeaderBlock(
             block,
             maxHeaderBytes: 32,
             out _,
@@ -1667,7 +1653,7 @@ internal static class ClientHttp3Tests
             0xf2, 0x3a, 0x6b, 0xa0, 0xab, 0x90, 0xf4, 0xff
         };
 
-        var ok = Http3PreviewCodec.TryDecodeHeaderBlock(
+        var ok = Http3Codec.TryDecodeHeaderBlock(
             block,
             maxHeaderBytes: 1024,
             out var headers,
@@ -1689,9 +1675,9 @@ internal static class ClientHttp3Tests
             new Http1HeaderField(":path", "/")
         };
 
-        var ok = Http3PreviewRequestTranslator.TryBuildRequest(
+        var ok = Http3RequestTranslator.TryBuildRequest(
             headers,
-            LegacyHttp3Listener("http3Preview", experimental: true),
+            TestHttp3Listener("http3"),
             out _,
             out var reason);
 
@@ -1710,9 +1696,9 @@ internal static class ClientHttp3Tests
             new Http1HeaderField(":path", "/")
         };
 
-        var ok = Http3PreviewRequestTranslator.TryBuildRequest(
+        var ok = Http3RequestTranslator.TryBuildRequest(
             headers,
-            LegacyHttp3Listener("http3Preview", experimental: true),
+            TestHttp3Listener("http3"),
             out _,
             out var reason);
 
@@ -1731,9 +1717,9 @@ internal static class ClientHttp3Tests
             new Http1HeaderField(":status", "200")
         };
 
-        var ok = Http3PreviewRequestTranslator.TryBuildRequest(
+        var ok = Http3RequestTranslator.TryBuildRequest(
             headers,
-            LegacyHttp3Listener("http3Preview", experimental: true),
+            TestHttp3Listener("http3"),
             out _,
             out var reason);
 
@@ -1750,9 +1736,9 @@ internal static class ClientHttp3Tests
             new Http1HeaderField(":authority", "localhost")
         };
 
-        var ok = Http3PreviewRequestTranslator.TryBuildRequest(
+        var ok = Http3RequestTranslator.TryBuildRequest(
             headers,
-            LegacyHttp3Listener("http3Preview", experimental: true),
+            TestHttp3Listener("http3"),
             out _,
             out var reason);
 
@@ -1771,9 +1757,9 @@ internal static class ClientHttp3Tests
             new Http1HeaderField("connection", "close")
         };
 
-        var ok = Http3PreviewRequestTranslator.TryBuildRequest(
+        var ok = Http3RequestTranslator.TryBuildRequest(
             headers,
-            LegacyHttp3Listener("http3Preview", experimental: true),
+            TestHttp3Listener("http3"),
             out _,
             out var reason);
 
@@ -1792,9 +1778,9 @@ internal static class ClientHttp3Tests
             new Http1HeaderField("bad header", "value")
         };
 
-        var ok = Http3PreviewRequestTranslator.TryBuildRequest(
+        var ok = Http3RequestTranslator.TryBuildRequest(
             headers,
-            LegacyHttp3Listener("http3Preview", experimental: true),
+            TestHttp3Listener("http3"),
             out _,
             out var reason);
 
@@ -1812,9 +1798,9 @@ internal static class ClientHttp3Tests
             new Http1HeaderField(":path", "/")
         };
 
-        var ok = Http3PreviewRequestTranslator.TryBuildRequest(
+        var ok = Http3RequestTranslator.TryBuildRequest(
             headers,
-            LegacyHttp3Listener("http3Preview", experimental: true),
+            TestHttp3Listener("http3"),
             out _,
             out var reason);
 
@@ -1839,14 +1825,14 @@ internal static class ClientHttp3Tests
             new Http1HeaderField(":path", "/fragment#bad")
         };
 
-        var authorityOk = Http3PreviewRequestTranslator.TryBuildRequest(
+        var authorityOk = Http3RequestTranslator.TryBuildRequest(
             badAuthority,
-            LegacyHttp3Listener("http3Preview", experimental: true),
+            TestHttp3Listener("http3"),
             out _,
             out var authorityReason);
-        var pathOk = Http3PreviewRequestTranslator.TryBuildRequest(
+        var pathOk = Http3RequestTranslator.TryBuildRequest(
             badPath,
-            LegacyHttp3Listener("http3Preview", experimental: true),
+            TestHttp3Listener("http3"),
             out _,
             out var pathReason);
 
@@ -1871,14 +1857,14 @@ internal static class ClientHttp3Tests
             new Http1HeaderField("content-length", "1")
         };
 
-        var pathOk = Http3PreviewRequestTranslator.TryBuildRequest(
+        var pathOk = Http3RequestTranslator.TryBuildRequest(
             connectWithPath,
-            LegacyHttp3Listener("http3Preview", experimental: true),
+            TestHttp3Listener("http3"),
             out _,
             out var pathReason);
-        var bodyOk = Http3PreviewRequestTranslator.TryBuildRequest(
+        var bodyOk = Http3RequestTranslator.TryBuildRequest(
             connectWithBody,
-            LegacyHttp3Listener("http3Preview", experimental: true),
+            TestHttp3Listener("http3"),
             out _,
             out var bodyReason);
 
@@ -1955,9 +1941,8 @@ internal static class ClientHttp3Tests
                   "address": "127.0.0.1",
                   "port": 8443,
                   "transport": "https",
-                  "protocols": "http3Preview",
-                  "experimentalHttp3": true,
-                  "http3Enablement": "preview",
+                  "protocols": "http3",
+                  "http3Enablement": "default",
                   "http3MaxBufferedRequestBodyBytes": 4096,
                   "defaultCertificateId": "home-cert"
                 }
@@ -2001,7 +1986,7 @@ internal static class ClientHttp3Tests
         var temp = TemporaryDirectory.Create();
         var port = GetFreeTcpUdpPort();
         WriteCertificateConfig(temp.Path);
-        WriteHttp3Site(temp.Path, port, "http3Preview", body, routeJson: routeJson);
+        WriteHttp3Site(temp.Path, port, "http3", body, routeJson: routeJson);
         var host = BuildProxyHost(temp.Path);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         await host.StartAsync(timeout.Token);
@@ -2032,7 +2017,7 @@ internal static class ClientHttp3Tests
         var temp = TemporaryDirectory.Create();
         var port = GetFreeTcpUdpPort();
         WriteCertificateConfig(temp.Path);
-        WriteHttp3Site(temp.Path, port, "http3Preview", "unused");
+        WriteHttp3Site(temp.Path, port, "http3", "unused");
         var host = BuildProxyHost(temp.Path);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         await host.StartAsync(timeout.Token);
@@ -2052,7 +2037,7 @@ internal static class ClientHttp3Tests
         var temp = TemporaryDirectory.Create();
         var port = GetFreeTcpUdpPort();
         WriteCertificateConfig(temp.Path);
-        WriteHttp3Site(temp.Path, port, "http3Preview", "unused");
+        WriteHttp3Site(temp.Path, port, "http3", "unused");
         var host = BuildProxyHost(temp.Path);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         await host.StartAsync(timeout.Token);
@@ -2156,7 +2141,7 @@ internal static class ClientHttp3Tests
         await using var connection = await ConnectHttp3Async(port, cancellationToken);
         await using var stream = await connection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional, cancellationToken);
         using var request = new MemoryStream();
-        Http3PreviewCodec.WriteFrame(request, Http3PreviewCodec.HeadersFrame, headerBlock);
+        Http3Codec.WriteFrame(request, Http3Codec.HeadersFrame, headerBlock);
         await stream.WriteAsync(request.ToArray(), completeWrites: true, cancellationToken);
 
         var responseBytes = await ReadToEndAsync(stream, cancellationToken);
@@ -2215,45 +2200,45 @@ internal static class ClientHttp3Tests
         bool unknownFrameBeforeHeaders = false,
         bool maxPushAfterHeaders = false)
     {
-        var headerBlock = Http3PreviewCodec.EncodeHeaderBlock(requestHeaders);
+        var headerBlock = Http3Codec.EncodeHeaderBlock(requestHeaders);
         using var request = new MemoryStream();
         if (unknownFrameBeforeHeaders)
         {
-            Http3PreviewCodec.WriteFrame(request, 0x21, ReadOnlySpan<byte>.Empty);
+            Http3Codec.WriteFrame(request, 0x21, ReadOnlySpan<byte>.Empty);
         }
 
         if (dataBeforeHeaders)
         {
-            Http3PreviewCodec.WriteFrame(request, Http3PreviewCodec.DataFrame, ReadOnlySpan<byte>.Empty);
+            Http3Codec.WriteFrame(request, Http3Codec.DataFrame, ReadOnlySpan<byte>.Empty);
         }
 
-        Http3PreviewCodec.WriteFrame(request, Http3PreviewCodec.HeadersFrame, headerBlock);
+        Http3Codec.WriteFrame(request, Http3Codec.HeadersFrame, headerBlock);
         if (duplicateHeadersAfterHeaders)
         {
-            Http3PreviewCodec.WriteFrame(request, Http3PreviewCodec.HeadersFrame, headerBlock);
+            Http3Codec.WriteFrame(request, Http3Codec.HeadersFrame, headerBlock);
         }
 
         if (settingsAfterHeaders)
         {
-            Http3PreviewCodec.WriteFrame(request, Http3PreviewCodec.SettingsFrame, ReadOnlySpan<byte>.Empty);
+            Http3Codec.WriteFrame(request, Http3Codec.SettingsFrame, ReadOnlySpan<byte>.Empty);
         }
 
         if (goAwayAfterHeaders)
         {
             using var goAwayPayload = new MemoryStream();
-            Http3PreviewCodec.WriteVarInt(goAwayPayload, 0);
-            Http3PreviewCodec.WriteFrame(request, Http3PreviewCodec.GoAwayFrame, goAwayPayload.ToArray());
+            Http3Codec.WriteVarInt(goAwayPayload, 0);
+            Http3Codec.WriteFrame(request, Http3Codec.GoAwayFrame, goAwayPayload.ToArray());
         }
 
         if (maxPushAfterHeaders)
         {
-            Http3PreviewCodec.WriteFrame(request, 0xD, ReadOnlySpan<byte>.Empty);
+            Http3Codec.WriteFrame(request, 0xD, ReadOnlySpan<byte>.Empty);
         }
 
         if (body is not null)
         {
             var bodyBytes = Encoding.UTF8.GetBytes(body);
-            Http3PreviewCodec.WriteFrame(request, Http3PreviewCodec.DataFrame, bodyBytes);
+            Http3Codec.WriteFrame(request, Http3Codec.DataFrame, bodyBytes);
         }
 
         await stream.WriteAsync(request.ToArray(), completeWrites: true, cancellationToken);
@@ -2266,16 +2251,16 @@ internal static class ClientHttp3Tests
         var responseBody = "";
         while (offset < responseBytes.Length)
         {
-            if (!Http3PreviewCodec.TryReadFrame(responseBytes, ref offset, out var type, out var payload))
+            if (!Http3Codec.TryReadFrame(responseBytes, ref offset, out var type, out var payload))
             {
                 break;
             }
 
-            if (type == Http3PreviewCodec.HeadersFrame)
+            if (type == Http3Codec.HeadersFrame)
             {
-                AssertEx.True(Http3PreviewCodec.TryDecodeHeaderBlock(payload.Span, 32 * 1024, out headers, out var reason), reason);
+                AssertEx.True(Http3Codec.TryDecodeHeaderBlock(payload.Span, 32 * 1024, out headers, out var reason), reason);
             }
-            else if (type == Http3PreviewCodec.DataFrame)
+            else if (type == Http3Codec.DataFrame)
             {
                 responseBody += Encoding.UTF8.GetString(payload.Span);
             }
@@ -2303,12 +2288,12 @@ internal static class ClientHttp3Tests
             var offset = 0;
             while (offset < bytes.Length)
             {
-                if (!Http3PreviewCodec.TryReadFrame(bytes, ref offset, out var type, out var payload))
+                if (!Http3Codec.TryReadFrame(bytes, ref offset, out var type, out var payload))
                 {
                     break;
                 }
 
-                if (type == Http3PreviewCodec.DataFrame && payload.Length > 0)
+                if (type == Http3Codec.DataFrame && payload.Length > 0)
                 {
                     return Encoding.UTF8.GetString(payload.Span);
                 }
@@ -2552,7 +2537,7 @@ internal static class ClientHttp3Tests
             .Build();
     }
 
-    private static RuntimeListener LegacyHttp3Listener(string protocols, bool experimental)
+    private static RuntimeListener TestHttp3Listener(string protocols)
     {
         return new RuntimeListener(
             "main",
@@ -2570,11 +2555,11 @@ internal static class ClientHttp3Tests
         {
             Protocols = protocols.ToLowerInvariant() switch
             {
-                "http1andhttp2andhttp3preview" => RuntimeListenerProtocols.Http1AndHttp2AndHttp3Preview,
-                "http1andhttp3preview" => RuntimeListenerProtocols.Http1AndHttp3Preview,
-                _ => RuntimeListenerProtocols.Http3Preview
-            },
-            ExperimentalHttp3 = experimental
+                "http1andhttp2andhttp3" => RuntimeListenerProtocols.Http1AndHttp2AndHttp3,
+                "http1andhttp3" => RuntimeListenerProtocols.Http1AndHttp3,
+                "http2andhttp3" => RuntimeListenerProtocols.Http2AndHttp3,
+                _ => RuntimeListenerProtocols.Http3
+            }
         };
     }
 
@@ -2594,7 +2579,6 @@ internal static class ClientHttp3Tests
         int port,
         string protocols,
         string staticBody,
-        bool experimental = true,
         bool altSvcEnabled = false,
         int altSvcMaxAgeSeconds = 86400,
         string? http3EnablementOverride = null,
@@ -2615,7 +2599,7 @@ internal static class ClientHttp3Tests
                 }
             """;
         var http3Enablement = http3EnablementOverride ?? (protocols.Contains("http3", StringComparison.OrdinalIgnoreCase)
-            ? "preview"
+            ? "default"
             : "disabled");
         File.WriteAllText(
             Path.Combine(sites, "http3.json"),
@@ -2629,7 +2613,6 @@ internal static class ClientHttp3Tests
                   "port": {{port}},
                   "transport": "https",
                   "protocols": "{{protocols}}",
-                  "experimentalHttp3": {{experimental.ToString().ToLowerInvariant()}},
                   "http3Enablement": "{{http3Enablement}}",
                   "http3AltSvcEnabled": {{altSvcEnabled.ToString().ToLowerInvariant()}},
                   "http3AltSvcMaxAgeSeconds": {{altSvcMaxAgeSeconds}},
@@ -2663,9 +2646,8 @@ internal static class ClientHttp3Tests
                   "address": "127.0.0.1",
                   "port": {{proxyPort}},
                   "transport": "https",
-                  "protocols": "http3Preview",
-                  "experimentalHttp3": true,
-                  "http3Enablement": "preview",
+                  "protocols": "http3",
+                  "http3Enablement": "default",
             {{listenerExtraJson}}
                   "defaultCertificateId": "home-cert"
                 }
@@ -2708,9 +2690,8 @@ internal static class ClientHttp3Tests
                   "address": "127.0.0.1",
                   "port": {{proxyPort}},
                   "transport": "https",
-                  "protocols": "http3Preview",
-                  "experimentalHttp3": true,
-                  "http3Enablement": "preview",
+                  "protocols": "http3",
+                  "http3Enablement": "default",
                   "defaultCertificateId": "home-cert"
                 }
               ],

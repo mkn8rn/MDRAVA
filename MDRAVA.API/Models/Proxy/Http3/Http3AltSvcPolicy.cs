@@ -42,9 +42,7 @@ public sealed class Http3AltSvcPolicy
     {
         return listener.Http3.EnabledForTraffic
             && (listener.Http3AltSvc.Enabled
-                || string.Equals(listener.Http3.EnablementLevel, "default", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(listener.Http3.EnablementLevel, "beta", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(listener.Http3.EnablementLevel, "preview", StringComparison.OrdinalIgnoreCase));
+                || string.Equals(listener.Http3.EnablementLevel, "default", StringComparison.OrdinalIgnoreCase));
     }
 
     public static bool HasActiveQuicListener(

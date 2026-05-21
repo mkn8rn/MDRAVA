@@ -3,7 +3,7 @@ using MDRAVA.API.Proxy.Protocol;
 
 namespace MDRAVA.API.Proxy.Http3;
 
-public static class Http3PreviewRequestTranslator
+public static class Http3RequestTranslator
 {
     private static readonly HashSet<string> ForbiddenHeaders = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -142,7 +142,7 @@ public static class Http3PreviewRequestTranslator
         return true;
     }
 
-    public static bool IsSupportedPreviewMethod(string method, out string rejectionReason)
+    public static bool IsSupportedMethod(string method, out string rejectionReason)
     {
         if (string.Equals(method, "GET", StringComparison.OrdinalIgnoreCase)
             || string.Equals(method, "HEAD", StringComparison.OrdinalIgnoreCase)

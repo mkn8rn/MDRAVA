@@ -99,6 +99,11 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
                 failures.Add($"{prefix}:Http3Enablement must be {SupportedHttp3EnablementsText()} when configured.");
             }
 
+            if (http3Compatibility.UnsupportedExperimentalFlagConfigured)
+            {
+                failures.Add($"{prefix}:ExperimentalHttp3 is no longer supported; use Protocols 'http3', 'http1AndHttp3', 'http2AndHttp3', or 'http1AndHttp2AndHttp3'.");
+            }
+
             if (listener.Http3AltSvcMaxAgeSeconds is < 0 or > 31536000)
             {
                 failures.Add($"{prefix}:Http3AltSvcMaxAgeSeconds must be between 0 and 31536000.");

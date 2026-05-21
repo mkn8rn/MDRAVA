@@ -38,7 +38,6 @@ public static class ProxyConfigurationMapper
                     listener.ForwardingBufferBytes)
                 {
                     Protocols = http3Compatibility.Protocols,
-                    ExperimentalHttp3 = listener.ExperimentalHttp3,
                     Http3Enablement = http3Compatibility.EffectiveEnablement,
                     Http3AltSvc = new RuntimeHttp3AltSvcOptions(
                         listener.Http3AltSvcEnabled,

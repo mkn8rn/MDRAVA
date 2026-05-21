@@ -159,9 +159,9 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
         RuntimeTimeouts timeouts,
         CancellationToken cancellationToken)
     {
-        var block = Http3PreviewCodec.EncodeHeaderBlock(headers);
+        var block = Http3Codec.EncodeHeaderBlock(headers);
         using var memory = new MemoryStream();
-        Http3PreviewCodec.WriteFrame(memory, Http3PreviewCodec.HeadersFrame, block);
+        Http3Codec.WriteFrame(memory, Http3Codec.HeadersFrame, block);
         await WriteWithTimeoutAsync(memory.ToArray(), endStream, timeouts.DownstreamWriteTimeout, cancellationToken);
     }
 
@@ -177,7 +177,7 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
             var chunkLength = Math.Min(_maxFramePayloadBytes, remaining.Length);
             var final = chunkLength == remaining.Length && endStream;
             using var memory = new MemoryStream();
-            Http3PreviewCodec.WriteFrame(memory, Http3PreviewCodec.DataFrame, remaining[..chunkLength].Span);
+            Http3Codec.WriteFrame(memory, Http3Codec.DataFrame, remaining[..chunkLength].Span);
             await WriteWithTimeoutAsync(memory.ToArray(), final, timeouts.DownstreamWriteTimeout, cancellationToken);
             remaining = remaining[chunkLength..];
         }
@@ -185,7 +185,7 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
         if (body.Length == 0 && endStream)
         {
             using var memory = new MemoryStream();
-            Http3PreviewCodec.WriteFrame(memory, Http3PreviewCodec.DataFrame, ReadOnlySpan<byte>.Empty);
+            Http3Codec.WriteFrame(memory, Http3Codec.DataFrame, ReadOnlySpan<byte>.Empty);
             await WriteWithTimeoutAsync(memory.ToArray(), completeWrites: true, timeouts.DownstreamWriteTimeout, cancellationToken);
         }
     }
@@ -206,12 +206,12 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
                 throw new Http3UpstreamProtocolException("Upstream closed before HTTP/3 response headers were received.");
             }
 
-            if (frame.Type == Http3PreviewCodec.DataFrame)
+            if (frame.Type == Http3Codec.DataFrame)
             {
                 throw new Http3UpstreamProtocolException("Upstream sent HTTP/3 response DATA before response headers.");
             }
 
-            if (frame.Type != Http3PreviewCodec.HeadersFrame)
+            if (frame.Type != Http3Codec.HeadersFrame)
             {
                 throw new Http3UpstreamProtocolException("Upstream sent an unsupported HTTP/3 response frame before headers.");
             }
@@ -235,12 +235,12 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
                 return new Http3UpstreamDataChunk([], EndStream: true);
             }
 
-            if (frame.Type == Http3PreviewCodec.DataFrame)
+            if (frame.Type == Http3Codec.DataFrame)
             {
                 return new Http3UpstreamDataChunk(frame.Payload.ToArray(), EndStream: false);
             }
 
-            if (frame.Type == Http3PreviewCodec.HeadersFrame)
+            if (frame.Type == Http3Codec.HeadersFrame)
             {
                 continue;
             }
@@ -350,13 +350,13 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
             ProxyTimeoutKind.UpstreamConnect,
             cancellationToken);
         using var payload = new MemoryStream();
-        Http3PreviewCodec.WriteVarInt(payload, Http3PreviewCodec.ControlStream);
+        Http3Codec.WriteVarInt(payload, Http3Codec.ControlStream);
         using var settings = new MemoryStream();
-        Http3PreviewCodec.WriteVarInt(settings, Http3PreviewCodec.QpackMaxTableCapacitySetting);
-        Http3PreviewCodec.WriteVarInt(settings, 0);
-        Http3PreviewCodec.WriteVarInt(settings, Http3PreviewCodec.QpackBlockedStreamsSetting);
-        Http3PreviewCodec.WriteVarInt(settings, 0);
-        Http3PreviewCodec.WriteFrame(payload, Http3PreviewCodec.SettingsFrame, settings.ToArray());
+        Http3Codec.WriteVarInt(settings, Http3Codec.QpackMaxTableCapacitySetting);
+        Http3Codec.WriteVarInt(settings, 0);
+        Http3Codec.WriteVarInt(settings, Http3Codec.QpackBlockedStreamsSetting);
+        Http3Codec.WriteVarInt(settings, 0);
+        Http3Codec.WriteFrame(payload, Http3Codec.SettingsFrame, settings.ToArray());
         await ProxyTimeoutPolicy.RunAsync(
             async timeoutToken => await control.WriteAsync(payload.ToArray(), completeWrites: false, timeoutToken),
             timeouts.DownstreamWriteTimeout,
@@ -465,7 +465,7 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
         ReadOnlySpan<byte> block,
         int maxHeaderListBytes)
     {
-        if (!Http3PreviewCodec.TryDecodeHeaderBlock(block, maxHeaderListBytes, out var headers, out var reason))
+        if (!Http3Codec.TryDecodeHeaderBlock(block, maxHeaderListBytes, out var headers, out var reason))
         {
             throw new Http3UpstreamProtocolException($"Upstream sent invalid HTTP/3 response headers: {reason}.");
         }
@@ -804,7 +804,7 @@ internal sealed class Http3UpstreamPooledConnection : IAsyncDisposable
                 return;
             }
 
-            if (streamType.Value != Http3PreviewCodec.ControlStream)
+            if (streamType.Value != Http3Codec.ControlStream)
             {
                 await DrainControlStreamAsync(stream, cancellationToken);
                 return;
@@ -831,13 +831,13 @@ internal sealed class Http3UpstreamPooledConnection : IAsyncDisposable
                 var payload = length.Value == 0
                     ? []
                     : await ReadExactControlAsync(stream, (int)length.Value, cancellationToken);
-                if (frameType.Value == Http3PreviewCodec.GoAwayFrame)
+                if (frameType.Value == Http3Codec.GoAwayFrame)
                 {
                     HandleGoAway(payload);
                     continue;
                 }
 
-                if (frameType.Value == Http3PreviewCodec.SettingsFrame)
+                if (frameType.Value == Http3Codec.SettingsFrame)
                 {
                     continue;
                 }
@@ -857,7 +857,7 @@ internal sealed class Http3UpstreamPooledConnection : IAsyncDisposable
         var offset = 0;
         if (payload.Length > 0)
         {
-            if (!Http3PreviewCodec.TryReadVarInt(payload, ref offset, out var decoded)
+            if (!Http3Codec.TryReadVarInt(payload, ref offset, out var decoded)
                 || offset != payload.Length)
             {
                 MarkUnusable();

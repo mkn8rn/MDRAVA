@@ -16,7 +16,7 @@ using MDRAVA.API.Proxy.Runtime;
 
 namespace MDRAVA.API.Proxy.Http3;
 
-public sealed class Http3PreviewConnection
+public sealed class Http3Connection
 {
     private const int MaxFramePayloadBytes = 1024 * 1024;
     private const int MaxProtocolErrorsPerConnection = 8;
@@ -41,7 +41,7 @@ public sealed class Http3PreviewConnection
     private int _protocolErrors;
     private QuicStream? _localControlStream;
 
-    public Http3PreviewConnection(
+    public Http3Connection(
         QuicConnection connection,
         ProxyConfigurationSnapshot configurationSnapshot,
         RuntimeListener listener,
@@ -147,7 +147,7 @@ public sealed class Http3PreviewConnection
                 return !closeConnection;
             }
 
-            if (!Http3PreviewRequestTranslator.TryBuildRequest(
+            if (!Http3RequestTranslator.TryBuildRequest(
                     headerRead.Headers,
                     _listener,
                     out var requestHead,
@@ -164,7 +164,7 @@ public sealed class Http3PreviewConnection
             _metrics.Http3RequestReceived();
             context.SetRequest(requestHead.Method, requestHead.Host, requestHead.Target, ExtractExternalRequestId(requestHead));
 
-            if (!Http3PreviewRequestTranslator.IsSupportedPreviewMethod(requestHead.Method, out rejectionReason))
+            if (!Http3RequestTranslator.IsSupportedMethod(requestHead.Method, out rejectionReason))
             {
                 _metrics.Http3RequestRejected(rejectionReason);
                 await WriteGeneratedResponseAsync(stream, 501, "Not Implemented", "Not Implemented", context, requestHead.Method, cancellationToken);
@@ -295,13 +295,13 @@ public sealed class Http3PreviewConnection
         {
             _localControlStream = await _connection.OpenOutboundStreamAsync(QuicStreamType.Unidirectional, cancellationToken);
             using var payload = new MemoryStream();
-            Http3PreviewCodec.WriteVarInt(payload, Http3PreviewCodec.ControlStream);
+            Http3Codec.WriteVarInt(payload, Http3Codec.ControlStream);
             using var settings = new MemoryStream();
-            Http3PreviewCodec.WriteVarInt(settings, Http3PreviewCodec.QpackMaxTableCapacitySetting);
-            Http3PreviewCodec.WriteVarInt(settings, 0);
-            Http3PreviewCodec.WriteVarInt(settings, Http3PreviewCodec.QpackBlockedStreamsSetting);
-            Http3PreviewCodec.WriteVarInt(settings, 0);
-            Http3PreviewCodec.WriteFrame(payload, Http3PreviewCodec.SettingsFrame, settings.ToArray());
+            Http3Codec.WriteVarInt(settings, Http3Codec.QpackMaxTableCapacitySetting);
+            Http3Codec.WriteVarInt(settings, 0);
+            Http3Codec.WriteVarInt(settings, Http3Codec.QpackBlockedStreamsSetting);
+            Http3Codec.WriteVarInt(settings, 0);
+            Http3Codec.WriteFrame(payload, Http3Codec.SettingsFrame, settings.ToArray());
             // Chrome expects the server control stream to remain open after SETTINGS.
             await _localControlStream.WriteAsync(payload.ToArray(), completeWrites: false, cancellationToken);
         }
@@ -356,22 +356,22 @@ public sealed class Http3PreviewConnection
                 return Http3HeaderReadResult.Failure("frame_too_large");
             }
 
-            if (frame.Type == Http3PreviewCodec.DataFrame)
+            if (frame.Type == Http3Codec.DataFrame)
             {
                 return Http3HeaderReadResult.Failure("unexpected_data");
             }
 
-            if (frame.Type is Http3PreviewCodec.SettingsFrame or Http3PreviewCodec.GoAwayFrame)
+            if (frame.Type is Http3Codec.SettingsFrame or Http3Codec.GoAwayFrame)
             {
                 return Http3HeaderReadResult.Failure("unexpected_control_frame");
             }
 
-            if (frame.Type != Http3PreviewCodec.HeadersFrame)
+            if (frame.Type != Http3Codec.HeadersFrame)
             {
                 return Http3HeaderReadResult.Failure("unsupported_frame");
             }
 
-            if (!Http3PreviewCodec.TryDecodeHeaderBlock(
+            if (!Http3Codec.TryDecodeHeaderBlock(
                     frame.Payload.Span,
                     _listener.Http2Limits.MaxHeaderListBytes,
                     out var headers,
@@ -396,12 +396,12 @@ public sealed class Http3PreviewConnection
                 return Http3FrameValidationResult.Successful();
             }
 
-            if (frame.Type == Http3PreviewCodec.DataFrame)
+            if (frame.Type == Http3Codec.DataFrame)
             {
                 return Http3FrameValidationResult.Failure("unexpected_data");
             }
 
-            var reason = frame.Type == Http3PreviewCodec.HeadersFrame
+            var reason = frame.Type == Http3Codec.HeadersFrame
                 ? "duplicate_headers"
                 : "unexpected_control_frame";
             return Http3FrameValidationResult.Failure(reason);
@@ -772,7 +772,7 @@ public sealed class Http3PreviewConnection
         bool completeWrites,
         CancellationToken cancellationToken)
     {
-        List<Http1HeaderField> encodedHeaders = [new(":status", Http3PreviewCodec.StatusText(statusCode))];
+        List<Http1HeaderField> encodedHeaders = [new(":status", Http3Codec.StatusText(statusCode))];
         foreach (var header in headers)
         {
             if (!header.Name.StartsWith(':') && !IsHopByHopHeader(header.Name))
@@ -781,8 +781,8 @@ public sealed class Http3PreviewConnection
             }
         }
 
-        var headerBlock = Http3PreviewCodec.EncodeHeaderBlock(encodedHeaders);
-        await WriteFrameAsync(stream, Http3PreviewCodec.HeadersFrame, headerBlock, completeWrites, cancellationToken);
+        var headerBlock = Http3Codec.EncodeHeaderBlock(encodedHeaders);
+        await WriteFrameAsync(stream, Http3Codec.HeadersFrame, headerBlock, completeWrites, cancellationToken);
     }
 
     private async ValueTask WriteDataAsync(
@@ -798,7 +798,7 @@ public sealed class Http3PreviewConnection
             var final = completeWrites && chunkLength == remaining.Length;
             await WriteFrameAsync(
                 stream,
-                Http3PreviewCodec.DataFrame,
+                Http3Codec.DataFrame,
                 remaining[..chunkLength],
                 final,
                 cancellationToken);
@@ -808,7 +808,7 @@ public sealed class Http3PreviewConnection
 
         if (body.Length == 0 && completeWrites)
         {
-            await WriteFrameAsync(stream, Http3PreviewCodec.DataFrame, ReadOnlyMemory<byte>.Empty, completeWrites: true, cancellationToken);
+            await WriteFrameAsync(stream, Http3Codec.DataFrame, ReadOnlyMemory<byte>.Empty, completeWrites: true, cancellationToken);
         }
     }
 
@@ -820,7 +820,7 @@ public sealed class Http3PreviewConnection
         CancellationToken cancellationToken)
     {
         using var frame = new MemoryStream();
-        Http3PreviewCodec.WriteFrame(frame, frameType, payload.Span);
+        Http3Codec.WriteFrame(frame, frameType, payload.Span);
         await stream.WriteAsync(frame.ToArray(), completeWrites, cancellationToken);
         _metrics.AddBytesWritten(frame.Length);
     }
@@ -1075,7 +1075,7 @@ public sealed class Http3PreviewConnection
 
     private sealed class Http3RequestBodyReadStream : Stream
     {
-        private readonly Http3PreviewConnection _connection;
+        private readonly Http3Connection _connection;
         private readonly QuicStream _stream;
         private readonly Http1RequestFraming _framing;
         private readonly CancellationToken _connectionCancellationToken;
@@ -1085,7 +1085,7 @@ public sealed class Http3PreviewConnection
         private bool _completed;
 
         public Http3RequestBodyReadStream(
-            Http3PreviewConnection connection,
+            Http3Connection connection,
             QuicStream stream,
             Http1RequestFraming framing,
             CancellationToken connectionCancellationToken)
@@ -1187,9 +1187,9 @@ public sealed class Http3PreviewConnection
                     return false;
                 }
 
-                if (frame.Type != Http3PreviewCodec.DataFrame)
+                if (frame.Type != Http3Codec.DataFrame)
                 {
-                    _connection._metrics.Http3ProtocolError(frame.Type == Http3PreviewCodec.HeadersFrame
+                    _connection._metrics.Http3ProtocolError(frame.Type == Http3Codec.HeadersFrame
                         ? "duplicate_headers"
                         : "unexpected_control_frame");
                     throw new IOException("HTTP/3 request body stream contained a non-DATA frame.");
@@ -1250,7 +1250,7 @@ public sealed class Http3PreviewConnection
 
     private sealed class Http3ResponseTranslationStream : Stream
     {
-        private readonly Http3PreviewConnection _connection;
+        private readonly Http3Connection _connection;
         private readonly QuicStream _stream;
         private readonly string _method;
         private readonly TimeSpan _writeTimeout;
@@ -1266,7 +1266,7 @@ public sealed class Http3PreviewConnection
         private long _chunkBytesRemaining;
 
         public Http3ResponseTranslationStream(
-            Http3PreviewConnection connection,
+            Http3Connection connection,
             QuicStream stream,
             string method,
             TimeSpan writeTimeout,

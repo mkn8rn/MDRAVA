@@ -6,13 +6,11 @@ public enum RuntimeListenerProtocols
     None = 0,
     Http1 = 1,
     Http2 = 2,
-    // Compatibility name for existing config files. Runtime/status code should
-    // use HasHttp3 when describing stable HTTP/3 behavior.
-    Http3Preview = 4,
+    Http3 = 4,
     Http1AndHttp2 = Http1 | Http2,
-    Http1AndHttp3Preview = Http1 | Http3Preview,
-    Http2AndHttp3Preview = Http2 | Http3Preview,
-    Http1AndHttp2AndHttp3Preview = Http1 | Http2 | Http3Preview
+    Http1AndHttp3 = Http1 | Http3,
+    Http2AndHttp3 = Http2 | Http3,
+    Http1AndHttp2AndHttp3 = Http1 | Http2 | Http3
 }
 
 public static class RuntimeListenerProtocolExtensions
@@ -26,13 +24,7 @@ public static class RuntimeListenerProtocolExtensions
 
     public static bool HasHttp3(this RuntimeListenerProtocols protocols)
     {
-        return protocols.HasFlag(RuntimeListenerProtocols.Http3Preview);
-    }
-
-    public static bool HasHttp3Preview(this RuntimeListenerProtocols protocols)
-    {
-        // Legacy alias retained for old call sites and compatibility tests.
-        return protocols.HasHttp3();
+        return protocols.HasFlag(RuntimeListenerProtocols.Http3);
     }
 
     public static bool TryParseConfigText(string? protocols, out RuntimeListenerProtocols parsed)
@@ -51,10 +43,10 @@ public static class RuntimeListenerProtocolExtensions
         {
             RuntimeListenerProtocols.Http2 => "http2",
             RuntimeListenerProtocols.Http1AndHttp2 => "http1AndHttp2",
-            RuntimeListenerProtocols.Http3Preview => "http3Preview",
-            RuntimeListenerProtocols.Http1AndHttp3Preview => "http1AndHttp3Preview",
-            RuntimeListenerProtocols.Http2AndHttp3Preview => "http2AndHttp3Preview",
-            RuntimeListenerProtocols.Http1AndHttp2AndHttp3Preview => "http1AndHttp2AndHttp3Preview",
+            RuntimeListenerProtocols.Http3 => "http3",
+            RuntimeListenerProtocols.Http1AndHttp3 => "http1AndHttp3",
+            RuntimeListenerProtocols.Http2AndHttp3 => "http2AndHttp3",
+            RuntimeListenerProtocols.Http1AndHttp2AndHttp3 => "http1AndHttp2AndHttp3",
             _ => "http1"
         };
     }

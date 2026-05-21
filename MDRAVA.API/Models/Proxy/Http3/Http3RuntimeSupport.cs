@@ -93,16 +93,6 @@ public static class Http3RuntimeSupport
 
     private static string EnablementLevel(IReadOnlyList<RuntimeListener> listeners)
     {
-        if (listeners.Any(static listener => listener.Http3.Configured && listener.Http3.EnablementLevel == "beta"))
-        {
-            return "beta";
-        }
-
-        if (listeners.Any(static listener => listener.Http3.Configured && listener.Http3.EnablementLevel == "preview"))
-        {
-            return "preview";
-        }
-
         return listeners.Any(static listener => listener.Http3.Configured && listener.Http3.EnablementLevel == "default")
             ? "default"
             : "disabled";
@@ -122,9 +112,7 @@ public static class Http3RuntimeSupport
 
         if (enabled && !hasRuntimeState)
         {
-            return listeners.Any(static listener => listener.Http3.EnabledForTraffic && listener.Http3.EnablementLevel == "default")
-                ? "default_enabled"
-                : "preview_enabled";
+            return "default_enabled";
         }
 
         if (enabled)
@@ -132,7 +120,7 @@ public static class Http3RuntimeSupport
             return "configured_but_listener_not_ready";
         }
 
-        return configured ? "preview_configured_but_inactive" : "not_configured";
+        return configured ? "configured_but_inactive" : "not_configured";
     }
 
     private static IReadOnlyList<string> DefaultReadinessBlockers(
@@ -155,16 +143,6 @@ public static class Http3RuntimeSupport
 
     private static string ConfiguredMode(IReadOnlyList<RuntimeListener> listeners)
     {
-        if (listeners.Any(static listener => listener.Http3.Configured && listener.Http3.EnablementLevel == "beta"))
-        {
-            return "beta";
-        }
-
-        if (listeners.Any(static listener => listener.Http3.Configured && listener.Http3.EnablementLevel == "preview"))
-        {
-            return "preview";
-        }
-
         return listeners.Any(static listener => listener.Http3.Configured && listener.Http3.EnablementLevel == "default")
             ? "default"
             : "disabled";

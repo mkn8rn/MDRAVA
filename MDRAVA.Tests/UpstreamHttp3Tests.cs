@@ -907,9 +907,9 @@ internal static class UpstreamHttp3Tests
                 return new Http3UpstreamObservation(requestHeaders, requestBody.ToArray(), null);
             }
 
-            if (frame.Type == Http3PreviewCodec.HeadersFrame)
+            if (frame.Type == Http3Codec.HeadersFrame)
             {
-                if (!Http3PreviewCodec.TryDecodeHeaderBlock(
+                if (!Http3Codec.TryDecodeHeaderBlock(
                         frame.Payload.Span,
                         maxHeaderBytes: 64 * 1024,
                         out var headers,
@@ -926,7 +926,7 @@ internal static class UpstreamHttp3Tests
                 continue;
             }
 
-            if (frame.Type == Http3PreviewCodec.DataFrame)
+            if (frame.Type == Http3Codec.DataFrame)
             {
                 requestBody.Write(frame.Payload.Span);
                 continue;
@@ -953,9 +953,9 @@ internal static class UpstreamHttp3Tests
             headers.Add(new Http1HeaderField(header.Name, header.Value));
         }
 
-        var block = Http3PreviewCodec.EncodeHeaderBlock(headers);
+        var block = Http3Codec.EncodeHeaderBlock(headers);
         using var head = new MemoryStream();
-        Http3PreviewCodec.WriteFrame(head, Http3PreviewCodec.HeadersFrame, block);
+        Http3Codec.WriteFrame(head, Http3Codec.HeadersFrame, block);
         await stream.WriteAsync(head.ToArray(), completeWrites: responseBody.Length == 0, cancellationToken);
         if (closeAfterHeaders)
         {
@@ -965,7 +965,7 @@ internal static class UpstreamHttp3Tests
         if (responseBody.Length > 0)
         {
             using var body = new MemoryStream();
-            Http3PreviewCodec.WriteFrame(body, Http3PreviewCodec.DataFrame, responseBody.Span);
+            Http3Codec.WriteFrame(body, Http3Codec.DataFrame, responseBody.Span);
             await stream.WriteAsync(body.ToArray(), completeWrites: true, cancellationToken);
         }
     }
@@ -976,11 +976,11 @@ internal static class UpstreamHttp3Tests
     {
         var control = await connection.OpenOutboundStreamAsync(QuicStreamType.Unidirectional, cancellationToken);
         using var payload = new MemoryStream();
-        Http3PreviewCodec.WriteVarInt(payload, Http3PreviewCodec.ControlStream);
-        Http3PreviewCodec.WriteFrame(payload, Http3PreviewCodec.SettingsFrame, ReadOnlySpan<byte>.Empty);
+        Http3Codec.WriteVarInt(payload, Http3Codec.ControlStream);
+        Http3Codec.WriteFrame(payload, Http3Codec.SettingsFrame, ReadOnlySpan<byte>.Empty);
         using var goAwayPayload = new MemoryStream();
-        Http3PreviewCodec.WriteVarInt(goAwayPayload, 0);
-        Http3PreviewCodec.WriteFrame(payload, Http3PreviewCodec.GoAwayFrame, goAwayPayload.ToArray());
+        Http3Codec.WriteVarInt(goAwayPayload, 0);
+        Http3Codec.WriteFrame(payload, Http3Codec.GoAwayFrame, goAwayPayload.ToArray());
         await control.WriteAsync(payload.ToArray(), completeWrites: false, cancellationToken);
     }
 

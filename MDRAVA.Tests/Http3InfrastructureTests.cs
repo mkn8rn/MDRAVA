@@ -50,42 +50,32 @@ internal static class Http3InfrastructureTests
         AssertEx.False(both.Failed, string.Join("; ", both.Failures ?? []));
     }
 
-    public static void ListenerProtocolConfigParsingPreservesCompatibility()
+    public static void ListenerProtocolConfigParsingUsesCurrentHttp3Spellings()
     {
-        var cases = new (string Text, RuntimeListenerProtocols Protocols, string CanonicalText, bool StableAlias, bool LegacyAlias)[]
+        var cases = new (string Text, RuntimeListenerProtocols Protocols)[]
         {
-            ("http1", RuntimeListenerProtocols.Http1, "http1", false, false),
-            ("http2", RuntimeListenerProtocols.Http2, "http2", false, false),
-            ("http1AndHttp2", RuntimeListenerProtocols.Http1AndHttp2, "http1AndHttp2", false, false),
-            ("http3", RuntimeListenerProtocols.Http3Preview, "http3Preview", true, false),
-            ("http1AndHttp3", RuntimeListenerProtocols.Http1AndHttp3Preview, "http1AndHttp3Preview", true, false),
-            ("http2AndHttp3", RuntimeListenerProtocols.Http2AndHttp3Preview, "http2AndHttp3Preview", true, false),
-            ("http1AndHttp2AndHttp3", RuntimeListenerProtocols.Http1AndHttp2AndHttp3Preview, "http1AndHttp2AndHttp3Preview", true, false),
-            ("http3Preview", RuntimeListenerProtocols.Http3Preview, "http3Preview", false, true),
-            ("http1AndHttp3Preview", RuntimeListenerProtocols.Http1AndHttp3Preview, "http1AndHttp3Preview", false, true),
-            ("http2AndHttp3Preview", RuntimeListenerProtocols.Http2AndHttp3Preview, "http2AndHttp3Preview", false, true),
-            ("http1AndHttp2AndHttp3Preview", RuntimeListenerProtocols.Http1AndHttp2AndHttp3Preview, "http1AndHttp2AndHttp3Preview", false, true)
+            ("http1", RuntimeListenerProtocols.Http1),
+            ("http2", RuntimeListenerProtocols.Http2),
+            ("http1AndHttp2", RuntimeListenerProtocols.Http1AndHttp2),
+            ("http3", RuntimeListenerProtocols.Http3),
+            ("http1AndHttp3", RuntimeListenerProtocols.Http1AndHttp3),
+            ("http2AndHttp3", RuntimeListenerProtocols.Http2AndHttp3),
+            ("http1AndHttp2AndHttp3", RuntimeListenerProtocols.Http1AndHttp2AndHttp3)
         };
 
         foreach (var entry in cases)
         {
             var parsed = RuntimeListenerProtocolExtensions.TryParseConfigText(entry.Text, out var protocols);
-            var compatibilityParsed = RuntimeHttp3Compatibility.TryParseProtocols(
-                entry.Text,
-                out var compatibilityProtocols,
-                out var stableAlias,
-                out var legacyAlias);
+            var compatibilityParsed = RuntimeHttp3Compatibility.TryParseProtocols(entry.Text, out var compatibilityProtocols);
 
             AssertEx.True(parsed, entry.Text);
             AssertEx.True(compatibilityParsed, entry.Text);
             AssertEx.Equal(entry.Protocols, protocols);
             AssertEx.Equal(entry.Protocols, compatibilityProtocols);
-            AssertEx.Equal(entry.StableAlias, stableAlias);
-            AssertEx.Equal(entry.LegacyAlias, legacyAlias);
-            AssertEx.Equal(entry.CanonicalText, protocols.ToConfigText());
+            AssertEx.Equal(entry.Text, protocols.ToConfigText());
         }
 
-        AssertEx.True(RuntimeListenerProtocols.Http1AndHttp2AndHttp3Preview.HasHttp3());
+        AssertEx.True(RuntimeListenerProtocols.Http1AndHttp2AndHttp3.HasHttp3());
         AssertEx.Equal(
             RuntimeListenerProtocolExtensions.SupportedConfigValues.Count,
             cases.Length);
@@ -93,40 +83,35 @@ internal static class Http3InfrastructureTests
 
     public static void Http3CompatibilityNormalizerCentralizesEnablementSemantics()
     {
-        var stable = RuntimeHttp3Compatibility.From(Http3Listener("stable", "http1AndHttp3", experimental: false));
-        var legacy = RuntimeHttp3Compatibility.From(Http3Listener("legacy", "http1AndHttp3Preview", experimental: true));
-        var beta = new ListenerOptions
+        var enabled = RuntimeHttp3Compatibility.From(Http3Listener("stable", "http1AndHttp3"));
+        var disabled = RuntimeHttp3Compatibility.From(new ListenerOptions
         {
-            Name = "beta",
+            Name = "disabled",
             Address = "127.0.0.1",
             Port = 8443,
             Transport = "https",
-            Protocols = "http3Preview",
-            ExperimentalHttp3 = true,
-            Http3Enablement = "beta",
+            Protocols = "http3",
+            Http3Enablement = "disabled",
             Http3MaxBufferedRequestBodyBytes = 4096,
             DefaultCertificateId = "default"
-        };
-        var betaCompatibility = RuntimeHttp3Compatibility.From(beta);
+        });
 
-        AssertEx.True(stable.ProtocolsValid);
-        AssertEx.True(stable.StableProtocolAliasUsed);
-        AssertEx.False(stable.LegacyAliasUsed);
-        AssertEx.Equal(RuntimeHttp3Enablement.Default, stable.EffectiveEnablement);
-        AssertEx.True(stable.ExplicitHttp3Requested);
-        AssertEx.True(legacy.LegacyAliasUsed);
-        AssertEx.Equal(RuntimeHttp3Enablement.Preview, legacy.EffectiveEnablement);
-        AssertEx.True(betaCompatibility.LegacyEnablementAliasUsed);
-        AssertEx.True(betaCompatibility.LegacyBufferedRequestBodyLimitConfigured);
-        AssertEx.Equal(RuntimeHttp3Enablement.Beta, betaCompatibility.EffectiveEnablement);
+        AssertEx.True(enabled.ProtocolsValid);
+        AssertEx.True(enabled.EnablementValid);
+        AssertEx.Equal(RuntimeHttp3Enablement.Default, enabled.EffectiveEnablement);
+        AssertEx.True(enabled.ExplicitHttp3Requested);
+        AssertEx.False(enabled.UnsupportedExperimentalFlagConfigured);
+        AssertEx.Equal(RuntimeHttp3Enablement.Disabled, disabled.EffectiveEnablement);
+        AssertEx.True(disabled.EnablementExplicitlyConfigured);
+        AssertEx.True(disabled.LegacyBufferedRequestBodyLimitConfigured);
     }
 
-    public static void StableHttp3AliasesValidateMapAndAggregateConsistently()
+    public static void CurrentHttp3ConfigValidatesMapsAndAggregatesConsistently()
     {
-        var stableListener = Http3Listener("main", "http1AndHttp2AndHttp3", experimental: false);
-        var validation = new ProxyOptionsValidator().Validate(null, ValidProxyOptions(stableListener));
+        var listener = Http3Listener("main", "http1AndHttp2AndHttp3");
+        var validation = new ProxyOptionsValidator().Validate(null, ValidProxyOptions(listener));
         var snapshot = ProxyConfigurationMapper.ToRuntimeSnapshot(
-            ValidProxyOptions(stableListener),
+            ValidProxyOptions(listener),
             new ProxyOperationalOptions(),
             new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),
             1,
@@ -154,7 +139,7 @@ internal static class Http3InfrastructureTests
                         ],
                         Listeners =
                         [
-                            stableListener
+                            listener
                         ]
                     }),
                 new SiteConfigurationSource(
@@ -189,19 +174,41 @@ internal static class Http3InfrastructureTests
         var aggregateValidation = new ProxyOptionsValidator().Validate(null, aggregated);
 
         AssertEx.False(validation.Failed, string.Join("; ", validation.Failures ?? []));
-        AssertEx.Equal(RuntimeListenerProtocols.Http1AndHttp2AndHttp3Preview, snapshot.Listeners[0].Protocols);
+        AssertEx.Equal(RuntimeListenerProtocols.Http1AndHttp2AndHttp3, snapshot.Listeners[0].Protocols);
         AssertEx.Equal("default", snapshot.Listeners[0].Http3.EnablementLevel);
         AssertEx.True(snapshot.Listeners[0].Http3.EnabledForTraffic);
         AssertEx.False(aggregateValidation.Failed, string.Join("; ", aggregateValidation.Failures ?? []));
-        AssertEx.Equal("http1AndHttp2AndHttp3Preview", aggregated.Listeners[0].Protocols);
+        AssertEx.Equal("http1AndHttp2AndHttp3", aggregated.Listeners[0].Protocols);
+    }
+
+    public static void LegacyHttp3ConfigAliasesAreRejected()
+    {
+        var options = ValidProxyOptions(Http3Listener("main", "http3"));
+        options.Listeners.Add(new ListenerOptions
+        {
+            Name = "legacy",
+            Address = "127.0.0.1",
+            Port = 9443,
+            Transport = "https",
+            Protocols = "http3Preview",
+            ExperimentalHttp3 = true,
+            Http3Enablement = "preview",
+            DefaultCertificateId = "default"
+        });
+
+        var validation = new ProxyOptionsValidator().Validate(null, options);
+        var failures = AssertEx.NotNull(validation.Failures);
+
+        AssertEx.True(validation.Failed);
+        AssertEx.True(failures.Any(static failure => failure.Contains("Protocols must be", StringComparison.Ordinal)), string.Join("; ", failures));
+        AssertEx.True(failures.Any(static failure => failure.Contains("ExperimentalHttp3 is no longer supported", StringComparison.Ordinal)), string.Join("; ", failures));
+        AssertEx.True(failures.Any(static failure => failure.Contains("Http3Enablement must be", StringComparison.Ordinal)), string.Join("; ", failures));
     }
 
     public static void Http3DefaultEnabledForEligibleTlsListener()
     {
         var listener = RuntimeListenerFor("http1");
 
-        AssertEx.False(listener.ExperimentalHttp3);
-        AssertEx.False(listener.Http3PreviewConfigured);
         AssertEx.True(listener.Http3.Configured);
         AssertEx.True(listener.Http3.EnabledForTraffic);
         AssertEx.Equal("default", listener.Http3.EnablementLevel);
@@ -229,30 +236,28 @@ internal static class Http3InfrastructureTests
         AssertEx.Equal("tls_required", listener.Http3.DisabledReason);
     }
 
-    public static void Http3PreviewProtocolDoesNotRequireExperimentalGateForDefaultEnablement()
+    public static void Http3ProtocolDoesNotRequireExperimentalGateForDefaultEnablement()
     {
         var validation = new ProxyOptionsValidator().Validate(
             null,
-            ValidProxyOptions(Http3Listener("preview", "http1AndHttp2AndHttp3Preview", experimental: false)));
-        var runtime = RuntimeListenerFor("http1AndHttp2AndHttp3Preview", experimentalHttp3: false);
+            ValidProxyOptions(Http3Listener("current", "http1AndHttp2AndHttp3")));
+        var runtime = RuntimeListenerFor("http1AndHttp2AndHttp3");
 
         AssertEx.False(validation.Failed, string.Join("; ", validation.Failures ?? []));
-        AssertEx.True(runtime.Http3PreviewConfigured);
         AssertEx.True(runtime.Http3.EnabledForTraffic);
         AssertEx.Equal("default", runtime.Http3.EnablementLevel);
         AssertEx.Equal("default_enabled", runtime.Http3.DisabledReason);
     }
 
-    public static void Http3PreviewRequiresTlsCertificateCapableListener()
+    public static void Http3RequiresTlsCertificateCapableListener()
     {
         var listener = new ListenerOptions
         {
-            Name = "preview",
+            Name = "current",
             Address = "127.0.0.1",
             Port = 8443,
             Transport = "https",
-            Protocols = "http1AndHttp2AndHttp3Preview",
-            ExperimentalHttp3 = true,
+            Protocols = "http1AndHttp2AndHttp3",
             DefaultCertificateId = null,
             SniCertificates = []
         };
@@ -265,27 +270,25 @@ internal static class Http3InfrastructureTests
             string.Join("; ", failures));
     }
 
-    public static void Http3PreviewConfigIsAcceptedWithExplicitGateAndEnablesPreviewTraffic()
+    public static void Http3ConfigEnablesTraffic()
     {
-        var listener = Http3Listener("preview", "http1AndHttp2AndHttp3Preview", experimental: true);
+        var listener = Http3Listener("current", "http1AndHttp2AndHttp3");
         var validation = new ProxyOptionsValidator().Validate(null, ValidProxyOptions(listener));
-        var runtime = RuntimeListenerFor("http1AndHttp2AndHttp3Preview", experimentalHttp3: true);
+        var runtime = RuntimeListenerFor("http1AndHttp2AndHttp3");
 
         AssertEx.False(validation.Failed, string.Join("; ", validation.Failures ?? []));
-        AssertEx.True(runtime.Http3PreviewConfigured);
         AssertEx.True(runtime.TcpTrafficEnabled);
         AssertEx.True(runtime.Http3.EnabledForTraffic);
-        AssertEx.Equal("preview_enabled", runtime.Http3.DisabledReason);
+        AssertEx.Equal("default_enabled", runtime.Http3.DisabledReason);
     }
 
-    public static void Http3OnlyPreviewDoesNotEnableTcpTraffic()
+    public static void Http3OnlyDoesNotEnableTcpTraffic()
     {
-        var listener = Http3Listener("preview", "http3Preview", experimental: true);
+        var listener = Http3Listener("current", "http3");
         var validation = new ProxyOptionsValidator().Validate(null, ValidProxyOptions(listener));
-        var runtime = RuntimeListenerFor("http3Preview", experimentalHttp3: true);
+        var runtime = RuntimeListenerFor("http3");
 
         AssertEx.False(validation.Failed, string.Join("; ", validation.Failures ?? []));
-        AssertEx.True(runtime.Http3PreviewConfigured);
         AssertEx.False(runtime.TcpTrafficEnabled);
         AssertEx.True(runtime.Http3.EnabledForTraffic);
     }
@@ -301,7 +304,7 @@ internal static class Http3InfrastructureTests
 
     public static void QuicListenerIdentityIsSeparateFromTcpIdentity()
     {
-        var listener = RuntimeListenerFor("http1AndHttp2AndHttp3Preview", experimentalHttp3: true);
+        var listener = RuntimeListenerFor("http1AndHttp2AndHttp3");
         var tcpIdentity = listener.Identity;
         var quicIdentity = AssertEx.NotNull(listener.QuicIdentity);
 
@@ -312,7 +315,7 @@ internal static class Http3InfrastructureTests
 
     public static void TcpAlpnDoesNotAdvertiseHttp3()
     {
-        var listener = RuntimeListenerFor("http1AndHttp2AndHttp3Preview", experimentalHttp3: true);
+        var listener = RuntimeListenerFor("http1AndHttp2AndHttp3");
         var protocols = listener.Protocols;
         var tcpAlpn = ListenerProtocolAdvertisement.BuildTcpAlpn(protocols);
         var quicAlpn = ListenerProtocolAdvertisement.BuildHttp3Alpn(listener);
@@ -323,10 +326,10 @@ internal static class Http3InfrastructureTests
         AssertEx.True(quicAlpn.Any(static protocol => protocol.Protocol.Span.SequenceEqual("h3"u8)));
     }
 
-    public static void StatusAndEffectiveProjectionReportLegacyHttp3PreviewEnabled()
+    public static void StatusAndEffectiveProjectionReportHttp3Enabled()
     {
         var snapshot = ProxyConfigurationMapper.ToRuntimeSnapshot(
-            ValidProxyOptions(Http3Listener("preview", "http1AndHttp2AndHttp3Preview", experimental: true)),
+            ValidProxyOptions(Http3Listener("current", "http1AndHttp2AndHttp3")),
             new ProxyOperationalOptions(),
             new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),
             1,
@@ -336,14 +339,14 @@ internal static class Http3InfrastructureTests
             Discovery());
         var projection = ProxyConfigurationMapper.ToProjection(snapshot);
 
-        AssertEx.Equal("preview", projection.Http3.Configured);
+        AssertEx.Equal("default", projection.Http3.Configured);
         AssertEx.True(projection.Http3.EnabledForTraffic);
-        AssertEx.Equal("preview_enabled", projection.Http3.DisabledReason);
+        AssertEx.Equal("default_enabled", projection.Http3.DisabledReason);
         AssertEx.True(projection.Http3.UdpQuicListenerIdentityModeled);
         var statusProjection = Http3RuntimeSupport.Project(snapshot.Listeners);
-        AssertEx.Equal("preview", statusProjection.Configured);
+        AssertEx.Equal("default", statusProjection.Configured);
         AssertEx.True(statusProjection.EnabledForTraffic);
-        AssertEx.Equal("preview_enabled", statusProjection.DisabledReason);
+        AssertEx.Equal("default_enabled", statusProjection.DisabledReason);
         AssertEx.False(statusProjection.DefaultReadinessBlockers.Contains("qpack_dynamic_table_unsupported"));
         AssertEx.False(statusProjection.DefaultReadinessBlockers.Contains("request_body_buffered_not_streamed"));
         AssertEx.Equal("static_with_zero_dynamic_table", statusProjection.QpackMode);
@@ -352,7 +355,7 @@ internal static class Http3InfrastructureTests
 
     public static void FinalSupportProjectionReportsHttp3MatrixAndFinalNaming()
     {
-        var options = ValidProxyOptions(Http3Listener("main", "http1AndHttp2", experimental: false));
+        var options = ValidProxyOptions(Http3Listener("main", "http1AndHttp2"));
         options.Routes[0].Upstreams[0] = new UpstreamOptions
         {
             Name = "h3",
@@ -423,7 +426,7 @@ internal static class Http3InfrastructureTests
         AssertEx.False(validation.Failed, string.Join("; ", validation.Failures ?? []));
     }
 
-    private static ListenerOptions Http3Listener(string name, string protocols, bool experimental)
+    private static ListenerOptions Http3Listener(string name, string protocols)
     {
         return new ListenerOptions
         {
@@ -432,14 +435,11 @@ internal static class Http3InfrastructureTests
             Port = 8443,
             Transport = "https",
             Protocols = protocols,
-            ExperimentalHttp3 = experimental,
             DefaultCertificateId = "default"
         };
     }
 
-    private static RuntimeListener RuntimeListenerFor(
-        string protocols,
-        bool experimentalHttp3 = false)
+    private static RuntimeListener RuntimeListenerFor(string protocols)
     {
         return new RuntimeListener(
             "main",
@@ -455,8 +455,7 @@ internal static class Http3InfrastructureTests
             1024,
             64 * 1024)
         {
-            Protocols = ParseProtocols(protocols),
-            ExperimentalHttp3 = experimentalHttp3
+            Protocols = ParseProtocols(protocols)
         };
     }
 

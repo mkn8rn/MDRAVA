@@ -4,7 +4,7 @@ using MDRAVA.API.Proxy.Protocol;
 
 namespace MDRAVA.API.Proxy.Http3;
 
-public static class Http3PreviewCodec
+public static class Http3Codec
 {
     public const long DataFrame = 0x0;
     public const long HeadersFrame = 0x1;
