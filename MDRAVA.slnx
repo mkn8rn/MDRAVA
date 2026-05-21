@@ -1,4 +1,6 @@
 <Solution>
   <Project Path="MDRAVA.API/MDRAVA.API.csproj" />
+  <Project Path="MDRAVA.BLL/MDRAVA.BLL.csproj" />
+  <Project Path="MDRAVA.INF/MDRAVA.INF.csproj" />
   <Project Path="MDRAVA.Tests/MDRAVA.Tests.csproj" />
 </Solution>

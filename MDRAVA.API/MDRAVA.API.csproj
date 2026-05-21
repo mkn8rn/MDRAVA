@@ -7,6 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\MDRAVA.BLL\MDRAVA.BLL.csproj" />
+    <ProjectReference Include="..\MDRAVA.INF\MDRAVA.INF.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.8" />
     <PackageReference Include="YamlDotNet" Version="17.1.0" />
   </ItemGroup>
