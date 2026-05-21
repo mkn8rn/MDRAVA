@@ -99,11 +99,6 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
                 failures.Add($"{prefix}:Http3Enablement must be {SupportedHttp3EnablementsText()} when configured.");
             }
 
-            if (http3Compatibility.UnsupportedExperimentalFlagConfigured)
-            {
-                failures.Add($"{prefix}:ExperimentalHttp3 is no longer supported; use Protocols 'http3', 'http1AndHttp3', 'http2AndHttp3', or 'http1AndHttp2AndHttp3'.");
-            }
-
             if (listener.Http3AltSvcMaxAgeSeconds is < 0 or > 31536000)
             {
                 failures.Add($"{prefix}:Http3AltSvcMaxAgeSeconds must be between 0 and 31536000.");
@@ -113,11 +108,6 @@ public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
                 && string.Equals(listener.Http3Enablement, "disabled", StringComparison.OrdinalIgnoreCase))
             {
                 failures.Add($"{prefix}:Http3AltSvcEnabled cannot be true when Http3Enablement is 'disabled'.");
-            }
-
-            if (listener.Http3MaxBufferedRequestBodyBytes is < 0 or > 64 * 1024 * 1024)
-            {
-                failures.Add($"{prefix}:Http3MaxBufferedRequestBodyBytes must be between 0 and 67108864.");
             }
 
             if (listener.Port is < 1 or > 65535)

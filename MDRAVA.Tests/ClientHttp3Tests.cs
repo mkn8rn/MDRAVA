@@ -447,7 +447,6 @@ internal static class ClientHttp3Tests
                         Port = 8443,
                         Transport = "https",
                         Protocols = "http3",
-                        ExperimentalHttp3 = true,
                         Http3Enablement = "preview",
                         DefaultCertificateId = "default"
                     }
@@ -466,7 +465,6 @@ internal static class ClientHttp3Tests
         var failures = AssertEx.NotNull(validation.Failures);
 
         AssertEx.True(validation.Failed);
-        AssertEx.True(failures.Any(static failure => failure.Contains("ExperimentalHttp3 is no longer supported", StringComparison.Ordinal)), string.Join("; ", failures));
         AssertEx.True(failures.Any(static failure => failure.Contains("Http3Enablement must be", StringComparison.Ordinal)), string.Join("; ", failures));
     }
 
@@ -1256,28 +1254,38 @@ internal static class ClientHttp3Tests
         AssertEx.True(result.Metrics.Http3RejectedRequests.ContainsKey("request_body_too_large"));
     }
 
-    public static async Task Http3LegacyBufferedRequestBodyLimitDoesNotBlockStreaming()
+    public static void RemovedHttp3BufferedRequestBodyLimitIsRejectedByParser()
     {
-        if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
+        var parser = new SiteConfigurationParser();
+        try
         {
+            parser.ReadSiteText(
+                """
+                {
+                  "name": "http3",
+                  "listeners": [
+                    {
+                      "name": "main",
+                      "address": "127.0.0.1",
+                      "port": 8443,
+                      "transport": "https",
+                      "protocols": "http3",
+                      "http3MaxBufferedRequestBodyBytes": 4,
+                      "defaultCertificateId": "home-cert"
+                    }
+                  ],
+                  "host": "localhost"
+                }
+                """,
+                SiteConfigurationFormat.Json);
+        }
+        catch (System.Text.Json.JsonException exception)
+        {
+            AssertEx.True(exception.Message.Contains("http3MaxBufferedRequestBodyBytes", StringComparison.Ordinal), exception.Message);
             return;
         }
 
-        using var result = await RunHttp3ProxyRouteScenarioAsync(
-            "POST",
-            "/streamed-body",
-            "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 8\r\n\r\naccepted",
-            requestBody: "buffered",
-            listenerExtraJson:
-            """
-                  "http3MaxBufferedRequestBodyBytes": 4,
-            """);
-
-        AssertEx.Equal("200", HeaderValue(result.Headers, ":status"));
-        AssertEx.Equal("accepted", result.Body);
-        AssertEx.True(result.UpstreamRequest.Contains("Content-Length: 8", StringComparison.OrdinalIgnoreCase), result.UpstreamRequest);
-        AssertEx.True(result.UpstreamRequest.EndsWith("buffered", StringComparison.Ordinal), result.UpstreamRequest);
-        AssertEx.False(result.Metrics.Http3RejectedRequests.ContainsKey("request_body_too_large"));
+        throw new InvalidOperationException("Expected removed HTTP/3 body buffer config to be rejected.");
     }
 
     public static async Task Http3RequestWithBodyIsNotRetried()
@@ -1943,7 +1951,6 @@ internal static class ClientHttp3Tests
                   "transport": "https",
                   "protocols": "http3",
                   "http3Enablement": "default",
-                  "http3MaxBufferedRequestBodyBytes": 4096,
                   "defaultCertificateId": "home-cert"
                 }
               ],
@@ -1965,7 +1972,7 @@ internal static class ClientHttp3Tests
         var codes = result.Findings.Select(static finding => finding.Code).ToArray();
 
         AssertEx.True(codes.Contains("http3_alt_svc_not_ready"));
-        AssertEx.True(codes.Contains("http3_legacy_buffer_limit_configured"));
+        AssertEx.False(codes.Any(static code => code.Contains("buffer", StringComparison.OrdinalIgnoreCase)));
         AssertEx.False(codes.Contains("http3_default_readiness_buffered_body"));
         AssertEx.False(codes.Contains("http3_default_readiness_qpack_static_only"));
     }

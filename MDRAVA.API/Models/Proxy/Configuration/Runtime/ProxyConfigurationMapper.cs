@@ -42,7 +42,6 @@ public static class ProxyConfigurationMapper
                     Http3AltSvc = new RuntimeHttp3AltSvcOptions(
                         listener.Http3AltSvcEnabled,
                         listener.Http3AltSvcMaxAgeSeconds),
-                    Http3MaxBufferedRequestBodyBytes = listener.Http3MaxBufferedRequestBodyBytes,
                     Http2Limits = new RuntimeHttp2Limits(
                         listener.Http2MaxConcurrentStreams,
                         listener.Http2MaxHeaderListBytes,

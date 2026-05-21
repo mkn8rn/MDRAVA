@@ -101,7 +101,6 @@ public static class SiteOptionsAggregator
             Enabled = existing.Enabled || next.Enabled,
             Transport = existing.Transport,
             Protocols = MergeListenerProtocols(existing.Protocols, next.Protocols),
-            ExperimentalHttp3 = existing.ExperimentalHttp3 ?? next.ExperimentalHttp3,
             Http3Enablement = MergeHttp3Enablement(existing.Http3Enablement, next.Http3Enablement),
             Http3AltSvcEnabled = existing.Http3AltSvcEnabled || next.Http3AltSvcEnabled,
             Http3AltSvcMaxAgeSeconds = existing.Http3AltSvcMaxAgeSeconds,
@@ -114,7 +113,6 @@ public static class SiteOptionsAggregator
             MaxResponseHeadBytes = existing.MaxResponseHeadBytes,
             MaxChunkLineBytes = existing.MaxChunkLineBytes,
             ForwardingBufferBytes = existing.ForwardingBufferBytes,
-            Http3MaxBufferedRequestBodyBytes = existing.Http3MaxBufferedRequestBodyBytes,
             Http2MaxConcurrentStreams = existing.Http2MaxConcurrentStreams,
             Http2MaxHeaderListBytes = existing.Http2MaxHeaderListBytes,
             Http2MaxFrameSize = existing.Http2MaxFrameSize

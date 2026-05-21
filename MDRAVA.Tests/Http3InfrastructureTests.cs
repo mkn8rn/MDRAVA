@@ -1,6 +1,7 @@
 using System.Net.Security;
 using System.Net.Quic;
 using MDRAVA.API.Proxy.Configuration;
+using MDRAVA.API.Proxy.Configuration.Loading;
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Http3;
 using MDRAVA.API.Proxy.Tls;
@@ -92,7 +93,6 @@ internal static class Http3InfrastructureTests
             Transport = "https",
             Protocols = "http3",
             Http3Enablement = "disabled",
-            Http3MaxBufferedRequestBodyBytes = 4096,
             DefaultCertificateId = "default"
         });
 
@@ -100,10 +100,8 @@ internal static class Http3InfrastructureTests
         AssertEx.True(enabled.EnablementValid);
         AssertEx.Equal(RuntimeHttp3Enablement.Default, enabled.EffectiveEnablement);
         AssertEx.True(enabled.ExplicitHttp3Requested);
-        AssertEx.False(enabled.UnsupportedExperimentalFlagConfigured);
         AssertEx.Equal(RuntimeHttp3Enablement.Disabled, disabled.EffectiveEnablement);
         AssertEx.True(disabled.EnablementExplicitlyConfigured);
-        AssertEx.True(disabled.LegacyBufferedRequestBodyLimitConfigured);
     }
 
     public static void CurrentHttp3ConfigValidatesMapsAndAggregatesConsistently()
@@ -191,7 +189,6 @@ internal static class Http3InfrastructureTests
             Port = 9443,
             Transport = "https",
             Protocols = "http3Preview",
-            ExperimentalHttp3 = true,
             Http3Enablement = "preview",
             DefaultCertificateId = "default"
         });
@@ -201,8 +198,67 @@ internal static class Http3InfrastructureTests
 
         AssertEx.True(validation.Failed);
         AssertEx.True(failures.Any(static failure => failure.Contains("Protocols must be", StringComparison.Ordinal)), string.Join("; ", failures));
-        AssertEx.True(failures.Any(static failure => failure.Contains("ExperimentalHttp3 is no longer supported", StringComparison.Ordinal)), string.Join("; ", failures));
         AssertEx.True(failures.Any(static failure => failure.Contains("Http3Enablement must be", StringComparison.Ordinal)), string.Join("; ", failures));
+    }
+
+    public static void RemovedHttp3ConfigPropertiesAreRejectedByParser()
+    {
+        var parser = new SiteConfigurationParser();
+        var experimental = CaptureJsonException(() => parser.ReadSiteText(
+            """
+            {
+              "name": "site",
+              "listeners": [
+                {
+                  "name": "main",
+                  "address": "127.0.0.1",
+                  "port": 8443,
+                  "transport": "https",
+                  "protocols": "http3",
+                  "experimentalHttp3": true,
+                  "defaultCertificateId": "default"
+                }
+              ],
+              "host": "localhost"
+            }
+            """,
+            SiteConfigurationFormat.Json));
+        var buffered = CaptureJsonException(() => parser.ReadSiteText(
+            """
+            {
+              "name": "site",
+              "listeners": [
+                {
+                  "name": "main",
+                  "address": "127.0.0.1",
+                  "port": 8443,
+                  "transport": "https",
+                  "protocols": "http3",
+                  "http3MaxBufferedRequestBodyBytes": 4096,
+                  "defaultCertificateId": "default"
+                }
+              ],
+              "host": "localhost"
+            }
+            """,
+            SiteConfigurationFormat.Json));
+
+        AssertEx.True(experimental.Message.Contains("experimentalHttp3", StringComparison.Ordinal), experimental.Message);
+        AssertEx.True(buffered.Message.Contains("http3MaxBufferedRequestBodyBytes", StringComparison.Ordinal), buffered.Message);
+    }
+
+    private static System.Text.Json.JsonException CaptureJsonException(Action action)
+    {
+        try
+        {
+            action();
+        }
+        catch (System.Text.Json.JsonException exception)
+        {
+            return exception;
+        }
+
+        throw new InvalidOperationException("Expected JSON exception.");
     }
 
     public static void Http3DefaultEnabledForEligibleTlsListener()
@@ -236,7 +292,7 @@ internal static class Http3InfrastructureTests
         AssertEx.Equal("tls_required", listener.Http3.DisabledReason);
     }
 
-    public static void Http3ProtocolDoesNotRequireExperimentalGateForDefaultEnablement()
+    public static void Http3ProtocolUsesDefaultEnablement()
     {
         var validation = new ProxyOptionsValidator().Validate(
             null,

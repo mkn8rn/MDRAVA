@@ -42,6 +42,7 @@ public sealed class SiteConfigurationParser
             ? text
             : ConvertYamlToJson(text);
 
+        RejectRemovedHttp3Properties(json);
         return JsonSerializer.Deserialize<SiteOptions>(json, ReadJsonOptions);
     }
 
@@ -62,5 +63,52 @@ public sealed class SiteConfigurationParser
         }
 
         return YamlJsonSerializer.Serialize(yamlObject);
+    }
+
+    private static void RejectRemovedHttp3Properties(string json)
+    {
+        using var document = JsonDocument.Parse(
+            json,
+            new JsonDocumentOptions
+            {
+                CommentHandling = JsonCommentHandling.Skip,
+                AllowTrailingCommas = true
+            });
+
+        RejectRemovedHttp3Properties(document.RootElement, "$");
+    }
+
+    private static void RejectRemovedHttp3Properties(JsonElement element, string path)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+                foreach (var property in element.EnumerateObject())
+                {
+                    var childPath = $"{path}.{property.Name}";
+                    if (string.Equals(property.Name, "experimentalHttp3", StringComparison.OrdinalIgnoreCase))
+                    {
+                        throw new JsonException($"Unsupported HTTP/3 configuration property 'experimentalHttp3' at {childPath}; remove it and use the current listener protocol spellings.");
+                    }
+
+                    if (string.Equals(property.Name, "http3MaxBufferedRequestBodyBytes", StringComparison.OrdinalIgnoreCase))
+                    {
+                        throw new JsonException($"Unsupported HTTP/3 configuration property 'http3MaxBufferedRequestBodyBytes' at {childPath}; remove it because HTTP/3 request bodies stream.");
+                    }
+
+                    RejectRemovedHttp3Properties(property.Value, childPath);
+                }
+
+                break;
+            case JsonValueKind.Array:
+                var index = 0;
+                foreach (var item in element.EnumerateArray())
+                {
+                    RejectRemovedHttp3Properties(item, $"{path}[{index}]");
+                    index++;
+                }
+
+                break;
+        }
     }
 }

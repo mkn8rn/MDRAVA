@@ -188,11 +188,6 @@ public sealed class ConfigLintService
                 findings.Add(Warning("http3_alt_svc_disabled", $"Listener '{listener.Name}' has HTTP/3 {listener.Http3.EnablementLevel} enabled but Alt-Svc advertisement is disabled.", sourceName, path, "Enable Http3AltSvcEnabled only after the QUIC listener is reachable."));
             }
 
-            if (listener.Http3.EnabledForTraffic && listener.Http3MaxBufferedRequestBodyBytes > 0)
-            {
-                findings.Add(Info("http3_legacy_buffer_limit_configured", $"Listener '{listener.Name}' configures the legacy HTTP/3 buffered body limit, but request bodies are streamed.", sourceName, path, "Remove Http3MaxBufferedRequestBodyBytes unless a future compatibility phase reuses it."));
-            }
-
             if (Http3AltSvcPolicy.IsEnabled(listener))
             {
                 var ready = activeRuntime

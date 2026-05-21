@@ -14,17 +14,11 @@ public sealed class ListenerOptions
 
     public string Protocols { get; init; } = "http1";
 
-    // Old configs should fail validation explicitly instead of being ignored.
-    public bool? ExperimentalHttp3 { get; init; }
-
     public string Http3Enablement { get; init; } = "";
 
     public bool Http3AltSvcEnabled { get; init; }
 
     public int Http3AltSvcMaxAgeSeconds { get; init; } = 86400;
-
-    // Legacy compatibility setting. HTTP/3 request bodies now stream.
-    public int Http3MaxBufferedRequestBodyBytes { get; init; }
 
     public string? DefaultCertificateId { get; init; }
 

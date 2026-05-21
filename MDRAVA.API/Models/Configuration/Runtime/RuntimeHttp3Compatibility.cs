@@ -6,9 +6,7 @@ public sealed record RuntimeHttp3Compatibility(
     RuntimeHttp3Enablement EffectiveEnablement,
     bool EnablementValid,
     bool EnablementExplicitlyConfigured,
-    bool UnsupportedExperimentalFlagConfigured,
-    bool ExplicitHttp3Requested,
-    bool LegacyBufferedRequestBodyLimitConfigured)
+    bool ExplicitHttp3Requested)
 {
     public static readonly IReadOnlyList<string> SupportedProtocolConfigValues =
     [
@@ -49,9 +47,7 @@ public sealed record RuntimeHttp3Compatibility(
             effectiveEnablement,
             enablementValid,
             enablementExplicitlyConfigured,
-            listener.ExperimentalHttp3.HasValue,
-            protocols.HasHttp3(),
-            listener.Http3MaxBufferedRequestBodyBytes > 0);
+            protocols.HasHttp3());
     }
 
     public static bool TryParseProtocols(string? protocols, out RuntimeListenerProtocols parsed)
