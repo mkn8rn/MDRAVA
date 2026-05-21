@@ -395,46 +395,38 @@ public sealed class Http2ClientConnection
             }
 
             context.SetRoute(routeMatch.Route);
-            var actionDecision = _routeActionPolicy.Evaluate(
-                routeMatch.Route,
-                requestHead,
-                _listener,
-                isUpgradeRequest: false);
-            if (!actionDecision.ShouldProxy)
+            if (await TryHandleGeneratedRouteActionAsync(
+                    stream.Id,
+                    routeMatch.Route,
+                    requestHead,
+                    context,
+                    cancellationToken))
             {
-                await WriteGeneratedRouteResponseAsync(stream.Id, actionDecision.Response!, context, requestHead.Method, cancellationToken);
                 CompleteContext(ref context);
                 return;
             }
 
-            if (requestHead.Framing.Kind == Http1BodyKind.ContentLength
-                && requestHead.Framing.ContentLength.GetValueOrDefault() > routeMatch.Route.ResolvedOptions.MaxRequestBodyBytes)
-            {
-                _metrics.RequestBodySizeRejected();
-                await WriteGeneratedResponseAsync(
+            if (await TryRejectKnownLengthRequestBodyAsync(
                     stream.Id,
-                    413,
-                    "Payload Too Large",
-                    "Payload Too Large",
+                    routeMatch.Route,
+                    requestHead,
                     context,
-                    ProxyFailureKind.RequestPayloadTooLarge,
-                    requestHead.Method,
-                    cancellationToken);
+                    cancellationToken))
+            {
                 CompleteContext(ref context);
                 return;
             }
 
             var upstreamTarget = _pathRewritePolicy.Apply(routeMatch.Route, requestHead.Target, requestHead.Path);
             var effectiveTimeouts = ApplyRouteTimeouts(routeMatch.Route, _configurationSnapshot.Timeouts);
-            if (_cacheStore.TryGet(
+            if (await TryHandleCacheHitAsync(
+                    stream.Id,
                     routeMatch.Route,
-                    _listener,
                     requestHead,
                     upstreamTarget,
-                    out var cachedResponse)
-                && cachedResponse is not null)
+                    context,
+                    cancellationToken))
             {
-                await WriteCachedResponseAsync(stream.Id, requestHead, cachedResponse, context, cancellationToken);
                 CompleteContext(ref context);
                 return;
             }
@@ -461,6 +453,81 @@ public sealed class Http2ClientConnection
             context.FailureKind = ProxyFailureKind.ClientDisconnected;
             CompleteContext(ref context);
         }
+    }
+
+    private async ValueTask<bool> TryHandleGeneratedRouteActionAsync(
+        int streamId,
+        RuntimeRoute route,
+        Http1RequestHead requestHead,
+        ProxyRequestContext context,
+        CancellationToken cancellationToken)
+    {
+        var actionDecision = _routeActionPolicy.Evaluate(
+            route,
+            requestHead,
+            _listener,
+            isUpgradeRequest: false);
+        if (actionDecision.ShouldProxy)
+        {
+            return false;
+        }
+
+        await WriteGeneratedRouteResponseAsync(
+            streamId,
+            actionDecision.Response!,
+            context,
+            requestHead.Method,
+            cancellationToken);
+        return true;
+    }
+
+    private async ValueTask<bool> TryRejectKnownLengthRequestBodyAsync(
+        int streamId,
+        RuntimeRoute route,
+        Http1RequestHead requestHead,
+        ProxyRequestContext context,
+        CancellationToken cancellationToken)
+    {
+        if (requestHead.Framing.Kind != Http1BodyKind.ContentLength
+            || requestHead.Framing.ContentLength.GetValueOrDefault() <= route.ResolvedOptions.MaxRequestBodyBytes)
+        {
+            return false;
+        }
+
+        _metrics.RequestBodySizeRejected();
+        await WriteGeneratedResponseAsync(
+            streamId,
+            413,
+            "Payload Too Large",
+            "Payload Too Large",
+            context,
+            ProxyFailureKind.RequestPayloadTooLarge,
+            requestHead.Method,
+            cancellationToken);
+        return true;
+    }
+
+    private async ValueTask<bool> TryHandleCacheHitAsync(
+        int streamId,
+        RuntimeRoute route,
+        Http1RequestHead requestHead,
+        string upstreamTarget,
+        ProxyRequestContext context,
+        CancellationToken cancellationToken)
+    {
+        if (!_cacheStore.TryGet(
+                route,
+                _listener,
+                requestHead,
+                upstreamTarget,
+                out var cachedResponse)
+            || cachedResponse is null)
+        {
+            return false;
+        }
+
+        await WriteCachedResponseAsync(streamId, requestHead, cachedResponse, context, cancellationToken);
+        return true;
     }
 
     private bool TryBuildRequest(

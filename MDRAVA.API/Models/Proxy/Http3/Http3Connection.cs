@@ -214,21 +214,24 @@ public sealed class Http3Connection
             }
 
             context.SetRoute(routeMatch.Route);
-            var actionDecision = _routeActionPolicy.Evaluate(routeMatch.Route, requestHead, _listener, isUpgradeRequest: false);
-            if (!actionDecision.ShouldProxy)
+            if (await TryHandleGeneratedRouteActionAsync(
+                    stream,
+                    routeMatch.Route,
+                    requestHead,
+                    context,
+                    cancellationToken))
             {
-                _metrics.Http3GeneratedResponse();
-                await WriteGeneratedRouteResponseAsync(stream, actionDecision.Response!, context, requestHead.Method, cancellationToken);
                 CompleteContext(ref context);
                 return true;
             }
 
-            if (requestHead.Framing.Kind == Http1BodyKind.ContentLength
-                && requestHead.Framing.ContentLength.GetValueOrDefault() > routeMatch.Route.ResolvedOptions.MaxRequestBodyBytes)
+            if (await TryRejectKnownLengthRequestBodyAsync(
+                    stream,
+                    routeMatch.Route,
+                    requestHead,
+                    context,
+                    cancellationToken))
             {
-                _metrics.RequestBodySizeRejected();
-                _metrics.Http3RequestRejected("request_body_too_large");
-                await WriteGeneratedResponseAsync(stream, 413, "Payload Too Large", "Payload Too Large", context, requestHead.Method, cancellationToken);
                 CompleteContext(ref context);
                 return true;
             }
@@ -240,15 +243,14 @@ public sealed class Http3Connection
                 cancellationToken);
             var upstreamTarget = _pathRewritePolicy.Apply(routeMatch.Route, requestHead.Target, requestHead.Path);
             var effectiveTimeouts = ApplyRouteTimeouts(routeMatch.Route, _configurationSnapshot.Timeouts);
-            if (_cacheStore.TryGet(
+            if (await TryHandleCacheHitAsync(
+                    stream,
                     routeMatch.Route,
-                    _listener,
                     requestHead,
                     upstreamTarget,
-                    out var cachedResponse)
-                && cachedResponse is not null)
+                    context,
+                    cancellationToken))
             {
-                await WriteCachedResponseAsync(stream, requestHead, cachedResponse, context, cancellationToken);
                 CompleteContext(ref context);
                 return true;
             }
@@ -287,6 +289,82 @@ public sealed class Http3Connection
         {
             _metrics.Http3StreamEnded();
         }
+    }
+
+    private async ValueTask<bool> TryHandleGeneratedRouteActionAsync(
+        QuicStream stream,
+        RuntimeRoute route,
+        Http1RequestHead requestHead,
+        ProxyRequestContext context,
+        CancellationToken cancellationToken)
+    {
+        var actionDecision = _routeActionPolicy.Evaluate(
+            route,
+            requestHead,
+            _listener,
+            isUpgradeRequest: false);
+        if (actionDecision.ShouldProxy)
+        {
+            return false;
+        }
+
+        _metrics.Http3GeneratedResponse();
+        await WriteGeneratedRouteResponseAsync(
+            stream,
+            actionDecision.Response!,
+            context,
+            requestHead.Method,
+            cancellationToken);
+        return true;
+    }
+
+    private async ValueTask<bool> TryRejectKnownLengthRequestBodyAsync(
+        QuicStream stream,
+        RuntimeRoute route,
+        Http1RequestHead requestHead,
+        ProxyRequestContext context,
+        CancellationToken cancellationToken)
+    {
+        if (requestHead.Framing.Kind != Http1BodyKind.ContentLength
+            || requestHead.Framing.ContentLength.GetValueOrDefault() <= route.ResolvedOptions.MaxRequestBodyBytes)
+        {
+            return false;
+        }
+
+        _metrics.RequestBodySizeRejected();
+        _metrics.Http3RequestRejected("request_body_too_large");
+        await WriteGeneratedResponseAsync(
+            stream,
+            413,
+            "Payload Too Large",
+            "Payload Too Large",
+            context,
+            requestHead.Method,
+            cancellationToken);
+        return true;
+    }
+
+    private async ValueTask<bool> TryHandleCacheHitAsync(
+        QuicStream stream,
+        RuntimeRoute route,
+        Http1RequestHead requestHead,
+        string upstreamTarget,
+        ProxyRequestContext context,
+        CancellationToken cancellationToken)
+    {
+        if (!_cacheStore.TryGet(
+                route,
+                _listener,
+                requestHead,
+                upstreamTarget,
+                out var cachedResponse)
+            || cachedResponse is null)
+        {
+            return false;
+        }
+
+        await WriteCachedResponseAsync(stream, requestHead, cachedResponse, context, cancellationToken);
+        return true;
     }
 
     private async ValueTask SendSettingsAsync(CancellationToken cancellationToken)
