@@ -122,14 +122,11 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
         {
             _metrics.ListenerReloadAttempted();
             var attemptedAt = DateTimeOffset.UtcNow;
-            var nextListeners = snapshot.Listeners
-                .Where(static listener => listener.Enabled && listener.TcpTrafficEnabled)
-                .ToDictionary(static listener => RuntimeListenerIdentity.From(listener).Key, StringComparer.OrdinalIgnoreCase);
-            var nextQuicListeners = snapshot.Listeners
-                .Where(static listener => listener.Enabled && listener.Http3.EnabledForTraffic)
-                .ToDictionary(static listener => listener.QuicIdentity!.Key, StringComparer.OrdinalIgnoreCase);
-            var diff = DiffListeners(nextListeners);
-            var quicDiff = DiffQuicListeners(nextQuicListeners);
+            var plan = CreateListenerReloadPlan(snapshot);
+            var nextListeners = plan.DesiredTcpListeners;
+            var nextQuicListeners = plan.DesiredQuicListeners;
+            var diff = plan.TcpDiff;
+            var quicDiff = plan.QuicDiff;
             Dictionary<string, ManagedListener> pending = new(StringComparer.OrdinalIgnoreCase);
             Dictionary<string, ManagedQuicListener> pendingQuic = new(StringComparer.OrdinalIgnoreCase);
             List<string> listenerErrors = [];
@@ -164,7 +161,9 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
                     quicDiff,
                     pending,
                     pendingQuic,
-                    [SafeError(exception)]);
+                    [SafeError(exception)],
+                    plan.CurrentTcpListeners,
+                    plan.CurrentQuicListeners);
                 UpdateRuntimeState(result);
                 _logger.LogWarning(exception, "Proxy listener reload failed while preparing new listeners.");
                 return result;
@@ -200,17 +199,6 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
             }
 
             ProxyConfigurationSnapshot activeSnapshot;
-            Dictionary<string, ManagedListener> existingForResult;
-            Dictionary<string, ManagedQuicListener> existingQuicForResult;
-            lock (_listeners)
-            {
-                existingForResult = new Dictionary<string, ManagedListener>(_listeners, StringComparer.OrdinalIgnoreCase);
-            }
-            lock (_quicListeners)
-            {
-                existingQuicForResult = new Dictionary<string, ManagedQuicListener>(_quicListeners, StringComparer.OrdinalIgnoreCase);
-            }
-
             try
             {
                 activeSnapshot = activateSnapshot(snapshot);
@@ -234,7 +222,9 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
                     quicDiff,
                     pending,
                     pendingQuic,
-                    [SafeError(exception)]);
+                    [SafeError(exception)],
+                    plan.CurrentTcpListeners,
+                    plan.CurrentQuicListeners);
                 UpdateRuntimeState(result);
                 return result;
             }
@@ -330,8 +320,8 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
                 pending,
                 pendingQuic,
                 listenerErrors,
-                existingForResult,
-                existingQuicForResult);
+                plan.CurrentTcpListeners,
+                plan.CurrentQuicListeners);
             _metrics.ListenerReloadSucceeded(
                 diff.Added.Count + quicDiff.Added.Count,
                 diff.Removed.Count + quicDiff.Removed.Count,
@@ -428,39 +418,74 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
         _http3UpstreamConnectionPool.Dispose();
     }
 
-    private ListenerDiff DiffListeners(IReadOnlyDictionary<string, RuntimeListener> nextListeners)
+    private ListenerReloadPlan CreateListenerReloadPlan(ProxyConfigurationSnapshot snapshot)
+    {
+        var desiredTcpListeners = snapshot.Listeners
+            .Where(static listener => listener.Enabled && listener.TcpTrafficEnabled)
+            .ToDictionary(static listener => RuntimeListenerIdentity.From(listener).Key, StringComparer.OrdinalIgnoreCase);
+        var desiredQuicListeners = snapshot.Listeners
+            .Where(static listener => listener.Enabled && listener.Http3.EnabledForTraffic)
+            .ToDictionary(static listener => listener.QuicIdentity!.Key, StringComparer.OrdinalIgnoreCase);
+        var currentTcpListeners = SnapshotTcpListeners();
+        var currentQuicListeners = SnapshotQuicListeners();
+
+        return new ListenerReloadPlan(
+            desiredTcpListeners,
+            desiredQuicListeners,
+            currentTcpListeners,
+            currentQuicListeners,
+            BuildTcpListenerDiff(currentTcpListeners, desiredTcpListeners),
+            BuildQuicListenerDiff(currentQuicListeners, desiredQuicListeners));
+    }
+
+    private Dictionary<string, ManagedListener> SnapshotTcpListeners()
+    {
+        lock (_listeners)
+        {
+            return new Dictionary<string, ManagedListener>(_listeners, StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    private Dictionary<string, ManagedQuicListener> SnapshotQuicListeners()
+    {
+        lock (_quicListeners)
+        {
+            return new Dictionary<string, ManagedQuicListener>(_quicListeners, StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    private static ListenerDiff BuildTcpListenerDiff(
+        IReadOnlyDictionary<string, ManagedListener> currentListeners,
+        IReadOnlyDictionary<string, RuntimeListener> desiredListeners)
     {
         List<string> added = [];
         List<string> removed = [];
         List<string> changed = [];
         List<string> unchanged = [];
 
-        lock (_listeners)
+        foreach (var key in desiredListeners.Keys)
         {
-            foreach (var key in nextListeners.Keys)
+            if (!currentListeners.TryGetValue(key, out var existing))
             {
-                if (!_listeners.TryGetValue(key, out var existing))
-                {
-                    added.Add(key);
-                    continue;
-                }
-
-                if (CanReuse(existing.Listener, nextListeners[key]))
-                {
-                    unchanged.Add(key);
-                }
-                else
-                {
-                    changed.Add(key);
-                }
+                added.Add(key);
+                continue;
             }
 
-            foreach (var key in _listeners.Keys)
+            if (CanReuse(existing.Listener, desiredListeners[key]))
             {
-                if (!nextListeners.ContainsKey(key))
-                {
-                    removed.Add(key);
-                }
+                unchanged.Add(key);
+            }
+            else
+            {
+                changed.Add(key);
+            }
+        }
+
+        foreach (var key in currentListeners.Keys)
+        {
+            if (!desiredListeners.ContainsKey(key))
+            {
+                removed.Add(key);
             }
         }
 
@@ -471,39 +496,38 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
             unchanged.Order(StringComparer.OrdinalIgnoreCase).ToArray());
     }
 
-    private ListenerDiff DiffQuicListeners(IReadOnlyDictionary<string, RuntimeListener> nextListeners)
+    private static ListenerDiff BuildQuicListenerDiff(
+        IReadOnlyDictionary<string, ManagedQuicListener> currentListeners,
+        IReadOnlyDictionary<string, RuntimeListener> desiredListeners)
     {
         List<string> added = [];
         List<string> removed = [];
         List<string> changed = [];
         List<string> unchanged = [];
 
-        lock (_quicListeners)
+        foreach (var key in desiredListeners.Keys)
         {
-            foreach (var key in nextListeners.Keys)
+            if (!currentListeners.TryGetValue(key, out var existing))
             {
-                if (!_quicListeners.TryGetValue(key, out var existing))
-                {
-                    added.Add(key);
-                    continue;
-                }
-
-                if (existing.State != ProxyListenerState.Failed && CanReuseQuic(existing.Listener, nextListeners[key]))
-                {
-                    unchanged.Add(key);
-                }
-                else
-                {
-                    changed.Add(key);
-                }
+                added.Add(key);
+                continue;
             }
 
-            foreach (var key in _quicListeners.Keys)
+            if (existing.State != ProxyListenerState.Failed && CanReuseQuic(existing.Listener, desiredListeners[key]))
             {
-                if (!nextListeners.ContainsKey(key))
-                {
-                    removed.Add(key);
-                }
+                unchanged.Add(key);
+            }
+            else
+            {
+                changed.Add(key);
+            }
+        }
+
+        foreach (var key in currentListeners.Keys)
+        {
+            if (!desiredListeners.ContainsKey(key))
+            {
+                removed.Add(key);
             }
         }
 
@@ -852,6 +876,14 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerMana
             _ => exception.GetType().Name
         };
     }
+
+    private sealed record ListenerReloadPlan(
+        IReadOnlyDictionary<string, RuntimeListener> DesiredTcpListeners,
+        IReadOnlyDictionary<string, RuntimeListener> DesiredQuicListeners,
+        IReadOnlyDictionary<string, ManagedListener> CurrentTcpListeners,
+        IReadOnlyDictionary<string, ManagedQuicListener> CurrentQuicListeners,
+        ListenerDiff TcpDiff,
+        ListenerDiff QuicDiff);
 
     private sealed record ListenerDiff(
         IReadOnlyList<string> Added,
