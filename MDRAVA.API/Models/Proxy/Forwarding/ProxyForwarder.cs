@@ -191,7 +191,7 @@ public sealed class ProxyForwarder
                 requestHead.Method,
                 requestHead.Target);
 
-            if (!responseStarted && !suppressGeneratedFailureResponse)
+            if (CanWriteGeneratedFailure(responseStarted, suppressGeneratedFailureResponse))
             {
                 await ProxyErrorResponses.WriteAsync(
                     clientStream,
@@ -212,7 +212,7 @@ public sealed class ProxyForwarder
                 requestHead.Method,
                 requestHead.Target);
 
-            if (!responseStarted && !suppressGeneratedFailureResponse)
+            if (CanWriteGeneratedFailure(responseStarted, suppressGeneratedFailureResponse))
             {
                 await ProxyErrorResponses.WriteAsync(
                     clientStream,
@@ -227,7 +227,7 @@ public sealed class ProxyForwarder
         {
             _metrics.UpstreamMalformedResponse();
             _metrics.UpstreamFailed();
-            if (!responseStarted && !suppressGeneratedFailureResponse)
+            if (CanWriteGeneratedFailure(responseStarted, suppressGeneratedFailureResponse))
             {
                 _metrics.UpstreamConnectFailed();
             }
@@ -238,7 +238,7 @@ public sealed class ProxyForwarder
                 requestHead.Target,
                 upstream.Name);
 
-            if (!responseStarted && !suppressGeneratedFailureResponse)
+            if (CanWriteGeneratedFailure(responseStarted, suppressGeneratedFailureResponse))
             {
                 _metrics.ProxyGenerated502();
                 await ProxyErrorResponses.WriteAsync(
@@ -255,7 +255,7 @@ public sealed class ProxyForwarder
             _metrics.UpstreamHttp2ProtocolError("malformed_response");
             _metrics.UpstreamMalformedResponse();
             _metrics.UpstreamFailed();
-            if (!responseStarted && !suppressGeneratedFailureResponse)
+            if (CanWriteGeneratedFailure(responseStarted, suppressGeneratedFailureResponse))
             {
                 _metrics.UpstreamConnectFailed();
             }
@@ -266,7 +266,7 @@ public sealed class ProxyForwarder
                 requestHead.Target,
                 upstream.Name);
 
-            if (!responseStarted && !suppressGeneratedFailureResponse)
+            if (CanWriteGeneratedFailure(responseStarted, suppressGeneratedFailureResponse))
             {
                 _metrics.ProxyGenerated502();
                 await ProxyErrorResponses.WriteAsync(
@@ -293,7 +293,7 @@ public sealed class ProxyForwarder
                 _metrics.UpstreamMalformedResponse();
             }
 
-            if (!responseStarted && !suppressGeneratedFailureResponse)
+            if (CanWriteGeneratedFailure(responseStarted, suppressGeneratedFailureResponse))
             {
                 _metrics.UpstreamConnectFailed();
             }
@@ -305,7 +305,7 @@ public sealed class ProxyForwarder
                 requestHead.Target,
                 upstream.Name);
 
-            if (!responseStarted && !suppressGeneratedFailureResponse)
+            if (CanWriteGeneratedFailure(responseStarted, suppressGeneratedFailureResponse))
             {
                 _metrics.ProxyGenerated502();
                 await ProxyErrorResponses.WriteAsync(
@@ -334,7 +334,7 @@ public sealed class ProxyForwarder
                 requestHead.Target,
                 upstream.Name);
 
-            if (!responseStarted && !suppressGeneratedFailureResponse)
+            if (CanWriteGeneratedFailure(responseStarted, suppressGeneratedFailureResponse))
             {
                 _metrics.ProxyGenerated502();
                 await ProxyErrorResponses.WriteAsync(
@@ -362,7 +362,7 @@ public sealed class ProxyForwarder
                 requestHead.Target,
                 upstream.Name);
 
-            if (!responseStarted && !suppressGeneratedFailureResponse)
+            if (CanWriteGeneratedFailure(responseStarted, suppressGeneratedFailureResponse))
             {
                 _metrics.ProxyGenerated502();
                 await ProxyErrorResponses.WriteAsync(
@@ -483,15 +483,9 @@ public sealed class ProxyForwarder
             timeouts,
             cancellationToken);
         var responseHead = BuildHttp2ResponseHead(requestHead, upstreamResponse);
-        if (suppressRetryableStatusResponse
-            && ContainsStatus(route.Retry.RetryOnStatusCodes, responseHead.StatusCode))
+        if (ShouldSuppressRetryableStatusResponse(route, responseHead, suppressRetryableStatusResponse))
         {
-            return new ResponseForwardingResult(
-                false,
-                false,
-                false,
-                responseHead.StatusCode,
-                SuppressedForRetry: true);
+            return CreateRetrySuppressedResult(responseHead.StatusCode);
         }
 
         var keepClientConnectionOpen = preferClientKeepAlive;
@@ -504,18 +498,20 @@ public sealed class ProxyForwarder
                 upstreamResponse.EndStream,
                 timeouts,
                 cancellationToken);
-            await WriteBufferedResponseAsync(
+            await WriteAndStoreBufferedCacheResponseAsync(
                 clientStream,
+                route,
+                listener,
+                timeouts,
+                requestHead,
+                upstreamTarget,
                 responseHead,
                 responseHeaders,
                 body,
                 keepClientConnectionOpen,
                 requestId,
-                listener,
-                timeouts,
+                markResponseStarted,
                 cancellationToken);
-            markResponseStarted();
-            _cacheStore.Store(route, listener, requestHead, upstreamTarget, responseHead, responseHeaders, body);
         }
         else
         {
@@ -597,15 +593,9 @@ public sealed class ProxyForwarder
             timeouts,
             cancellationToken);
         var responseHead = BuildHttp3ResponseHead(requestHead, upstreamResponse);
-        if (suppressRetryableStatusResponse
-            && ContainsStatus(route.Retry.RetryOnStatusCodes, responseHead.StatusCode))
+        if (ShouldSuppressRetryableStatusResponse(route, responseHead, suppressRetryableStatusResponse))
         {
-            return new ResponseForwardingResult(
-                false,
-                false,
-                false,
-                responseHead.StatusCode,
-                SuppressedForRetry: true);
+            return CreateRetrySuppressedResult(responseHead.StatusCode);
         }
 
         var keepClientConnectionOpen = preferClientKeepAlive;
@@ -618,18 +608,20 @@ public sealed class ProxyForwarder
                 endStream: false,
                 timeouts,
                 cancellationToken);
-            await WriteBufferedResponseAsync(
+            await WriteAndStoreBufferedCacheResponseAsync(
                 clientStream,
+                route,
+                listener,
+                timeouts,
+                requestHead,
+                upstreamTarget,
                 responseHead,
                 responseHeaders,
                 body,
                 keepClientConnectionOpen,
                 requestId,
-                listener,
-                timeouts,
+                markResponseStarted,
                 cancellationToken);
-            markResponseStarted();
-            _cacheStore.Store(route, listener, requestHead, upstreamTarget, responseHead, responseHeaders, body);
         }
         else
         {
@@ -676,7 +668,7 @@ public sealed class ProxyForwarder
             case ProxyTimeoutKind.ClientRequestBodyIdle:
                 _metrics.ClientRequestBodyTimedOut();
                 _logger.LogDebug(exception, "Client request body timed out for {Method} {Target}", requestHead.Method, requestHead.Target);
-                if (!responseStarted && !suppressGeneratedFailureResponse)
+                if (CanWriteGeneratedFailure(responseStarted, suppressGeneratedFailureResponse))
                 {
                     await ProxyErrorResponses.WriteAsync(clientStream, BuildGeneratedRequestTimeout(requestId), timeouts.DownstreamWriteTimeout, _metrics, cancellationToken);
                 }
@@ -685,7 +677,7 @@ public sealed class ProxyForwarder
                 _metrics.UpstreamConnectTimedOut();
                 _metrics.UpstreamFailed();
                 _logger.LogWarning(exception, "Timed out connecting to upstream {UpstreamName}", upstream.Name);
-                if (!responseStarted && !suppressGeneratedFailureResponse)
+                if (CanWriteGeneratedFailure(responseStarted, suppressGeneratedFailureResponse))
                 {
                     _metrics.ProxyGenerated504();
                     await ProxyErrorResponses.WriteAsync(clientStream, BuildGeneratedGatewayTimeout(requestId), timeouts.DownstreamWriteTimeout, _metrics, cancellationToken);
@@ -695,7 +687,7 @@ public sealed class ProxyForwarder
                 _metrics.UpstreamResponseHeadTimedOut();
                 _metrics.UpstreamFailed();
                 _logger.LogWarning(exception, "Timed out waiting for upstream response head from {UpstreamName}", upstream.Name);
-                if (!responseStarted && !suppressGeneratedFailureResponse)
+                if (CanWriteGeneratedFailure(responseStarted, suppressGeneratedFailureResponse))
                 {
                     _metrics.ProxyGenerated504();
                     await ProxyErrorResponses.WriteAsync(clientStream, BuildGeneratedGatewayTimeout(requestId), timeouts.DownstreamWriteTimeout, _metrics, cancellationToken);
@@ -1266,15 +1258,9 @@ public sealed class ProxyForwarder
 
             if (!Http1ResponseParser.IsInformational(responseHead))
             {
-                if (suppressRetryableStatusResponse
-                    && ContainsStatus(route.Retry.RetryOnStatusCodes, responseHead.StatusCode))
+                if (ShouldSuppressRetryableStatusResponse(route, responseHead, suppressRetryableStatusResponse))
                 {
-                    return new ResponseForwardingResult(
-                        false,
-                        false,
-                        false,
-                        responseHead.StatusCode,
-                        SuppressedForRetry: true);
+                    return CreateRetrySuppressedResult(responseHead.StatusCode);
                 }
 
                 var responseHeaders = BuildResponseHeaders(responseHead, route);
@@ -1287,19 +1273,24 @@ public sealed class ProxyForwarder
                         listener,
                         timeouts,
                         cancellationToken);
-                    await WriteBufferedResponseAsync(
+                    await WriteAndStoreBufferedCacheResponseAsync(
                         clientStream,
+                        route,
+                        listener,
+                        timeouts,
+                        requestHead,
+                        upstreamTarget,
                         responseHead,
                         responseHeaders,
                         body,
                         keepClientConnectionOpen,
                         requestId,
-                        listener,
-                        timeouts,
+                        () =>
+                        {
+                            responseStarted = true;
+                            markResponseStarted();
+                        },
                         cancellationToken);
-                    responseStarted = true;
-                    markResponseStarted();
-                    _cacheStore.Store(route, listener, requestHead, upstreamTarget, responseHead, responseHeaders, body);
                 }
                 else
                 {
@@ -1414,6 +1405,35 @@ public sealed class ProxyForwarder
         }
     }
 
+    private async ValueTask WriteAndStoreBufferedCacheResponseAsync(
+        Stream clientStream,
+        RuntimeRoute route,
+        RuntimeListener listener,
+        RuntimeTimeouts timeouts,
+        Http1RequestHead requestHead,
+        string upstreamTarget,
+        Http1ResponseHead responseHead,
+        IReadOnlyList<Http1HeaderField> responseHeaders,
+        byte[] body,
+        bool keepClientConnectionOpen,
+        string requestId,
+        Action markResponseStarted,
+        CancellationToken cancellationToken)
+    {
+        await WriteBufferedResponseAsync(
+            clientStream,
+            responseHead,
+            responseHeaders,
+            body,
+            keepClientConnectionOpen,
+            requestId,
+            listener,
+            timeouts,
+            cancellationToken);
+        markResponseStarted();
+        _cacheStore.Store(route, listener, requestHead, upstreamTarget, responseHead, responseHeaders, body);
+    }
+
     private IReadOnlyList<Http1HeaderField> BuildResponseHeaders(
         Http1ResponseHead responseHead,
         RuntimeRoute route)
@@ -1424,6 +1444,25 @@ public sealed class ProxyForwarder
             preserveTrailer: responseHead.Framing.Kind == Http1BodyKind.Chunked);
 
         return ApplyResponseHeaderPolicy(filtered, route.HeaderPolicy);
+    }
+
+    private static bool ShouldSuppressRetryableStatusResponse(
+        RuntimeRoute route,
+        Http1ResponseHead responseHead,
+        bool suppressRetryableStatusResponse)
+    {
+        return suppressRetryableStatusResponse
+            && ContainsStatus(route.Retry.RetryOnStatusCodes, responseHead.StatusCode);
+    }
+
+    private static ResponseForwardingResult CreateRetrySuppressedResult(int statusCode)
+    {
+        return new ResponseForwardingResult(
+            false,
+            false,
+            false,
+            statusCode,
+            SuppressedForRetry: true);
     }
 
     private static bool ShouldBufferForCache(
@@ -1924,6 +1963,11 @@ public sealed class ProxyForwarder
             ProxyTimeoutKind.UpstreamResponseHead => 504,
             _ => null
         };
+    }
+
+    private static bool CanWriteGeneratedFailure(bool responseStarted, bool suppressGeneratedFailureResponse)
+    {
+        return !responseStarted && !suppressGeneratedFailureResponse;
     }
 
     private static ProxyFailureKind FailureKindForTimeout(ProxyTimeoutKind timeoutKind)
