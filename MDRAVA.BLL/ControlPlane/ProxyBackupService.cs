@@ -1,9 +1,6 @@
-using MDRAVA.API.Proxy.Configuration.Loading;
-using MDRAVA.API.Proxy.Configuration.Storage;
-using MDRAVA.BLL.ControlPlane;
 using MDRAVA.BLL.Infrastructure;
 
-namespace MDRAVA.API.Proxy.Backup;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed class ProxyBackupService : IProxyBackupOperations
 {
@@ -16,17 +13,20 @@ public sealed class ProxyBackupService : IProxyBackupOperations
     private const string NeverExportByDefaultSensitive = "never_export_by_default_sensitive";
 
     private readonly IMdravaDataDirectoryProvider _dataDirectoryProvider;
-    private readonly IProxyConfigurationLoader _configurationLoader;
-    private readonly IProxyConfigurationStore _configurationStore;
+    private readonly IProxyBackupFileSystem _backupFileSystem;
+    private readonly IProxyRestoreConfigurationValidator _restoreConfigurationValidator;
+    private readonly IProxyActiveConfigurationVersionReader _activeConfigurationVersionReader;
 
     public ProxyBackupService(
         IMdravaDataDirectoryProvider dataDirectoryProvider,
-        IProxyConfigurationLoader configurationLoader,
-        IProxyConfigurationStore configurationStore)
+        IProxyBackupFileSystem backupFileSystem,
+        IProxyRestoreConfigurationValidator restoreConfigurationValidator,
+        IProxyActiveConfigurationVersionReader activeConfigurationVersionReader)
     {
         _dataDirectoryProvider = dataDirectoryProvider;
-        _configurationLoader = configurationLoader;
-        _configurationStore = configurationStore;
+        _backupFileSystem = backupFileSystem;
+        _restoreConfigurationValidator = restoreConfigurationValidator;
+        _activeConfigurationVersionReader = activeConfigurationVersionReader;
     }
 
     public ProxyBackupManifestResponse CreateManifest()
@@ -37,7 +37,8 @@ public sealed class ProxyBackupService : IProxyBackupOperations
         List<ProxyBackupManifestEntry> entries = [];
         List<ProxyBackupWarning> warnings = [];
 
-        if (!Directory.Exists(root))
+        var scan = _backupFileSystem.ScanDataDirectory(root);
+        if (!scan.RootExists)
         {
             warnings.Add(new ProxyBackupWarning(
                 "data_directory_missing",
@@ -46,7 +47,22 @@ public sealed class ProxyBackupService : IProxyBackupOperations
         }
         else
         {
-            ScanDirectory(root, root, entries, warnings);
+            foreach (var file in scan.Files)
+            {
+                var category = ClassifyFile(file.RelativePath);
+                entries.Add(new ProxyBackupManifestEntry(
+                    file.RelativePath,
+                    category.Category,
+                    category.Classification,
+                    category.Sensitive,
+                    file.SizeBytes,
+                    file.LastWriteTimeUtc));
+            }
+
+            foreach (var warning in scan.Warnings)
+            {
+                AddWarning(warnings, ToManifestWarning(warning));
+            }
         }
 
         foreach (var directory in directories.Where(static directory => !directory.Exists))
@@ -115,13 +131,13 @@ public sealed class ProxyBackupService : IProxyBackupOperations
                 directory.RelativePath));
         }
 
-        var loadResult = await _configurationLoader.ValidateExistingLayoutAsync(cancellationToken);
-        foreach (var fileError in loadResult.FileErrors)
+        var configValidation = await _restoreConfigurationValidator.ValidateExistingLayoutAsync(cancellationToken);
+        foreach (var fileError in configValidation.FileErrors)
         {
             errors.Add(ClassifyConfigError(root, fileError));
         }
 
-        foreach (var error in loadResult.Errors.Except(loadResult.FileErrors.Select(static fileError => fileError.Message)))
+        foreach (var error in configValidation.Errors.Except(configValidation.FileErrors.Select(static fileError => fileError.Message)))
         {
             errors.Add(new ProxyRestoreValidationFinding(
                 ProxyStatusText.Error,
@@ -130,13 +146,12 @@ public sealed class ProxyBackupService : IProxyBackupOperations
                 null));
         }
 
-        _configurationStore.TryGetSnapshot(out var active);
         return new ProxyRestoreValidationResponse(
-            loadResult.Succeeded && errors.Count == 0,
+            configValidation.Succeeded && errors.Count == 0,
             generatedAtUtc,
-            active?.Version,
-            loadResult.Succeeded,
-            loadResult.WouldBeVersion,
+            _activeConfigurationVersionReader.ActiveConfigVersion,
+            configValidation.Succeeded,
+            configValidation.WouldBeVersion,
             manifest,
             errors.Take(MaxWarnings).ToArray(),
             warnings.Take(MaxWarnings).ToArray());
@@ -155,7 +170,7 @@ public sealed class ProxyBackupService : IProxyBackupOperations
         ];
     }
 
-    private static ProxyBackupDirectoryStatus DirectoryStatus(
+    private ProxyBackupDirectoryStatus DirectoryStatus(
         string root,
         string relativePath,
         string classification,
@@ -163,102 +178,9 @@ public sealed class ProxyBackupService : IProxyBackupOperations
     {
         return new ProxyBackupDirectoryStatus(
             relativePath,
-            Directory.Exists(Path.Combine(root, relativePath.Replace('/', Path.DirectorySeparatorChar))),
+            _backupFileSystem.DirectoryExists(root, relativePath),
             classification,
             sensitive);
-    }
-
-    private static void ScanDirectory(
-        string root,
-        string directory,
-        List<ProxyBackupManifestEntry> entries,
-        List<ProxyBackupWarning> warnings)
-    {
-        DirectoryInfo directoryInfo;
-        try
-        {
-            directoryInfo = new DirectoryInfo(directory);
-        }
-        catch
-        {
-            AddWarning(warnings, new ProxyBackupWarning(
-                "directory_unreadable",
-                "A directory could not be inspected.",
-                SafeRelativeOrNull(root, directory)));
-            return;
-        }
-
-        if (directoryInfo.Attributes.HasFlag(FileAttributes.ReparsePoint))
-        {
-            AddWarning(warnings, new ProxyBackupWarning(
-                "reparse_point_skipped",
-                "A reparse point was skipped during backup manifest generation.",
-                SafeRelativeOrNull(root, directory)));
-            return;
-        }
-
-        FileInfo[] files;
-        try
-        {
-            files = directoryInfo.GetFiles();
-        }
-        catch
-        {
-            AddWarning(warnings, new ProxyBackupWarning(
-                "directory_unreadable",
-                "A directory could not be inspected.",
-                SafeRelativeOrNull(root, directory)));
-            return;
-        }
-
-        foreach (var file in files)
-        {
-            if (file.Attributes.HasFlag(FileAttributes.ReparsePoint))
-            {
-                AddWarning(warnings, new ProxyBackupWarning(
-                    "reparse_point_skipped",
-                    "A reparse point was skipped during backup manifest generation.",
-                    SafeRelativeOrNull(root, file.FullName)));
-                continue;
-            }
-
-            if (!ProxyBackupPathSafety.TryGetSafeRelativePath(root, file.FullName, out var relativePath))
-            {
-                AddWarning(warnings, new ProxyBackupWarning(
-                    "unsafe_path_skipped",
-                    "A file path could not be represented as a safe data-directory relative path.",
-                    null));
-                continue;
-            }
-
-            var category = ClassifyFile(relativePath);
-            entries.Add(new ProxyBackupManifestEntry(
-                relativePath,
-                category.Category,
-                category.Classification,
-                category.Sensitive,
-                file.Length,
-                file.LastWriteTimeUtc));
-        }
-
-        DirectoryInfo[] children;
-        try
-        {
-            children = directoryInfo.GetDirectories();
-        }
-        catch
-        {
-            AddWarning(warnings, new ProxyBackupWarning(
-                "directory_unreadable",
-                "A directory could not be inspected.",
-                SafeRelativeOrNull(root, directory)));
-            return;
-        }
-
-        foreach (var child in children)
-        {
-            ScanDirectory(root, child.FullName, entries, warnings);
-        }
     }
 
     private static (string Category, string Classification, bool Sensitive) ClassifyFile(string relativePath)
@@ -266,7 +188,7 @@ public sealed class ProxyBackupService : IProxyBackupOperations
         var normalized = relativePath.Replace('\\', '/');
         var slash = normalized.LastIndexOf('/');
         var fileName = slash >= 0 ? normalized[(slash + 1)..] : normalized;
-        if (string.Equals(fileName, ProxyDataDirectoryBootstrapper.ExampleSiteFileName, StringComparison.OrdinalIgnoreCase)
+        if (string.Equals(fileName, "example.site.yaml", StringComparison.OrdinalIgnoreCase)
             || fileName.StartsWith("example.", StringComparison.OrdinalIgnoreCase))
         {
             return ("generated_example", RuntimeGeneratedSafeToOmit, false);
@@ -320,7 +242,7 @@ public sealed class ProxyBackupService : IProxyBackupOperations
         return ("unknown", OptionalBackup, false);
     }
 
-    private static ProxyRestoreValidationFinding ClassifyConfigError(string root, ProxyConfigurationFileError fileError)
+    private ProxyRestoreValidationFinding ClassifyConfigError(string root, ProxyConfigurationFileError fileError)
     {
         return new ProxyRestoreValidationFinding(
             ProxyStatusText.Error,
@@ -362,16 +284,39 @@ public sealed class ProxyBackupService : IProxyBackupOperations
         };
     }
 
-    private static string? SafeRelativeOrNull(string root, string? path)
+    private string? SafeRelativeOrNull(string root, string? path)
     {
         if (string.IsNullOrWhiteSpace(path))
         {
             return null;
         }
 
-        return ProxyBackupPathSafety.TryGetSafeRelativePath(root, path, out var relativePath)
+        return _backupFileSystem.TryGetSafeRelativePath(root, path, out var relativePath)
             ? relativePath
             : null;
+    }
+
+    private static ProxyBackupWarning ToManifestWarning(ProxyBackupFileSystemWarning warning)
+    {
+        return warning.Code switch
+        {
+            "directory_unreadable" => new ProxyBackupWarning(
+                warning.Code,
+                "A directory could not be inspected.",
+                warning.RelativePath),
+            "reparse_point_skipped" => new ProxyBackupWarning(
+                warning.Code,
+                "A reparse point was skipped during backup manifest generation.",
+                warning.RelativePath),
+            "unsafe_path_skipped" => new ProxyBackupWarning(
+                warning.Code,
+                "A file path could not be represented as a safe data-directory relative path.",
+                warning.RelativePath),
+            _ => new ProxyBackupWarning(
+                warning.Code,
+                "A backup filesystem path could not be inspected.",
+                warning.RelativePath)
+        };
     }
 
     private static void AddWarning(List<ProxyBackupWarning> warnings, ProxyBackupWarning warning)

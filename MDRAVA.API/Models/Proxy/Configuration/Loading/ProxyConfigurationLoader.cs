@@ -9,7 +9,7 @@ using YamlDotNet.Core;
 
 namespace MDRAVA.API.Proxy.Configuration.Loading;
 
-public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader
+public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxyRestoreConfigurationValidator
 {
     private readonly IMdravaDataDirectoryProvider _dataDirectoryProvider;
     private readonly IValidateOptions<ProxyOptions> _validator;
@@ -45,6 +45,17 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader
     public async ValueTask<ProxyConfigurationLoadResult> ValidateExistingLayoutAsync(CancellationToken cancellationToken)
     {
         return await LoadCoreAsync(allocateVersion: false, ensureLayout: false, cancellationToken);
+    }
+
+    async ValueTask<ProxyRestoreConfigurationValidationResult> IProxyRestoreConfigurationValidator.ValidateExistingLayoutAsync(
+        CancellationToken cancellationToken)
+    {
+        var loadResult = await ValidateExistingLayoutAsync(cancellationToken);
+        return new ProxyRestoreConfigurationValidationResult(
+            loadResult.Succeeded,
+            loadResult.Errors,
+            loadResult.FileErrors,
+            loadResult.WouldBeVersion);
     }
 
     private async ValueTask<ProxyConfigurationLoadResult> LoadCoreAsync(

@@ -1,6 +1,5 @@
 using MDRAVA.API.Proxy.Configuration;
 using MDRAVA.API.Proxy.Acme;
-using MDRAVA.API.Proxy.Backup;
 using MDRAVA.API.Proxy.Caching;
 using MDRAVA.API.Proxy.Configuration.Loading;
 using MDRAVA.API.Proxy.Configuration.Runtime;
@@ -20,6 +19,7 @@ using MDRAVA.API.Proxy.Status;
 using MDRAVA.API.Proxy.Tls;
 using MDRAVA.BLL.Infrastructure;
 using MDRAVA.INF.Configuration.Paths;
+using MDRAVA.INF.DataDirectory;
 using MDRAVA.INF.Runtime;
 using Microsoft.Extensions.Options;
 
@@ -41,8 +41,12 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<ProxyDataDirectoryBootstrapper>();
         services.AddSingleton<SiteConfigurationParser>();
         services.AddSingleton<IProxyConfigurationNormalizer, ProxyConfigurationNormalizer>();
-        services.AddSingleton<IProxyConfigurationStore, ProxyConfigurationStore>();
-        services.AddSingleton<IProxyConfigurationLoader, ProxyConfigurationLoader>();
+        services.AddSingleton<ProxyConfigurationStore>();
+        services.AddSingleton<IProxyConfigurationStore>(static services => services.GetRequiredService<ProxyConfigurationStore>());
+        services.AddSingleton<IProxyActiveConfigurationVersionReader>(static services => services.GetRequiredService<ProxyConfigurationStore>());
+        services.AddSingleton<ProxyConfigurationLoader>();
+        services.AddSingleton<IProxyConfigurationLoader>(static services => services.GetRequiredService<ProxyConfigurationLoader>());
+        services.AddSingleton<IProxyRestoreConfigurationValidator>(static services => services.GetRequiredService<ProxyConfigurationLoader>());
         services.AddSingleton<ProxyListenerService>();
         services.AddSingleton<IProxyListenerManager>(static services => services.GetRequiredService<ProxyListenerService>());
         services.AddSingleton<IProxyConfigurationReloadService, ProxyConfigurationReloadService>();
@@ -55,6 +59,7 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<PrometheusMetricsExporter>();
         services.AddSingleton<IProxyMetricsExportProvider, ProxyMetricsExportProvider>();
         services.AddSingleton<ProxyMetricsAdministrationService>();
+        services.AddSingleton<IProxyBackupFileSystem, ProxyBackupFileSystem>();
         services.AddSingleton<ProxyBackupService>();
         services.AddSingleton<IProxyBackupOperations>(static services => services.GetRequiredService<ProxyBackupService>());
         services.AddSingleton<ProxyBackupAdministrationService>();

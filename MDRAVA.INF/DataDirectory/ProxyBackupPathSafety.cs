@@ -1,4 +1,4 @@
-namespace MDRAVA.API.Proxy.Backup;
+namespace MDRAVA.INF.DataDirectory;
 
 public static class ProxyBackupPathSafety
 {
