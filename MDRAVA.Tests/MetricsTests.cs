@@ -56,7 +56,8 @@ internal static class MetricsTests
     {
         using var fixture = MetricsFixture.Create();
         var store = CreateStore();
-        var controller = new ProxyMetricsController(store, fixture.Exporter);
+        var controller = new ProxyMetricsController(new ProxyMetricsAdministrationService(
+            new ProxyMetricsExportProvider(store, fixture.Exporter)));
 
         var content = (ContentResult)controller.Get();
         var text = AssertEx.NotNull(content.Content);

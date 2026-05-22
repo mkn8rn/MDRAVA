@@ -1,6 +1,4 @@
 using System.Text;
-using MDRAVA.API.Proxy.Configuration.Storage;
-using MDRAVA.API.Proxy.Metrics;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MDRAVA.API.Controllers;
@@ -9,33 +7,25 @@ namespace MDRAVA.API.Controllers;
 [Route("admin/proxy/metrics")]
 public sealed class ProxyMetricsController : ControllerBase
 {
-    private readonly IProxyConfigurationStore _configurationStore;
-    private readonly PrometheusMetricsExporter _exporter;
+    private readonly ProxyMetricsAdministrationService _metricsAdministration;
 
-    public ProxyMetricsController(
-        IProxyConfigurationStore configurationStore,
-        PrometheusMetricsExporter exporter)
+    public ProxyMetricsController(ProxyMetricsAdministrationService metricsAdministration)
     {
-        _configurationStore = configurationStore;
-        _exporter = exporter;
+        _metricsAdministration = metricsAdministration;
     }
 
     [HttpGet]
     public IActionResult Get()
     {
-        if (!_configurationStore.TryGetSnapshot(out var snapshot) || snapshot is null)
-        {
-            return NotFound();
-        }
-
-        if (!snapshot.Metrics.Enabled)
+        var result = _metricsAdministration.Export();
+        if (!result.Available)
         {
             return NotFound();
         }
 
         return Content(
-            _exporter.Export(snapshot),
-            PrometheusMetricsExporter.ContentType,
+            result.Content,
+            result.ContentType,
             Encoding.UTF8);
     }
 }

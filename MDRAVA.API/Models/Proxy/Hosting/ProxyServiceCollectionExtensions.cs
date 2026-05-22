@@ -46,6 +46,8 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<IProxyConfigurationReloadService, ProxyConfigurationReloadService>();
         services.AddSingleton<ProxyMetrics>();
         services.AddSingleton<PrometheusMetricsExporter>();
+        services.AddSingleton<IProxyMetricsExportProvider, ProxyMetricsExportProvider>();
+        services.AddSingleton<ProxyMetricsAdministrationService>();
         services.AddSingleton<ProxyBackupService>();
         services.AddSingleton<ConfigLintService>();
         services.AddSingleton<RouteMatchDiagnosticsService>();
