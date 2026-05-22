@@ -1,4 +1,4 @@
-using System.Net;
+using MDRAVA.BLL.Configuration;
 
 namespace MDRAVA.API.Proxy.Security;
 
@@ -64,29 +64,12 @@ public static class AdminBindPolicy
 
     public static bool IsLocalAdminUrl(string url)
     {
-        if (!TryCreateAbsoluteUri(url, out var uri))
-        {
-            return false;
-        }
-
-        if (string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        if (string.Equals(uri.Host, "*", StringComparison.Ordinal)
-            || string.Equals(uri.Host, "+", StringComparison.Ordinal))
-        {
-            return false;
-        }
-
-        return IPAddress.TryParse(uri.Host.Trim('[', ']'), out var address)
-            && IPAddress.IsLoopback(address);
+        return ProxyAdminUrlPolicy.IsLocal(url);
     }
 
     public static bool IsValidAdminUrl(string url)
     {
-        return TryCreateAbsoluteUri(url, out _);
+        return ProxyAdminUrlPolicy.IsValid(url);
     }
 
     private static AdminBindResolution Validate(
@@ -153,16 +136,6 @@ public static class AdminBindPolicy
         return value.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }
 
-    private static bool TryCreateAbsoluteUri(string url, out Uri uri)
-    {
-        if (!Uri.TryCreate(url, UriKind.Absolute, out uri!))
-        {
-            return false;
-        }
-
-        return string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
-            || string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase);
-    }
 }
 
 public sealed record AdminBindResolution(

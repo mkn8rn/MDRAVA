@@ -1,9 +1,9 @@
 global using MDRAVA.BLL.ControlPlane;
+global using MDRAVA.BLL.Configuration;
 global using MDRAVA.BLL.Infrastructure;
 global using MDRAVA.INF.Configuration.Paths;
 global using MDRAVA.INF.Runtime;
 global using MDRAVA.API.Models.Acme;
-global using MDRAVA.API.Models.Configuration;
 global using MDRAVA.API.Models.Configuration.Loading;
 global using MDRAVA.API.Models.Configuration.Runtime;
 global using MDRAVA.API.Models.Forwarding;
