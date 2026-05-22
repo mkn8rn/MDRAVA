@@ -72,6 +72,8 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<AcmeChallengeStore>();
         services.AddSingleton<AcmeHttp01ChallengeResponder>();
         services.AddSingleton<AcmeCertificateStatusStore>();
+        services.AddSingleton<IProxyAcmeStatusSnapshotReader, ProxyAcmeStatusSnapshotReader>();
+        services.AddSingleton<ProxyAcmeAdministrationService>();
         services.AddSingleton<IAcmeCertificateIssuer, DisabledAcmeCertificateIssuer>();
         services.AddSingleton<AcmeCertificateManager>();
         services.AddSingleton<ProxyAdmissionController>();

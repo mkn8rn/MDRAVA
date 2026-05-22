@@ -187,7 +187,9 @@ internal static class AcmeTests
             new FakeIssuer(TestCertificates.CreateSelfSignedPfxBytes("home.example.test")),
             statusStore);
         await manager.CheckRenewalsAsync(CancellationToken.None);
-        var controller = new ProxyAcmeController(store, statusStore);
+        var controller = new ProxyAcmeController(
+            new ProxyAcmeAdministrationService(
+                new ProxyAcmeStatusSnapshotReader(store, statusStore)));
 
         var result = controller.Status();
         var ok = (OkObjectResult)AssertEx.NotNull(result.Result);
