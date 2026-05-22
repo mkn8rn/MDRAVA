@@ -12,7 +12,7 @@ using YamlDotNet.Core;
 
 namespace MDRAVA.API.Proxy.Diagnostics;
 
-public sealed class ConfigLintService
+public sealed class ConfigLintService : IProxyConfigLintOperations
 {
     private const int MaxGeneratedBodyBytes = 64 * 1024;
     private readonly IProxyConfigurationStore _configurationStore;
