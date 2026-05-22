@@ -23,6 +23,6 @@ public sealed class ProxyBackupController : ControllerBase
     public async ValueTask<ActionResult<ProxyRestoreValidationResponse>> Validate(CancellationToken cancellationToken)
     {
         var result = await _backupAdministration.ValidateAsync(cancellationToken);
-        return result.Succeeded ? Ok(result) : BadRequest(result);
+        return ProxyAdminHttpResultMapper.OkOrBadRequest(this, result, result.Succeeded);
     }
 }

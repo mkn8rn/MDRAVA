@@ -1,4 +1,3 @@
-using System.Text;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MDRAVA.API.Controllers;
@@ -17,15 +16,6 @@ public sealed class ProxyMetricsController : ControllerBase
     [HttpGet]
     public IActionResult Get()
     {
-        var result = _metricsAdministration.Export();
-        if (!result.Available)
-        {
-            return NotFound();
-        }
-
-        return Content(
-            result.Content,
-            result.ContentType,
-            Encoding.UTF8);
+        return ProxyAdminHttpResultMapper.TextExportOrNotFound(this, _metricsAdministration.Export());
     }
 }

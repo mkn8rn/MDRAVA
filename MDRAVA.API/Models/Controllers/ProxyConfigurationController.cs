@@ -26,34 +26,34 @@ public sealed class ProxyConfigurationController : ControllerBase
     public ActionResult<ProxyConfigurationNormalizeResult> Normalize([FromBody] ProxyConfigurationNormalizeRequest request)
     {
         var result = _configurationAdministration.Normalize(request);
-        return result.Succeeded ? Ok(result) : BadRequest(result);
+        return ProxyAdminHttpResultMapper.OkOrBadRequest(this, result, result.Succeeded);
     }
 
     [HttpPost("reload")]
     public async ValueTask<ActionResult<ProxyConfigurationReloadResult>> Reload(CancellationToken cancellationToken)
     {
         var result = await _reloadService.ReloadAsync(cancellationToken);
-        return result.Succeeded ? Ok(result) : BadRequest(result);
+        return ProxyAdminHttpResultMapper.OkOrBadRequest(this, result, result.Succeeded);
     }
 
     [HttpPost("validate")]
     public async ValueTask<ActionResult<ProxyConfigurationValidationResult>> Validate(CancellationToken cancellationToken)
     {
         var result = await _configurationAdministration.ValidateAsync(cancellationToken);
-        return result.Succeeded ? Ok(result) : BadRequest(result);
+        return ProxyAdminHttpResultMapper.OkOrBadRequest(this, result, result.Succeeded);
     }
 
     [HttpGet("active")]
     public ActionResult<ProxyConfigurationProjection> Active()
     {
         var result = _configurationProjections.GetActive();
-        return result.Found && result.Projection is not null ? Ok(result.Projection) : NotFound();
+        return ProxyAdminHttpResultMapper.OkOrNotFound(this, result.Found, result.Projection);
     }
 
     [HttpGet("effective")]
     public ActionResult<ProxyConfigurationProjection> Effective()
     {
         var result = _configurationProjections.GetEffective();
-        return result.Found && result.Projection is not null ? Ok(result.Projection) : NotFound();
+        return ProxyAdminHttpResultMapper.OkOrNotFound(this, result.Found, result.Projection);
     }
 }

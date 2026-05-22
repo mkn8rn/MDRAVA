@@ -17,13 +17,13 @@ public sealed class ProxyConfigLintController : ControllerBase
     public ActionResult<ConfigLintResult> Active()
     {
         var result = _configLintAdministration.LintActive();
-        return result.Succeeded ? Ok(result) : BadRequest(result);
+        return ProxyAdminHttpResultMapper.OkOrBadRequest(this, result, result.Succeeded);
     }
 
     [HttpPost]
     public ActionResult<ConfigLintResult> Submitted([FromBody] ConfigLintRequest request)
     {
         var result = _configLintAdministration.LintSubmitted(request);
-        return result.Succeeded ? Ok(result) : BadRequest(result);
+        return ProxyAdminHttpResultMapper.OkOrBadRequest(this, result, result.Succeeded);
     }
 }
