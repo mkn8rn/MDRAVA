@@ -16,6 +16,7 @@ using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Protocol;
 using MDRAVA.API.Proxy.Resilience;
 using MDRAVA.API.Proxy.Routing;
+using MDRAVA.API.Proxy.Status;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -545,11 +546,12 @@ internal static class ResilienceTests
         fixture.Circuit.RecordFailure(selection.CircuitBreakerLease, "connect_failure");
 
         var projection = ProxyConfigurationMapper.ToProjection(fixture.Store.Snapshot);
-        var statusController = new ProxyStatusController(
+        var statusOperations = new ProxyStatusOperations(
             new ProxyRuntimeState(),
             fixture.Metrics,
             fixture.Store,
             fixture.Health);
+        var statusController = new ProxyStatusController(new ProxyStatusAdministrationService(statusOperations));
         var status = statusController.Get();
 
         AssertEx.True(projection.Routes[0].Retry.Enabled);

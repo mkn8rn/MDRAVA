@@ -1,4 +1,4 @@
-namespace MDRAVA.API.Models.Resilience;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed record CircuitBreakerStatus(
     CircuitBreakerRuntimeState State,

@@ -1,4 +1,4 @@
-namespace MDRAVA.API.Models.Hosting;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed record ProxyRuntimeSnapshot(
     bool IsRunning,

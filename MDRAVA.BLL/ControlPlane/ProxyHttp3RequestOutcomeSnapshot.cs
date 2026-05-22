@@ -1,4 +1,4 @@
-namespace MDRAVA.API.Models.Metrics;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed record ProxyHttp3RequestOutcomeSnapshot(
     string Method,

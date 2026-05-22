@@ -1,6 +1,5 @@
 using System.Net;
 using MDRAVA.API.Controllers;
-using MDRAVA.API.Models.Diagnostics;
 using MDRAVA.API.Proxy.Caching;
 using MDRAVA.API.Proxy.Configuration;
 using MDRAVA.API.Proxy.Configuration.Loading;

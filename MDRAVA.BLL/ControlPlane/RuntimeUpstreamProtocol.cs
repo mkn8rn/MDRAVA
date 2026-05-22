@@ -1,4 +1,4 @@
-namespace MDRAVA.API.Models.Configuration.Runtime;
+namespace MDRAVA.BLL.ControlPlane;
 
 public static class RuntimeUpstreamProtocol
 {

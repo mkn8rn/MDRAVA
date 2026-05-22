@@ -1,6 +1,4 @@
-using MDRAVA.API.Proxy.Metrics;
-
-namespace MDRAVA.API.Models.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed record ProxyStatusResponse(
     bool ListenerLive,

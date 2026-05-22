@@ -15,6 +15,7 @@ using MDRAVA.API.Proxy.Routing;
 using MDRAVA.API.Proxy.Runtime;
 using MDRAVA.API.Proxy.Resilience;
 using MDRAVA.API.Proxy.Security;
+using MDRAVA.API.Proxy.Status;
 using MDRAVA.API.Proxy.Tls;
 using MDRAVA.BLL.Infrastructure;
 using MDRAVA.INF.Configuration.Paths;
@@ -81,6 +82,8 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<ProxyAdmissionController>();
         services.AddSingleton<IProxyRuntimeDirectoryProbe, ProxyRuntimeDirectoryProbe>();
         services.AddSingleton<ProxyRuntimePreflightService>();
+        services.AddSingleton<IProxyStatusOperations, ProxyStatusOperations>();
+        services.AddSingleton<ProxyStatusAdministrationService>();
         services.AddSingleton<CircuitBreakerStore>();
         services.AddSingleton<ProxyShutdownCoordinator>();
         services.AddSingleton<ClientRateLimiter>();

@@ -1,6 +1,4 @@
-using MDRAVA.API.Proxy.Health;
-
-namespace MDRAVA.API.Models.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed record ProxyUpstreamStatusResponse(
     string RouteName,

@@ -6,7 +6,6 @@ using System.Net.Sockets;
 using System.Security.Authentication;
 using System.Text;
 using MDRAVA.API.Controllers;
-using MDRAVA.API.Models.Diagnostics;
 using MDRAVA.API.Proxy.Configuration.Loading;
 using MDRAVA.INF.Configuration.Paths;
 using MDRAVA.API.Proxy.Configuration.Runtime;
@@ -173,10 +172,7 @@ internal static class ClientHttp3Tests
             await WaitForListenerAsync(runtime, "main", "quic", ProxyListenerState.Active, timeout.Token);
             var response = await SendHttp1TlsRequestAsync(port, "/alt", timeout.Token);
             var status = new ProxyStatusController(
-                runtime,
-                host.Services.GetRequiredService<ProxyMetrics>(),
-                host.Services.GetRequiredService<IProxyConfigurationStore>(),
-                host.Services.GetRequiredService<UpstreamHealthStore>())
+                host.Services.GetRequiredService<ProxyStatusAdministrationService>())
             {
                 ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
             }.Get();
@@ -524,10 +520,7 @@ internal static class ClientHttp3Tests
             await WaitForListenerAsync(runtime, "main", "quic", ProxyListenerState.Active, timeout.Token);
             var response = await SendHttp1TlsRequestAsync(port, "/alt", timeout.Token);
             var status = new ProxyStatusController(
-                runtime,
-                host.Services.GetRequiredService<ProxyMetrics>(),
-                host.Services.GetRequiredService<IProxyConfigurationStore>(),
-                host.Services.GetRequiredService<UpstreamHealthStore>())
+                host.Services.GetRequiredService<ProxyStatusAdministrationService>())
             {
                 ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
             }.Get();
@@ -582,10 +575,7 @@ internal static class ClientHttp3Tests
         WriteCertificateConfig(temp.Path);
         using var host = BuildProxyHost(temp.Path);
         var controller = new ProxyStatusController(
-            host.Services.GetRequiredService<ProxyRuntimeState>(),
-            host.Services.GetRequiredService<ProxyMetrics>(),
-            host.Services.GetRequiredService<IProxyConfigurationStore>(),
-            host.Services.GetRequiredService<UpstreamHealthStore>())
+            host.Services.GetRequiredService<ProxyStatusAdministrationService>())
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
         };

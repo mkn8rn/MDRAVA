@@ -11,6 +11,7 @@ using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Observability;
 using MDRAVA.API.Proxy.Resilience;
 using MDRAVA.API.Proxy.Runtime;
+using MDRAVA.API.Proxy.Status;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace MDRAVA.Tests;
@@ -365,7 +366,7 @@ internal static class OperatorStatusTests
             listener.Transport.ToString().ToLowerInvariant(),
             listener.Transport == RuntimeListenerTransport.Https,
             listener.Protocols.ToConfigText(),
-            listener.Http3,
+            listener.Http3.ToStatus(),
             listener.Http2Limits.MaxConcurrentStreams,
             listener.Http2Limits.MaxHeaderListBytes,
             listener.Http2Limits.MaxFrameSize,
@@ -506,7 +507,7 @@ internal static class OperatorStatusTests
 
         public ProxyStatusController Controller(ProxyRuntimePreflightService? preflight = null)
         {
-            return new ProxyStatusController(
+            var statusOperations = new ProxyStatusOperations(
                 Runtime,
                 Metrics,
                 Store,
@@ -515,6 +516,7 @@ internal static class OperatorStatusTests
                 cacheStore: Cache,
                 acmeStatusStore: Acme,
                 preflightService: preflight);
+            return new ProxyStatusController(new ProxyStatusAdministrationService(statusOperations));
         }
 
         public void Dispose()

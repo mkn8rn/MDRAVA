@@ -9,6 +9,7 @@ using MDRAVA.API.Proxy.Hosting;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Observability;
 using MDRAVA.API.Proxy.Security;
+using MDRAVA.API.Proxy.Status;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -310,12 +311,13 @@ internal static class LogPersistenceTests
         var metrics = new ProxyMetrics();
         var pool = new UpstreamConnectionPool(new UpstreamConnectionFactory(), metrics);
         var health = new UpstreamHealthStore(metrics, pool);
-        return new ProxyStatusController(
+        var statusOperations = new ProxyStatusOperations(
             new ProxyRuntimeState(),
             metrics,
             store,
             health,
             logWriter: writer);
+        return new ProxyStatusController(new ProxyStatusAdministrationService(statusOperations));
     }
 
     private static ProxyConfigurationStore CreateStore(
