@@ -289,10 +289,12 @@ internal static class AdminSecurityTests
     public static void EffectiveConfigDoesNotExposeAdminToken()
     {
         var store = CreateStoreWithAdminAuthentication();
+        var reloadService = new NoopReloadService();
+        var normalizer = new ProxyConfigurationNormalizer(new SiteConfigurationParser(), new ProxyOptionsValidator());
         var controller = new ProxyConfigurationController(
-            new NoopReloadService(),
-            store,
-            new ProxyConfigurationNormalizer(new SiteConfigurationParser(), new ProxyOptionsValidator()));
+            new ProxyConfigurationAdministrationService(normalizer, reloadService),
+            reloadService,
+            store);
 
         var actionResult = controller.Effective();
         var ok = (OkObjectResult)AssertEx.NotNull(actionResult.Result);

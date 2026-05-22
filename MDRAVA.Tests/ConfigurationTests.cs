@@ -728,7 +728,10 @@ internal static class ConfigurationTests
         var first = await service.ReloadAsync(CancellationToken.None);
         AssertEx.True(first.Succeeded);
         var normalizer = new ProxyConfigurationNormalizer(new SiteConfigurationParser(), new MDRAVA.API.Proxy.Configuration.ProxyOptionsValidator());
-        var controller = new ProxyConfigurationController(service, store, normalizer);
+        var controller = new ProxyConfigurationController(
+            new ProxyConfigurationAdministrationService(normalizer, service),
+            service,
+            store);
 
         var actionResult = controller.Normalize(new ProxyConfigurationNormalizeRequest(
             "yaml",
@@ -755,9 +758,11 @@ internal static class ConfigurationTests
         AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
 
         var controller = new ProxyConfigurationController(
+            new ProxyConfigurationAdministrationService(
+                new ProxyConfigurationNormalizer(new SiteConfigurationParser(), new MDRAVA.API.Proxy.Configuration.ProxyOptionsValidator()),
+                service),
             service,
-            store,
-            new ProxyConfigurationNormalizer(new SiteConfigurationParser(), new MDRAVA.API.Proxy.Configuration.ProxyOptionsValidator()));
+            store);
         var actionResult = controller.Effective();
         var ok = (OkObjectResult)AssertEx.NotNull(actionResult.Result);
         var projection = (ProxyConfigurationProjection)AssertEx.NotNull(ok.Value);

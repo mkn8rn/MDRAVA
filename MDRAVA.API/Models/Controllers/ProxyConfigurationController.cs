@@ -9,24 +9,24 @@ namespace MDRAVA.API.Controllers;
 [Route("admin/proxy/config")]
 public sealed class ProxyConfigurationController : ControllerBase
 {
+    private readonly ProxyConfigurationAdministrationService _configurationAdministration;
     private readonly IProxyConfigurationReloadService _reloadService;
     private readonly IProxyConfigurationStore _configurationStore;
-    private readonly IProxyConfigurationNormalizer _normalizer;
 
     public ProxyConfigurationController(
+        ProxyConfigurationAdministrationService configurationAdministration,
         IProxyConfigurationReloadService reloadService,
-        IProxyConfigurationStore configurationStore,
-        IProxyConfigurationNormalizer normalizer)
+        IProxyConfigurationStore configurationStore)
     {
+        _configurationAdministration = configurationAdministration;
         _reloadService = reloadService;
         _configurationStore = configurationStore;
-        _normalizer = normalizer;
     }
 
     [HttpPost("normalize")]
     public ActionResult<ProxyConfigurationNormalizeResult> Normalize([FromBody] ProxyConfigurationNormalizeRequest request)
     {
-        var result = _normalizer.Normalize(request);
+        var result = _configurationAdministration.Normalize(request);
         return result.Succeeded ? Ok(result) : BadRequest(result);
     }
 
@@ -40,7 +40,7 @@ public sealed class ProxyConfigurationController : ControllerBase
     [HttpPost("validate")]
     public async ValueTask<ActionResult<ProxyConfigurationValidationResult>> Validate(CancellationToken cancellationToken)
     {
-        var result = await _reloadService.ValidateAsync(cancellationToken);
+        var result = await _configurationAdministration.ValidateAsync(cancellationToken);
         return result.Succeeded ? Ok(result) : BadRequest(result);
     }
 

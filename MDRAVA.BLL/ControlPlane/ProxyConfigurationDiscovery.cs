@@ -1,4 +1,4 @@
-namespace MDRAVA.API.Models.Configuration.Loading;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed record ProxyConfigurationDiscovery(
     ProxyFilesystemLayout Layout,
