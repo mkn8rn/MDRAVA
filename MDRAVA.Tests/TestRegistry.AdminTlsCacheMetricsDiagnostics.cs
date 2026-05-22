@@ -103,5 +103,7 @@ internal static partial class TestRegistry
     Test("Admin bind is not affected by proxy listener reload", ListenerRebindingTests.AdminBindIsNotAffectedByProxyListenerReload, TestTaxonomy.Config, TestTaxonomy.Admin),
     Test("Reload diagnostics report listener diff", ListenerRebindingTests.ReloadDiagnosticsReportListenerDiff, TestTaxonomy.Config, TestTaxonomy.Metrics),
     Test("Metrics count listener reload outcomes", ListenerRebindingTests.MetricsCountListenerReloadOutcomes, TestTaxonomy.Config, TestTaxonomy.Metrics),
+    Test("Listener reload planner classifies TCP listener diff", Sync(ProxyListenerReloadPlannerTests.ClassifiesTcpListenerDiff), TestTaxonomy.Config),
+    Test("Listener reload planner replaces failed QUIC listener", Sync(ProxyListenerReloadPlannerTests.ReplacesFailedQuicListener), TestTaxonomy.Config, TestTaxonomy.Http3),
     ];
 }

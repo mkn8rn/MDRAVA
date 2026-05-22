@@ -48,6 +48,7 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<ProxyConfigurationLoader>();
         services.AddSingleton<IProxyConfigurationLoader>(static services => services.GetRequiredService<ProxyConfigurationLoader>());
         services.AddSingleton<IProxyRestoreConfigurationValidator>(static services => services.GetRequiredService<ProxyConfigurationLoader>());
+        services.AddSingleton<ProxyListenerReloadPlanner>();
         services.AddSingleton<ProxyListenerService>();
         services.AddSingleton<IProxyListenerManager>(static services => services.GetRequiredService<ProxyListenerService>());
         services.AddSingleton<IProxyConfigurationReloadService, ProxyConfigurationReloadService>();
