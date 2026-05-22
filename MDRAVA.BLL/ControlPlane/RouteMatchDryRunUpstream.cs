@@ -1,4 +1,4 @@
-namespace MDRAVA.API.Models.Diagnostics;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed record RouteMatchDryRunUpstream(
     string Name,
@@ -6,4 +6,4 @@ public sealed record RouteMatchDryRunUpstream(
     string Protocol,
     string Endpoint,
     int Weight,
-    string SelectionExplanation);
+    string SelectionReason);

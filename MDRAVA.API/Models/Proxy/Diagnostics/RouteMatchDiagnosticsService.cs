@@ -6,7 +6,7 @@ using MDRAVA.API.Proxy.Routing;
 
 namespace MDRAVA.API.Proxy.Diagnostics;
 
-public sealed class RouteMatchDiagnosticsService
+public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperations
 {
     private const int MaxInputLength = 4096;
     private static readonly HashSet<string> SensitiveHeaderNames = new(StringComparer.OrdinalIgnoreCase)

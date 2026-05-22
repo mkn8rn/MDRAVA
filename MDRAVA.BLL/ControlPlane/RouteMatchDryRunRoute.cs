@@ -1,4 +1,4 @@
-namespace MDRAVA.API.Models.Diagnostics;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed record RouteMatchDryRunRoute(
     string SiteName,

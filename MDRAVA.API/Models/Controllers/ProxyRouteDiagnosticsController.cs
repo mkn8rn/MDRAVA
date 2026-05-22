@@ -1,4 +1,3 @@
-using MDRAVA.API.Proxy.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MDRAVA.API.Controllers;
@@ -7,17 +6,17 @@ namespace MDRAVA.API.Controllers;
 [Route("admin/proxy/routes")]
 public sealed class ProxyRouteDiagnosticsController : ControllerBase
 {
-    private readonly RouteMatchDiagnosticsService _diagnostics;
+    private readonly ProxyRouteDiagnosticsAdministrationService _routeDiagnosticsAdministration;
 
-    public ProxyRouteDiagnosticsController(RouteMatchDiagnosticsService diagnostics)
+    public ProxyRouteDiagnosticsController(ProxyRouteDiagnosticsAdministrationService routeDiagnosticsAdministration)
     {
-        _diagnostics = diagnostics;
+        _routeDiagnosticsAdministration = routeDiagnosticsAdministration;
     }
 
     [HttpPost("match")]
     public ActionResult<RouteMatchDryRunResult> Match([FromBody] RouteMatchDryRunRequest request)
     {
-        var result = _diagnostics.Explain(request);
+        var result = _routeDiagnosticsAdministration.Match(request);
         return result.Succeeded ? Ok(result) : BadRequest(result);
     }
 }
