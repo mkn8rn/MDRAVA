@@ -60,6 +60,8 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<ProxyPersistentLogWriter>();
         services.AddSingleton<AccessLogEmitter>();
         services.AddSingleton<AdminAuditStore>();
+        services.AddSingleton<IProxyAdminAuditReader, ProxyAdminAuditReader>();
+        services.AddSingleton<ProxyAdminAuditAdministrationService>();
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<AcmeChallengeStore>();
         services.AddSingleton<AcmeHttp01ChallengeResponder>();
