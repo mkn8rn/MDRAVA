@@ -3,6 +3,7 @@ using MDRAVA.API.Proxy.Acme;
 using MDRAVA.API.Proxy.Backup;
 using MDRAVA.API.Proxy.Caching;
 using MDRAVA.API.Proxy.Configuration.Loading;
+using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Configuration.Storage;
 using MDRAVA.API.Proxy.Connections;
 using MDRAVA.API.Proxy.Diagnostics;
@@ -48,6 +49,8 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<IProxyConfigurationNormalizeOperations>(static services => services.GetRequiredService<IProxyConfigurationNormalizer>());
         services.AddSingleton<IProxyConfigurationValidationOperations>(static services => services.GetRequiredService<IProxyConfigurationReloadService>());
         services.AddSingleton<ProxyConfigurationAdministrationService>();
+        services.AddSingleton<IProxyConfigurationProjectionOperations<ProxyConfigurationProjection>, ProxyConfigurationProjectionOperations>();
+        services.AddSingleton<ProxyConfigurationProjectionAdministrationService<ProxyConfigurationProjection>>();
         services.AddSingleton<ProxyMetrics>();
         services.AddSingleton<PrometheusMetricsExporter>();
         services.AddSingleton<IProxyMetricsExportProvider, ProxyMetricsExportProvider>();

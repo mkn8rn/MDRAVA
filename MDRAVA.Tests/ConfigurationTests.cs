@@ -730,8 +730,9 @@ internal static class ConfigurationTests
         var normalizer = new ProxyConfigurationNormalizer(new SiteConfigurationParser(), new MDRAVA.API.Proxy.Configuration.ProxyOptionsValidator());
         var controller = new ProxyConfigurationController(
             new ProxyConfigurationAdministrationService(normalizer, service),
-            service,
-            store);
+            new ProxyConfigurationProjectionAdministrationService<ProxyConfigurationProjection>(
+                new ProxyConfigurationProjectionOperations(store)),
+            service);
 
         var actionResult = controller.Normalize(new ProxyConfigurationNormalizeRequest(
             "yaml",
@@ -761,8 +762,9 @@ internal static class ConfigurationTests
             new ProxyConfigurationAdministrationService(
                 new ProxyConfigurationNormalizer(new SiteConfigurationParser(), new MDRAVA.API.Proxy.Configuration.ProxyOptionsValidator()),
                 service),
-            service,
-            store);
+            new ProxyConfigurationProjectionAdministrationService<ProxyConfigurationProjection>(
+                new ProxyConfigurationProjectionOperations(store)),
+            service);
         var actionResult = controller.Effective();
         var ok = (OkObjectResult)AssertEx.NotNull(actionResult.Result);
         var projection = (ProxyConfigurationProjection)AssertEx.NotNull(ok.Value);
