@@ -1,6 +1,6 @@
-namespace MDRAVA.API.Models.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane;
 
-internal static class ProxyStatusText
+public static class ProxyStatusText
 {
     public const string Healthy = "healthy";
     public const string Degraded = "degraded";

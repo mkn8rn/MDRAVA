@@ -1,3 +1,4 @@
+global using MDRAVA.BLL.ControlPlane;
 global using MDRAVA.API.Models.Acme;
 global using MDRAVA.API.Models.Configuration;
 global using MDRAVA.API.Models.Configuration.Loading;

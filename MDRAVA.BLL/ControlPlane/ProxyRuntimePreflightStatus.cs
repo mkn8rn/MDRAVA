@@ -1,4 +1,4 @@
-namespace MDRAVA.API.Models.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed record ProxyRuntimePreflightStatus(
     string State,
