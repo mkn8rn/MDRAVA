@@ -1,4 +1,3 @@
-using MDRAVA.API.Proxy.Backup;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MDRAVA.API.Controllers;
@@ -7,23 +6,23 @@ namespace MDRAVA.API.Controllers;
 [Route("admin/proxy/backup")]
 public sealed class ProxyBackupController : ControllerBase
 {
-    private readonly ProxyBackupService _backupService;
+    private readonly ProxyBackupAdministrationService _backupAdministration;
 
-    public ProxyBackupController(ProxyBackupService backupService)
+    public ProxyBackupController(ProxyBackupAdministrationService backupAdministration)
     {
-        _backupService = backupService;
+        _backupAdministration = backupAdministration;
     }
 
     [HttpGet("manifest")]
     public ProxyBackupManifestResponse Manifest()
     {
-        return _backupService.CreateManifest();
+        return _backupAdministration.CreateManifest();
     }
 
     [HttpPost("validate")]
     public async ValueTask<ActionResult<ProxyRestoreValidationResponse>> Validate(CancellationToken cancellationToken)
     {
-        var result = await _backupService.ValidateAsync(cancellationToken);
+        var result = await _backupAdministration.ValidateAsync(cancellationToken);
         return result.Succeeded ? Ok(result) : BadRequest(result);
     }
 }

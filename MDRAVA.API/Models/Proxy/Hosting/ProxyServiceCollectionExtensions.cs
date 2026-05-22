@@ -49,6 +49,8 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<IProxyMetricsExportProvider, ProxyMetricsExportProvider>();
         services.AddSingleton<ProxyMetricsAdministrationService>();
         services.AddSingleton<ProxyBackupService>();
+        services.AddSingleton<IProxyBackupOperations>(static services => services.GetRequiredService<ProxyBackupService>());
+        services.AddSingleton<ProxyBackupAdministrationService>();
         services.AddSingleton<ConfigLintService>();
         services.AddSingleton<RouteMatchDiagnosticsService>();
         services.AddSingleton<RequestIdGenerator>();

@@ -1,4 +1,4 @@
-namespace MDRAVA.API.Proxy.Backup;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed record ProxyBackupManifestResponse(
     DateTimeOffset GeneratedAtUtc,

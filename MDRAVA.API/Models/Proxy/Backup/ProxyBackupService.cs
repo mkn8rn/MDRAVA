@@ -1,10 +1,11 @@
 using MDRAVA.API.Proxy.Configuration.Loading;
-using MDRAVA.BLL.Infrastructure;
 using MDRAVA.API.Proxy.Configuration.Storage;
+using MDRAVA.BLL.ControlPlane;
+using MDRAVA.BLL.Infrastructure;
 
 namespace MDRAVA.API.Proxy.Backup;
 
-public sealed class ProxyBackupService
+public sealed class ProxyBackupService : IProxyBackupOperations
 {
     private const int MaxEntries = 256;
     private const int MaxWarnings = 64;
