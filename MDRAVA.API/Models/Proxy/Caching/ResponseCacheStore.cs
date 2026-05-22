@@ -4,7 +4,7 @@ using MDRAVA.API.Proxy.Protocol;
 
 namespace MDRAVA.API.Proxy.Caching;
 
-public sealed class ResponseCacheStore
+public sealed class ResponseCacheStore : IProxyCacheControl
 {
     private const string ReasonAuthorization = "authorization";
     private const string ReasonCacheControlMustRevalidate = "cache-control-must-revalidate";

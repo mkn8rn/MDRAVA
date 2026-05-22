@@ -361,7 +361,10 @@ internal static class CacheTests
         var request = Request("GET", "/clear", "cache.test");
         var response = Response("200 OK", []);
         cache.Store(route, listener, request, "/clear", response, response.Headers, Encoding.ASCII.GetBytes("clear"));
-        var controller = new ProxyCacheController(cache, store);
+        var controller = new ProxyCacheController(
+            new ProxyCacheAdministrationService(
+                new ProxyCacheStatusReader(cache, store),
+                cache));
 
         var status = controller.Clear();
 
