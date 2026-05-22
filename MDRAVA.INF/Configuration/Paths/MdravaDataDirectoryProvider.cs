@@ -1,6 +1,6 @@
-using Microsoft.Extensions.Options;
+using MDRAVA.BLL.Infrastructure;
 
-namespace MDRAVA.API.Proxy.Configuration.Paths;
+namespace MDRAVA.INF.Configuration.Paths;
 
 public sealed class MdravaDataDirectoryProvider : IMdravaDataDirectoryProvider
 {
@@ -8,9 +8,9 @@ public sealed class MdravaDataDirectoryProvider : IMdravaDataDirectoryProvider
 
     private readonly MdravaDataDirectoryOptions _options;
 
-    public MdravaDataDirectoryProvider(IOptions<MdravaDataDirectoryOptions> options)
+    public MdravaDataDirectoryProvider(MdravaDataDirectoryOptions options)
     {
-        _options = options.Value;
+        _options = options;
     }
 
     public string GetDataDirectory()

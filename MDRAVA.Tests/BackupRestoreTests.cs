@@ -1,10 +1,9 @@
 using System.Text.Json;
 using MDRAVA.API.Proxy.Backup;
 using MDRAVA.API.Proxy.Configuration.Loading;
-using MDRAVA.API.Proxy.Configuration.Paths;
+using MDRAVA.INF.Configuration.Paths;
 using MDRAVA.API.Proxy.Configuration.Storage;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 
 namespace MDRAVA.Tests;
 
@@ -168,10 +167,10 @@ internal static class BackupRestoreTests
 
     private static MdravaDataDirectoryProvider Provider(string dataDirectory)
     {
-        return new MdravaDataDirectoryProvider(Options.Create(new MdravaDataDirectoryOptions
+        return new MdravaDataDirectoryProvider(new MdravaDataDirectoryOptions
         {
             DataDirectory = dataDirectory
-        }));
+        });
     }
 
     private sealed class TemporaryDirectory : IDisposable

@@ -2,12 +2,11 @@ using MDRAVA.API.Controllers;
 using MDRAVA.API.Proxy.Acme;
 using MDRAVA.API.Proxy.Configuration;
 using MDRAVA.API.Proxy.Configuration.Loading;
-using MDRAVA.API.Proxy.Configuration.Paths;
+using MDRAVA.INF.Configuration.Paths;
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Configuration.Storage;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 
 namespace MDRAVA.Tests;
 
@@ -286,10 +285,10 @@ internal static class AcmeTests
     {
         return new AcmeCertificateManager(
             store,
-            new MdravaDataDirectoryProvider(Options.Create(new MdravaDataDirectoryOptions
+            new MdravaDataDirectoryProvider(new MdravaDataDirectoryOptions
             {
                 DataDirectory = dataDirectory
-            })),
+            }),
             issuer,
             new AcmeChallengeStore(),
             statusStore,
@@ -299,10 +298,10 @@ internal static class AcmeTests
 
     private static ProxyConfigurationLoader CreateLoader(string dataDirectory)
     {
-        var provider = new MdravaDataDirectoryProvider(Options.Create(new MdravaDataDirectoryOptions
+        var provider = new MdravaDataDirectoryProvider(new MdravaDataDirectoryOptions
         {
             DataDirectory = dataDirectory
-        }));
+        });
         return new ProxyConfigurationLoader(
             provider,
             new ProxyOptionsValidator(),

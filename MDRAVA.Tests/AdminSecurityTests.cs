@@ -3,7 +3,7 @@ using System.Reflection;
 using MDRAVA.API.Controllers;
 using MDRAVA.API.Proxy.Configuration;
 using MDRAVA.API.Proxy.Configuration.Loading;
-using MDRAVA.API.Proxy.Configuration.Paths;
+using MDRAVA.INF.Configuration.Paths;
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Configuration.Storage;
 using MDRAVA.API.Proxy.Security;
@@ -12,7 +12,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 
 namespace MDRAVA.Tests;
 
@@ -306,10 +305,10 @@ internal static class AdminSecurityTests
     public static void GeneratedPlaceholderConfigDoesNotContainRealSecret()
     {
         using var temp = TemporaryDirectory.Create();
-        var provider = new MdravaDataDirectoryProvider(Options.Create(new MdravaDataDirectoryOptions
+        var provider = new MdravaDataDirectoryProvider(new MdravaDataDirectoryOptions
         {
             DataDirectory = temp.Path
-        }));
+        });
         var bootstrapper = new ProxyDataDirectoryBootstrapper(provider);
 
         bootstrapper.EnsureLayout();

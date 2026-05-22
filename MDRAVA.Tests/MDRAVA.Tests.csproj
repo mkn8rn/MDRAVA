@@ -10,6 +10,7 @@
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <ProjectReference Include="..\MDRAVA.BLL\MDRAVA.BLL.csproj" />
+    <ProjectReference Include="..\MDRAVA.INF\MDRAVA.INF.csproj" />
     <ProjectReference Include="..\MDRAVA.API\MDRAVA.API.csproj" />
   </ItemGroup>
 

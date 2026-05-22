@@ -1,4 +1,4 @@
-namespace MDRAVA.API.Models.Configuration.Paths;
+namespace MDRAVA.INF.Configuration.Paths;
 
 public sealed class MdravaDataDirectoryOptions
 {

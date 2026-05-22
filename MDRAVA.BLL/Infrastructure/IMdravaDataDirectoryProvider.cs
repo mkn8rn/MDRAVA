@@ -1,4 +1,4 @@
-namespace MDRAVA.API.Proxy.Configuration.Paths;
+namespace MDRAVA.BLL.Infrastructure;
 
 public interface IMdravaDataDirectoryProvider
 {

@@ -1,4 +1,4 @@
-using MDRAVA.API.Proxy.Configuration.Paths;
+using MDRAVA.BLL.Infrastructure;
 
 namespace MDRAVA.API.Proxy.Configuration.Loading;
 

@@ -1,11 +1,10 @@
 using MDRAVA.API.Controllers;
 using MDRAVA.API.Proxy.Configuration.Loading;
-using MDRAVA.API.Proxy.Configuration.Paths;
+using MDRAVA.INF.Configuration.Paths;
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Configuration.Storage;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 
 namespace MDRAVA.Tests;
 
@@ -14,10 +13,10 @@ internal static class ConfigurationTests
     public static void DataDirectoryUsesConfiguredOverride()
     {
         var expected = Path.Combine(Path.GetTempPath(), $"mdrava-test-{Guid.NewGuid():N}");
-        var provider = new MdravaDataDirectoryProvider(Options.Create(new MdravaDataDirectoryOptions
+        var provider = new MdravaDataDirectoryProvider(new MdravaDataDirectoryOptions
         {
             DataDirectory = expected
-        }));
+        });
 
         AssertEx.Equal(Path.GetFullPath(expected), provider.GetDataDirectory());
         AssertEx.Equal(Path.Combine(Path.GetFullPath(expected), "config"), provider.GetProxyConfigDirectory());
@@ -35,10 +34,10 @@ internal static class ConfigurationTests
         try
         {
             Environment.SetEnvironmentVariable(MdravaDataDirectoryProvider.EnvironmentVariableName, expected);
-            var provider = new MdravaDataDirectoryProvider(Options.Create(new MdravaDataDirectoryOptions
+            var provider = new MdravaDataDirectoryProvider(new MdravaDataDirectoryOptions
             {
                 DataDirectory = Path.Combine(Path.GetTempPath(), "ignored")
-            }));
+            });
 
             AssertEx.Equal(Path.GetFullPath(expected), provider.GetDataDirectory());
         }
@@ -55,7 +54,7 @@ internal static class ConfigurationTests
         try
         {
             Environment.SetEnvironmentVariable(MdravaDataDirectoryProvider.EnvironmentVariableName, null);
-            var provider = new MdravaDataDirectoryProvider(Options.Create(new MdravaDataDirectoryOptions()));
+            var provider = new MdravaDataDirectoryProvider(new MdravaDataDirectoryOptions());
             var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
 
             if (!string.IsNullOrWhiteSpace(localAppData))
@@ -1108,15 +1107,15 @@ internal static class ConfigurationTests
     private static ProxyConfigurationLoader CreateLoader(string dataDirectory)
     {
         return new ProxyConfigurationLoader(
-            new MdravaDataDirectoryProvider(Options.Create(new MdravaDataDirectoryOptions
+            new MdravaDataDirectoryProvider(new MdravaDataDirectoryOptions
+            {
+                DataDirectory = dataDirectory
+            }),
+            new MDRAVA.API.Proxy.Configuration.ProxyOptionsValidator(),
+            new ProxyDataDirectoryBootstrapper(new MdravaDataDirectoryProvider(new MdravaDataDirectoryOptions
             {
                 DataDirectory = dataDirectory
             })),
-            new MDRAVA.API.Proxy.Configuration.ProxyOptionsValidator(),
-            new ProxyDataDirectoryBootstrapper(new MdravaDataDirectoryProvider(Options.Create(new MdravaDataDirectoryOptions
-            {
-                DataDirectory = dataDirectory
-            }))),
             new SiteConfigurationParser(),
             NullLogger<ProxyConfigurationLoader>.Instance);
     }

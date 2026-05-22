@@ -1,6 +1,6 @@
 using System.Text;
 using System.Text.Json;
-using MDRAVA.API.Proxy.Configuration.Paths;
+using MDRAVA.BLL.Infrastructure;
 using MDRAVA.API.Proxy.Configuration.Storage;
 
 namespace MDRAVA.API.Proxy.Observability;

@@ -1,7 +1,7 @@
 using System.Text.Json;
 using MDRAVA.API.Controllers;
 using MDRAVA.API.Proxy.Connections;
-using MDRAVA.API.Proxy.Configuration.Paths;
+using MDRAVA.INF.Configuration.Paths;
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Configuration.Storage;
 using MDRAVA.API.Proxy.Health;
@@ -11,7 +11,6 @@ using MDRAVA.API.Proxy.Observability;
 using MDRAVA.API.Proxy.Security;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 
 namespace MDRAVA.Tests;
 
@@ -296,10 +295,10 @@ internal static class LogPersistenceTests
     private static ProxyPersistentLogWriter CreateWriter(string dataDirectory, IProxyConfigurationStore store)
     {
         return new ProxyPersistentLogWriter(
-            new MdravaDataDirectoryProvider(Options.Create(new MdravaDataDirectoryOptions
+            new MdravaDataDirectoryProvider(new MdravaDataDirectoryOptions
             {
                 DataDirectory = dataDirectory
-            })),
+            }),
             store,
             NullLogger<ProxyPersistentLogWriter>.Instance);
     }

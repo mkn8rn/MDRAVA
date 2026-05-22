@@ -9,7 +9,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using MDRAVA.API.Proxy.Configuration;
 using MDRAVA.API.Proxy.Configuration.Loading;
-using MDRAVA.API.Proxy.Configuration.Paths;
+using MDRAVA.INF.Configuration.Paths;
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Connections;
 using MDRAVA.API.Proxy.Health;
@@ -22,7 +22,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 
 namespace MDRAVA.Tests;
 
@@ -1176,10 +1175,10 @@ internal static class UpstreamHttp3Tests
 
     private static ProxyConfigurationLoader CreateLoader(string dataDirectory)
     {
-        var provider = new MdravaDataDirectoryProvider(Options.Create(new MdravaDataDirectoryOptions
+        var provider = new MdravaDataDirectoryProvider(new MdravaDataDirectoryOptions
         {
             DataDirectory = dataDirectory
-        }));
+        });
 
         return new ProxyConfigurationLoader(
             provider,

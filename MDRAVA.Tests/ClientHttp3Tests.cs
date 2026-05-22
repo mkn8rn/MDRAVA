@@ -8,7 +8,7 @@ using System.Text;
 using MDRAVA.API.Controllers;
 using MDRAVA.API.Models.Diagnostics;
 using MDRAVA.API.Proxy.Configuration.Loading;
-using MDRAVA.API.Proxy.Configuration.Paths;
+using MDRAVA.INF.Configuration.Paths;
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Configuration.Storage;
 using MDRAVA.API.Proxy.Configuration;

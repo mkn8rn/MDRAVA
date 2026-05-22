@@ -1,5 +1,5 @@
 using MDRAVA.API.Proxy.Configuration.Loading;
-using MDRAVA.API.Proxy.Configuration.Paths;
+using MDRAVA.BLL.Infrastructure;
 using MDRAVA.API.Proxy.Configuration.Storage;
 
 namespace MDRAVA.API.Proxy.Backup;

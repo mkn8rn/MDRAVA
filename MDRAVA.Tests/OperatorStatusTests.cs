@@ -2,7 +2,7 @@ using System.Text.Json;
 using MDRAVA.API.Controllers;
 using MDRAVA.API.Proxy.Acme;
 using MDRAVA.API.Proxy.Caching;
-using MDRAVA.API.Proxy.Configuration.Paths;
+using MDRAVA.INF.Configuration.Paths;
 using MDRAVA.API.Proxy.Configuration.Storage;
 using MDRAVA.API.Proxy.Connections;
 using MDRAVA.API.Proxy.Health;
@@ -12,7 +12,6 @@ using MDRAVA.API.Proxy.Observability;
 using MDRAVA.API.Proxy.Resilience;
 using MDRAVA.API.Proxy.Runtime;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 
 namespace MDRAVA.Tests;
 
@@ -270,10 +269,10 @@ internal static class OperatorStatusTests
         fixture.Store.Replace(Snapshot([listener], [StaticRoute()]));
         fixture.Runtime.ReplaceListeners([ListenerStatus(listener, ProxyListenerState.Active)], null);
         var preflight = new ProxyRuntimePreflightService(
-            new MdravaDataDirectoryProvider(Options.Create(new MdravaDataDirectoryOptions
+            new MdravaDataDirectoryProvider(new MdravaDataDirectoryOptions
             {
                 DataDirectory = fixture.DataDirectory
-            })),
+            }),
             new RuntimePreflightProbe(path =>
                 path.EndsWith("logs", StringComparison.OrdinalIgnoreCase)
                     ? new ProxyRuntimeDirectoryProbeResult(true, false, true, false, secret)
@@ -470,10 +469,10 @@ internal static class OperatorStatusTests
             Cache = new ResponseCacheStore(TimeProvider.System);
             Acme = new AcmeCertificateStatusStore();
             Writer = new ProxyPersistentLogWriter(
-                new MdravaDataDirectoryProvider(Options.Create(new MdravaDataDirectoryOptions
+                new MdravaDataDirectoryProvider(new MdravaDataDirectoryOptions
                 {
                     DataDirectory = dataDirectory
-                })),
+                }),
                 Store,
                 NullLogger<ProxyPersistentLogWriter>.Instance);
         }

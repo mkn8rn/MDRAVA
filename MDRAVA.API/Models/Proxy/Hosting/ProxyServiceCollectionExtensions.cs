@@ -3,7 +3,6 @@ using MDRAVA.API.Proxy.Acme;
 using MDRAVA.API.Proxy.Backup;
 using MDRAVA.API.Proxy.Caching;
 using MDRAVA.API.Proxy.Configuration.Loading;
-using MDRAVA.API.Proxy.Configuration.Paths;
 using MDRAVA.API.Proxy.Configuration.Storage;
 using MDRAVA.API.Proxy.Connections;
 using MDRAVA.API.Proxy.Diagnostics;
@@ -17,6 +16,9 @@ using MDRAVA.API.Proxy.Runtime;
 using MDRAVA.API.Proxy.Resilience;
 using MDRAVA.API.Proxy.Security;
 using MDRAVA.API.Proxy.Tls;
+using MDRAVA.BLL.Infrastructure;
+using MDRAVA.INF.Configuration.Paths;
+using MDRAVA.INF.Runtime;
 using Microsoft.Extensions.Options;
 
 namespace MDRAVA.API.Proxy.Hosting;
@@ -30,7 +32,9 @@ public static class ProxyServiceCollectionExtensions
         services.AddOptions<MdravaDataDirectoryOptions>()
             .Bind(configuration.GetSection(MdravaDataDirectoryOptions.SectionName));
 
-        services.AddSingleton<IMdravaDataDirectoryProvider, MdravaDataDirectoryProvider>();
+        services.AddSingleton<IMdravaDataDirectoryProvider>(static services =>
+            new MdravaDataDirectoryProvider(
+                services.GetRequiredService<IOptions<MdravaDataDirectoryOptions>>().Value));
         services.AddSingleton<IValidateOptions<ProxyOptions>, ProxyOptionsValidator>();
         services.AddSingleton<ProxyDataDirectoryBootstrapper>();
         services.AddSingleton<SiteConfigurationParser>();
