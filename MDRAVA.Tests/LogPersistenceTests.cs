@@ -10,6 +10,8 @@ using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Observability;
 using MDRAVA.API.Proxy.Security;
 using MDRAVA.API.Proxy.Status;
+using MDRAVA.BLL.ControlPlane;
+using MDRAVA.INF.Observability;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -271,9 +273,9 @@ internal static class LogPersistenceTests
         return context;
     }
 
-    private static AdminAuditEvent AdminAudit(string path, int statusCode)
+    private static ProxyAdminAuditEvent AdminAudit(string path, int statusCode)
     {
-        return new AdminAuditEvent(
+        return new ProxyAdminAuditEvent(
             DateTimeOffset.UtcNow,
             "GET",
             path,
@@ -300,7 +302,7 @@ internal static class LogPersistenceTests
             {
                 DataDirectory = dataDirectory
             }),
-            store,
+            new ProxyLogPersistenceSettingsReader(store),
             NullLogger<ProxyPersistentLogWriter>.Instance);
     }
 
@@ -316,7 +318,7 @@ internal static class LogPersistenceTests
             metrics,
             store,
             health,
-            logWriter: writer);
+            logPersistenceStore: writer);
         return new ProxyStatusController(new ProxyStatusAdministrationService(statusOperations));
     }
 

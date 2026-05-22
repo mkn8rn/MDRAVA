@@ -12,6 +12,8 @@ using MDRAVA.API.Proxy.Observability;
 using MDRAVA.API.Proxy.Resilience;
 using MDRAVA.API.Proxy.Runtime;
 using MDRAVA.API.Proxy.Status;
+using MDRAVA.BLL.ControlPlane;
+using MDRAVA.INF.Observability;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace MDRAVA.Tests;
@@ -48,7 +50,7 @@ internal static class OperatorStatusTests
         fixture.Store.Replace(Snapshot([listener], [StaticRoute()]));
         fixture.Runtime.ReplaceListeners([ListenerStatus(listener, ProxyListenerState.Active)], null);
 
-        fixture.Writer.WriteAdminAudit(new AdminAuditEvent(
+        fixture.Writer.WriteAdminAudit(new ProxyAdminAuditEvent(
             DateTimeOffset.UtcNow,
             "GET",
             $"/admin/proxy/status?token={querySecret}",
@@ -474,7 +476,7 @@ internal static class OperatorStatusTests
                 {
                     DataDirectory = dataDirectory
                 }),
-                Store,
+                new ProxyLogPersistenceSettingsReader(Store),
                 NullLogger<ProxyPersistentLogWriter>.Instance);
         }
 
@@ -512,7 +514,7 @@ internal static class OperatorStatusTests
                 Metrics,
                 Store,
                 Health,
-                logWriter: Writer,
+                logPersistenceStore: Writer,
                 cacheStore: Cache,
                 acmeStatusStore: Acme,
                 preflightService: preflight);

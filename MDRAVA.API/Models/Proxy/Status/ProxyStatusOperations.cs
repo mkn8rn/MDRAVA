@@ -6,7 +6,6 @@ using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Hosting;
 using MDRAVA.API.Proxy.Http3;
 using MDRAVA.API.Proxy.Metrics;
-using MDRAVA.API.Proxy.Observability;
 using MDRAVA.API.Proxy.Runtime;
 
 namespace MDRAVA.API.Proxy.Status;
@@ -18,7 +17,7 @@ public sealed class ProxyStatusOperations : IProxyStatusOperations
     private readonly IProxyConfigurationStore _configurationStore;
     private readonly UpstreamHealthStore _healthStore;
     private readonly ConfigLintService? _lintService;
-    private readonly ProxyPersistentLogWriter? _logWriter;
+    private readonly IProxyLogPersistenceStore? _logPersistenceStore;
     private readonly ResponseCacheStore? _cacheStore;
     private readonly AcmeCertificateStatusStore? _acmeStatusStore;
     private readonly ProxyRuntimePreflightService? _preflightService;
@@ -29,7 +28,7 @@ public sealed class ProxyStatusOperations : IProxyStatusOperations
         IProxyConfigurationStore configurationStore,
         UpstreamHealthStore healthStore,
         ConfigLintService? lintService = null,
-        ProxyPersistentLogWriter? logWriter = null,
+        IProxyLogPersistenceStore? logPersistenceStore = null,
         ResponseCacheStore? cacheStore = null,
         AcmeCertificateStatusStore? acmeStatusStore = null,
         ProxyRuntimePreflightService? preflightService = null)
@@ -39,7 +38,7 @@ public sealed class ProxyStatusOperations : IProxyStatusOperations
         _configurationStore = configurationStore;
         _healthStore = healthStore;
         _lintService = lintService;
-        _logWriter = logWriter;
+        _logPersistenceStore = logPersistenceStore;
         _cacheStore = cacheStore;
         _acmeStatusStore = acmeStatusStore;
         _preflightService = preflightService;
@@ -77,7 +76,7 @@ public sealed class ProxyStatusOperations : IProxyStatusOperations
             .ToArray();
         var metrics = _metrics.Snapshot();
         var http3 = Http3RuntimeSupport.Project(snapshot?.Listeners ?? [], runtime.Listeners, snapshot?.Routes);
-        var logPersistence = _logWriter?.GetStatus() ?? ProxyLogPersistenceStatus.Unknown;
+        var logPersistence = _logPersistenceStore?.GetStatus() ?? ProxyLogPersistenceStatus.Unknown;
         var runtimePreflight = _preflightService?.LastStatus ?? ProxyRuntimePreflightStatus.Unknown;
         var cacheStatus = _cacheStore?.Snapshot(snapshot);
         var acmeStatuses = _acmeStatusStore?.Snapshot() ?? [];

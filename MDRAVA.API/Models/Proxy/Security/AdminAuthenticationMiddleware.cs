@@ -182,7 +182,7 @@ public sealed class AdminAuthenticationMiddleware
             : "/";
 
         _auditStore.Add(
-            new AdminAuditEvent(
+            new ProxyAdminAuditEvent(
                 DateTimeOffset.UtcNow,
                 context.Request.Method,
                 path,

@@ -20,6 +20,7 @@ using MDRAVA.API.Proxy.Tls;
 using MDRAVA.BLL.Infrastructure;
 using MDRAVA.INF.Configuration.Paths;
 using MDRAVA.INF.DataDirectory;
+using MDRAVA.INF.Observability;
 using MDRAVA.INF.Runtime;
 using Microsoft.Extensions.Options;
 
@@ -77,7 +78,9 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<RecentRequestDiagnosticsStore>();
         services.AddSingleton<IProxyRequestDiagnosticsReader, ProxyRequestDiagnosticsReader>();
         services.AddSingleton<ProxyDiagnosticsAdministrationService>();
+        services.AddSingleton<IProxyLogPersistenceSettingsReader, ProxyLogPersistenceSettingsReader>();
         services.AddSingleton<ProxyPersistentLogWriter>();
+        services.AddSingleton<IProxyLogPersistenceStore>(static services => services.GetRequiredService<ProxyPersistentLogWriter>());
         services.AddSingleton<AccessLogEmitter>();
         services.AddSingleton<AdminAuditStore>();
         services.AddSingleton<IProxyAdminAuditReader, ProxyAdminAuditReader>();

@@ -1,11 +1,13 @@
 using System.Text;
 using System.Text.Json;
+using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane;
 using MDRAVA.BLL.Infrastructure;
-using MDRAVA.API.Proxy.Configuration.Storage;
+using Microsoft.Extensions.Logging;
 
-namespace MDRAVA.API.Proxy.Observability;
+namespace MDRAVA.INF.Observability;
 
-public sealed class ProxyPersistentLogWriter
+public sealed class ProxyPersistentLogWriter : IProxyLogPersistenceStore
 {
     private const int MaxTextLength = 256;
     private const int MaxPathLength = 512;
@@ -16,7 +18,7 @@ public sealed class ProxyPersistentLogWriter
     };
 
     private readonly IMdravaDataDirectoryProvider _dataDirectoryProvider;
-    private readonly IProxyConfigurationStore _configurationStore;
+    private readonly IProxyLogPersistenceSettingsReader _settingsReader;
     private readonly ILogger<ProxyPersistentLogWriter> _logger;
     private readonly object _accessGate = new();
     private readonly object _auditGate = new();
@@ -26,15 +28,15 @@ public sealed class ProxyPersistentLogWriter
 
     public ProxyPersistentLogWriter(
         IMdravaDataDirectoryProvider dataDirectoryProvider,
-        IProxyConfigurationStore configurationStore,
+        IProxyLogPersistenceSettingsReader settingsReader,
         ILogger<ProxyPersistentLogWriter> logger)
     {
         _dataDirectoryProvider = dataDirectoryProvider;
-        _configurationStore = configurationStore;
+        _settingsReader = settingsReader;
         _logger = logger;
     }
 
-    public void WriteAccess(ProxyRequestContext context, ProxyRequestDiagnosticEvent diagnostic)
+    public void WriteAccess(ProxyAccessLogEntry accessEntry)
     {
         if (!TryGetOptions(out var options) || !options.AccessLogEnabled)
         {
@@ -43,34 +45,34 @@ public sealed class ProxyPersistentLogWriter
 
         var entry = new
         {
-            timestampUtc = diagnostic.TimestampUtc,
+            timestampUtc = accessEntry.TimestampUtc,
             kind = "access",
-            requestId = SafeValue(diagnostic.RequestId),
-            configVersion = diagnostic.ConfigVersion,
-            listener = SafeValue(diagnostic.ListenerName),
-            transport = SafeValue(diagnostic.Transport?.ToLowerInvariant()),
-            protocol = SafeValue(context.Protocol),
-            method = SafeValue(diagnostic.Method),
-            host = SafeValue(diagnostic.Host),
-            targetPath = SafeTargetPath(diagnostic.Target),
-            site = SafeValue(context.SiteName),
-            route = SafeValue(diagnostic.RouteName),
-            action = SafeValue(context.RouteAction),
-            upstream = SafeValue(diagnostic.UpstreamName),
-            upstreamEndpoint = SafeValue(diagnostic.UpstreamEndpoint),
-            status = diagnostic.ResponseStatusCode,
-            durationMs = diagnostic.DurationMilliseconds,
-            failure = SafeValue(diagnostic.FailureKind),
-            responseStarted = diagnostic.ResponseStarted,
-            keepAlive = diagnostic.KeepClientConnectionOpen,
-            upgrade = diagnostic.IsUpgrade,
-            tunnel = diagnostic.TunnelEstablished
+            requestId = SafeValue(accessEntry.RequestId),
+            configVersion = accessEntry.ConfigVersion,
+            listener = SafeValue(accessEntry.ListenerName),
+            transport = SafeValue(accessEntry.Transport?.ToLowerInvariant()),
+            protocol = SafeValue(accessEntry.Protocol),
+            method = SafeValue(accessEntry.Method),
+            host = SafeValue(accessEntry.Host),
+            targetPath = SafeTargetPath(accessEntry.Target),
+            site = SafeValue(accessEntry.SiteName),
+            route = SafeValue(accessEntry.RouteName),
+            action = SafeValue(accessEntry.RouteAction),
+            upstream = SafeValue(accessEntry.UpstreamName),
+            upstreamEndpoint = SafeValue(accessEntry.UpstreamEndpoint),
+            status = accessEntry.ResponseStatusCode,
+            durationMs = accessEntry.DurationMilliseconds,
+            failure = SafeValue(accessEntry.FailureKind),
+            responseStarted = accessEntry.ResponseStarted,
+            keepAlive = accessEntry.KeepClientConnectionOpen,
+            upgrade = accessEntry.IsUpgrade,
+            tunnel = accessEntry.TunnelEstablished
         };
 
         WriteLine("access", JsonSerializer.Serialize(entry, JsonOptions), options, _accessGate);
     }
 
-    public void WriteAdminAudit(AdminAuditEvent auditEvent)
+    public void WriteAdminAudit(ProxyAdminAuditEvent auditEvent)
     {
         if (!TryGetOptions(out var options) || !options.AdminAuditEnabled)
         {
@@ -94,14 +96,7 @@ public sealed class ProxyPersistentLogWriter
     public ProxyLogPersistenceStatus GetStatus()
     {
         var logDirectory = SafeValue(_dataDirectoryProvider.GetLogsDirectory(), MaxPathLength);
-        var hasSnapshot = _configurationStore.TryGetSnapshot(out var snapshot) && snapshot is not null;
-        var options = hasSnapshot
-            ? snapshot!.Observability.LogPersistence
-            : new RuntimeLogPersistenceOptions(
-                AccessLogEnabled: false,
-                AdminAuditEnabled: false,
-                MaxFileBytes: 0,
-                MaxFiles: 0);
+        var hasSnapshot = _settingsReader.TryGetLogPersistenceOptions(out var options);
 
         DateTimeOffset? lastSuccess;
         ProxyLogPersistenceFailureStatus? lastFailure;
@@ -141,26 +136,15 @@ public sealed class ProxyPersistentLogWriter
             lastFailure);
     }
 
-    private bool TryGetOptions(out RuntimeLogPersistenceOptions options)
+    private bool TryGetOptions(out ProxyLogPersistenceOptions options)
     {
-        if (_configurationStore.TryGetSnapshot(out var snapshot) && snapshot is not null)
-        {
-            options = snapshot.Observability.LogPersistence;
-            return true;
-        }
-
-        options = new RuntimeLogPersistenceOptions(
-            AccessLogEnabled: false,
-            AdminAuditEnabled: false,
-            MaxFileBytes: 1_048_576,
-            MaxFiles: 8);
-        return false;
+        return _settingsReader.TryGetLogPersistenceOptions(out options);
     }
 
     private void WriteLine(
         string logName,
         string line,
-        RuntimeLogPersistenceOptions options,
+        ProxyLogPersistenceOptions options,
         object gate)
     {
         try

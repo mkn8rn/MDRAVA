@@ -7,18 +7,18 @@ public sealed class AccessLogEmitter
     private readonly RecentRequestDiagnosticsStore _diagnostics;
     private readonly Metrics.ProxyMetrics _metrics;
     private readonly ILogger<AccessLogEmitter> _logger;
-    private readonly ProxyPersistentLogWriter? _persistentLogWriter;
+    private readonly IProxyLogPersistenceStore? _logPersistenceStore;
 
     public AccessLogEmitter(
         RecentRequestDiagnosticsStore diagnostics,
         Metrics.ProxyMetrics metrics,
         ILogger<AccessLogEmitter> logger,
-        ProxyPersistentLogWriter? persistentLogWriter = null)
+        IProxyLogPersistenceStore? logPersistenceStore = null)
     {
         _diagnostics = diagnostics;
         _metrics = metrics;
         _logger = logger;
-        _persistentLogWriter = persistentLogWriter;
+        _logPersistenceStore = logPersistenceStore;
     }
 
     public void Complete(ProxyRequestContext context, bool accessLogEnabled, int diagnosticsCapacity)
@@ -67,7 +67,28 @@ public sealed class AccessLogEmitter
         }
 
         _metrics.AccessLogEmitted();
-        _persistentLogWriter?.WriteAccess(context, diagnostic);
+        _logPersistenceStore?.WriteAccess(new ProxyAccessLogEntry(
+            diagnostic.TimestampUtc,
+            diagnostic.RequestId,
+            diagnostic.ConfigVersion,
+            diagnostic.ListenerName,
+            diagnostic.Transport,
+            context.Protocol,
+            diagnostic.Method,
+            diagnostic.Host,
+            diagnostic.Target,
+            context.SiteName,
+            diagnostic.RouteName,
+            context.RouteAction,
+            diagnostic.UpstreamName,
+            diagnostic.UpstreamEndpoint,
+            diagnostic.ResponseStatusCode,
+            diagnostic.DurationMilliseconds,
+            diagnostic.FailureKind,
+            diagnostic.ResponseStarted,
+            diagnostic.KeepClientConnectionOpen,
+            diagnostic.IsUpgrade,
+            diagnostic.TunnelEstablished));
         _logger.LogInformation(
             "Proxy access {RequestId} listener={ListenerName} transport={Transport} protocol={Protocol} client={ClientEndpoint} method={Method} host={Host} targetPath={TargetPath} route={RouteName} upstream={UpstreamName} upstreamEndpoint={UpstreamEndpoint} status={StatusCode} durationMs={DurationMilliseconds} failure={FailureKind} responseStarted={ResponseStarted} keepAlive={KeepAlive} upgrade={IsUpgrade} tunnel={TunnelEstablished} configVersion={ConfigVersion}",
             diagnostic.RequestId,

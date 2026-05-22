@@ -7,6 +7,7 @@ using MDRAVA.INF.Configuration.Paths;
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Configuration.Storage;
 using MDRAVA.API.Proxy.Security;
+using MDRAVA.BLL.ControlPlane;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
@@ -410,9 +411,9 @@ internal static class AdminSecurityTests
         return "/" + combined.Trim('/');
     }
 
-    private static AdminAuditEvent Event(string path, int statusCode)
+    private static ProxyAdminAuditEvent Event(string path, int statusCode)
     {
-        return new AdminAuditEvent(
+        return new ProxyAdminAuditEvent(
             DateTimeOffset.UtcNow,
             "GET",
             path,

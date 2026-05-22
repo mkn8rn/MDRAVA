@@ -1,21 +1,19 @@
-using MDRAVA.API.Proxy.Observability;
-
 namespace MDRAVA.API.Proxy.Security;
 
 public sealed class AdminAuditStore
 {
     public const int MaximumReadLimit = 500;
 
-    private readonly ProxyPersistentLogWriter? _persistentLogWriter;
+    private readonly IProxyLogPersistenceStore? _logPersistenceStore;
     private readonly object _gate = new();
-    private readonly LinkedList<AdminAuditEvent> _events = new();
+    private readonly LinkedList<ProxyAdminAuditEvent> _events = new();
 
-    public AdminAuditStore(ProxyPersistentLogWriter? persistentLogWriter = null)
+    public AdminAuditStore(IProxyLogPersistenceStore? logPersistenceStore = null)
     {
-        _persistentLogWriter = persistentLogWriter;
+        _logPersistenceStore = logPersistenceStore;
     }
 
-    public void Add(AdminAuditEvent auditEvent, int capacity)
+    public void Add(ProxyAdminAuditEvent auditEvent, int capacity)
     {
         lock (_gate)
         {
@@ -28,13 +26,13 @@ public sealed class AdminAuditStore
             }
         }
 
-        _persistentLogWriter?.WriteAdminAudit(auditEvent);
+        _logPersistenceStore?.WriteAdminAudit(auditEvent);
     }
 
-    public IReadOnlyList<AdminAuditEvent> Recent(int limit)
+    public IReadOnlyList<ProxyAdminAuditEvent> Recent(int limit)
     {
         var boundedLimit = Math.Clamp(limit, 1, MaximumReadLimit);
-        List<AdminAuditEvent> results = [];
+        List<ProxyAdminAuditEvent> results = [];
 
         lock (_gate)
         {

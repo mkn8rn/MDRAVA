@@ -11,15 +11,6 @@ public sealed class ProxyAdminAuditReader : IProxyAdminAuditReader
 
     public IReadOnlyList<ProxyAdminAuditEvent> Recent(int limit)
     {
-        return _auditStore.Recent(limit)
-            .Select(static auditEvent => new ProxyAdminAuditEvent(
-                auditEvent.TimestampUtc,
-                auditEvent.Method,
-                auditEvent.Path,
-                auditEvent.ClientIp,
-                auditEvent.AuthResult,
-                auditEvent.StatusCode,
-                auditEvent.Succeeded))
-            .ToArray();
+        return _auditStore.Recent(limit);
     }
 }
