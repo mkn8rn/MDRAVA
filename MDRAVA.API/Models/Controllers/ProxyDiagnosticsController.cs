@@ -1,4 +1,3 @@
-using MDRAVA.API.Proxy.Observability;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MDRAVA.API.Controllers;
@@ -7,16 +6,16 @@ namespace MDRAVA.API.Controllers;
 [Route("admin/proxy/diagnostics")]
 public sealed class ProxyDiagnosticsController : ControllerBase
 {
-    private readonly RecentRequestDiagnosticsStore _diagnostics;
+    private readonly ProxyDiagnosticsAdministrationService _diagnosticsAdministration;
 
-    public ProxyDiagnosticsController(RecentRequestDiagnosticsStore diagnostics)
+    public ProxyDiagnosticsController(ProxyDiagnosticsAdministrationService diagnosticsAdministration)
     {
-        _diagnostics = diagnostics;
+        _diagnosticsAdministration = diagnosticsAdministration;
     }
 
     [HttpGet("recent")]
-    public IReadOnlyList<ProxyRequestDiagnosticEvent> Recent([FromQuery] int limit = 50)
+    public IReadOnlyList<ProxyRecentRequestDiagnosticEvent> Recent([FromQuery] int limit = 50)
     {
-        return _diagnostics.Recent(limit);
+        return _diagnosticsAdministration.Recent(limit);
     }
 }

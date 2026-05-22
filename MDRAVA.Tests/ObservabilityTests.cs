@@ -31,7 +31,9 @@ internal static class ObservabilityTests
             store.Add(CreateEvent($"request-{index}", $"/{index}"), capacity: 20);
         }
 
-        var controller = new ProxyDiagnosticsController(store);
+        var controller = new ProxyDiagnosticsController(
+            new ProxyDiagnosticsAdministrationService(
+                new ProxyRequestDiagnosticsReader(store)));
         var recent = controller.Recent(limit: 3);
 
         AssertEx.Equal(3, recent.Count);

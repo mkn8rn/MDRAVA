@@ -57,6 +57,8 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<IProxyCacheStatusReader, ProxyCacheStatusReader>();
         services.AddSingleton<ProxyCacheAdministrationService>();
         services.AddSingleton<RecentRequestDiagnosticsStore>();
+        services.AddSingleton<IProxyRequestDiagnosticsReader, ProxyRequestDiagnosticsReader>();
+        services.AddSingleton<ProxyDiagnosticsAdministrationService>();
         services.AddSingleton<ProxyPersistentLogWriter>();
         services.AddSingleton<AccessLogEmitter>();
         services.AddSingleton<AdminAuditStore>();
