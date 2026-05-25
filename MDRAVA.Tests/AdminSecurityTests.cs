@@ -296,8 +296,7 @@ internal static class AdminSecurityTests
         var normalizer = new ProxyConfigurationNormalizer(new SiteConfigurationParser(), new ProxyOptionsValidator());
         var controller = new ProxyConfigurationController(
             new ProxyConfigurationAdministrationService(normalizer, reloadService),
-            new ProxyConfigurationReadAdministrationService<ProxyConfigurationProjection>(
-                new ProxyConfigurationReadOperations(store)),
+            CreateReadAdministration(store),
             reloadAdministration);
 
         var actionResult = controller.Effective();
@@ -454,6 +453,14 @@ internal static class AdminSecurityTests
         var store = new ProxyConfigurationStore();
         store.Replace(snapshot);
         return store;
+    }
+
+    private static ProxyConfigurationReadAdministrationService<ProxyConfigurationProjection> CreateReadAdministration(
+        IProxyConfigurationStore store)
+    {
+        return new ProxyConfigurationReadAdministrationService<ProxyConfigurationProjection>(
+            new ProxyConfigurationReadOperations<ProxyConfigurationProjection>(
+                new ProxyConfigurationReadProjectionSource(store)));
     }
 
     private sealed class NoopReloadService

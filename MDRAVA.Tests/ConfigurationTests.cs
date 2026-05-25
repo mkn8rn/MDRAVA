@@ -549,6 +549,29 @@ internal static class ConfigurationTests
         AssertEx.Equal(1, projection.SourceFiles.Count);
     }
 
+    public static void ConfigReadOperationsProjectActiveAndEffectiveFromCurrentSource()
+    {
+        var projection = new TestConfigurationProjection("current");
+        var operations = new ProxyConfigurationReadOperations<TestConfigurationProjection>(
+            new FixedConfigurationReadProjectionSource<TestConfigurationProjection>(projection));
+        var missingOperations = new ProxyConfigurationReadOperations<TestConfigurationProjection>(
+            new FixedConfigurationReadProjectionSource<TestConfigurationProjection>(null));
+
+        var active = operations.ReadActive();
+        var effective = operations.ReadEffective();
+        var missingActive = missingOperations.ReadActive();
+        var missingEffective = missingOperations.ReadEffective();
+
+        AssertEx.True(active.Found);
+        AssertEx.Equal(projection, AssertEx.NotNull(active.Configuration));
+        AssertEx.True(effective.Found);
+        AssertEx.Equal(projection, AssertEx.NotNull(effective.Configuration));
+        AssertEx.False(missingActive.Found);
+        AssertEx.Equal(null, missingActive.Configuration);
+        AssertEx.False(missingEffective.Found);
+        AssertEx.Equal(null, missingEffective.Configuration);
+    }
+
     public static async Task LoaderRejectsUnsafeHeaderRule()
     {
         using var temp = TemporaryDirectory.Create();
@@ -732,8 +755,7 @@ internal static class ConfigurationTests
             service);
         var controller = new ProxyConfigurationController(
             new ProxyConfigurationAdministrationService(normalizer, service),
-            new ProxyConfigurationReadAdministrationService<ProxyConfigurationProjection>(
-                new ProxyConfigurationReadOperations(store)),
+            CreateReadAdministration(store),
             reloadAdministration);
 
         var actionResult = controller.Normalize(new ProxyConfigurationNormalizeRequest(
@@ -766,8 +788,7 @@ internal static class ConfigurationTests
             new ProxyConfigurationAdministrationService(
                 new ProxyConfigurationNormalizer(new SiteConfigurationParser(), new MDRAVA.API.Proxy.Configuration.ProxyOptionsValidator()),
                 service),
-            new ProxyConfigurationReadAdministrationService<ProxyConfigurationProjection>(
-                new ProxyConfigurationReadOperations(store)),
+            CreateReadAdministration(store),
             reloadAdministration);
         var actionResult = controller.Effective();
         var ok = (OkObjectResult)AssertEx.NotNull(actionResult.Result);
@@ -1139,6 +1160,33 @@ internal static class ConfigurationTests
             CreateLoader(dataDirectory),
             store,
             NullLogger<ProxyConfigurationReloadService>.Instance);
+    }
+
+    private static ProxyConfigurationReadAdministrationService<ProxyConfigurationProjection> CreateReadAdministration(
+        IProxyConfigurationStore store)
+    {
+        return new ProxyConfigurationReadAdministrationService<ProxyConfigurationProjection>(
+            new ProxyConfigurationReadOperations<ProxyConfigurationProjection>(
+                new ProxyConfigurationReadProjectionSource(store)));
+    }
+
+    private sealed record TestConfigurationProjection(string Name);
+
+    private sealed class FixedConfigurationReadProjectionSource<TConfiguration>
+        : IProxyConfigurationReadProjectionSource<TConfiguration>
+        where TConfiguration : class
+    {
+        private readonly TConfiguration? _projection;
+
+        public FixedConfigurationReadProjectionSource(TConfiguration? projection)
+        {
+            _projection = projection;
+        }
+
+        public TConfiguration? ReadCurrent()
+        {
+            return _projection;
+        }
     }
 
     private static string SiteJson(string name, int port, int upstreamPort)
