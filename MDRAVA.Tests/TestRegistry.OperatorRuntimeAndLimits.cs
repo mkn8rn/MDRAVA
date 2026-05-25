@@ -6,6 +6,7 @@ internal static partial class TestRegistry
     [
     Test("Recent diagnostics store is bounded", Sync(ObservabilityTests.RecentDiagnosticsStoreIsBounded), TestTaxonomy.Limits, TestTaxonomy.Metrics),
     Test("Diagnostics controller honors safe limit", Sync(ObservabilityTests.DiagnosticsControllerHonorsSafeLimit), TestTaxonomy.Limits, TestTaxonomy.Metrics),
+    Test("Request diagnostics reader projects source events", Sync(ObservabilityTests.RequestDiagnosticsReaderProjectsSourceEvents), TestTaxonomy.Metrics),
     Test("Diagnostics event omits bodies and secrets", Sync(ObservabilityTests.DiagnosticsEventDoesNotCarryBodiesOrSecrets), TestTaxonomy.Metrics),
     Test("Access log persistence writes redacted JSON line", Sync(LogPersistenceTests.AccessLogPersistenceWritesRedactedJsonLine), TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),
     Test("Access log persistence honors access log disable", Sync(LogPersistenceTests.AccessLogPersistenceHonorsAccessLogDisable), TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),

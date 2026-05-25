@@ -1,18 +1,18 @@
 namespace MDRAVA.API.Proxy.Observability;
 
-public sealed class ProxyRequestDiagnosticsReader : IProxyRequestDiagnosticsReader
+public sealed class ProxyRequestDiagnosticsSource : IProxyRequestDiagnosticsSource
 {
     private readonly RecentRequestDiagnosticsStore _diagnosticsStore;
 
-    public ProxyRequestDiagnosticsReader(RecentRequestDiagnosticsStore diagnosticsStore)
+    public ProxyRequestDiagnosticsSource(RecentRequestDiagnosticsStore diagnosticsStore)
     {
         _diagnosticsStore = diagnosticsStore;
     }
 
-    public IReadOnlyList<ProxyRecentRequestDiagnosticEvent> Recent(int limit)
+    public IReadOnlyList<ProxyRequestDiagnosticSourceEvent> Recent(int limit)
     {
         return _diagnosticsStore.Recent(limit)
-            .Select(static diagnostic => new ProxyRecentRequestDiagnosticEvent(
+            .Select(static diagnostic => new ProxyRequestDiagnosticSourceEvent(
                 diagnostic.TimestampUtc,
                 diagnostic.RequestId,
                 diagnostic.ExternalRequestId,
