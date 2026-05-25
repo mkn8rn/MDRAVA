@@ -4,12 +4,12 @@ namespace MDRAVA.API.Proxy.Configuration.Loading;
 
 public sealed class ProxyConfigurationStartupService : IHostedService
 {
-    private readonly IProxyConfigurationReloadService _reloadService;
+    private readonly IProxyConfigurationReloadOperations<ProxyConfigurationProjection> _reloadService;
     private readonly ProxyRuntimePreflightService _preflight;
     private readonly ILogger<ProxyConfigurationStartupService> _logger;
 
     public ProxyConfigurationStartupService(
-        IProxyConfigurationReloadService reloadService,
+        IProxyConfigurationReloadOperations<ProxyConfigurationProjection> reloadService,
         ProxyRuntimePreflightService preflight,
         ILogger<ProxyConfigurationStartupService> logger)
     {

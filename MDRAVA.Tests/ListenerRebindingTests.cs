@@ -30,7 +30,9 @@ internal static class ListenerRebindingTests
             var before = await WaitForListenerAsync(runtime, "main", ProxyListenerState.Active, timeout.Token);
 
             WriteSite(temp.Path, [new ListenerSpec("main", proxyPort)], GetFreeTcpPort());
-            var reload = await host.Services.GetRequiredService<IProxyConfigurationReloadService>().ReloadAsync(timeout.Token);
+            var reload = await host.Services
+                .GetRequiredService<IProxyConfigurationReloadOperations<ProxyConfigurationProjection>>()
+                .ReloadAsync(timeout.Token);
             var after = await WaitForListenerAsync(runtime, "main", ProxyListenerState.Active, timeout.Token);
             var listenerReload = AssertEx.NotNull(reload.ListenerReload);
 
@@ -61,7 +63,9 @@ internal static class ListenerRebindingTests
         try
         {
             WriteSite(temp.Path, [new ListenerSpec("main", firstProxyPort), new ListenerSpec("extra", secondProxyPort)], upstreamPort);
-            var reload = await host.Services.GetRequiredService<IProxyConfigurationReloadService>().ReloadAsync(timeout.Token);
+            var reload = await host.Services
+                .GetRequiredService<IProxyConfigurationReloadOperations<ProxyConfigurationProjection>>()
+                .ReloadAsync(timeout.Token);
             var runtime = host.Services.GetRequiredService<ProxyRuntimeState>();
             await WaitForListenerAsync(runtime, "extra", ProxyListenerState.Active, timeout.Token);
 
@@ -100,7 +104,9 @@ internal static class ListenerRebindingTests
             await WaitForConnectAsync(secondProxyPort, shouldSucceed: true, timeout.Token);
 
             WriteSite(temp.Path, [new ListenerSpec("main", firstProxyPort)], GetFreeTcpPort());
-            var reload = await host.Services.GetRequiredService<IProxyConfigurationReloadService>().ReloadAsync(timeout.Token);
+            var reload = await host.Services
+                .GetRequiredService<IProxyConfigurationReloadOperations<ProxyConfigurationProjection>>()
+                .ReloadAsync(timeout.Token);
 
             AssertEx.True(reload.Succeeded, string.Join("; ", reload.Errors));
             AssertEx.Equal(1, AssertEx.NotNull(reload.ListenerReload).Removed);
@@ -126,7 +132,9 @@ internal static class ListenerRebindingTests
         try
         {
             WriteSite(temp.Path, [new ListenerSpec("main", newProxyPort)], upstreamPort);
-            var reload = await host.Services.GetRequiredService<IProxyConfigurationReloadService>().ReloadAsync(timeout.Token);
+            var reload = await host.Services
+                .GetRequiredService<IProxyConfigurationReloadOperations<ProxyConfigurationProjection>>()
+                .ReloadAsync(timeout.Token);
             await WaitForListenerAsync(host.Services.GetRequiredService<ProxyRuntimeState>(), "main", ProxyListenerState.Active, timeout.Token);
 
             var upstreamTask = RunFixedResponseUpstreamAsync(upstreamPort, "changed", timeout.Token);
@@ -162,7 +170,9 @@ internal static class ListenerRebindingTests
         try
         {
             WriteSite(temp.Path, [new ListenerSpec("main", proxyPort), new ListenerSpec("blocked", occupiedPort)], upstreamPort);
-            var reload = await host.Services.GetRequiredService<IProxyConfigurationReloadService>().ReloadAsync(timeout.Token);
+            var reload = await host.Services
+                .GetRequiredService<IProxyConfigurationReloadOperations<ProxyConfigurationProjection>>()
+                .ReloadAsync(timeout.Token);
 
             var upstreamTask = RunFixedResponseUpstreamAsync(upstreamPort, "old-live", timeout.Token);
             var response = await SendSingleRequestAsync(
@@ -195,7 +205,9 @@ internal static class ListenerRebindingTests
         try
         {
             ConfigurationTests.WriteCustomSite(temp.Path, "broken.json", "{ nope");
-            var reload = await host.Services.GetRequiredService<IProxyConfigurationReloadService>().ReloadAsync(timeout.Token);
+            var reload = await host.Services
+                .GetRequiredService<IProxyConfigurationReloadOperations<ProxyConfigurationProjection>>()
+                .ReloadAsync(timeout.Token);
 
             var upstreamTask = RunFixedResponseUpstreamAsync(upstreamPort, "still-live", timeout.Token);
             var response = await SendSingleRequestAsync(
@@ -233,7 +245,9 @@ internal static class ListenerRebindingTests
             var before = await WaitForListenerAsync(runtime, "main", ProxyListenerState.Active, timeout.Token);
 
             TestCertificates.WriteSelfSignedPfx(certificatePath, "home.test", "secret");
-            var reload = await host.Services.GetRequiredService<IProxyConfigurationReloadService>().ReloadAsync(timeout.Token);
+            var reload = await host.Services
+                .GetRequiredService<IProxyConfigurationReloadOperations<ProxyConfigurationProjection>>()
+                .ReloadAsync(timeout.Token);
             var after = await WaitForListenerAsync(runtime, "main", ProxyListenerState.Active, timeout.Token);
 
             AssertEx.True(reload.Succeeded, string.Join("; ", reload.Errors));
@@ -259,7 +273,9 @@ internal static class ListenerRebindingTests
         {
             var before = host.Services.GetRequiredService<IProxyConfigurationStore>().Snapshot.AdminSecurity.Urls;
             WriteSite(temp.Path, [new ListenerSpec("main", GetFreeTcpPort())], GetFreeTcpPort());
-            var reload = await host.Services.GetRequiredService<IProxyConfigurationReloadService>().ReloadAsync(timeout.Token);
+            var reload = await host.Services
+                .GetRequiredService<IProxyConfigurationReloadOperations<ProxyConfigurationProjection>>()
+                .ReloadAsync(timeout.Token);
             var after = host.Services.GetRequiredService<IProxyConfigurationStore>().Snapshot.AdminSecurity.Urls;
 
             AssertEx.True(reload.Succeeded, string.Join("; ", reload.Errors));
@@ -287,7 +303,9 @@ internal static class ListenerRebindingTests
         try
         {
             WriteSite(temp.Path, [new ListenerSpec("main", newMainPort), new ListenerSpec("added", addedPort)], GetFreeTcpPort());
-            var reload = await host.Services.GetRequiredService<IProxyConfigurationReloadService>().ReloadAsync(timeout.Token);
+            var reload = await host.Services
+                .GetRequiredService<IProxyConfigurationReloadOperations<ProxyConfigurationProjection>>()
+                .ReloadAsync(timeout.Token);
             var listenerReload = AssertEx.NotNull(reload.ListenerReload);
 
             AssertEx.True(reload.Succeeded, string.Join("; ", reload.Errors));
@@ -318,9 +336,13 @@ internal static class ListenerRebindingTests
         try
         {
             WriteSite(temp.Path, [new ListenerSpec("main", proxyPort), new ListenerSpec("extra", GetFreeTcpPort())], GetFreeTcpPort());
-            var success = await host.Services.GetRequiredService<IProxyConfigurationReloadService>().ReloadAsync(timeout.Token);
+            var success = await host.Services
+                .GetRequiredService<IProxyConfigurationReloadOperations<ProxyConfigurationProjection>>()
+                .ReloadAsync(timeout.Token);
             WriteSite(temp.Path, [new ListenerSpec("main", proxyPort), new ListenerSpec("blocked", occupiedPort)], GetFreeTcpPort());
-            var failure = await host.Services.GetRequiredService<IProxyConfigurationReloadService>().ReloadAsync(timeout.Token);
+            var failure = await host.Services
+                .GetRequiredService<IProxyConfigurationReloadOperations<ProxyConfigurationProjection>>()
+                .ReloadAsync(timeout.Token);
 
             var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
 

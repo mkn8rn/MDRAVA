@@ -1,8 +1,6 @@
-using MDRAVA.API.Proxy.Configuration.Runtime;
+namespace MDRAVA.BLL.ControlPlane;
 
-namespace MDRAVA.API.Models.Configuration.Loading;
-
-public sealed record ProxyConfigurationReloadResult(
+public sealed record ProxyConfigurationReloadResult<TProjection>(
     bool Succeeded,
     string SourceDirectory,
     DateTimeOffset AttemptedAtUtc,
@@ -12,7 +10,8 @@ public sealed record ProxyConfigurationReloadResult(
     ProxyConfigurationDiscovery Discovery,
     IReadOnlyList<string> Errors,
     IReadOnlyList<ProxyConfigurationFileError> FileErrors,
-    ProxyConfigurationProjection? ActiveConfiguration)
+    TProjection? ActiveConfiguration)
+    where TProjection : class
 {
     public ProxyListenerReloadResult? ListenerReload { get; init; }
 }

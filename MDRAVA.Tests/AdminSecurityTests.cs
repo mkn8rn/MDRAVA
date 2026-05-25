@@ -291,12 +291,14 @@ internal static class AdminSecurityTests
     {
         var store = CreateStoreWithAdminAuthentication();
         var reloadService = new NoopReloadService();
+        var reloadAdministration = new ProxyConfigurationReloadAdministrationService<ProxyConfigurationProjection>(
+            reloadService);
         var normalizer = new ProxyConfigurationNormalizer(new SiteConfigurationParser(), new ProxyOptionsValidator());
         var controller = new ProxyConfigurationController(
             new ProxyConfigurationAdministrationService(normalizer, reloadService),
             new ProxyConfigurationProjectionAdministrationService<ProxyConfigurationProjection>(
                 new ProxyConfigurationProjectionOperations(store)),
-            reloadService);
+            reloadAdministration);
 
         var actionResult = controller.Effective();
         var ok = (OkObjectResult)AssertEx.NotNull(actionResult.Result);
@@ -454,9 +456,12 @@ internal static class AdminSecurityTests
         return store;
     }
 
-    private sealed class NoopReloadService : IProxyConfigurationReloadService
+    private sealed class NoopReloadService
+        : IProxyConfigurationReloadOperations<ProxyConfigurationProjection>,
+            IProxyConfigurationValidationOperations
     {
-        public ValueTask<ProxyConfigurationReloadResult> ReloadAsync(CancellationToken cancellationToken)
+        public ValueTask<ProxyConfigurationReloadResult<ProxyConfigurationProjection>> ReloadAsync(
+            CancellationToken cancellationToken)
         {
             throw new NotSupportedException();
         }

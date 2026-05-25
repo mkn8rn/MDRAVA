@@ -269,7 +269,9 @@ internal static class ClientHttp2Tests
                 var beforeSubject = activeClient.RemoteCertificateSubject;
 
                 TestCertificates.WriteSelfSignedPfx(Path.Combine(dataDirectory, "certs", "home.pfx"), "home-reloaded.test");
-                var reload = await host.Services.GetRequiredService<IProxyConfigurationReloadService>().ReloadAsync(timeout.Token);
+                var reload = await host.Services
+                    .GetRequiredService<IProxyConfigurationReloadOperations<ProxyConfigurationProjection>>()
+                    .ReloadAsync(timeout.Token);
 
                 var afterOnActiveConnection = await activeClient.SendRequestAsync(
                     new Http2RequestSpec { Authority = "home.test", Path = "/after-reload-active" },
@@ -316,7 +318,9 @@ internal static class ClientHttp2Tests
                 TestCertificates.WriteSelfSignedPfx(Path.Combine(dataDirectory, "certs", "home.pfx"), "home-reloaded.test");
                 File.WriteAllText(Path.Combine(dataDirectory, "config", "sites", "broken.json"), "{ nope");
 
-                var reload = await host.Services.GetRequiredService<IProxyConfigurationReloadService>().ReloadAsync(timeout.Token);
+                var reload = await host.Services
+                    .GetRequiredService<IProxyConfigurationReloadOperations<ProxyConfigurationProjection>>()
+                    .ReloadAsync(timeout.Token);
                 await using var afterClient = await Http2TestClient.ConnectAsync(proxyPort, timeout.Token);
                 var afterSubject = afterClient.RemoteCertificateSubject;
                 var response = await afterClient.SendRequestAsync(

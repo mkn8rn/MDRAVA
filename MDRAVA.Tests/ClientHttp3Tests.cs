@@ -209,11 +209,15 @@ internal static class ClientHttp3Tests
             await WaitForListenerAsync(runtime, "main", "tcp", ProxyListenerState.Active, timeout.Token);
 
             WriteHttp3Site(temp.Path, port, "http1AndHttp3", staticBody: "unused");
-            var add = await host.Services.GetRequiredService<IProxyConfigurationReloadService>().ReloadAsync(timeout.Token);
+            var add = await host.Services
+                .GetRequiredService<IProxyConfigurationReloadOperations<ProxyConfigurationProjection>>()
+                .ReloadAsync(timeout.Token);
             await WaitForListenerAsync(runtime, "main", "quic", ProxyListenerState.Active, timeout.Token);
 
             WriteHttp3Site(temp.Path, port, "http1", staticBody: "unused");
-            var remove = await host.Services.GetRequiredService<IProxyConfigurationReloadService>().ReloadAsync(timeout.Token);
+            var remove = await host.Services
+                .GetRequiredService<IProxyConfigurationReloadOperations<ProxyConfigurationProjection>>()
+                .ReloadAsync(timeout.Token);
             await WaitForNoListenerAsync(runtime, "main", "quic", timeout.Token);
 
             AssertEx.True(add.Succeeded, string.Join("; ", add.Errors));
@@ -248,7 +252,9 @@ internal static class ClientHttp3Tests
             var before = await WaitForListenerAsync(runtime, "main", "quic", ProxyListenerState.Active, timeout.Token);
             File.WriteAllText(Path.Combine(temp.Path, "config", "sites", "broken.json"), "{ nope");
 
-            var reload = await host.Services.GetRequiredService<IProxyConfigurationReloadService>().ReloadAsync(timeout.Token);
+            var reload = await host.Services
+                .GetRequiredService<IProxyConfigurationReloadOperations<ProxyConfigurationProjection>>()
+                .ReloadAsync(timeout.Token);
             var after = await WaitForListenerAsync(runtime, "main", "quic", ProxyListenerState.Active, timeout.Token);
 
             AssertEx.False(reload.Succeeded);
@@ -290,7 +296,9 @@ internal static class ClientHttp3Tests
             }
 
             TestCertificates.WriteSelfSignedPfx(Path.Combine(temp.Path, "certs", "home.pfx"), "localhost-reloaded", "secret");
-            var reload = await host.Services.GetRequiredService<IProxyConfigurationReloadService>().ReloadAsync(timeout.Token);
+            var reload = await host.Services
+                .GetRequiredService<IProxyConfigurationReloadOperations<ProxyConfigurationProjection>>()
+                .ReloadAsync(timeout.Token);
             var after = await WaitForListenerAsync(runtime, "main", "quic", ProxyListenerState.Active, timeout.Token);
             await using (var activeAfterStream = await activeConnection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional, timeout.Token))
             {
@@ -351,7 +359,9 @@ internal static class ClientHttp3Tests
             TestCertificates.WriteSelfSignedPfx(Path.Combine(temp.Path, "certs", "home.pfx"), "localhost-reloaded", "secret");
             File.WriteAllText(Path.Combine(temp.Path, "config", "sites", "broken.json"), "{ nope");
 
-            var reload = await host.Services.GetRequiredService<IProxyConfigurationReloadService>().ReloadAsync(timeout.Token);
+            var reload = await host.Services
+                .GetRequiredService<IProxyConfigurationReloadOperations<ProxyConfigurationProjection>>()
+                .ReloadAsync(timeout.Token);
             var after = await WaitForListenerAsync(runtime, "main", "quic", ProxyListenerState.Active, timeout.Token);
             var afterSubject = "";
             var afterResponse = await SendHttp3RequestAsync(

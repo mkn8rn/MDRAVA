@@ -681,7 +681,9 @@ internal static class ProxyIntegrationTests
             await firstUpstream.WaitAsync(timeout.Token);
 
             ConfigurationTests.WriteCustomSite(dataDirectory, "broken.json", "{ nope");
-            var reload = await host.Services.GetRequiredService<IProxyConfigurationReloadService>().ReloadAsync(timeout.Token);
+            var reload = await host.Services
+                .GetRequiredService<IProxyConfigurationReloadOperations<ProxyConfigurationProjection>>()
+                .ReloadAsync(timeout.Token);
 
             var secondUpstream = RunScenarioUpstreamAsync(
                 upstreamPort,

@@ -51,10 +51,13 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<ProxyListenerReloadPlanner>();
         services.AddSingleton<ProxyListenerService>();
         services.AddSingleton<IProxyListenerManager>(static services => services.GetRequiredService<ProxyListenerService>());
-        services.AddSingleton<IProxyConfigurationReloadService, ProxyConfigurationReloadService>();
+        services.AddSingleton<ProxyConfigurationReloadService>();
+        services.AddSingleton<IProxyConfigurationReloadOperations<ProxyConfigurationProjection>>(
+            static services => services.GetRequiredService<ProxyConfigurationReloadService>());
         services.AddSingleton<IProxyConfigurationNormalizeOperations>(static services => services.GetRequiredService<IProxyConfigurationNormalizer>());
-        services.AddSingleton<IProxyConfigurationValidationOperations>(static services => services.GetRequiredService<IProxyConfigurationReloadService>());
+        services.AddSingleton<IProxyConfigurationValidationOperations>(static services => services.GetRequiredService<ProxyConfigurationReloadService>());
         services.AddSingleton<ProxyConfigurationAdministrationService>();
+        services.AddSingleton<ProxyConfigurationReloadAdministrationService<ProxyConfigurationProjection>>();
         services.AddSingleton<IProxyConfigurationProjectionOperations<ProxyConfigurationProjection>, ProxyConfigurationProjectionOperations>();
         services.AddSingleton<ProxyConfigurationProjectionAdministrationService<ProxyConfigurationProjection>>();
         services.AddSingleton<ProxyMetrics>();

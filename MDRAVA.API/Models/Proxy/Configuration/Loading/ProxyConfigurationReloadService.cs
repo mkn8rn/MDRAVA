@@ -6,7 +6,9 @@ using MDRAVA.API.Proxy.Metrics;
 
 namespace MDRAVA.API.Proxy.Configuration.Loading;
 
-public sealed class ProxyConfigurationReloadService : IProxyConfigurationReloadService
+public sealed class ProxyConfigurationReloadService
+    : IProxyConfigurationReloadOperations<ProxyConfigurationProjection>,
+        IProxyConfigurationValidationOperations
 {
     private readonly IProxyConfigurationLoader _loader;
     private readonly IProxyConfigurationStore _store;
@@ -58,7 +60,8 @@ public sealed class ProxyConfigurationReloadService : IProxyConfigurationReloadS
     {
     }
 
-    public async ValueTask<ProxyConfigurationReloadResult> ReloadAsync(CancellationToken cancellationToken)
+    public async ValueTask<ProxyConfigurationReloadResult<ProxyConfigurationProjection>> ReloadAsync(
+        CancellationToken cancellationToken)
     {
         var loadResult = await _loader.LoadAsync(cancellationToken);
         if (!loadResult.Succeeded || loadResult.Snapshot is null)
@@ -70,7 +73,7 @@ public sealed class ProxyConfigurationReloadService : IProxyConfigurationReloadS
                 string.Join("; ", loadResult.Errors));
 
             var hasExisting = _store.TryGetSnapshot(out var existing);
-            return new ProxyConfigurationReloadResult(
+            return new ProxyConfigurationReloadResult<ProxyConfigurationProjection>(
                 false,
                 loadResult.SourceDirectory,
                 loadResult.AttemptedAtUtc,
@@ -99,7 +102,7 @@ public sealed class ProxyConfigurationReloadService : IProxyConfigurationReloadS
             {
                 _metrics?.ConfigReloadFailed();
                 var hasExisting = _store.TryGetSnapshot(out var existing);
-                return new ProxyConfigurationReloadResult(
+                return new ProxyConfigurationReloadResult<ProxyConfigurationProjection>(
                     false,
                     loadResult.SourceDirectory,
                     loadResult.AttemptedAtUtc,
@@ -125,7 +128,7 @@ public sealed class ProxyConfigurationReloadService : IProxyConfigurationReloadS
             snapshot.Version,
             snapshot.SourceDirectory);
 
-        return new ProxyConfigurationReloadResult(
+        return new ProxyConfigurationReloadResult<ProxyConfigurationProjection>(
             true,
             snapshot.SourceDirectory,
             loadResult.AttemptedAtUtc,

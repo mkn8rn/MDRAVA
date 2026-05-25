@@ -1,4 +1,3 @@
-using MDRAVA.API.Proxy.Configuration.Loading;
 using MDRAVA.API.Proxy.Configuration.Runtime;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,16 +9,16 @@ public sealed class ProxyConfigurationController : ControllerBase
 {
     private readonly ProxyConfigurationAdministrationService _configurationAdministration;
     private readonly ProxyConfigurationProjectionAdministrationService<ProxyConfigurationProjection> _configurationProjections;
-    private readonly IProxyConfigurationReloadService _reloadService;
+    private readonly ProxyConfigurationReloadAdministrationService<ProxyConfigurationProjection> _configurationReloads;
 
     public ProxyConfigurationController(
         ProxyConfigurationAdministrationService configurationAdministration,
         ProxyConfigurationProjectionAdministrationService<ProxyConfigurationProjection> configurationProjections,
-        IProxyConfigurationReloadService reloadService)
+        ProxyConfigurationReloadAdministrationService<ProxyConfigurationProjection> configurationReloads)
     {
         _configurationAdministration = configurationAdministration;
         _configurationProjections = configurationProjections;
-        _reloadService = reloadService;
+        _configurationReloads = configurationReloads;
     }
 
     [HttpPost("normalize")]
@@ -30,9 +29,10 @@ public sealed class ProxyConfigurationController : ControllerBase
     }
 
     [HttpPost("reload")]
-    public async ValueTask<ActionResult<ProxyConfigurationReloadResult>> Reload(CancellationToken cancellationToken)
+    public async ValueTask<ActionResult<ProxyConfigurationReloadResult<ProxyConfigurationProjection>>> Reload(
+        CancellationToken cancellationToken)
     {
-        var result = await _reloadService.ReloadAsync(cancellationToken);
+        var result = await _configurationReloads.ReloadAsync(cancellationToken);
         return ProxyAdminHttpResultMapper.OkOrBadRequest(this, result, result.Succeeded);
     }
 
