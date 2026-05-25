@@ -57,7 +57,7 @@ internal static class MetricsTests
         using var fixture = MetricsFixture.Create();
         var store = CreateStore();
         var controller = new ProxyMetricsController(new ProxyMetricsAdministrationService(
-            new ProxyMetricsExportProvider(store, fixture.Exporter)));
+            CreateExportProvider(store, fixture.Exporter)));
 
         var content = (ContentResult)controller.Get();
         var text = AssertEx.NotNull(content.Content);
@@ -65,6 +65,38 @@ internal static class MetricsTests
         AssertEx.Equal(PrometheusMetricsExporter.ContentType, content.ContentType);
         AssertEx.True(text.Contains("# HELP mdrava_requests_total", StringComparison.Ordinal));
         AssertEx.True(text.Contains("# TYPE mdrava_requests_total counter", StringComparison.Ordinal));
+    }
+
+    public static void MetricsEndpointReturnsNotFoundWhenMetricsDisabled()
+    {
+        using var fixture = MetricsFixture.Create();
+        var store = CreateStore(new ProxyOperationalOptions
+        {
+            Metrics = new ProxyMetricsOptions
+            {
+                Enabled = false
+            }
+        });
+        var controller = new ProxyMetricsController(new ProxyMetricsAdministrationService(
+            CreateExportProvider(store, fixture.Exporter)));
+
+        var result = (NotFoundResult)controller.Get();
+
+        AssertEx.Equal(StatusCodes.Status404NotFound, result.StatusCode);
+    }
+
+    public static void MetricsExportAvailabilityRequiresActiveEnabledConfig()
+    {
+        var missing = new ProxyMetricsExportAvailabilityService(
+            new FixedMetricsExportAvailabilityReader(false, false)).GetAvailability();
+        var disabled = new ProxyMetricsExportAvailabilityService(
+            new FixedMetricsExportAvailabilityReader(true, false)).GetAvailability();
+        var available = new ProxyMetricsExportAvailabilityService(
+            new FixedMetricsExportAvailabilityReader(true, true)).GetAvailability();
+
+        AssertEx.False(missing.Available);
+        AssertEx.False(disabled.Available);
+        AssertEx.True(available.Available);
     }
 
     public static async Task MetricsIncludeRequestCountersAfterProxiedRequest()
@@ -403,6 +435,16 @@ internal static class MetricsTests
         return store;
     }
 
+    private static ProxyMetricsExportProvider CreateExportProvider(
+        IProxyConfigurationStore store,
+        PrometheusMetricsExporter exporter)
+    {
+        return new ProxyMetricsExportProvider(
+            store,
+            exporter,
+            new ProxyMetricsExportAvailabilityService(new ProxyMetricsExportAvailabilityReader(store)));
+    }
+
     private static ProxyConfigurationStore CreateStoreWithAdminAuthentication()
     {
         return CreateStore(new ProxyOperationalOptions
@@ -576,6 +618,25 @@ internal static class MetricsTests
         public void Dispose()
         {
             _pool.Dispose();
+        }
+    }
+
+    private sealed class FixedMetricsExportAvailabilityReader : IProxyMetricsExportAvailabilityReader
+    {
+        private readonly ProxyMetricsExportAvailabilityState _state;
+
+        public FixedMetricsExportAvailabilityReader(
+            bool hasActiveConfiguration,
+            bool metricsExportEnabled)
+        {
+            _state = new ProxyMetricsExportAvailabilityState(
+                hasActiveConfiguration,
+                metricsExportEnabled);
+        }
+
+        public ProxyMetricsExportAvailabilityState Read()
+        {
+            return _state;
         }
     }
 

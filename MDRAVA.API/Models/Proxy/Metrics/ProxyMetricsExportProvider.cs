@@ -6,23 +6,26 @@ public sealed class ProxyMetricsExportProvider : IProxyMetricsExportProvider
 {
     private readonly IProxyConfigurationStore _configurationStore;
     private readonly PrometheusMetricsExporter _exporter;
+    private readonly ProxyMetricsExportAvailabilityService _availabilityService;
 
     public ProxyMetricsExportProvider(
         IProxyConfigurationStore configurationStore,
-        PrometheusMetricsExporter exporter)
+        PrometheusMetricsExporter exporter,
+        ProxyMetricsExportAvailabilityService availabilityService)
     {
         _configurationStore = configurationStore;
         _exporter = exporter;
+        _availabilityService = availabilityService;
     }
 
     public ProxyMetricsExportResult Export()
     {
-        if (!_configurationStore.TryGetSnapshot(out var snapshot) || snapshot is null)
+        if (!_availabilityService.GetAvailability().Available)
         {
             return ProxyMetricsExportResult.NotAvailable;
         }
 
-        if (!snapshot.Metrics.Enabled)
+        if (!_configurationStore.TryGetSnapshot(out var snapshot) || snapshot is null)
         {
             return ProxyMetricsExportResult.NotAvailable;
         }

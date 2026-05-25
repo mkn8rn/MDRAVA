@@ -62,6 +62,8 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<ProxyConfigurationReadAdministrationService<ProxyConfigurationProjection>>();
         services.AddSingleton<ProxyMetrics>();
         services.AddSingleton<PrometheusMetricsExporter>();
+        services.AddSingleton<IProxyMetricsExportAvailabilityReader, ProxyMetricsExportAvailabilityReader>();
+        services.AddSingleton<ProxyMetricsExportAvailabilityService>();
         services.AddSingleton<IProxyMetricsExportProvider, ProxyMetricsExportProvider>();
         services.AddSingleton<ProxyMetricsAdministrationService>();
         services.AddSingleton<IProxyBackupFileSystem, ProxyBackupFileSystem>();

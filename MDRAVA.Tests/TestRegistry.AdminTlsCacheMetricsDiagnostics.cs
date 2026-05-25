@@ -69,6 +69,8 @@ internal static partial class TestRegistry
     Test("Failed config reload does not clear cache", CacheTests.FailedReloadDoesNotClearCache, TestTaxonomy.Caching, TestTaxonomy.SecurityNegativePaths),
     Test("Metrics endpoint is protected by admin auth", MetricsTests.MetricsEndpointIsProtectedByAdminAuth, TestTaxonomy.Admin, TestTaxonomy.Metrics),
     Test("Metrics endpoint returns Prometheus text", Sync(MetricsTests.MetricsEndpointReturnsPrometheusText), TestTaxonomy.Metrics),
+    Test("Metrics endpoint returns 404 when metrics disabled", Sync(MetricsTests.MetricsEndpointReturnsNotFoundWhenMetricsDisabled), TestTaxonomy.Metrics),
+    Test("Metrics export availability requires active enabled config", Sync(MetricsTests.MetricsExportAvailabilityRequiresActiveEnabledConfig), TestTaxonomy.Metrics),
     Test("Metrics include request counters after proxied request", MetricsTests.MetricsIncludeRequestCountersAfterProxiedRequest, TestTaxonomy.Metrics),
     Test("Metrics include cache counters after cache activity", Sync(MetricsTests.MetricsIncludeCacheCountersAfterCacheActivity), TestTaxonomy.Caching, TestTaxonomy.Metrics),
     Test("Metrics include reload success and failure counters", MetricsTests.MetricsIncludeReloadCounters, TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),
