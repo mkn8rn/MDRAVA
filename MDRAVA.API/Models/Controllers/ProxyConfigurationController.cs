@@ -8,16 +8,16 @@ namespace MDRAVA.API.Controllers;
 public sealed class ProxyConfigurationController : ControllerBase
 {
     private readonly ProxyConfigurationAdministrationService _configurationAdministration;
-    private readonly ProxyConfigurationProjectionAdministrationService<ProxyConfigurationProjection> _configurationProjections;
+    private readonly ProxyConfigurationReadAdministrationService<ProxyConfigurationProjection> _configurationReads;
     private readonly ProxyConfigurationReloadAdministrationService<ProxyConfigurationProjection> _configurationReloads;
 
     public ProxyConfigurationController(
         ProxyConfigurationAdministrationService configurationAdministration,
-        ProxyConfigurationProjectionAdministrationService<ProxyConfigurationProjection> configurationProjections,
+        ProxyConfigurationReadAdministrationService<ProxyConfigurationProjection> configurationReads,
         ProxyConfigurationReloadAdministrationService<ProxyConfigurationProjection> configurationReloads)
     {
         _configurationAdministration = configurationAdministration;
-        _configurationProjections = configurationProjections;
+        _configurationReads = configurationReads;
         _configurationReloads = configurationReloads;
     }
 
@@ -46,14 +46,14 @@ public sealed class ProxyConfigurationController : ControllerBase
     [HttpGet("active")]
     public ActionResult<ProxyConfigurationProjection> Active()
     {
-        var result = _configurationProjections.GetActive();
-        return ProxyAdminHttpResultMapper.OkOrNotFound(this, result.Found, result.Projection);
+        var result = _configurationReads.ReadActive();
+        return ProxyAdminHttpResultMapper.OkOrNotFound(this, result.Found, result.Configuration);
     }
 
     [HttpGet("effective")]
     public ActionResult<ProxyConfigurationProjection> Effective()
     {
-        var result = _configurationProjections.GetEffective();
-        return ProxyAdminHttpResultMapper.OkOrNotFound(this, result.Found, result.Projection);
+        var result = _configurationReads.ReadEffective();
+        return ProxyAdminHttpResultMapper.OkOrNotFound(this, result.Found, result.Configuration);
     }
 }

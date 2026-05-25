@@ -296,8 +296,8 @@ internal static class AdminSecurityTests
         var normalizer = new ProxyConfigurationNormalizer(new SiteConfigurationParser(), new ProxyOptionsValidator());
         var controller = new ProxyConfigurationController(
             new ProxyConfigurationAdministrationService(normalizer, reloadService),
-            new ProxyConfigurationProjectionAdministrationService<ProxyConfigurationProjection>(
-                new ProxyConfigurationProjectionOperations(store)),
+            new ProxyConfigurationReadAdministrationService<ProxyConfigurationProjection>(
+                new ProxyConfigurationReadOperations(store)),
             reloadAdministration);
 
         var actionResult = controller.Effective();

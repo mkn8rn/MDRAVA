@@ -732,8 +732,8 @@ internal static class ConfigurationTests
             service);
         var controller = new ProxyConfigurationController(
             new ProxyConfigurationAdministrationService(normalizer, service),
-            new ProxyConfigurationProjectionAdministrationService<ProxyConfigurationProjection>(
-                new ProxyConfigurationProjectionOperations(store)),
+            new ProxyConfigurationReadAdministrationService<ProxyConfigurationProjection>(
+                new ProxyConfigurationReadOperations(store)),
             reloadAdministration);
 
         var actionResult = controller.Normalize(new ProxyConfigurationNormalizeRequest(
@@ -766,8 +766,8 @@ internal static class ConfigurationTests
             new ProxyConfigurationAdministrationService(
                 new ProxyConfigurationNormalizer(new SiteConfigurationParser(), new MDRAVA.API.Proxy.Configuration.ProxyOptionsValidator()),
                 service),
-            new ProxyConfigurationProjectionAdministrationService<ProxyConfigurationProjection>(
-                new ProxyConfigurationProjectionOperations(store)),
+            new ProxyConfigurationReadAdministrationService<ProxyConfigurationProjection>(
+                new ProxyConfigurationReadOperations(store)),
             reloadAdministration);
         var actionResult = controller.Effective();
         var ok = (OkObjectResult)AssertEx.NotNull(actionResult.Result);
