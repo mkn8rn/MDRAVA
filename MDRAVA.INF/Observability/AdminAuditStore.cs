@@ -1,4 +1,7 @@
-namespace MDRAVA.API.Proxy.Security;
+using MDRAVA.BLL.ControlPlane;
+using MDRAVA.BLL.Infrastructure;
+
+namespace MDRAVA.INF.Observability;
 
 public sealed class AdminAuditStore
 {

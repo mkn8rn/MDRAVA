@@ -1,3 +1,5 @@
+using MDRAVA.INF.Observability;
+
 namespace MDRAVA.API.Proxy.Security;
 
 public sealed class ProxyAdminAuditReader : IProxyAdminAuditReader
