@@ -1932,11 +1932,10 @@ internal static class ClientHttp3Tests
     public static void ConfigLintReportsHttp3DefaultReadinessIssues()
     {
         var service = new ConfigLintService(
-            new ProxyConfigurationStore(),
-            new ProxyRuntimeState(),
-            new SiteConfigurationParser(),
-            new ProxyOptionsValidator(),
-            new ProxyMetrics(),
+            new ProxyConfigLintActiveConfigurationSource(new ProxyConfigurationStore()),
+            new ProxyConfigLintSubmittedConfigurationSource(new SiteConfigurationParser(), new ProxyOptionsValidator()),
+            new ProxyConfigLintRuntimeStateSource(new ProxyRuntimeState()),
+            new ProxyConfigLintMetricsSink(new ProxyMetrics()),
             TimeProvider.System);
         var result = service.LintSubmitted(new ConfigLintRequest(
             "json",

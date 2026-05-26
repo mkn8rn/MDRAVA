@@ -1,41 +1,28 @@
 using System.Text;
-using System.Text.Json;
-using MDRAVA.API.Proxy.Configuration;
-using MDRAVA.API.Proxy.Configuration.Loading;
-using MDRAVA.API.Proxy.Configuration.Runtime;
-using MDRAVA.API.Proxy.Configuration.Storage;
-using MDRAVA.API.Proxy.Hosting;
-using MDRAVA.API.Proxy.Http3;
-using MDRAVA.API.Proxy.Metrics;
-using Microsoft.Extensions.Options;
-using YamlDotNet.Core;
 
-namespace MDRAVA.API.Proxy.Diagnostics;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed class ConfigLintService : IProxyConfigLintOperations
 {
     private const int MaxGeneratedBodyBytes = 64 * 1024;
-    private readonly IProxyConfigurationStore _configurationStore;
-    private readonly ProxyRuntimeState _runtimeState;
-    private readonly SiteConfigurationParser _siteParser;
-    private readonly IValidateOptions<ProxyOptions> _validator;
-    private readonly ProxyMetrics _metrics;
+    private readonly IProxyConfigLintActiveConfigurationSource _activeConfigurationSource;
+    private readonly IProxyConfigLintSubmittedConfigurationSource _submittedConfigurationSource;
+    private readonly IProxyConfigLintRuntimeStateSource _runtimeStateSource;
+    private readonly IProxyConfigLintMetricsSink _metricsSink;
     private readonly TimeProvider _timeProvider;
     private ConfigLintStatus _lastActiveStatus = ConfigLintStatus.Empty;
 
     public ConfigLintService(
-        IProxyConfigurationStore configurationStore,
-        ProxyRuntimeState runtimeState,
-        SiteConfigurationParser siteParser,
-        IValidateOptions<ProxyOptions> validator,
-        ProxyMetrics metrics,
+        IProxyConfigLintActiveConfigurationSource activeConfigurationSource,
+        IProxyConfigLintSubmittedConfigurationSource submittedConfigurationSource,
+        IProxyConfigLintRuntimeStateSource runtimeStateSource,
+        IProxyConfigLintMetricsSink metricsSink,
         TimeProvider timeProvider)
     {
-        _configurationStore = configurationStore;
-        _runtimeState = runtimeState;
-        _siteParser = siteParser;
-        _validator = validator;
-        _metrics = metrics;
+        _activeConfigurationSource = activeConfigurationSource;
+        _submittedConfigurationSource = submittedConfigurationSource;
+        _runtimeStateSource = runtimeStateSource;
+        _metricsSink = metricsSink;
         _timeProvider = timeProvider;
     }
 
@@ -44,7 +31,7 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
     public ConfigLintResult LintActive()
     {
         var now = _timeProvider.GetUtcNow();
-        if (!_configurationStore.TryGetSnapshot(out var snapshot) || snapshot is null)
+        if (!_activeConfigurationSource.TryRead(out var snapshot) || snapshot is null)
         {
             var result = BuildResult(
                 now,
@@ -68,7 +55,7 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
             return BuildResult(now, [Error("missing_request", "A lint request body is required.", "lint-input", null, "Submit config text with an explicit format.")], []);
         }
 
-        if (!SiteConfigurationFileDiscovery.TryParseFormat(request.Format, out var format))
+        if (!TryParseFormat(request.Format, out var format))
         {
             return BuildResult(now, [Error("invalid_format", "Format must be 'json' or 'yaml'.", "lint-input", "format", "Set format to 'json', 'yaml', or 'yml'.")], []);
         }
@@ -78,53 +65,25 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
             return BuildResult(now, [Error("empty_config", "Submitted config text is required.", "lint-input", "text", "Submit one site configuration object.")], []);
         }
 
-        SiteOptions? site;
-        try
+        var submitted = _submittedConfigurationSource.Read(request, format, now);
+        if (submitted.Failure is not null)
         {
-            site = _siteParser.ReadSiteText(request.Text, format);
-        }
-        catch (JsonException exception)
-        {
-            return BuildResult(now, [Error("parse_error", $"JSON is invalid: {SafeMessage(exception.Message)}", "lint-input", null, "Fix the JSON syntax and retry linting.")], []);
-        }
-        catch (YamlException exception)
-        {
-            return BuildResult(now, [Error("parse_error", $"YAML is invalid: {SafeMessage(exception.Message)}", "lint-input", null, "Fix the YAML syntax and retry linting.")], []);
+            return BuildResult(now, [SubmittedFailure(submitted.Failure)], []);
         }
 
-        if (site is null)
+        if (submitted.Snapshot is null)
         {
             return BuildResult(now, [Error("empty_config", "Submitted config did not contain a site object.", "lint-input", null, "Submit one site configuration object.")], []);
         }
 
-        var options = SiteOptionsAggregator.ToProxyOptions([new SiteConfigurationSource("lint-input", site)]);
-        var validation = _validator.Validate(null, options);
-        var validationErrors = validation.Failed
-            ? validation.Failures.Select(static failure => new ProxyConfigurationFileError("lint-input", failure)).ToArray()
-            : [];
-
-        var snapshot = ProxyConfigurationMapper.ToRuntimeSnapshot(
-            options,
-            new ProxyOperationalOptions(),
-            new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),
-            version: 0,
-            loadedAtUtc: now,
-            sourceDirectory: "submitted",
-            sourceFiles: ["lint-input"],
-            discovery: new ProxyConfigurationDiscovery(
-                new ProxyFilesystemLayout("", "", "", "", "", "", ""),
-                [new ProxyConfigurationFileDiscovery("lint-input", SiteConfigurationFileDiscovery.FormatName(format), "submitted", "Submitted lint input.")],
-                [],
-                []));
-
         List<ConfigLintFinding> findings = [];
-        foreach (var error in validationErrors)
+        foreach (var error in submitted.ValidationErrors)
         {
             findings.Add(Error("validation_error", error.Message, SourceName(error.Path), null, "Fix the validation error before applying this config."));
         }
 
-        findings.AddRange(Analyze(snapshot, activeRuntime: false, sourceName: "lint-input"));
-        return BuildResult(now, findings, validationErrors);
+        findings.AddRange(Analyze(submitted.Snapshot, activeRuntime: false, sourceName: "lint-input"));
+        return BuildResult(now, findings, submitted.ValidationErrors);
     }
 
     private void StoreActiveStatus(ConfigLintResult result)
@@ -142,12 +101,12 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
             findings.Count(static finding => string.Equals(finding.Severity, "warning", StringComparison.OrdinalIgnoreCase)),
             findings.Count(static finding => string.Equals(finding.Severity, "error", StringComparison.OrdinalIgnoreCase)));
         var result = new ConfigLintResult(summary.Error == 0, lintedAtUtc, summary, findings, validationErrors);
-        _metrics.ConfigLintRun(findings);
+        _metricsSink.ConfigLintRun(findings);
         return result;
     }
 
     private List<ConfigLintFinding> Analyze(
-        ProxyConfigurationSnapshot snapshot,
+        ProxyConfigLintConfigurationSnapshot snapshot,
         bool activeRuntime,
         string? sourceName)
     {
@@ -160,12 +119,13 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
     }
 
     private void AddListenerFindings(
-        ProxyConfigurationSnapshot snapshot,
+        ProxyConfigLintConfigurationSnapshot snapshot,
         bool activeRuntime,
         string? sourceName,
         List<ConfigLintFinding> findings)
     {
-        var httpsListenerExists = snapshot.Listeners.Any(static listener => listener.Enabled && listener.Transport == RuntimeListenerTransport.Https);
+        var httpsListenerExists = snapshot.Listeners.Any(static listener =>
+            listener.Enabled && string.Equals(listener.Transport, "Https", StringComparison.OrdinalIgnoreCase));
         foreach (var group in snapshot.Listeners
             .Where(static listener => listener.Enabled)
             .GroupBy(static listener => $"{listener.Address}|{listener.Port}|{listener.Transport}", StringComparer.OrdinalIgnoreCase)
@@ -174,27 +134,27 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
             findings.Add(Warning("overlapping_listener_bind", $"Multiple enabled listeners share bind identity {group.Key}.", sourceName, "listeners", "Keep only one enabled listener per address, port, and transport."));
         }
 
-        IReadOnlyList<ProxyListenerStatus> runtimeListeners = activeRuntime ? _runtimeState.Snapshot().Listeners : [];
+        IReadOnlyList<ProxyListenerStatus> runtimeListeners = activeRuntime ? _runtimeStateSource.GetListeners() : [];
         foreach (var listener in snapshot.Listeners)
         {
             var path = $"listeners[{listener.Name}]";
-            if (listener.Http3.Configured && !listener.Http3.EnabledForTraffic)
+            if (listener.Http3Configured && !listener.Http3EnabledForTraffic)
             {
-                findings.Add(Warning("http3_configured_not_ready", $"Listener '{listener.Name}' has HTTP/3 configured but it is not ready for traffic: {listener.Http3.DisabledReason}.", sourceName, path, "Keep HTTP/3 disabled or satisfy the TLS and certificate requirements."));
+                findings.Add(Warning("http3_configured_not_ready", $"Listener '{listener.Name}' has HTTP/3 configured but it is not ready for traffic: {listener.Http3DisabledReason}.", sourceName, path, "Keep HTTP/3 disabled or satisfy the TLS and certificate requirements."));
             }
 
-            if (listener.Http3.EnabledForTraffic && !Http3AltSvcPolicy.IsEnabled(listener))
+            if (listener.Http3EnabledForTraffic && !listener.Http3AltSvcEnabled)
             {
-                findings.Add(Warning("http3_alt_svc_disabled", $"Listener '{listener.Name}' has HTTP/3 {listener.Http3.EnablementLevel} enabled but Alt-Svc advertisement is disabled.", sourceName, path, "Enable Http3AltSvcEnabled only after the QUIC listener is reachable."));
+                findings.Add(Warning("http3_alt_svc_disabled", $"Listener '{listener.Name}' has HTTP/3 {listener.Http3EnablementLevel} enabled but Alt-Svc advertisement is disabled.", sourceName, path, "Enable Http3AltSvcEnabled only after the QUIC listener is reachable."));
             }
 
-            if (Http3AltSvcPolicy.IsEnabled(listener))
+            if (listener.Http3AltSvcEnabled)
             {
                 var ready = activeRuntime
-                    && listener.QuicIdentity is not null
+                    && listener.QuicIdentityKey is not null
                     && runtimeListeners.Any(runtime => string.Equals(runtime.Kind, "quic", StringComparison.OrdinalIgnoreCase)
                         && runtime.State == ProxyListenerState.Active
-                        && string.Equals(runtime.Identity, listener.QuicIdentity.Key, StringComparison.OrdinalIgnoreCase));
+                        && string.Equals(runtime.Identity, listener.QuicIdentityKey, StringComparison.OrdinalIgnoreCase));
                 if (!ready)
                 {
                     findings.Add(Warning("http3_alt_svc_not_ready", $"Listener '{listener.Name}' configures Alt-Svc but no matching active QUIC listener is currently ready.", sourceName, path, "MDRAVA only emits Alt-Svc when the HTTP/3 QUIC listener is active."));
@@ -202,14 +162,14 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
             }
         }
 
-        foreach (var route in snapshot.Routes.Where(route => route.HttpsRedirect.Enabled && !httpsListenerExists))
+        foreach (var route in snapshot.Routes.Where(route => route.HttpsRedirectEnabled && !httpsListenerExists))
         {
             findings.Add(Warning("https_redirect_without_https_listener", $"Route '{route.Name}' enables HTTP to HTTPS redirect but no enabled HTTPS listener exists.", sourceName, RoutePath(route), "Add an HTTPS listener or disable the redirect for this route."));
         }
     }
 
     private static void AddRouteFindings(
-        ProxyConfigurationSnapshot snapshot,
+        ProxyConfigLintConfigurationSnapshot snapshot,
         string? sourceName,
         List<ConfigLintFinding> findings)
     {
@@ -251,23 +211,23 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
         foreach (var route in snapshot.Routes)
         {
             var routePath = RoutePath(route);
-            if (route.CanonicalHost.Enabled && HostEquals(route.Host, route.CanonicalHost.TargetHost))
+            if (route.CanonicalHostEnabled && HostEquals(route.Host, route.CanonicalHostTargetHost))
             {
                 findings.Add(Warning("canonical_host_loop", $"Route '{route.Name}' canonical host target equals its configured host.", sourceName, routePath, "Remove the canonical host policy or set a different target host."));
             }
 
-            if (route.Cache.Enabled && LooksPrivate(route))
+            if (route.CacheEnabled && LooksPrivate(route))
             {
                 findings.Add(Warning("cache_private_path", $"Route '{route.Name}' enables cache on a path or header pattern that commonly serves private content.", sourceName, routePath, "Keep caching disabled for authenticated or user-specific resources."));
             }
 
-            if (route.Retry.Enabled && route.Retry.RetryMethods.Any(static method => !IsSafeRetryMethod(method)))
+            if (route.RetryEnabled && route.RetryMethods.Any(static method => !IsSafeRetryMethod(method)))
             {
                 findings.Add(Error("retry_unsafe_method", $"Route '{route.Name}' allows retry for an unsafe method.", sourceName, routePath, "Restrict retry methods to GET and HEAD."));
             }
 
-            if (route.Upstreams.Any(static upstream => upstream.CircuitBreaker.Enabled)
-                && (route.Upstreams.Count < 2 || !route.HealthCheck.Enabled))
+            if (route.Upstreams.Any(static upstream => upstream.CircuitBreakerEnabled)
+                && (route.Upstreams.Count < 2 || !route.HealthCheckEnabled))
             {
                 findings.Add(Warning("circuit_breaker_low_redundancy", $"Route '{route.Name}' configures a circuit breaker without multiple upstreams or active health checks.", sourceName, routePath, "Circuit breakers are most useful with redundant upstreams and health checks."));
             }
@@ -288,27 +248,27 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
                         findings.Add(Error("upstream_http3_without_https", $"Upstream '{upstream.Name}' uses HTTP/3 without HTTPS.", sourceName, upstreamPath, "Set scheme to https because h3c is not supported."));
                     }
 
-                    if (!Http3RuntimeSupport.Project(snapshot.Listeners).QuicConnectionSupported)
+                    if (!snapshot.Http3QuicConnectionSupported)
                     {
                         findings.Add(Warning("upstream_http3_runtime_unavailable", $"Upstream '{upstream.Name}' uses HTTP/3 but this runtime does not report QUIC client support.", sourceName, upstreamPath, "Use HTTP/1.1 or HTTP/2 for this upstream on runtimes without System.Net.Quic client support."));
                     }
 
-                    if (route.Retry.Enabled
-                        && route.Retry.RetryMethods.Any(static method => !IsSafeRetryMethod(method)))
+                    if (route.RetryEnabled
+                        && route.RetryMethods.Any(static method => !IsSafeRetryMethod(method)))
                     {
                         findings.Add(Warning("upstream_http3_retry_body_safety", $"Route '{route.Name}' combines HTTP/3 upstreams with retry methods beyond GET/HEAD.", sourceName, upstreamPath, "Keep HTTP/3 upstream retries limited to methods without request bodies unless replay is explicitly safe."));
                     }
                 }
 
                 if (string.Equals(upstream.Scheme, "https", StringComparison.OrdinalIgnoreCase)
-                    && !upstream.Tls.ValidateCertificate)
+                    && !upstream.TlsValidateCertificate)
                 {
                     findings.Add(Warning("unsafe_upstream_tls_validation_disabled", $"Upstream '{upstream.Name}' disables platform TLS certificate validation.", sourceName, upstreamPath, "Use this only for local testing and restore certificate validation before production use."));
                 }
             }
 
-            if (route.Action == RuntimeRouteAction.StaticResponse
-                && Encoding.UTF8.GetByteCount(route.StaticResponse.Body) >= MaxGeneratedBodyBytes * 4 / 5)
+            if (string.Equals(route.Action, "StaticResponse", StringComparison.Ordinal)
+                && Encoding.UTF8.GetByteCount(route.StaticResponseBody) >= MaxGeneratedBodyBytes * 4 / 5)
             {
                 findings.Add(Warning("static_response_body_near_limit", $"Static response route '{route.Name}' has a body near the generated-response size limit.", sourceName, routePath, "Move larger content behind an upstream application or keep the static body small."));
             }
@@ -324,7 +284,7 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
     }
 
     private static void AddAdminFindings(
-        ProxyConfigurationSnapshot snapshot,
+        ProxyConfigLintConfigurationSnapshot snapshot,
         string? sourceName,
         List<ConfigLintFinding> findings)
     {
@@ -349,7 +309,7 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
     }
 
     private static void AddMetricsFindings(
-        ProxyConfigurationSnapshot snapshot,
+        ProxyConfigLintConfigurationSnapshot snapshot,
         string? sourceName,
         List<ConfigLintFinding> findings)
     {
@@ -359,13 +319,23 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
         }
     }
 
-    private static bool RouteShadows(RuntimeRoute earlier, RuntimeRoute later)
+    private static ConfigLintFinding SubmittedFailure(ProxyConfigLintSubmittedConfigurationFailure failure)
+    {
+        return failure.Kind switch
+        {
+            ProxyConfigLintSubmittedConfigurationFailureKind.JsonParseError => Error("parse_error", $"JSON is invalid: {SafeMessage(failure.Message ?? "")}", "lint-input", null, "Fix the JSON syntax and retry linting."),
+            ProxyConfigLintSubmittedConfigurationFailureKind.YamlParseError => Error("parse_error", $"YAML is invalid: {SafeMessage(failure.Message ?? "")}", "lint-input", null, "Fix the YAML syntax and retry linting."),
+            _ => Error("empty_config", "Submitted config did not contain a site object.", "lint-input", null, "Submit one site configuration object.")
+        };
+    }
+
+    private static bool RouteShadows(ProxyConfigLintRoute earlier, ProxyConfigLintRoute later)
     {
         return HostOverlaps(earlier.Host, later.Host)
             && later.PathPrefix.StartsWith(earlier.PathPrefix, StringComparison.Ordinal);
     }
 
-    private static bool IsBroadCatchAll(RuntimeRoute route)
+    private static bool IsBroadCatchAll(ProxyConfigLintRoute route)
     {
         return string.Equals(route.Host, "*", StringComparison.Ordinal)
             && string.Equals(route.PathPrefix, "/", StringComparison.Ordinal);
@@ -396,7 +366,7 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
             : host[..colonIndex];
     }
 
-    private static bool LooksPrivate(RuntimeRoute route)
+    private static bool LooksPrivate(ProxyConfigLintRoute route)
     {
         var path = route.PathPrefix.ToLowerInvariant();
         return path.Contains("admin", StringComparison.Ordinal)
@@ -405,7 +375,7 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
             || path.Contains("private", StringComparison.Ordinal)
             || path.Contains("profile", StringComparison.Ordinal)
             || path.Contains("user", StringComparison.Ordinal)
-            || route.Cache.VaryByHeaders.Any(static header => string.Equals(header, "Authorization", StringComparison.OrdinalIgnoreCase)
+            || route.CacheVaryByHeaders.Any(static header => string.Equals(header, "Authorization", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(header, "Cookie", StringComparison.OrdinalIgnoreCase));
     }
 
@@ -435,7 +405,7 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
         return !System.Net.IPAddress.IsLoopback(address);
     }
 
-    private static string ActiveSource(ProxyConfigurationSnapshot snapshot)
+    private static string ActiveSource(ProxyConfigLintConfigurationSnapshot snapshot)
     {
         return snapshot.SourceFiles.Count == 1
             ? SourceName(snapshot.SourceFiles[0]) ?? "active-config"
@@ -447,7 +417,7 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
         return string.IsNullOrWhiteSpace(path) ? null : Path.GetFileName(path);
     }
 
-    private static string RoutePath(RuntimeRoute route)
+    private static string RoutePath(ProxyConfigLintRoute route)
     {
         return $"sites[{route.SiteName}].routes[{route.Name}]";
     }
@@ -456,6 +426,27 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
     {
         var sanitized = message.Replace('\r', ' ').Replace('\n', ' ');
         return sanitized.Length > 256 ? sanitized[..256] : sanitized;
+    }
+
+    private static bool TryParseFormat(
+        string format,
+        out ProxyConfigurationNormalizeFormat parsed)
+    {
+        if (string.Equals(format, "json", StringComparison.OrdinalIgnoreCase))
+        {
+            parsed = ProxyConfigurationNormalizeFormat.Json;
+            return true;
+        }
+
+        if (string.Equals(format, "yaml", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(format, "yml", StringComparison.OrdinalIgnoreCase))
+        {
+            parsed = ProxyConfigurationNormalizeFormat.Yaml;
+            return true;
+        }
+
+        parsed = ProxyConfigurationNormalizeFormat.Json;
+        return false;
     }
 
     private static ConfigLintFinding Info(

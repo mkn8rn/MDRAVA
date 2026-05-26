@@ -16,7 +16,7 @@ public sealed class ProxyStatusOperations : IProxyStatusOperations
     private readonly ProxyMetrics _metrics;
     private readonly IProxyConfigurationStore _configurationStore;
     private readonly UpstreamHealthStore _healthStore;
-    private readonly ConfigLintService? _lintService;
+    private readonly IProxyConfigLintOperations? _lintService;
     private readonly IProxyLogPersistenceStore? _logPersistenceStore;
     private readonly ResponseCacheStore? _cacheStore;
     private readonly AcmeCertificateStatusStore? _acmeStatusStore;
@@ -27,7 +27,7 @@ public sealed class ProxyStatusOperations : IProxyStatusOperations
         ProxyMetrics metrics,
         IProxyConfigurationStore configurationStore,
         UpstreamHealthStore healthStore,
-        ConfigLintService? lintService = null,
+        IProxyConfigLintOperations? lintService = null,
         IProxyLogPersistenceStore? logPersistenceStore = null,
         ResponseCacheStore? cacheStore = null,
         AcmeCertificateStatusStore? acmeStatusStore = null,

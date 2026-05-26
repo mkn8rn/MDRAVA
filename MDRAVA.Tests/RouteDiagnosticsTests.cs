@@ -352,6 +352,49 @@ internal static class RouteDiagnosticsTests
         AssertEx.True(result.Summary.Warning > 0);
     }
 
+    public static void ConfigLintServiceShapesActiveSourceFindings()
+    {
+        var metrics = new FixedConfigLintMetricsSink();
+        var service = new ConfigLintService(
+            new FixedConfigLintActiveConfigurationSource(LintSnapshot("active.json")),
+            new FixedConfigLintSubmittedConfigurationSource(null),
+            new FixedConfigLintRuntimeStateSource([]),
+            metrics,
+            TimeProvider.System);
+
+        var result = service.LintActive();
+
+        AssertEx.True(result.Succeeded);
+        AssertFinding(result, "route_shadowed", "warning");
+        AssertEx.Equal("active.json", result.Findings.First(static finding => finding.Code == "route_shadowed").Source);
+        AssertEx.Equal(result.Summary, service.LastActiveStatus.LastActiveLintSummary);
+        AssertEx.Equal(result.Findings.Count, metrics.LastFindings.Count);
+    }
+
+    public static void ConfigLintServiceShapesSubmittedSourceFindings()
+    {
+        var source = new FixedConfigLintSubmittedConfigurationSource(
+            new ProxyConfigLintSubmittedConfigurationResult(
+                LintSnapshot("submitted.json"),
+                [new ProxyConfigurationFileError("lint-input", "Proxy:Routes:0:Name is required.")],
+                null));
+        var service = new ConfigLintService(
+            new FixedConfigLintActiveConfigurationSource(null),
+            source,
+            new FixedConfigLintRuntimeStateSource([]),
+            new FixedConfigLintMetricsSink(),
+            TimeProvider.System);
+
+        var result = service.LintSubmitted(new ConfigLintRequest("yml", "submitted"));
+
+        AssertEx.False(result.Succeeded);
+        AssertEx.Equal(ProxyConfigurationNormalizeFormat.Yaml, source.LastFormat);
+        AssertFinding(result, "validation_error", "error");
+        AssertFinding(result, "route_shadowed", "warning");
+        AssertEx.Equal("lint-input", result.Findings.First(static finding => finding.Code == "route_shadowed").Source);
+        AssertEx.Equal("lint-input", result.ValidationErrors[0].Path);
+    }
+
     public static async Task DiagnosticEndpointsRequireAdminAuth()
     {
         var store = CreateStore(BaseOptions([ProxyRoute("active", "active.test", "/")]));
@@ -427,11 +470,10 @@ internal static class RouteDiagnosticsTests
         ProxyMetrics metrics)
     {
         return new ConfigLintService(
-            store,
-            new ProxyRuntimeState(),
-            new SiteConfigurationParser(),
-            new ProxyOptionsValidator(),
-            metrics,
+            new ProxyConfigLintActiveConfigurationSource(store),
+            new ProxyConfigLintSubmittedConfigurationSource(new SiteConfigurationParser(), new ProxyOptionsValidator()),
+            new ProxyConfigLintRuntimeStateSource(new ProxyRuntimeState()),
+            new ProxyConfigLintMetricsSink(metrics),
             TimeProvider.System);
     }
 
@@ -582,6 +624,126 @@ internal static class RouteDiagnosticsTests
           ]
         }
         """;
+    }
+
+    private static ProxyConfigLintConfigurationSnapshot LintSnapshot(string sourceFile)
+    {
+        return new ProxyConfigLintConfigurationSnapshot(
+            [sourceFile],
+            new ProxyConfigLintAdminSecurity([AdminBindPolicy.DefaultAdminUrl], true),
+            new ProxyConfigLintMetricsOptions(false),
+            true,
+            [
+                new ProxyConfigLintListener(
+                    "web",
+                    "127.0.0.1",
+                    8080,
+                    true,
+                    "Http",
+                    false,
+                    false,
+                    "not_configured",
+                    "disabled",
+                    false,
+                    null)
+            ],
+            [
+                LintRoute("catch-all", "*", "/"),
+                LintRoute("api", "diag.test", "/api")
+            ]);
+    }
+
+    private static ProxyConfigLintRoute LintRoute(string name, string host, string pathPrefix)
+    {
+        return new ProxyConfigLintRoute(
+            name,
+            "diag",
+            host,
+            pathPrefix,
+            "Proxy",
+            false,
+            false,
+            "",
+            false,
+            [],
+            false,
+            ["GET", "HEAD"],
+            false,
+            [
+                new ProxyConfigLintUpstream(
+                    "local",
+                    "http",
+                    RuntimeUpstreamProtocol.Http1,
+                    true,
+                    false)
+            ],
+            "");
+    }
+
+    private sealed class FixedConfigLintActiveConfigurationSource
+        : IProxyConfigLintActiveConfigurationSource
+    {
+        private readonly ProxyConfigLintConfigurationSnapshot? _snapshot;
+
+        public FixedConfigLintActiveConfigurationSource(ProxyConfigLintConfigurationSnapshot? snapshot)
+        {
+            _snapshot = snapshot;
+        }
+
+        public bool TryRead(out ProxyConfigLintConfigurationSnapshot? snapshot)
+        {
+            snapshot = _snapshot;
+            return snapshot is not null;
+        }
+    }
+
+    private sealed class FixedConfigLintSubmittedConfigurationSource
+        : IProxyConfigLintSubmittedConfigurationSource
+    {
+        private readonly ProxyConfigLintSubmittedConfigurationResult? _result;
+
+        public FixedConfigLintSubmittedConfigurationSource(ProxyConfigLintSubmittedConfigurationResult? result)
+        {
+            _result = result;
+        }
+
+        public ProxyConfigurationNormalizeFormat? LastFormat { get; private set; }
+
+        public ProxyConfigLintSubmittedConfigurationResult Read(
+            ConfigLintRequest request,
+            ProxyConfigurationNormalizeFormat format,
+            DateTimeOffset loadedAtUtc)
+        {
+            _ = request;
+            _ = loadedAtUtc;
+            LastFormat = format;
+            return _result ?? new ProxyConfigLintSubmittedConfigurationResult(null, [], null);
+        }
+    }
+
+    private sealed class FixedConfigLintRuntimeStateSource : IProxyConfigLintRuntimeStateSource
+    {
+        private readonly IReadOnlyList<ProxyListenerStatus> _listeners;
+
+        public FixedConfigLintRuntimeStateSource(IReadOnlyList<ProxyListenerStatus> listeners)
+        {
+            _listeners = listeners;
+        }
+
+        public IReadOnlyList<ProxyListenerStatus> GetListeners()
+        {
+            return _listeners;
+        }
+    }
+
+    private sealed class FixedConfigLintMetricsSink : IProxyConfigLintMetricsSink
+    {
+        public IReadOnlyList<ConfigLintFinding> LastFindings { get; private set; } = [];
+
+        public void ConfigLintRun(IReadOnlyList<ConfigLintFinding> findings)
+        {
+            LastFindings = findings;
+        }
     }
 
     private static void AssertFinding(ConfigLintResult result, string code, string severity)

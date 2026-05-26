@@ -71,6 +71,10 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<ProxyBackupService>();
         services.AddSingleton<IProxyBackupOperations>(static services => services.GetRequiredService<ProxyBackupService>());
         services.AddSingleton<ProxyBackupAdministrationService>();
+        services.AddSingleton<IProxyConfigLintActiveConfigurationSource, ProxyConfigLintActiveConfigurationSource>();
+        services.AddSingleton<IProxyConfigLintSubmittedConfigurationSource, ProxyConfigLintSubmittedConfigurationSource>();
+        services.AddSingleton<IProxyConfigLintRuntimeStateSource, ProxyConfigLintRuntimeStateSource>();
+        services.AddSingleton<IProxyConfigLintMetricsSink, ProxyConfigLintMetricsSink>();
         services.AddSingleton<ConfigLintService>();
         services.AddSingleton<IProxyConfigLintOperations>(static services => services.GetRequiredService<ConfigLintService>());
         services.AddSingleton<ProxyConfigLintAdministrationService>();
