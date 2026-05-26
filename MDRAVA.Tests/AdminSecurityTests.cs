@@ -293,7 +293,8 @@ internal static class AdminSecurityTests
         var reloadService = new NoopReloadService();
         var reloadAdministration = new ProxyConfigurationReloadAdministrationService<ProxyConfigurationProjection>(
             reloadService);
-        var normalizer = new ProxyConfigurationNormalizer(new SiteConfigurationParser(), new ProxyOptionsValidator());
+        var normalizer = new ProxyConfigurationNormalizer(
+            new ProxyConfigurationNormalizeSiteParser(new SiteConfigurationParser()));
         var controller = new ProxyConfigurationController(
             new ProxyConfigurationAdministrationService(normalizer, reloadService),
             CreateReadAdministration(store),

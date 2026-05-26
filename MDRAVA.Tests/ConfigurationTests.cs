@@ -750,7 +750,7 @@ internal static class ConfigurationTests
         var service = CreateReloadService(temp.Path, store);
         var first = await service.ReloadAsync(CancellationToken.None);
         AssertEx.True(first.Succeeded);
-        var normalizer = new ProxyConfigurationNormalizer(new SiteConfigurationParser(), new MDRAVA.API.Proxy.Configuration.ProxyOptionsValidator());
+        var normalizer = CreateNormalizer();
         var reloadAdministration = new ProxyConfigurationReloadAdministrationService<ProxyConfigurationProjection>(
             service);
         var controller = new ProxyConfigurationController(
@@ -770,6 +770,30 @@ internal static class ConfigurationTests
         AssertEx.Equal(18080, store.Snapshot.Listeners[0].Port);
     }
 
+    public static void ConfigNormalizerShapesValidationFailuresFromParsedSite()
+    {
+        var parser = new FixedNormalizeSiteParser(
+            new ProxyConfigurationNormalizeSiteParseResult(
+                new SiteOptions
+                {
+                    Name = "broken",
+                    Host = "*",
+                    PathPrefix = "/"
+                },
+                "{}",
+                null));
+        var normalizer = new ProxyConfigurationNormalizer(parser);
+
+        var result = normalizer.Normalize(new ProxyConfigurationNormalizeRequest("yml", "ignored"));
+
+        AssertEx.False(result.Succeeded);
+        AssertEx.Equal(ProxyConfigurationNormalizeFormat.Yaml, parser.LastFormat);
+        AssertEx.Equal("yaml", result.Format);
+        AssertEx.Equal(null, result.CanonicalJson);
+        AssertEx.True(result.Errors.Any(static error => error.Contains("Proxy:Listeners", StringComparison.Ordinal)), string.Join("; ", result.Errors));
+        AssertEx.True(result.FileErrors.All(static error => error.Path is null));
+    }
+
     public static async Task EffectiveConfigProjectionRedactsCertificateSecrets()
     {
         using var temp = TemporaryDirectory.Create();
@@ -786,7 +810,7 @@ internal static class ConfigurationTests
             service);
         var controller = new ProxyConfigurationController(
             new ProxyConfigurationAdministrationService(
-                new ProxyConfigurationNormalizer(new SiteConfigurationParser(), new MDRAVA.API.Proxy.Configuration.ProxyOptionsValidator()),
+                CreateNormalizer(),
                 service),
             CreateReadAdministration(store),
             reloadAdministration);
@@ -1170,7 +1194,34 @@ internal static class ConfigurationTests
                 new ProxyConfigurationReadProjectionSource(store)));
     }
 
+    private static ProxyConfigurationNormalizer CreateNormalizer()
+    {
+        return new ProxyConfigurationNormalizer(
+            new ProxyConfigurationNormalizeSiteParser(new SiteConfigurationParser()));
+    }
+
     private sealed record TestConfigurationProjection(string Name);
+
+    private sealed class FixedNormalizeSiteParser : IProxyConfigurationNormalizeSiteParser
+    {
+        private readonly ProxyConfigurationNormalizeSiteParseResult _result;
+
+        public FixedNormalizeSiteParser(ProxyConfigurationNormalizeSiteParseResult result)
+        {
+            _result = result;
+        }
+
+        public ProxyConfigurationNormalizeFormat? LastFormat { get; private set; }
+
+        public ProxyConfigurationNormalizeSiteParseResult Parse(
+            string text,
+            ProxyConfigurationNormalizeFormat format)
+        {
+            _ = text;
+            LastFormat = format;
+            return _result;
+        }
+    }
 
     private sealed class FixedConfigurationReadProjectionSource<TConfiguration>
         : IProxyConfigurationReadProjectionSource<TConfiguration>

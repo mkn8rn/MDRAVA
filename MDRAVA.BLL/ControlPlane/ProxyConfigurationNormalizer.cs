@@ -1,0 +1,92 @@
+using MDRAVA.BLL.Configuration;
+
+namespace MDRAVA.BLL.ControlPlane;
+
+public sealed class ProxyConfigurationNormalizer
+    : IProxyConfigurationNormalizeOperations
+{
+    private readonly IProxyConfigurationNormalizeSiteParser _siteParser;
+
+    public ProxyConfigurationNormalizer(IProxyConfigurationNormalizeSiteParser siteParser)
+    {
+        _siteParser = siteParser;
+    }
+
+    public ProxyConfigurationNormalizeResult Normalize(ProxyConfigurationNormalizeRequest request)
+    {
+        if (!TryParseFormat(request.Format, out var format))
+        {
+            var error = new ProxyConfigurationFileError(null, "Format must be 'json' or 'yaml'.");
+            return Failure(request.Format, [error]);
+        }
+
+        var formatName = FormatName(format);
+        var parsed = _siteParser.Parse(request.Text, format);
+        if (!parsed.Succeeded)
+        {
+            return Failure(formatName, [new ProxyConfigurationFileError(null, parsed.Error ?? "Site configuration is invalid.")]);
+        }
+
+        if (parsed.Site is null)
+        {
+            return Failure(request.Format, [new ProxyConfigurationFileError(null, "Site configuration did not contain an object.")]);
+        }
+
+        var options = SiteOptionsAggregator.ToProxyOptions(
+            [new SiteConfigurationSource("normalize-input", parsed.Site)]);
+        var validationFailures = ProxyOptionsValidationRules.Validate(options);
+        if (validationFailures.Count > 0)
+        {
+            return Failure(
+                formatName,
+                validationFailures
+                    .Select(static failure => new ProxyConfigurationFileError(null, failure))
+                    .ToArray());
+        }
+
+        return new ProxyConfigurationNormalizeResult(
+            true,
+            formatName,
+            parsed.CanonicalJson,
+            [],
+            []);
+    }
+
+    private static ProxyConfigurationNormalizeResult Failure(
+        string format,
+        IReadOnlyList<ProxyConfigurationFileError> errors)
+    {
+        return new ProxyConfigurationNormalizeResult(
+            false,
+            format,
+            null,
+            errors.Select(static error => error.Path is null ? error.Message : $"{error.Path}: {error.Message}").ToArray(),
+            errors);
+    }
+
+    private static bool TryParseFormat(
+        string format,
+        out ProxyConfigurationNormalizeFormat parsed)
+    {
+        if (string.Equals(format, "json", StringComparison.OrdinalIgnoreCase))
+        {
+            parsed = ProxyConfigurationNormalizeFormat.Json;
+            return true;
+        }
+
+        if (string.Equals(format, "yaml", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(format, "yml", StringComparison.OrdinalIgnoreCase))
+        {
+            parsed = ProxyConfigurationNormalizeFormat.Yaml;
+            return true;
+        }
+
+        parsed = ProxyConfigurationNormalizeFormat.Json;
+        return false;
+    }
+
+    private static string FormatName(ProxyConfigurationNormalizeFormat format)
+    {
+        return format == ProxyConfigurationNormalizeFormat.Yaml ? "yaml" : "json";
+    }
+}

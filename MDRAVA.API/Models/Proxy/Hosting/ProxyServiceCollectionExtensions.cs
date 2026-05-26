@@ -41,7 +41,7 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<IValidateOptions<ProxyOptions>, ProxyOptionsValidator>();
         services.AddSingleton<ProxyDataDirectoryBootstrapper>();
         services.AddSingleton<SiteConfigurationParser>();
-        services.AddSingleton<IProxyConfigurationNormalizer, ProxyConfigurationNormalizer>();
+        services.AddSingleton<IProxyConfigurationNormalizeSiteParser, ProxyConfigurationNormalizeSiteParser>();
         services.AddSingleton<ProxyConfigurationStore>();
         services.AddSingleton<IProxyConfigurationStore>(static services => services.GetRequiredService<ProxyConfigurationStore>());
         services.AddSingleton<IProxyActiveConfigurationVersionReader>(static services => services.GetRequiredService<ProxyConfigurationStore>());
@@ -54,7 +54,7 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<ProxyConfigurationReloadService>();
         services.AddSingleton<IProxyConfigurationReloadOperations<ProxyConfigurationProjection>>(
             static services => services.GetRequiredService<ProxyConfigurationReloadService>());
-        services.AddSingleton<IProxyConfigurationNormalizeOperations>(static services => services.GetRequiredService<IProxyConfigurationNormalizer>());
+        services.AddSingleton<IProxyConfigurationNormalizeOperations, ProxyConfigurationNormalizer>();
         services.AddSingleton<IProxyConfigurationValidationOperations>(static services => services.GetRequiredService<ProxyConfigurationReloadService>());
         services.AddSingleton<ProxyConfigurationAdministrationService>();
         services.AddSingleton<ProxyConfigurationReloadAdministrationService<ProxyConfigurationProjection>>();

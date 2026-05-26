@@ -63,6 +63,7 @@ internal static partial class TestRegistry
     Test("Config validate reports valid config without applying", ConfigurationTests.ConfigValidateReportsValidWithoutApplying, TestTaxonomy.Config),
     Test("Config validate reports invalid config without replacing active config", ConfigurationTests.ConfigValidateReportsInvalidWithoutReplacingActiveConfig, TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
     Test("Config normalize converts YAML to JSON without applying", ConfigurationTests.ConfigNormalizeConvertsYamlToJsonWithoutApplying, TestTaxonomy.Config),
+    Test("Config normalizer shapes validation failures from parsed site", Sync(ConfigurationTests.ConfigNormalizerShapesValidationFailuresFromParsedSite), TestTaxonomy.Config),
     Test("Effective config projection redacts certificate secrets", ConfigurationTests.EffectiveConfigProjectionRedactsCertificateSecrets, TestTaxonomy.Config, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
     Test("Expired certificate projection keeps validity window visible", ConfigurationTests.ExpiredCertificateProjectionKeepsValidityWindowVisible, TestTaxonomy.Config, TestTaxonomy.Tls),
     Test("Not-yet-valid certificate projection keeps validity window visible", ConfigurationTests.NotYetValidCertificateProjectionKeepsValidityWindowVisible, TestTaxonomy.Config, TestTaxonomy.Tls),
