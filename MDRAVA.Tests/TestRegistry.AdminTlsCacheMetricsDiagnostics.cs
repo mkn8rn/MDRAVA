@@ -28,6 +28,7 @@ internal static partial class TestRegistry
     Test("Loader loads stored ACME certificate on startup", AcmeTests.LoaderLoadsStoredAcmeCertificateOnStartup, TestTaxonomy.Config, TestTaxonomy.Tls),
     Test("Failed ACME renewal preserves current active certificate", AcmeTests.FailedAcmeRenewalPreservesCurrentActiveCertificate, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
     Test("ACME status projection does not expose private material", AcmeTests.AcmeStatusProjectionDoesNotExposePrivateMaterial, TestTaxonomy.Config, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
+    Test("ACME status snapshot reader projects source state", Sync(AcmeTests.AcmeStatusSnapshotReaderProjectsSourceState), TestTaxonomy.Tls),
     Test("ACME renewal avoids tight retry loop after failure", AcmeTests.AcmeRenewalAvoidsTightRetryLoopAfterFailure, TestTaxonomy.Tls, TestTaxonomy.RetryCircuit, TestTaxonomy.SecurityNegativePaths),
     Test("Existing HTTP upstream config remains valid", UpstreamTlsTests.ExistingHttpUpstreamConfigRemainsValid, TestTaxonomy.UpstreamHttp1, TestTaxonomy.Tls),
     Test("HTTPS upstream config parses and validates", UpstreamTlsTests.HttpsUpstreamConfigParsesAndValidates, TestTaxonomy.UpstreamHttp1, TestTaxonomy.Tls),

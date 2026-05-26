@@ -189,7 +189,7 @@ internal static class AcmeTests
         await manager.CheckRenewalsAsync(CancellationToken.None);
         var controller = new ProxyAcmeController(
             new ProxyAcmeAdministrationService(
-                new ProxyAcmeStatusSnapshotReader(store, statusStore)));
+                CreateStatusReader(store, statusStore)));
 
         var result = controller.Status();
         var ok = (OkObjectResult)AssertEx.NotNull(result.Result);
@@ -199,6 +199,60 @@ internal static class AcmeTests
         AssertEx.False(text.Contains("PRIVATE KEY", StringComparison.OrdinalIgnoreCase));
         AssertEx.False(text.Contains("current.pfx", StringComparison.OrdinalIgnoreCase));
         AssertEx.False(text.Contains(temp.Path, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public static void AcmeStatusSnapshotReaderProjectsSourceState()
+    {
+        var notBefore = DateTimeOffset.UnixEpoch.AddDays(1);
+        var notAfter = DateTimeOffset.UnixEpoch.AddDays(91);
+        var lifecycle = new AcmeCertificateLifecycleStatus(
+            "home-acme",
+            true,
+            ["home.example.test"],
+            true,
+            "acme",
+            notBefore,
+            notAfter,
+            notAfter.AddDays(-30),
+            null,
+            null,
+            null,
+            null,
+            "loaded",
+            null);
+        var reader = new ProxyAcmeStatusSnapshotReader(
+            new FixedAcmeStatusConfigurationSource(new ProxyAcmeStatusConfigurationSourceSnapshot(
+                true,
+                "https://acme.example.test/directory",
+                true,
+                [new ProxyAcmeConfiguredCertificateSource("home-acme", true, ["home.example.test"], 30)],
+                [new ProxyAcmeRuntimeCertificateSource("home-acme", "home-acme", "acme", notBefore, notAfter)])),
+            new FixedAcmeCertificateLifecycleStatusSource([lifecycle]));
+
+        var found = reader.TryGetSnapshot(out var snapshot);
+        var statuses = reader.GetLifecycleStatuses();
+        var missingReader = new ProxyAcmeStatusSnapshotReader(
+            new FixedAcmeStatusConfigurationSource(null),
+            new FixedAcmeCertificateLifecycleStatusSource([]));
+        var missing = missingReader.TryGetSnapshot(out var missingSnapshot);
+
+        AssertEx.True(found);
+        var projected = AssertEx.NotNull(snapshot);
+        AssertEx.True(projected.Enabled);
+        AssertEx.Equal("https://acme.example.test/directory", projected.DirectoryUrl);
+        AssertEx.True(projected.UseStaging);
+        AssertEx.Equal(1, projected.Certificates.Count);
+        AssertEx.Equal("home-acme", projected.Certificates[0].Id);
+        AssertEx.Equal("home.example.test", projected.Certificates[0].Domains[0]);
+        AssertEx.Equal(30, projected.Certificates[0].RenewBeforeDays);
+        AssertEx.True(projected.RuntimeCertificates.ContainsKey("home-acme"));
+        AssertEx.Equal("acme", projected.RuntimeCertificates["home-acme"].Source);
+        AssertEx.Equal(notBefore, projected.RuntimeCertificates["home-acme"].NotBeforeUtc);
+        AssertEx.Equal(notAfter, projected.RuntimeCertificates["home-acme"].NotAfterUtc);
+        AssertEx.Equal(1, statuses.Count);
+        AssertEx.Equal(lifecycle, statuses[0]);
+        AssertEx.False(missing);
+        AssertEx.Equal(null, missingSnapshot);
     }
 
     public static async Task AcmeRenewalAvoidsTightRetryLoopAfterFailure()
@@ -298,6 +352,15 @@ internal static class AcmeTests
             NullLogger<AcmeCertificateManager>.Instance);
     }
 
+    private static ProxyAcmeStatusSnapshotReader CreateStatusReader(
+        ProxyConfigurationStore store,
+        AcmeCertificateStatusStore statusStore)
+    {
+        return new ProxyAcmeStatusSnapshotReader(
+            new ProxyAcmeStatusConfigurationSource(store),
+            new ProxyAcmeCertificateLifecycleStatusSource(statusStore));
+    }
+
     private static ProxyConfigurationLoader CreateLoader(string dataDirectory)
     {
         var provider = new MdravaDataDirectoryProvider(new MdravaDataDirectoryOptions
@@ -341,6 +404,39 @@ internal static class AcmeTests
             return ValueTask.FromResult(_pfxBytes is not null
                 ? AcmeCertificateIssueResult.Success(_pfxBytes)
                 : AcmeCertificateIssueResult.Failure(_error ?? "failed"));
+        }
+    }
+
+    private sealed class FixedAcmeStatusConfigurationSource : IProxyAcmeStatusConfigurationSource
+    {
+        private readonly ProxyAcmeStatusConfigurationSourceSnapshot? _snapshot;
+
+        public FixedAcmeStatusConfigurationSource(ProxyAcmeStatusConfigurationSourceSnapshot? snapshot)
+        {
+            _snapshot = snapshot;
+        }
+
+        public bool TryGetSnapshot(out ProxyAcmeStatusConfigurationSourceSnapshot? snapshot)
+        {
+            snapshot = _snapshot;
+            return snapshot is not null;
+        }
+    }
+
+    private sealed class FixedAcmeCertificateLifecycleStatusSource
+        : IProxyAcmeCertificateLifecycleStatusSource
+    {
+        private readonly IReadOnlyList<AcmeCertificateLifecycleStatus> _statuses;
+
+        public FixedAcmeCertificateLifecycleStatusSource(
+            IReadOnlyList<AcmeCertificateLifecycleStatus> statuses)
+        {
+            _statuses = statuses;
+        }
+
+        public IReadOnlyList<AcmeCertificateLifecycleStatus> GetLifecycleStatuses()
+        {
+            return _statuses;
         }
     }
 
