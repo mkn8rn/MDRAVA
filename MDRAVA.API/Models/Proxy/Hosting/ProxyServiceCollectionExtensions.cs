@@ -89,7 +89,10 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<RequestIdGenerator>();
         services.AddSingleton<ResponseCacheStore>();
         services.AddSingleton<IProxyCacheControl>(static services => services.GetRequiredService<ResponseCacheStore>());
-        services.AddSingleton<IProxyCacheStatusReader, ProxyCacheStatusReader>();
+        services.AddSingleton<IProxyCacheStatusConfigurationSource, ProxyCacheStatusConfigurationSource>();
+        services.AddSingleton<IProxyCacheRuntimeStatusSource, ProxyCacheRuntimeStatusSource>();
+        services.AddSingleton<ProxyCacheStatusReader>();
+        services.AddSingleton<IProxyCacheStatusReader>(static services => services.GetRequiredService<ProxyCacheStatusReader>());
         services.AddSingleton<ProxyCacheAdministrationService>();
         services.AddSingleton<RecentRequestDiagnosticsStore>();
         services.AddSingleton<IProxyRequestDiagnosticsSource, ProxyRequestDiagnosticsSource>();

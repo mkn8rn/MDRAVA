@@ -160,27 +160,11 @@ public sealed class ResponseCacheStore : IProxyCacheControl
         }
     }
 
-    public ProxyCacheStatusResponse Snapshot(ProxyConfigurationSnapshot? configuration)
+    public ProxyCacheRuntimeStatusSnapshot ReadStatusSnapshot()
     {
         lock (_gate)
         {
-            var routes = configuration?.Routes
-                .Select(route =>
-                {
-                    var routeEntries = _entries.Values
-                        .Where(entry => string.Equals(entry.RouteName, route.Name, StringComparison.OrdinalIgnoreCase))
-                        .ToArray();
-                    return new ProxyCacheRouteStatus(
-                        route.Name,
-                        route.Cache.Enabled,
-                        route.Cache.MaxEntryBytes,
-                        route.Cache.MaxTotalBytes,
-                        routeEntries.Length,
-                        routeEntries.Sum(static entry => entry.SizeBytes));
-                })
-                .ToArray() ?? [];
-
-            return new ProxyCacheStatusResponse(
+            return new ProxyCacheRuntimeStatusSnapshot(
                 _entries.Count,
                 _approximateBytes,
                 _hits,
@@ -191,11 +175,19 @@ public sealed class ResponseCacheStore : IProxyCacheControl
                 _lastClearedAtUtc,
                 _lastClearReason,
                 _rejections
-                    .OrderBy(static pair => pair.Key, StringComparer.OrdinalIgnoreCase)
-                    .Select(static pair => new ProxyCacheRejectionStatus(pair.Key, pair.Value))
+                    .Select(static pair => new ProxyCacheRuntimeRejectionSnapshot(pair.Key, pair.Value))
                     .ToArray(),
-                routes);
+                _entries.Values
+                    .Select(static entry => new ProxyCacheRuntimeEntrySnapshot(entry.RouteName, entry.SizeBytes))
+                    .ToArray());
         }
+    }
+
+    public ProxyCacheStatusResponse Snapshot(ProxyConfigurationSnapshot? configuration)
+    {
+        return ProxyCacheStatusReader.Project(
+            ProxyCacheStatusRuntimeRouteSourceMapper.ToRouteSources(configuration),
+            ReadStatusSnapshot());
     }
 
     public void Clear(string reason)

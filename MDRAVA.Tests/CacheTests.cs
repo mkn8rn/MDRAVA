@@ -363,7 +363,9 @@ internal static class CacheTests
         cache.Store(route, listener, request, "/clear", response, response.Headers, Encoding.ASCII.GetBytes("clear"));
         var controller = new ProxyCacheController(
             new ProxyCacheAdministrationService(
-                new ProxyCacheStatusReader(cache, store),
+                new ProxyCacheStatusReader(
+                    new ProxyCacheStatusConfigurationSource(store),
+                    new ProxyCacheRuntimeStatusSource(cache)),
                 cache));
 
         var status = controller.Clear();
@@ -428,6 +430,124 @@ internal static class CacheTests
 
         AssertEx.False(second.Succeeded);
         AssertEx.Equal(1, cache.Snapshot(store.Snapshot).EntryCount);
+    }
+
+    public static void CacheStatusReaderShapesRoutesAndRejections()
+    {
+        var reader = new ProxyCacheStatusReader(
+            new FixedCacheStatusConfigurationSource(
+            [
+                new ProxyCacheStatusRouteSource("api", true, 1024, 4096),
+                new ProxyCacheStatusRouteSource("static", false, 512, 2048)
+            ]),
+            new FixedCacheRuntimeStatusSource(new ProxyCacheRuntimeStatusSnapshot(
+                3,
+                19,
+                5,
+                2,
+                3,
+                1,
+                2,
+                null,
+                null,
+                [
+                    new ProxyCacheRuntimeRejectionSnapshot("oversized", 1),
+                    new ProxyCacheRuntimeRejectionSnapshot("authorization", 1)
+                ],
+                [
+                    new ProxyCacheRuntimeEntrySnapshot("api", 8),
+                    new ProxyCacheRuntimeEntrySnapshot("API", 4),
+                    new ProxyCacheRuntimeEntrySnapshot("static", 7)
+                ])));
+
+        var status = reader.GetStatus();
+
+        AssertEx.Equal(3, status.EntryCount);
+        AssertEx.Equal(19L, status.ApproximateBytes);
+        AssertEx.Equal("authorization", status.Rejections[0].Reason);
+        AssertEx.Equal("oversized", status.Rejections[1].Reason);
+        AssertEx.Equal("api", status.Routes[0].RouteName);
+        AssertEx.Equal(2, status.Routes[0].CurrentEntryCount);
+        AssertEx.Equal(12L, status.Routes[0].CurrentBytes);
+        AssertEx.Equal("static", status.Routes[1].RouteName);
+        AssertEx.Equal(false, status.Routes[1].Enabled);
+        AssertEx.Equal(1, status.Routes[1].CurrentEntryCount);
+        AssertEx.Equal(7L, status.Routes[1].CurrentBytes);
+    }
+
+    public static void CacheStatusReaderReportsCountersWithoutActiveConfig()
+    {
+        var reader = new ProxyCacheStatusReader(
+            new FixedCacheStatusConfigurationSource([]),
+            new FixedCacheRuntimeStatusSource(new ProxyCacheRuntimeStatusSnapshot(
+                1,
+                8,
+                2,
+                3,
+                4,
+                5,
+                6,
+                null,
+                null,
+                [],
+                [new ProxyCacheRuntimeEntrySnapshot("orphaned", 8)])));
+
+        var status = reader.GetStatus();
+
+        AssertEx.Equal(1, status.EntryCount);
+        AssertEx.Equal(8L, status.ApproximateBytes);
+        AssertEx.Equal(2L, status.HitCount);
+        AssertEx.Equal(3L, status.MissCount);
+        AssertEx.Equal(4L, status.StoreCount);
+        AssertEx.Equal(5L, status.EvictionCount);
+        AssertEx.Equal(6L, status.StoreRejectionCount);
+        AssertEx.Equal(0, status.Routes.Count);
+    }
+
+    public static void CacheAdministrationClearReturnsPostClearStatus()
+    {
+        var clearedAtUtc = new DateTimeOffset(2026, 6, 7, 10, 0, 0, TimeSpan.Zero);
+        var runtimeSource = new MutableCacheRuntimeStatusSource(new ProxyCacheRuntimeStatusSnapshot(
+            1,
+            10,
+            0,
+            0,
+            1,
+            0,
+            0,
+            null,
+            null,
+            [],
+            [new ProxyCacheRuntimeEntrySnapshot("cache", 10)]));
+        var cacheControl = new FixedProxyCacheControl(reason =>
+            runtimeSource.Replace(new ProxyCacheRuntimeStatusSnapshot(
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                clearedAtUtc,
+                reason,
+                [],
+                [])));
+        var service = new ProxyCacheAdministrationService(
+            new ProxyCacheStatusReader(
+                new FixedCacheStatusConfigurationSource([new ProxyCacheStatusRouteSource("cache", true, 1024, 4096)]),
+                runtimeSource),
+            cacheControl);
+
+        var status = service.Clear();
+
+        AssertEx.Equal(1, cacheControl.Reasons.Count);
+        AssertEx.Equal("manual", cacheControl.Reasons[0]);
+        AssertEx.Equal(0, status.EntryCount);
+        AssertEx.Equal(0L, status.ApproximateBytes);
+        AssertEx.Equal(clearedAtUtc, status.LastClearedAtUtc);
+        AssertEx.Equal("manual", status.LastClearReason);
+        AssertEx.Equal(0, status.Routes[0].CurrentEntryCount);
+        AssertEx.Equal(0L, status.Routes[0].CurrentBytes);
     }
 
     private static void AssertRejectedResponse(IReadOnlyList<Http1HeaderField> responseHeaders)
@@ -834,6 +954,78 @@ internal static class CacheTests
         public void Advance(TimeSpan value)
         {
             _utcNow = _utcNow.Add(value);
+        }
+    }
+
+    private sealed class FixedCacheStatusConfigurationSource
+        : IProxyCacheStatusConfigurationSource
+    {
+        private readonly IReadOnlyList<ProxyCacheStatusRouteSource> _routes;
+
+        public FixedCacheStatusConfigurationSource(IReadOnlyList<ProxyCacheStatusRouteSource> routes)
+        {
+            _routes = routes;
+        }
+
+        public IReadOnlyList<ProxyCacheStatusRouteSource> ReadRoutes()
+        {
+            return _routes;
+        }
+    }
+
+    private sealed class FixedCacheRuntimeStatusSource
+        : IProxyCacheRuntimeStatusSource
+    {
+        private readonly ProxyCacheRuntimeStatusSnapshot _snapshot;
+
+        public FixedCacheRuntimeStatusSource(ProxyCacheRuntimeStatusSnapshot snapshot)
+        {
+            _snapshot = snapshot;
+        }
+
+        public ProxyCacheRuntimeStatusSnapshot ReadSnapshot()
+        {
+            return _snapshot;
+        }
+    }
+
+    private sealed class MutableCacheRuntimeStatusSource
+        : IProxyCacheRuntimeStatusSource
+    {
+        private ProxyCacheRuntimeStatusSnapshot _snapshot;
+
+        public MutableCacheRuntimeStatusSource(ProxyCacheRuntimeStatusSnapshot snapshot)
+        {
+            _snapshot = snapshot;
+        }
+
+        public ProxyCacheRuntimeStatusSnapshot ReadSnapshot()
+        {
+            return _snapshot;
+        }
+
+        public void Replace(ProxyCacheRuntimeStatusSnapshot snapshot)
+        {
+            _snapshot = snapshot;
+        }
+    }
+
+    private sealed class FixedProxyCacheControl : IProxyCacheControl
+    {
+        private readonly Action<string> _clear;
+        private readonly List<string> _reasons = [];
+
+        public FixedProxyCacheControl(Action<string> clear)
+        {
+            _clear = clear;
+        }
+
+        public IReadOnlyList<string> Reasons => _reasons;
+
+        public void Clear(string reason)
+        {
+            _reasons.Add(reason);
+            _clear(reason);
         }
     }
 
