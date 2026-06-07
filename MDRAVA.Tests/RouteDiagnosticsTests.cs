@@ -205,6 +205,89 @@ internal static class RouteDiagnosticsTests
         AssertEx.False(result.ToString()!.Contains("secret-token", StringComparison.Ordinal));
     }
 
+    public static void RouteDiagnosticsServiceShapesNoListenerResult()
+    {
+        var metrics = new FixedRouteDiagnosticsMetricsSink();
+        var service = CreateBllRouteService(
+            new FixedRouteDiagnosticsConfigurationSnapshot(
+                [RouteDiagnosticsListener("secure", "https", 8443, RuntimeListenerProtocols.Http1AndHttp2, http3EnabledForTraffic: false)],
+                [RouteDiagnosticsRoute("api", "diag.test", "/api")]),
+            metricsSink: metrics);
+
+        var result = service.Explain(new RouteMatchDryRunRequest("http", "diag.test", 8080, "GET", "/api", "", null, null, null));
+
+        AssertEx.True(result.Succeeded);
+        AssertEx.Equal("no_matching_listener", result.NoMatchReason);
+        AssertEx.Equal("/api", result.OriginalTarget!);
+        AssertEx.Equal("no_route", result.Cache.Reason);
+        AssertEx.True(result.Findings.Any(static finding => finding.Code == "no_matching_listener"));
+        AssertEx.Equal("no_matching_listener", metrics.LastFailureReason!);
+    }
+
+    public static void RouteDiagnosticsServiceSelectsListenerBeforePolicyExplanation()
+    {
+        var actionPolicy = new FixedRouteDiagnosticsActionPolicy(new ProxyRouteDiagnosticsActionDecision(true, null));
+        var metrics = new FixedRouteDiagnosticsMetricsSink();
+        var service = CreateBllRouteService(
+            new FixedRouteDiagnosticsConfigurationSnapshot(
+                [
+                    RouteDiagnosticsListener("web", "http", 8080, RuntimeListenerProtocols.Http1, http3EnabledForTraffic: false),
+                    RouteDiagnosticsListener("secure", "https", 8443, RuntimeListenerProtocols.Http1AndHttp2AndHttp3, http3EnabledForTraffic: true)
+                ],
+                [RouteDiagnosticsRoute("api", "diag.test", "/api")]),
+            actionPolicy: actionPolicy,
+            metricsSink: metrics);
+
+        var result = service.Explain(new RouteMatchDryRunRequest(
+            "https",
+            "diag.test",
+            8443,
+            "GET",
+            "/api/users",
+            "",
+            null,
+            null,
+            "secure",
+            "http3"));
+
+        AssertEx.True(result.Succeeded);
+        AssertEx.Equal("secure", AssertEx.NotNull(result.Listener).Name);
+        AssertEx.Equal("secure", AssertEx.NotNull(actionPolicy.LastListener).Name);
+        AssertEx.Equal("/api/users", AssertEx.NotNull(actionPolicy.LastRequestHead).Target);
+        AssertEx.Equal(null, metrics.LastFailureReason);
+    }
+
+    public static void RouteDiagnosticsServiceRedactsSensitiveHeadersBeforeAdapters()
+    {
+        var actionPolicy = new FixedRouteDiagnosticsActionPolicy(new ProxyRouteDiagnosticsActionDecision(true, null));
+        var service = CreateBllRouteService(
+            new FixedRouteDiagnosticsConfigurationSnapshot(
+                [RouteDiagnosticsListener("web", "http", 8080, RuntimeListenerProtocols.Http1, http3EnabledForTraffic: false)],
+                [RouteDiagnosticsRoute("private", "diag.test", "/private", cacheEnabled: true)]),
+            actionPolicy: actionPolicy);
+
+        var result = service.Explain(new RouteMatchDryRunRequest(
+            "http",
+            "diag.test",
+            8080,
+            "GET",
+            "/private",
+            "",
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Authorization"] = "Bearer secret-token"
+            },
+            null,
+            null));
+
+        var requestHead = AssertEx.NotNull(actionPolicy.LastRequestHead);
+        var authorization = requestHead.Headers.First(static header => string.Equals(header.Name, "Authorization", StringComparison.OrdinalIgnoreCase));
+        AssertEx.Equal("redacted", authorization.Value);
+        AssertEx.Equal("authorization", result.Cache.Reason);
+        AssertEx.True(result.Findings.Any(static finding => finding.Code == "sensitive_header_redacted"));
+        AssertEx.False(result.ToString()!.Contains("secret-token", StringComparison.Ordinal));
+    }
+
     public static void LintDetectsRouteShadowingAndBroadCatchAll()
     {
         var service = CreateLintService(BaseOptions([
@@ -443,11 +526,27 @@ internal static class RouteDiagnosticsTests
         store = CreateStore(options);
         metrics = new ProxyMetrics();
         return new RouteMatchDiagnosticsService(
-            store,
-            new SingleUpstreamRouteMatcher(),
-            new ProxyRouteActionPolicy(),
-            new PathRewritePolicy(),
-            metrics,
+            new ProxyRouteDiagnosticsConfigurationSource(store),
+            new ProxyRouteDiagnosticsMatcher(new SingleUpstreamRouteMatcher()),
+            new ProxyRouteDiagnosticsActionPolicy(new ProxyRouteActionPolicy()),
+            new ProxyRouteDiagnosticsPathRewritePolicy(new PathRewritePolicy()),
+            new ProxyRouteDiagnosticsMetricsSink(metrics),
+            TimeProvider.System);
+    }
+
+    private static RouteMatchDiagnosticsService CreateBllRouteService(
+        IProxyRouteDiagnosticsConfigurationSnapshot? snapshot,
+        FixedRouteDiagnosticsMatcher? matcher = null,
+        FixedRouteDiagnosticsActionPolicy? actionPolicy = null,
+        FixedRouteDiagnosticsPathRewritePolicy? pathRewritePolicy = null,
+        FixedRouteDiagnosticsMetricsSink? metricsSink = null)
+    {
+        return new RouteMatchDiagnosticsService(
+            new FixedRouteDiagnosticsConfigurationSource(snapshot),
+            matcher ?? new FixedRouteDiagnosticsMatcher(),
+            actionPolicy ?? new FixedRouteDiagnosticsActionPolicy(new ProxyRouteDiagnosticsActionDecision(true, null)),
+            pathRewritePolicy ?? new FixedRouteDiagnosticsPathRewritePolicy(),
+            metricsSink ?? new FixedRouteDiagnosticsMetricsSink(),
             TimeProvider.System);
     }
 
@@ -745,6 +844,165 @@ internal static class RouteDiagnosticsTests
             LastFindings = findings;
         }
     }
+
+    private static FixedRouteDiagnosticsListener RouteDiagnosticsListener(
+        string name,
+        string transport,
+        int port,
+        RuntimeListenerProtocols protocols,
+        bool http3EnabledForTraffic)
+    {
+        return new FixedRouteDiagnosticsListener(
+            name,
+            transport,
+            "127.0.0.1",
+            port,
+            true,
+            protocols,
+            http3EnabledForTraffic);
+    }
+
+    private static FixedRouteDiagnosticsRoute RouteDiagnosticsRoute(
+        string name,
+        string host,
+        string pathPrefix,
+        bool cacheEnabled = false)
+    {
+        return new FixedRouteDiagnosticsRoute(
+            "diag",
+            name,
+            host,
+            pathPrefix,
+            "Proxy",
+            false,
+            10 * 1024 * 1024,
+            [new FixedRouteDiagnosticsUpstream("local", "http", RuntimeUpstreamProtocol.Http1, "127.0.0.1:5000", 1, false)],
+            cacheEnabled,
+            ["GET", "HEAD"],
+            false,
+            ["GET", "HEAD"]);
+    }
+
+    private sealed record FixedRouteDiagnosticsConfigurationSnapshot(
+        IReadOnlyList<IProxyRouteDiagnosticsListener> Listeners,
+        IReadOnlyList<IProxyRouteDiagnosticsRoute> Routes)
+        : IProxyRouteDiagnosticsConfigurationSnapshot;
+
+    private sealed class FixedRouteDiagnosticsConfigurationSource
+        : IProxyRouteDiagnosticsConfigurationSource
+    {
+        private readonly IProxyRouteDiagnosticsConfigurationSnapshot? _snapshot;
+
+        public FixedRouteDiagnosticsConfigurationSource(IProxyRouteDiagnosticsConfigurationSnapshot? snapshot)
+        {
+            _snapshot = snapshot;
+        }
+
+        public bool TryRead(out IProxyRouteDiagnosticsConfigurationSnapshot? snapshot)
+        {
+            snapshot = _snapshot;
+            return snapshot is not null;
+        }
+    }
+
+    private sealed class FixedRouteDiagnosticsMatcher : IProxyRouteDiagnosticsMatcher
+    {
+        public IProxyRouteDiagnosticsRoute? Match(
+            IProxyRouteDiagnosticsConfigurationSnapshot snapshot,
+            ProxyRouteDiagnosticsRequestHead requestHead)
+        {
+            return snapshot.Routes.FirstOrDefault(route =>
+                HostMatches(route.Host, requestHead.Host)
+                && requestHead.Path.StartsWith(route.PathPrefix, StringComparison.Ordinal));
+        }
+
+        private static bool HostMatches(string configuredHost, string requestHost)
+        {
+            return string.Equals(configuredHost, "*", StringComparison.Ordinal)
+                || string.Equals(configuredHost, requestHost, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    private sealed class FixedRouteDiagnosticsActionPolicy : IProxyRouteDiagnosticsActionPolicy
+    {
+        private readonly ProxyRouteDiagnosticsActionDecision _decision;
+
+        public FixedRouteDiagnosticsActionPolicy(ProxyRouteDiagnosticsActionDecision decision)
+        {
+            _decision = decision;
+        }
+
+        public IProxyRouteDiagnosticsListener? LastListener { get; private set; }
+
+        public ProxyRouteDiagnosticsRequestHead? LastRequestHead { get; private set; }
+
+        public ProxyRouteDiagnosticsActionDecision Evaluate(
+            IProxyRouteDiagnosticsRoute route,
+            ProxyRouteDiagnosticsRequestHead requestHead,
+            IProxyRouteDiagnosticsListener listener,
+            bool isUpgradeRequest)
+        {
+            _ = route;
+            _ = isUpgradeRequest;
+            LastRequestHead = requestHead;
+            LastListener = listener;
+            return _decision;
+        }
+    }
+
+    private sealed class FixedRouteDiagnosticsPathRewritePolicy : IProxyRouteDiagnosticsPathRewritePolicy
+    {
+        public string Apply(IProxyRouteDiagnosticsRoute route, string target, string path)
+        {
+            _ = route;
+            _ = path;
+            return target;
+        }
+    }
+
+    private sealed class FixedRouteDiagnosticsMetricsSink : IProxyRouteDiagnosticsMetricsSink
+    {
+        public string? LastFailureReason { get; private set; }
+
+        public void RouteMatchDryRun(string? failureReason)
+        {
+            LastFailureReason = failureReason;
+        }
+    }
+
+    private sealed record FixedRouteDiagnosticsListener(
+        string Name,
+        string Transport,
+        string Address,
+        int Port,
+        bool Enabled,
+        RuntimeListenerProtocols Protocols,
+        bool Http3EnabledForTraffic)
+        : IProxyRouteDiagnosticsListener;
+
+    private sealed record FixedRouteDiagnosticsRoute(
+        string SiteName,
+        string Name,
+        string Host,
+        string PathPrefix,
+        string Action,
+        bool MaintenanceEnabled,
+        long MaxRequestBodyBytes,
+        IReadOnlyList<IProxyRouteDiagnosticsUpstream> Upstreams,
+        bool CacheEnabled,
+        IReadOnlyList<string> CacheMethods,
+        bool RetryEnabled,
+        IReadOnlyList<string> RetryMethods)
+        : IProxyRouteDiagnosticsRoute;
+
+    private sealed record FixedRouteDiagnosticsUpstream(
+        string Name,
+        string Scheme,
+        string Protocol,
+        string Endpoint,
+        int Weight,
+        bool CircuitBreakerEnabled)
+        : IProxyRouteDiagnosticsUpstream;
 
     private static void AssertFinding(ConfigLintResult result, string code, string severity)
     {

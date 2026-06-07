@@ -1,10 +1,7 @@
 using System.Net;
-using MDRAVA.API.Proxy.Configuration.Storage;
-using MDRAVA.API.Proxy.Metrics;
-using MDRAVA.API.Proxy.Protocol;
-using MDRAVA.API.Proxy.Routing;
+using MDRAVA.BLL.Configuration;
 
-namespace MDRAVA.API.Proxy.Diagnostics;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperations
 {
@@ -18,33 +15,33 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
         "X-MDRAVA-Admin-Key"
     };
 
-    private readonly IProxyConfigurationStore _configurationStore;
-    private readonly IRouteMatcher _routeMatcher;
-    private readonly ProxyRouteActionPolicy _routeActionPolicy;
-    private readonly PathRewritePolicy _pathRewritePolicy;
-    private readonly ProxyMetrics _metrics;
+    private readonly IProxyRouteDiagnosticsConfigurationSource _configurationSource;
+    private readonly IProxyRouteDiagnosticsMatcher _routeMatcher;
+    private readonly IProxyRouteDiagnosticsActionPolicy _routeActionPolicy;
+    private readonly IProxyRouteDiagnosticsPathRewritePolicy _pathRewritePolicy;
+    private readonly IProxyRouteDiagnosticsMetricsSink _metricsSink;
     private readonly TimeProvider _timeProvider;
 
     public RouteMatchDiagnosticsService(
-        IProxyConfigurationStore configurationStore,
-        IRouteMatcher routeMatcher,
-        ProxyRouteActionPolicy routeActionPolicy,
-        PathRewritePolicy pathRewritePolicy,
-        ProxyMetrics metrics,
+        IProxyRouteDiagnosticsConfigurationSource configurationSource,
+        IProxyRouteDiagnosticsMatcher routeMatcher,
+        IProxyRouteDiagnosticsActionPolicy routeActionPolicy,
+        IProxyRouteDiagnosticsPathRewritePolicy pathRewritePolicy,
+        IProxyRouteDiagnosticsMetricsSink metricsSink,
         TimeProvider timeProvider)
     {
-        _configurationStore = configurationStore;
+        _configurationSource = configurationSource;
         _routeMatcher = routeMatcher;
         _routeActionPolicy = routeActionPolicy;
         _pathRewritePolicy = pathRewritePolicy;
-        _metrics = metrics;
+        _metricsSink = metricsSink;
         _timeProvider = timeProvider;
     }
 
-    public RouteMatchDryRunResult Explain(RouteMatchDryRunRequest request)
+    public RouteMatchDryRunResult Explain(RouteMatchDryRunRequest? request)
     {
         var evaluatedAtUtc = _timeProvider.GetUtcNow();
-        if (!_configurationStore.TryGetSnapshot(out var snapshot) || snapshot is null)
+        if (!_configurationSource.TryRead(out var snapshot) || snapshot is null)
         {
             return Complete(Failure(evaluatedAtUtc, "no_active_config", "No active proxy configuration is loaded."));
         }
@@ -54,7 +51,7 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
             return Complete(invalidResult);
         }
 
-        var scheme = NormalizeScheme(request.Scheme);
+        var scheme = NormalizeScheme(request!.Scheme);
         var protocol = NormalizeProtocol(request.Protocol);
         var method = NormalizeMethod(request.Method);
         var path = NormalizePath(request.Path);
@@ -86,7 +83,7 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
 
         var headers = BuildHeaders(request, findings);
         var framing = ResolveFraming(headers);
-        var requestHead = new Http1RequestHead(
+        var requestHead = new ProxyRouteDiagnosticsRequestHead(
             method,
             target,
             path,
@@ -95,8 +92,8 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
             framing,
             headers);
 
-        var routeMatch = _routeMatcher.Match(snapshot, requestHead);
-        if (routeMatch is null)
+        var route = _routeMatcher.Match(snapshot, requestHead);
+        if (route is null)
         {
             return Complete(new RouteMatchDryRunResult(
                 true,
@@ -118,17 +115,16 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
                 [new RouteMatchDryRunFinding("info", "no_matching_route", "No configured route matched the supplied host and path.")]));
         }
 
-        var route = routeMatch.Route;
         var actionDecision = _routeActionPolicy.Evaluate(route, requestHead, listener, isUpgradeRequest: IsUpgrade(headers));
-        var generatedStatusCode = actionDecision.Response?.StatusCode;
+        var generatedStatusCode = actionDecision.GeneratedStatusCode;
         var effectiveAction = EffectiveAction(route, actionDecision);
         var rewrittenTarget = _pathRewritePolicy.Apply(route, target, path);
         var wouldProxy = actionDecision.ShouldProxy;
 
         string? noMatchReason = null;
         if (wouldProxy
-            && framing.Kind == Http1BodyKind.ContentLength
-            && framing.ContentLength.GetValueOrDefault() > route.ResolvedOptions.MaxRequestBodyBytes)
+            && framing.Kind == ProxyRouteDiagnosticsBodyKind.ContentLength
+            && framing.ContentLength.GetValueOrDefault() > route.MaxRequestBodyBytes)
         {
             wouldProxy = false;
             noMatchReason = "request_body_too_large";
@@ -164,7 +160,7 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
 
     private RouteMatchDryRunResult Complete(RouteMatchDryRunResult result)
     {
-        _metrics.RouteMatchDryRun(result.FailureReason ?? result.NoMatchReason);
+        _metricsSink.RouteMatchDryRun(result.FailureReason ?? result.NoMatchReason);
         return result;
     }
 
@@ -191,7 +187,7 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
     }
 
     private static bool TryValidateRequest(
-        RouteMatchDryRunRequest request,
+        RouteMatchDryRunRequest? request,
         DateTimeOffset evaluatedAtUtc,
         out RouteMatchDryRunResult result)
     {
@@ -270,21 +266,21 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
         return true;
     }
 
-    private static RuntimeListener? SelectListener(
-        ProxyConfigurationSnapshot snapshot,
+    private static IProxyRouteDiagnosticsListener? SelectListener(
+        IProxyRouteDiagnosticsConfigurationSnapshot snapshot,
         string? listenerName,
         string scheme,
         int? port,
         string? protocol)
     {
-        var transport = scheme == "https" ? RuntimeListenerTransport.Https : RuntimeListenerTransport.Http;
-        IEnumerable<RuntimeListener> listeners = snapshot.Listeners.Where(static listener => listener.Enabled);
+        var transport = scheme == "https" ? "https" : "http";
+        IEnumerable<IProxyRouteDiagnosticsListener> listeners = snapshot.Listeners.Where(static listener => listener.Enabled);
         if (!string.IsNullOrWhiteSpace(listenerName))
         {
             listeners = listeners.Where(listener => string.Equals(listener.Name, listenerName, StringComparison.OrdinalIgnoreCase));
         }
 
-        listeners = listeners.Where(listener => listener.Transport == transport);
+        listeners = listeners.Where(listener => string.Equals(listener.Transport, transport, StringComparison.OrdinalIgnoreCase));
         if (port.HasValue)
         {
             listeners = listeners.Where(listener => listener.Port == port.Value);
@@ -294,18 +290,18 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
         {
             "http1" => listeners.Where(static listener => listener.Protocols.HasFlag(RuntimeListenerProtocols.Http1)),
             "http2" => listeners.Where(static listener => listener.Protocols.HasFlag(RuntimeListenerProtocols.Http2)),
-            "http3" => listeners.Where(static listener => listener.Http3.EnabledForTraffic),
+            "http3" => listeners.Where(static listener => listener.Http3EnabledForTraffic),
             _ => listeners
         };
 
         return listeners.FirstOrDefault();
     }
 
-    private static IReadOnlyList<Http1HeaderField> BuildHeaders(
+    private static IReadOnlyList<ProxyRouteDiagnosticsHeader> BuildHeaders(
         RouteMatchDryRunRequest request,
         List<RouteMatchDryRunFinding> findings)
     {
-        List<Http1HeaderField> headers = [new("Host", request.Host.Trim())];
+        List<ProxyRouteDiagnosticsHeader> headers = [new("Host", request.Host.Trim())];
         if (request.Headers is null)
         {
             return headers;
@@ -333,20 +329,20 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
                 value = "redacted";
             }
 
-            headers.Add(new Http1HeaderField(name, value));
+            headers.Add(new ProxyRouteDiagnosticsHeader(name, value));
         }
 
         return headers;
     }
 
-    private static Http1RequestFraming ResolveFraming(IReadOnlyList<Http1HeaderField> headers)
+    private static ProxyRouteDiagnosticsRequestFraming ResolveFraming(IReadOnlyList<ProxyRouteDiagnosticsHeader> headers)
     {
         foreach (var header in headers)
         {
             if (string.Equals(header.Name, "Transfer-Encoding", StringComparison.OrdinalIgnoreCase)
                 && header.Value.Contains("chunked", StringComparison.OrdinalIgnoreCase))
             {
-                return Http1RequestFraming.Chunked;
+                return ProxyRouteDiagnosticsRequestFraming.Chunked;
             }
         }
 
@@ -356,14 +352,14 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
                 && long.TryParse(header.Value.Trim(), out var contentLength)
                 && contentLength >= 0)
             {
-                return Http1RequestFraming.FromContentLength(contentLength);
+                return ProxyRouteDiagnosticsRequestFraming.FromContentLength(contentLength);
             }
         }
 
-        return Http1RequestFraming.None;
+        return ProxyRouteDiagnosticsRequestFraming.None;
     }
 
-    private static RouteMatchDryRunUpstream? SelectDiagnosticUpstream(RuntimeRoute route)
+    private static RouteMatchDryRunUpstream? SelectDiagnosticUpstream(IProxyRouteDiagnosticsRoute route)
     {
         var upstream = route.Upstreams.FirstOrDefault(static candidate => candidate.Weight > 0);
         return upstream is null
@@ -378,11 +374,11 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
     }
 
     private static RouteMatchDryRunPolicy ExplainCache(
-        RuntimeRoute route,
-        Http1RequestHead requestHead,
+        IProxyRouteDiagnosticsRoute route,
+        ProxyRouteDiagnosticsRequestHead requestHead,
         bool wouldProxy)
     {
-        if (!route.Cache.Enabled)
+        if (!route.CacheEnabled)
         {
             return DisabledPolicy("disabled");
         }
@@ -392,12 +388,12 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
             return new RouteMatchDryRunPolicy(true, false, "not_proxy_action");
         }
 
-        if (!route.Cache.Methods.Any(method => string.Equals(method, requestHead.Method, StringComparison.OrdinalIgnoreCase)))
+        if (!route.CacheMethods.Any(method => string.Equals(method, requestHead.Method, StringComparison.OrdinalIgnoreCase)))
         {
             return new RouteMatchDryRunPolicy(true, false, "method_not_cacheable");
         }
 
-        if (requestHead.Framing.Kind != Http1BodyKind.None)
+        if (requestHead.Framing.Kind != ProxyRouteDiagnosticsBodyKind.None)
         {
             return new RouteMatchDryRunPolicy(true, false, "request_body");
         }
@@ -411,11 +407,11 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
     }
 
     private static RouteMatchDryRunPolicy ExplainRetry(
-        RuntimeRoute route,
-        Http1RequestHead requestHead,
+        IProxyRouteDiagnosticsRoute route,
+        ProxyRouteDiagnosticsRequestHead requestHead,
         bool wouldProxy)
     {
-        if (!route.Retry.Enabled)
+        if (!route.RetryEnabled)
         {
             return DisabledPolicy("disabled");
         }
@@ -425,12 +421,12 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
             return new RouteMatchDryRunPolicy(true, false, "not_proxy_action");
         }
 
-        if (!route.Retry.RetryMethods.Any(method => string.Equals(method, requestHead.Method, StringComparison.OrdinalIgnoreCase)))
+        if (!route.RetryMethods.Any(method => string.Equals(method, requestHead.Method, StringComparison.OrdinalIgnoreCase)))
         {
             return new RouteMatchDryRunPolicy(true, false, "method_not_retryable");
         }
 
-        if (requestHead.Framing.Kind != Http1BodyKind.None)
+        if (requestHead.Framing.Kind != ProxyRouteDiagnosticsBodyKind.None)
         {
             return new RouteMatchDryRunPolicy(true, false, "request_body_not_replayable");
         }
@@ -438,9 +434,9 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
         return new RouteMatchDryRunPolicy(true, true, "eligible_for_configured_transport_or_status_failures");
     }
 
-    private static RouteMatchDryRunPolicy ExplainCircuitBreaker(RuntimeRoute route, bool wouldProxy)
+    private static RouteMatchDryRunPolicy ExplainCircuitBreaker(IProxyRouteDiagnosticsRoute route, bool wouldProxy)
     {
-        var enabled = route.Upstreams.Any(static upstream => upstream.CircuitBreaker.Enabled);
+        var enabled = route.Upstreams.Any(static upstream => upstream.CircuitBreakerEnabled);
         if (!enabled)
         {
             return DisabledPolicy("disabled");
@@ -449,29 +445,29 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
         return new RouteMatchDryRunPolicy(enabled, wouldProxy, wouldProxy ? "configured_for_one_or_more_upstreams" : "not_proxy_action");
     }
 
-    private static bool ContainsHeader(IReadOnlyList<Http1HeaderField> headers, string name)
+    private static bool ContainsHeader(IReadOnlyList<ProxyRouteDiagnosticsHeader> headers, string name)
     {
         return headers.Any(header => string.Equals(header.Name, name, StringComparison.OrdinalIgnoreCase));
     }
 
-    private static bool IsUpgrade(IReadOnlyList<Http1HeaderField> headers)
+    private static bool IsUpgrade(IReadOnlyList<ProxyRouteDiagnosticsHeader> headers)
     {
         return headers.Any(static header => string.Equals(header.Name, "Upgrade", StringComparison.OrdinalIgnoreCase));
     }
 
-    private static string EffectiveAction(RuntimeRoute route, RouteActionDecision actionDecision)
+    private static string EffectiveAction(IProxyRouteDiagnosticsRoute route, ProxyRouteDiagnosticsActionDecision actionDecision)
     {
         if (actionDecision.ShouldProxy)
         {
             return "proxy";
         }
 
-        if (route.Maintenance.Enabled)
+        if (route.MaintenanceEnabled)
         {
             return "maintenance";
         }
 
-        if (route.Action == RuntimeRouteAction.Proxy)
+        if (string.Equals(route.Action, "Proxy", StringComparison.OrdinalIgnoreCase))
         {
             return "policyRedirect";
         }
@@ -479,21 +475,28 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
         return RouteActionText(route.Action);
     }
 
-    private static string RouteActionText(RuntimeRouteAction action)
+    private static string RouteActionText(string action)
     {
-        return action switch
+        if (string.Equals(action, "Redirect", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(action, "redirect", StringComparison.OrdinalIgnoreCase))
         {
-            RuntimeRouteAction.Redirect => "redirect",
-            RuntimeRouteAction.StaticResponse => "staticResponse",
-            _ => "proxy"
-        };
+            return "redirect";
+        }
+
+        if (string.Equals(action, "StaticResponse", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(action, "staticResponse", StringComparison.OrdinalIgnoreCase))
+        {
+            return "staticResponse";
+        }
+
+        return "proxy";
     }
 
-    private static RouteMatchDryRunListener ToListener(RuntimeListener listener)
+    private static RouteMatchDryRunListener ToListener(IProxyRouteDiagnosticsListener listener)
     {
         return new RouteMatchDryRunListener(
             listener.Name,
-            listener.Transport == RuntimeListenerTransport.Https ? "https" : "http",
+            string.Equals(listener.Transport, "https", StringComparison.OrdinalIgnoreCase) ? "https" : "http",
             listener.Address,
             listener.Port,
             listener.Protocols.ToString());

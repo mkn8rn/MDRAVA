@@ -9,7 +9,7 @@ public sealed class ProxyRouteDiagnosticsAdministrationService
         _operations = operations;
     }
 
-    public RouteMatchDryRunResult Match(RouteMatchDryRunRequest request)
+    public RouteMatchDryRunResult Match(RouteMatchDryRunRequest? request)
     {
         return _operations.Explain(request);
     }

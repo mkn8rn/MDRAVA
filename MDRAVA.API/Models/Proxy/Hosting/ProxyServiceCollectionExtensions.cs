@@ -78,6 +78,11 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<ConfigLintService>();
         services.AddSingleton<IProxyConfigLintOperations>(static services => services.GetRequiredService<ConfigLintService>());
         services.AddSingleton<ProxyConfigLintAdministrationService>();
+        services.AddSingleton<IProxyRouteDiagnosticsConfigurationSource, ProxyRouteDiagnosticsConfigurationSource>();
+        services.AddSingleton<IProxyRouteDiagnosticsMatcher, ProxyRouteDiagnosticsMatcher>();
+        services.AddSingleton<IProxyRouteDiagnosticsActionPolicy, ProxyRouteDiagnosticsActionPolicy>();
+        services.AddSingleton<IProxyRouteDiagnosticsPathRewritePolicy, ProxyRouteDiagnosticsPathRewritePolicy>();
+        services.AddSingleton<IProxyRouteDiagnosticsMetricsSink, ProxyRouteDiagnosticsMetricsSink>();
         services.AddSingleton<RouteMatchDiagnosticsService>();
         services.AddSingleton<IProxyRouteDiagnosticsOperations>(static services => services.GetRequiredService<RouteMatchDiagnosticsService>());
         services.AddSingleton<ProxyRouteDiagnosticsAdministrationService>();

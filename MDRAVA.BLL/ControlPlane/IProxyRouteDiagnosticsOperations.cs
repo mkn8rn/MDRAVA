@@ -2,5 +2,5 @@ namespace MDRAVA.BLL.ControlPlane;
 
 public interface IProxyRouteDiagnosticsOperations
 {
-    RouteMatchDryRunResult Explain(RouteMatchDryRunRequest request);
+    RouteMatchDryRunResult Explain(RouteMatchDryRunRequest? request);
 }
