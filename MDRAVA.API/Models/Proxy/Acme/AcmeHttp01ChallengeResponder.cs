@@ -1,5 +1,3 @@
-using MDRAVA.API.Models.Routing;
-
 namespace MDRAVA.API.Proxy.Acme;
 
 public sealed class AcmeHttp01ChallengeResponder

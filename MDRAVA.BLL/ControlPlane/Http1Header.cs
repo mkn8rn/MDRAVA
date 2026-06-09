@@ -1,4 +1,4 @@
-namespace MDRAVA.API.Models.Protocol;
+namespace MDRAVA.BLL.ControlPlane;
 
 public readonly ref struct Http1Header
 {

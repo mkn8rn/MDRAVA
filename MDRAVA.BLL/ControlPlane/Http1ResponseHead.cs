@@ -1,4 +1,4 @@
-namespace MDRAVA.API.Models.Protocol;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed class Http1ResponseHead
 {

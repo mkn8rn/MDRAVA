@@ -1,4 +1,4 @@
-namespace MDRAVA.API.Models.Protocol;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed record Http1ResponseFraming(Http1BodyKind Kind, long? ContentLength)
 {

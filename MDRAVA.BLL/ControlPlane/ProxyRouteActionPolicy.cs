@@ -1,9 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
-using MDRAVA.API.Proxy.Forwarding;
-using MDRAVA.API.Proxy.Protocol;
+using MDRAVA.BLL.Configuration;
 
-namespace MDRAVA.API.Proxy.Routing;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed class ProxyRouteActionPolicy
 {

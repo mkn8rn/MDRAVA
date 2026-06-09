@@ -1,4 +1,4 @@
-namespace MDRAVA.API.Models.Protocol;
+namespace MDRAVA.BLL.ControlPlane;
 
 public enum Http1ParseError
 {
