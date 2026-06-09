@@ -576,7 +576,7 @@ public sealed class Http3Connection
         string requestId,
         CancellationToken cancellationToken)
     {
-        var retryAllowed = IsRetryAllowed(route, requestHead, out var skipReason);
+        var retryAllowed = ProxyRetryPolicy.IsRetryAllowed(route, requestHead, out var skipReason);
         if (!retryAllowed && skipReason is not null)
         {
             _metrics.RetrySkipped(skipReason);
@@ -634,7 +634,7 @@ public sealed class Http3Connection
 
             string? finalSkipReason = null;
             if (retryAllowed
-                && ShouldRetry(route.Retry, requestHead, result, attempt, maxAttempts, out finalSkipReason))
+                && ProxyRetryPolicy.ShouldRetry(route.Retry, result, attempt, maxAttempts, out finalSkipReason))
             {
                 _metrics.RetryAttempted();
                 if (route.Retry.RetryBackoff > TimeSpan.Zero)
@@ -650,7 +650,7 @@ public sealed class Http3Connection
                 _metrics.RetrySkipped(finalSkipReason);
             }
 
-            if (retryAllowed && attempt == maxAttempts && IsRetryableFailure(route.Retry, result))
+            if (retryAllowed && attempt == maxAttempts && ProxyRetryPolicy.IsRetryableFailure(route.Retry, result))
             {
                 _metrics.RetryExhausted();
             }
@@ -679,7 +679,7 @@ public sealed class Http3Connection
         string method,
         CancellationToken cancellationToken)
     {
-        var statusCode = result.ResponseStatusCode ?? StatusCodeForFailure(result.FailureKind);
+        var statusCode = result.ResponseStatusCode ?? ProxyForwardingFailurePolicy.StatusCodeForFailure(result.FailureKind);
         if (statusCode == 502)
         {
             _metrics.ProxyGenerated502();
@@ -718,9 +718,11 @@ public sealed class Http3Connection
         if (!result.Succeeded)
         {
             _healthStore.RecordRequestFailure(selection.Upstream);
-            if (IsCircuitFailure(result.FailureKind))
+            if (ProxyForwardingFailurePolicy.IsCircuitFailure(result.FailureKind))
             {
-                _circuitBreakerStore.RecordFailure(selection.CircuitBreakerLease, CircuitFailureReason(result.FailureKind));
+                _circuitBreakerStore.RecordFailure(
+                    selection.CircuitBreakerLease,
+                    ProxyForwardingFailurePolicy.CircuitFailureReason(result.FailureKind));
             }
             else
             {
@@ -949,105 +951,6 @@ public sealed class Http3Connection
         }
 
         return context.ResponseStatusCode.Value < 400 ? "success" : "error";
-    }
-
-    private static bool IsRetryAllowed(RuntimeRoute route, Http1RequestHead requestHead, out string? skipReason)
-    {
-        skipReason = null;
-        if (!route.Retry.Enabled)
-        {
-            return false;
-        }
-
-        if (!route.Retry.RetryMethods.Any(method => string.Equals(method, requestHead.Method, StringComparison.OrdinalIgnoreCase)))
-        {
-            skipReason = "method";
-            return false;
-        }
-
-        if (requestHead.Framing.Kind != Http1BodyKind.None)
-        {
-            skipReason = "request_body";
-            return false;
-        }
-
-        return true;
-    }
-
-    private static bool ShouldRetry(
-        RuntimeRetryPolicy retry,
-        Http1RequestHead requestHead,
-        ForwardingResult result,
-        int attempt,
-        int maxAttempts,
-        out string? skipReason)
-    {
-        _ = requestHead;
-        skipReason = null;
-        if (!IsRetryableFailure(retry, result))
-        {
-            return false;
-        }
-
-        if (result.ResponseStarted)
-        {
-            skipReason = "response_started";
-            return false;
-        }
-
-        return attempt < maxAttempts;
-    }
-
-    private static bool IsRetryableFailure(RuntimeRetryPolicy retry, ForwardingResult result)
-    {
-        if (result.ResponseStatusCode.HasValue
-            && retry.RetryOnStatusCodes.Any(code => code == result.ResponseStatusCode.Value))
-        {
-            return true;
-        }
-
-        if (!result.Succeeded)
-        {
-            return result.FailureKind switch
-            {
-                ProxyFailureKind.UpstreamConnectFailed => retry.RetryOnConnectFailure,
-                ProxyFailureKind.UpstreamConnectTimeout => retry.RetryOnConnectFailure,
-                ProxyFailureKind.UpstreamResponseHeadTimeout => retry.RetryOnUpstreamResponseHeadTimeout,
-                _ => false
-            };
-        }
-
-        return false;
-    }
-
-    private static bool IsCircuitFailure(ProxyFailureKind failureKind)
-    {
-        return failureKind is ProxyFailureKind.UpstreamConnectFailed
-            or ProxyFailureKind.UpstreamConnectTimeout
-            or ProxyFailureKind.UpstreamResponseHeadTimeout;
-    }
-
-    private static string CircuitFailureReason(ProxyFailureKind failureKind)
-    {
-        return failureKind switch
-        {
-            ProxyFailureKind.UpstreamConnectFailed => "connect_failure",
-            ProxyFailureKind.UpstreamConnectTimeout => "connect_timeout",
-            ProxyFailureKind.UpstreamResponseHeadTimeout => "response_head_timeout",
-            _ => "other"
-        };
-    }
-
-    private static int StatusCodeForFailure(ProxyFailureKind failureKind)
-    {
-        return failureKind switch
-        {
-            ProxyFailureKind.UpstreamConnectTimeout => 504,
-            ProxyFailureKind.UpstreamResponseHeadTimeout => 504,
-            ProxyFailureKind.RequestPayloadTooLarge => 413,
-            ProxyFailureKind.ClientMalformedRequest => 400,
-            _ => 502
-        };
     }
 
     private static RuntimeTimeouts ApplyRouteTimeouts(RuntimeRoute route, RuntimeTimeouts timeouts)

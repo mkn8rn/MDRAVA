@@ -1,6 +1,4 @@
-using MDRAVA.API.Proxy.Observability;
-
-namespace MDRAVA.API.Models.Forwarding;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed record ForwardingResult(
     bool Succeeded,
