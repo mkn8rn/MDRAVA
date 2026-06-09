@@ -1,4 +1,4 @@
-namespace MDRAVA.API.Proxy.Configuration.Loading;
+namespace MDRAVA.BLL.Infrastructure;
 
 public interface IProxyConfigurationLoader
 {
