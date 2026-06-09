@@ -126,6 +126,8 @@ internal static partial class TestRegistry
     Test("Health check timeout is unhealthy", HealthCheckTests.HealthCheckTimeoutIsUnhealthy, TestTaxonomy.HealthChecks, TestTaxonomy.Limits, TestTaxonomy.SecurityNegativePaths),
     Test("Health state transitions to unhealthy after threshold", Sync(HealthCheckTests.HealthStateTransitionsToUnhealthyAfterThreshold), TestTaxonomy.HealthChecks, TestTaxonomy.SecurityNegativePaths),
     Test("Health state transitions to healthy after recovery threshold", Sync(HealthCheckTests.HealthStateTransitionsToHealthyAfterRecoveryThreshold), TestTaxonomy.HealthChecks),
+    Test("Health check coordinator records due checks and metrics", HealthCheckTests.HealthCheckCoordinatorRunsDueChecksAndRecordsMetrics, TestTaxonomy.HealthChecks, TestTaxonomy.Metrics),
+    Test("Health check coordinator skips until interval elapses", HealthCheckTests.HealthCheckCoordinatorSkipsUntilIntervalElapses, TestTaxonomy.HealthChecks),
     Test("Round-robin distributes sequential requests across two upstreams", ProxyIntegrationTests.RoundRobinDistributesSequentialRequestsAcrossTwoUpstreams, TestTaxonomy.Routing),
     Test("Unhealthy upstream is not selected", ProxyIntegrationTests.UnhealthyUpstreamIsNotSelected, TestTaxonomy.HealthChecks, TestTaxonomy.SecurityNegativePaths),
     Test("All unhealthy upstreams return service unavailable", ProxyIntegrationTests.AllUnhealthyUpstreamsReturnServiceUnavailable, TestTaxonomy.RetryCircuit, TestTaxonomy.HealthChecks, TestTaxonomy.SecurityNegativePaths),

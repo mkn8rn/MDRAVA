@@ -150,6 +150,9 @@ public static class ProxyServiceCollectionExtensions
             static services => services.GetRequiredService<UpstreamConnectionPool>());
         services.AddSingleton<Http3UpstreamConnectionPool>();
         services.AddSingleton<UpstreamHealthCheckClient>();
+        services.AddSingleton<IUpstreamHealthCheckClient>(static services => services.GetRequiredService<UpstreamHealthCheckClient>());
+        services.AddSingleton<IUpstreamHealthCheckEventSink, UpstreamHealthCheckLogger>();
+        services.AddSingleton<UpstreamHealthCheckCoordinator>();
         services.AddSingleton<HopByHopHeaderPolicy>();
         services.AddSingleton<ForwardedHeadersPolicy>();
         services.AddSingleton<UpgradeRequestPolicy>();

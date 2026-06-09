@@ -8,7 +8,7 @@ using MDRAVA.API.Proxy.Http3;
 
 namespace MDRAVA.API.Proxy.Health;
 
-public sealed class UpstreamHealthCheckClient
+public sealed class UpstreamHealthCheckClient : IUpstreamHealthCheckClient
 {
     private const int MaxHealthResponseHeadBytes = 16 * 1024;
 
