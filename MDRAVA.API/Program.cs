@@ -3,7 +3,7 @@ using MDRAVA.API.Proxy.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 
-AdminBindPolicy.Apply(builder);
+AdminBindWebHostConfigurator.Apply(builder);
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();

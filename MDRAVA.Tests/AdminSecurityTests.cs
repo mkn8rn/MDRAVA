@@ -41,7 +41,7 @@ internal static class AdminSecurityTests
     {
         var configuration = new ConfigurationBuilder().Build();
 
-        var resolution = AdminBindPolicy.Resolve(
+        var resolution = AdminBindWebHostConfigurator.Resolve(
             configuration,
             new AdminStartupSecurityOptions([], false, false));
 
@@ -55,13 +55,13 @@ internal static class AdminSecurityTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                [AdminBindPolicy.AspNetCoreUrlsConfigurationKey] = "http://0.0.0.0:5041"
+                [AdminBindWebHostConfigurator.AspNetCoreUrlsConfigurationKey] = "http://0.0.0.0:5041"
             })
             .Build();
 
         try
         {
-            AdminBindPolicy.Resolve(configuration, new AdminStartupSecurityOptions([], false, false));
+            AdminBindWebHostConfigurator.Resolve(configuration, new AdminStartupSecurityOptions([], false, false));
         }
         catch (InvalidOperationException exception)
         {
