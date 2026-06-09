@@ -1,5 +1,4 @@
 using System.Text.Json;
-using MDRAVA.API.Proxy.Configuration.Loading;
 using MDRAVA.INF.Configuration.Paths;
 
 namespace MDRAVA.API.Proxy.Security;
@@ -31,9 +30,11 @@ public static class AdminStartupConfigurationReader
                 return new AdminStartupSecurityOptions([], false, false);
             }
 
-            var token = AdminSecurityTokenResolver.Resolve(options.Admin).Token;
+            var token = ProxyAdminSecurityTokenPolicy.Resolve(
+                options.Admin,
+                Environment.GetEnvironmentVariable).Token;
             return new AdminStartupSecurityOptions(
-                AdminSecurityTokenResolver.NormalizeUrls(options.Admin.Urls),
+                ProxyAdminSecurityTokenPolicy.NormalizeUrls(options.Admin.Urls),
                 options.Admin.RequireAuthentication,
                 !string.IsNullOrEmpty(token));
         }

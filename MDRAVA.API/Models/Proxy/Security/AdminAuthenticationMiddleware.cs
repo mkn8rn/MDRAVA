@@ -98,7 +98,10 @@ public sealed class AdminAuthenticationMiddleware
         }
 
         _logger.LogWarning("Admin request arrived before an active proxy configuration snapshot was available.");
-        return AdminSecurityTokenResolver.ToRuntimeOptions(new ProxyAdminOptions());
+        var adminOptions = new ProxyAdminOptions();
+        return ProxyConfigurationRuntimeMapper.ToRuntimeAdminSecurityOptions(
+            adminOptions,
+            ProxyAdminSecurityTokenPolicy.Resolve(adminOptions, Environment.GetEnvironmentVariable));
     }
 
     private static bool TryAuthenticate(

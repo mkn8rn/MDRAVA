@@ -320,7 +320,7 @@ internal static class AdminSecurityTests
 
         var proxyConfig = File.ReadAllText(provider.GetProxyOperationalConfigPath());
         AssertEx.False(proxyConfig.Contains("token", StringComparison.OrdinalIgnoreCase));
-        AssertEx.False(proxyConfig.Contains(AdminSecurityTokenResolver.DefaultTokenEnvironmentVariable, StringComparison.Ordinal));
+        AssertEx.False(proxyConfig.Contains(ProxyAdminSecurityTokenPolicy.DefaultTokenEnvironmentVariable, StringComparison.Ordinal));
     }
 
     public static async Task AdminAuditDoesNotLogTokenValues()
