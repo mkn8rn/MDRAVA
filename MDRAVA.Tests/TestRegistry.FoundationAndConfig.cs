@@ -30,6 +30,7 @@ internal static partial class TestRegistry
     Test("Http1 client connection policy keeps HTTP/1.1 open by default", Sync(Http1ClientConnectionPolicyTests.KeepsHttp11OpenByDefault), TestTaxonomy.Http1),
     Test("Http1 client connection policy closes on Connection close", Sync(Http1ClientConnectionPolicyTests.ClosesWhenConnectionCloseIsPresent), TestTaxonomy.Http1, TestTaxonomy.Headers),
     Test("Http1 client connection policy closes HTTP/1.0 by default", Sync(Http1ClientConnectionPolicyTests.ClosesHttp10ByDefault), TestTaxonomy.Http1),
+    Test("Generated failure policy allows responses only before downstream start and without suppression", Sync(ProxyGeneratedFailurePolicyTests.AllowsGeneratedFailureOnlyBeforeResponseAndWithoutSuppression), TestTaxonomy.Http1, TestTaxonomy.RetryCircuit, TestTaxonomy.SecurityNegativePaths),
     Test("Timeout failure policy classifies forwarding failures", Sync(ProxyTimeoutFailurePolicyTests.ClassifiesForwardingTimeoutFailures), TestTaxonomy.Limits, TestTaxonomy.SecurityNegativePaths),
     Test("Request method policy validates HTTP method tokens", Sync(ProxyRequestMethodPolicyTests.ValidatesHttpMethodTokens), TestTaxonomy.Http1, TestTaxonomy.Http2, TestTaxonomy.Http3, TestTaxonomy.SecurityNegativePaths),
     Test("Request method policy classifies supported methods", Sync(ProxyRequestMethodPolicyTests.ClassifiesSupportedApplicationMethods), TestTaxonomy.Http1, TestTaxonomy.Http2, TestTaxonomy.Http3),
