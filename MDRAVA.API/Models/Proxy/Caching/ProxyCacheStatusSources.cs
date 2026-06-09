@@ -1,4 +1,3 @@
-
 namespace MDRAVA.API.Proxy.Caching;
 
 public sealed class ProxyCacheStatusConfigurationSource
@@ -14,7 +13,7 @@ public sealed class ProxyCacheStatusConfigurationSource
     public IReadOnlyList<ProxyCacheStatusRouteSource> ReadRoutes()
     {
         return _configurationStore.TryGetSnapshot(out var snapshot) && snapshot is not null
-            ? ProxyCacheStatusRuntimeRouteSourceMapper.ToRouteSources(snapshot)
+            ? ProxyCacheStatusRouteSourceMapper.ToRouteSources(snapshot)
             : [];
     }
 }
@@ -32,19 +31,5 @@ public sealed class ProxyCacheRuntimeStatusSource
     public ProxyCacheRuntimeStatusSnapshot ReadSnapshot()
     {
         return _cacheStore.ReadStatusSnapshot();
-    }
-}
-
-internal static class ProxyCacheStatusRuntimeRouteSourceMapper
-{
-    public static IReadOnlyList<ProxyCacheStatusRouteSource> ToRouteSources(ProxyConfigurationSnapshot? snapshot)
-    {
-        return snapshot?.Routes
-            .Select(static route => new ProxyCacheStatusRouteSource(
-                route.Name,
-                route.Cache.Enabled,
-                route.Cache.MaxEntryBytes,
-                route.Cache.MaxTotalBytes))
-            .ToArray() ?? [];
     }
 }

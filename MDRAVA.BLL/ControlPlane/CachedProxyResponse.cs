@@ -1,6 +1,4 @@
-using MDRAVA.API.Proxy.Protocol;
-
-namespace MDRAVA.API.Proxy.Caching;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed class CachedProxyResponse
 {

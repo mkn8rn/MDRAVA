@@ -174,7 +174,7 @@ internal static class CacheTests
         cache.Store(route, listener, request, "/private", response, response.Headers, Encoding.ASCII.GetBytes("private"));
 
         AssertEx.False(cache.TryGet(route, listener, request, "/private", out _));
-        AssertEx.True(cache.Snapshot(null).StoreRejectionCount > 0);
+        AssertEx.True(CacheStatus(cache, null).StoreRejectionCount > 0);
     }
 
     public static void CookieRequestIsNotCachedByDefault()
@@ -188,7 +188,7 @@ internal static class CacheTests
         cache.Store(route, listener, request, "/private", response, response.Headers, Encoding.ASCII.GetBytes("private"));
 
         AssertEx.False(cache.TryGet(route, listener, request, "/private", out _));
-        var snapshot = cache.Snapshot(null);
+        var snapshot = CacheStatus(cache, null);
         AssertEx.True(snapshot.Rejections.Any(static rejection => rejection.Reason == "cookie" && rejection.Count == 1));
     }
 
@@ -328,7 +328,7 @@ internal static class CacheTests
         clock.Advance(TimeSpan.FromSeconds(1));
         cache.Store(route, listener, Request("GET", "/two", "cache.test"), "/two", response, response.Headers, Encoding.ASCII.GetBytes("2222222222"));
 
-        var snapshot = cache.Snapshot(CreateStoreWithRoute(route).Snapshot);
+        var snapshot = CacheStatus(cache, CreateStoreWithRoute(route).Snapshot);
         AssertEx.Equal(1L, snapshot.EvictionCount);
         AssertEx.False(cache.TryGet(route, listener, Request("GET", "/one", "cache.test"), "/one", out _));
         AssertEx.True(cache.TryGet(route, listener, Request("GET", "/two", "cache.test"), "/two", out _));
@@ -408,8 +408,9 @@ internal static class CacheTests
         var second = await service.ReloadAsync(CancellationToken.None);
 
         AssertEx.True(second.Succeeded);
-        AssertEx.Equal(0, cache.Snapshot(store.Snapshot).EntryCount);
-        AssertEx.Equal("reload", cache.Snapshot(store.Snapshot).LastClearReason);
+        var cacheStatus = CacheStatus(cache, store.Snapshot);
+        AssertEx.Equal(0, cacheStatus.EntryCount);
+        AssertEx.Equal("reload", cacheStatus.LastClearReason);
     }
 
     public static async Task FailedReloadDoesNotClearCache()
@@ -427,7 +428,7 @@ internal static class CacheTests
         var second = await service.ReloadAsync(CancellationToken.None);
 
         AssertEx.False(second.Succeeded);
-        AssertEx.Equal(1, cache.Snapshot(store.Snapshot).EntryCount);
+        AssertEx.Equal(1, CacheStatus(cache, store.Snapshot).EntryCount);
     }
 
     public static void CacheStatusReaderShapesRoutesAndRejections()
@@ -559,7 +560,7 @@ internal static class CacheTests
         cache.Store(route, listener, request, "/reject", response, response.Headers, Encoding.ASCII.GetBytes("reject"));
 
         AssertEx.False(cache.TryGet(route, listener, request, "/reject", out _));
-        AssertEx.True(cache.Snapshot(null).StoreRejectionCount > 0);
+        AssertEx.True(CacheStatus(cache, null).StoreRejectionCount > 0);
     }
 
     private static void SeedCache(ResponseCacheStore cache, RuntimeRoute route, RuntimeListener listener)
@@ -567,6 +568,15 @@ internal static class CacheTests
         var request = Request("GET", "/seed", "cache.test");
         var response = Response("200 OK", []);
         cache.Store(route with { Cache = CachePolicy() }, listener, request, "/seed", response, response.Headers, Encoding.ASCII.GetBytes("seed"));
+    }
+
+    private static ProxyCacheStatusResponse CacheStatus(
+        ResponseCacheStore cache,
+        ProxyConfigurationSnapshot? configuration)
+    {
+        return ProxyCacheStatusReader.Project(
+            ProxyCacheStatusRouteSourceMapper.ToRouteSources(configuration),
+            cache.ReadStatusSnapshot());
     }
 
     private static async Task<TwoRequestProxyResult> RunTwoRequestProxyScenarioAsync(

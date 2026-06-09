@@ -31,7 +31,9 @@ public sealed class PrometheusMetricsExporter
     public string Export(ProxyConfigurationSnapshot snapshot)
     {
         var proxy = _metrics.Snapshot();
-        var cache = _cacheStore.Snapshot(snapshot);
+        var cache = ProxyCacheStatusReader.Project(
+            ProxyCacheStatusRouteSourceMapper.ToRouteSources(snapshot),
+            _cacheStore.ReadStatusSnapshot());
         var health = _healthStore.Snapshot(snapshot);
         var acme = _acmeStatusStore.Snapshot();
         var builder = new StringBuilder();

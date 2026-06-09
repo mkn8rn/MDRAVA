@@ -1,3 +1,5 @@
+using MDRAVA.BLL.Configuration;
+
 namespace MDRAVA.BLL.ControlPlane;
 
 public interface IProxyCacheStatusConfigurationSource
@@ -36,3 +38,17 @@ public sealed record ProxyCacheRuntimeRejectionSnapshot(
 public sealed record ProxyCacheRuntimeEntrySnapshot(
     string RouteName,
     long SizeBytes);
+
+public static class ProxyCacheStatusRouteSourceMapper
+{
+    public static IReadOnlyList<ProxyCacheStatusRouteSource> ToRouteSources(ProxyConfigurationSnapshot? snapshot)
+    {
+        return snapshot?.Routes
+            .Select(static route => new ProxyCacheStatusRouteSource(
+                route.Name,
+                route.Cache.Enabled,
+                route.Cache.MaxEntryBytes,
+                route.Cache.MaxTotalBytes))
+            .ToArray() ?? [];
+    }
+}

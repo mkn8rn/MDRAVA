@@ -52,12 +52,12 @@ internal static class RouteDiagnosticsTests
         var service = CreateRouteService(options, out var store, out var metrics);
         var cache = new ResponseCacheStore(TimeProvider.System);
         var beforeMetrics = metrics.Snapshot();
-        var beforeCache = cache.Snapshot(store.Snapshot);
+        var beforeCache = CacheStatus(cache, store.Snapshot);
 
         var result = service.Explain(new RouteMatchDryRunRequest("http", "diag.test", 8080, "GET", "/api/users", "", null, null, null));
 
         var afterMetrics = metrics.Snapshot();
-        var afterCache = cache.Snapshot(store.Snapshot);
+        var afterCache = CacheStatus(cache, store.Snapshot);
         AssertEx.True(result.WouldProxy);
         AssertEx.Equal(0L, afterMetrics.RetryAttempts - beforeMetrics.RetryAttempts);
         AssertEx.Equal(0L, afterMetrics.CircuitRejections - beforeMetrics.CircuitRejections);
@@ -528,6 +528,15 @@ internal static class RouteDiagnosticsTests
             new ProxyRouteDiagnosticsPathRewritePolicyAdapter(new PathRewritePolicy()),
             new ProxyRouteDiagnosticsMetricsSink(metrics),
             TimeProvider.System);
+    }
+
+    private static ProxyCacheStatusResponse CacheStatus(
+        ResponseCacheStore cache,
+        ProxyConfigurationSnapshot? configuration)
+    {
+        return ProxyCacheStatusReader.Project(
+            ProxyCacheStatusRouteSourceMapper.ToRouteSources(configuration),
+            cache.ReadStatusSnapshot());
     }
 
     private static RouteMatchDiagnosticsService CreateBllRouteService(

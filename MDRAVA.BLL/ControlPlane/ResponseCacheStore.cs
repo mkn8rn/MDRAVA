@@ -1,7 +1,7 @@
 using System.Text;
-using MDRAVA.API.Proxy.Protocol;
+using MDRAVA.BLL.Configuration;
 
-namespace MDRAVA.API.Proxy.Caching;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed class ResponseCacheStore : IProxyCacheControl
 {
@@ -180,13 +180,6 @@ public sealed class ResponseCacheStore : IProxyCacheControl
                     .Select(static entry => new ProxyCacheRuntimeEntrySnapshot(entry.RouteName, entry.SizeBytes))
                     .ToArray());
         }
-    }
-
-    public ProxyCacheStatusResponse Snapshot(ProxyConfigurationSnapshot? configuration)
-    {
-        return ProxyCacheStatusReader.Project(
-            ProxyCacheStatusRuntimeRouteSourceMapper.ToRouteSources(configuration),
-            ReadStatusSnapshot());
     }
 
     public void Clear(string reason)
