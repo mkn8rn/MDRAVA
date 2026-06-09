@@ -4,7 +4,6 @@ using System.Text;
 using MDRAVA.API.Controllers;
 using MDRAVA.API.Proxy.Acme;
 using MDRAVA.API.Proxy.Caching;
-using MDRAVA.API.Proxy.Configuration;
 using MDRAVA.API.Proxy.Configuration.Loading;
 using MDRAVA.INF.Configuration.Paths;
 using MDRAVA.API.Proxy.Configuration.Storage;
@@ -195,13 +194,15 @@ internal static class MetricsTests
 
     public static void InvalidMetricsConfigIsRejected()
     {
-        var failures = ProxyOperationalOptionsValidator.Validate(new ProxyOperationalOptions
-        {
-            Metrics = new ProxyMetricsOptions
+        var failures = ProxyOperationalOptionsValidationRules.Validate(
+            new ProxyOperationalOptions
             {
-                PublicMetricsEnabled = true
-            }
-        });
+                Metrics = new ProxyMetricsOptions
+                {
+                    PublicMetricsEnabled = true
+                }
+            },
+            static _ => null);
 
         AssertEx.True(failures.Any(static failure => failure.Contains("PublicMetricsEnabled", StringComparison.Ordinal)), string.Join("; ", failures));
     }

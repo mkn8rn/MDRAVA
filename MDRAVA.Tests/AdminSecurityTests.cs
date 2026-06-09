@@ -75,13 +75,15 @@ internal static class AdminSecurityTests
 
     public static void OperationalConfigRejectsNonLocalAdminUrlWithoutAuth()
     {
-        var failures = ProxyOperationalOptionsValidator.Validate(new ProxyOperationalOptions
-        {
-            Admin = new ProxyAdminOptions
+        var failures = ProxyOperationalOptionsValidationRules.Validate(
+            new ProxyOperationalOptions
             {
-                Urls = ["http://0.0.0.0:5041"]
-            }
-        });
+                Admin = new ProxyAdminOptions
+                {
+                    Urls = ["http://0.0.0.0:5041"]
+                }
+            },
+            static _ => null);
 
         AssertEx.True(failures.Any(static failure => failure.Contains("non-local", StringComparison.OrdinalIgnoreCase)));
     }

@@ -1,6 +1,5 @@
 using MDRAVA.API.Controllers;
 using MDRAVA.API.Proxy.Acme;
-using MDRAVA.API.Proxy.Configuration;
 using MDRAVA.API.Proxy.Configuration.Loading;
 using MDRAVA.INF.Configuration.Paths;
 using MDRAVA.API.Proxy.Configuration.Storage;
@@ -35,22 +34,24 @@ internal static class AcmeTests
 
     public static void AcmeConfigValidationRejectsMissingTermsAcceptance()
     {
-        var failures = ProxyOperationalOptionsValidator.Validate(new ProxyOperationalOptions
-        {
-            Acme = new ProxyAcmeOptions
+        var failures = ProxyOperationalOptionsValidationRules.Validate(
+            new ProxyOperationalOptions
             {
-                Enabled = true,
-                TermsAccepted = false,
-                Certificates =
-                [
-                    new AcmeManagedCertificateOptions
-                    {
-                        Id = "home-acme",
-                        Domains = ["home.example.test"]
-                    }
-                ]
-            }
-        });
+                Acme = new ProxyAcmeOptions
+                {
+                    Enabled = true,
+                    TermsAccepted = false,
+                    Certificates =
+                    [
+                        new AcmeManagedCertificateOptions
+                        {
+                            Id = "home-acme",
+                            Domains = ["home.example.test"]
+                        }
+                    ]
+                }
+            },
+            static _ => null);
 
         AssertEx.True(failures.Any(static failure => failure.Contains("TermsAccepted", StringComparison.Ordinal)));
     }
