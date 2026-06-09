@@ -1,7 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
-namespace MDRAVA.API.Proxy.Protocol;
+namespace MDRAVA.BLL.ControlPlane;
 
 public static class Http1RequestParser
 {

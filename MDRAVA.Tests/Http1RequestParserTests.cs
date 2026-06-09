@@ -1,5 +1,5 @@
 using System.Text;
-using MDRAVA.API.Proxy.Protocol;
+using MDRAVA.BLL.ControlPlane;
 
 namespace MDRAVA.Tests;
 

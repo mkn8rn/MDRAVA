@@ -13,6 +13,7 @@ internal static partial class TestRegistry
     Test("Http1RequestParser rejects Content-Length with Transfer-Encoding", Sync(Http1RequestParserTests.RejectsContentLengthWithTransferEncoding), TestTaxonomy.Http1, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
     Test("Http1RequestParser rejects unsupported Transfer-Encoding", Sync(Http1RequestParserTests.RejectsUnsupportedTransferEncoding), TestTaxonomy.Http1, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
     Test("Http1ResponseParser parses Content-Length response", Sync(Http1ResponseParserTests.ParsesContentLengthResponse), TestTaxonomy.Http1, TestTaxonomy.Headers),
+    Test("Http1ResponseParser treats zero Content-Length as no body", Sync(Http1ResponseParserTests.TreatsZeroContentLengthAsNoBody), TestTaxonomy.Http1, TestTaxonomy.Headers),
     Test("Http1ResponseParser parses chunked response", Sync(Http1ResponseParserTests.ParsesChunkedResponse), TestTaxonomy.Http1, TestTaxonomy.Headers),
     Test("Http1ResponseParser treats HEAD response as no body", Sync(Http1ResponseParserTests.TreatsHeadResponseAsNoBody), TestTaxonomy.Http1),
     Test("Http1ResponseParser treats 204 as no body", Sync(Http1ResponseParserTests.TreatsNoContentAsNoBody), TestTaxonomy.Http1),

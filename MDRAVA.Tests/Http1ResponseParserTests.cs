@@ -1,5 +1,5 @@
 using System.Text;
-using MDRAVA.API.Proxy.Protocol;
+using MDRAVA.BLL.ControlPlane;
 
 namespace MDRAVA.Tests;
 
@@ -17,6 +17,19 @@ internal static class Http1ResponseParserTests
         AssertEx.Equal(Http1ParseError.None, error);
         AssertEx.Equal(Http1BodyKind.ContentLength, AssertEx.NotNull(response).Framing.Kind);
         AssertEx.Equal(5L, AssertEx.NotNull(response).Framing.ContentLength);
+    }
+
+    public static void TreatsZeroContentLengthAsNoBody()
+    {
+        var parsed = Http1ResponseParser.TryParse(
+            Bytes("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n"),
+            "GET",
+            out var response,
+            out var error);
+
+        AssertEx.True(parsed);
+        AssertEx.Equal(Http1ParseError.None, error);
+        AssertEx.Equal(Http1BodyKind.None, AssertEx.NotNull(response).Framing.Kind);
     }
 
     public static void ParsesChunkedResponse()

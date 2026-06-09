@@ -10,7 +10,6 @@ using MDRAVA.API.Proxy.Configuration.Loading;
 using MDRAVA.INF.Configuration.Paths;
 using MDRAVA.API.Proxy.Forwarding;
 using MDRAVA.API.Proxy.Hosting;
-using MDRAVA.API.Proxy.Protocol;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;

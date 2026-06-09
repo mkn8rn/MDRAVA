@@ -11,7 +11,6 @@ using MDRAVA.API.Proxy.Connections;
 using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Hosting;
 using MDRAVA.API.Proxy.Metrics;
-using MDRAVA.API.Proxy.Protocol;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

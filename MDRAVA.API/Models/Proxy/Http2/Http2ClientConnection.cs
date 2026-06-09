@@ -11,7 +11,6 @@ using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Http3;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Observability;
-using MDRAVA.API.Proxy.Protocol;
 using MDRAVA.API.Proxy.Runtime;
 
 namespace MDRAVA.API.Proxy.Http2;
@@ -1271,18 +1270,24 @@ public sealed class Http2ClientConnection
                     return;
                 }
 
-                var headText = Encoding.ASCII.GetString(bytes, 0, split);
                 var bodyOffset = split + 4;
-                var statusAndHeaders = ParseHttp1ResponseHead(headText);
-                _dropBody = string.Equals(_method, "HEAD", StringComparison.OrdinalIgnoreCase)
-                    || statusAndHeaders.StatusCode is 204 or 304;
+                if (!Http1ResponseParser.TryParse(bytes.AsSpan(0, bodyOffset), _method, out var responseHead, out var parseError))
+                {
+                    throw new IOException($"Invalid HTTP/1 response head: {parseError}.");
+                }
+
+                _dropBody = Http1ResponseParser.IsNoBodyResponse(_method, responseHead.StatusCode);
+                var headers = new HopByHopHeaderPolicy().FilterForForwarding(
+                    responseHead.Headers,
+                    preserveTransferEncoding: false,
+                    preserveTrailer: false);
                 var bodyBytes = bytes.AsMemory(bodyOffset);
-                var endWithHeaders = _dropBody || IsZeroContentLength(statusAndHeaders.Headers);
+                var endWithHeaders = _dropBody || responseHead.Framing.Kind == Http1BodyKind.None;
                 await _connection.WriteFrameAsync(
                     Http2FrameType.Headers,
                     endWithHeaders ? (byte)(Http2Flags.EndHeaders | Http2Flags.EndStream) : Http2Flags.EndHeaders,
                     _streamId,
-                    HpackCodec.EncodeResponseHeaders(statusAndHeaders.StatusCode, statusAndHeaders.Headers),
+                    HpackCodec.EncodeResponseHeaders(responseHead.StatusCode, headers),
                     cancellationToken);
                 _headWritten = true;
                 _endStreamSent = endWithHeaders;
@@ -1299,38 +1304,6 @@ public sealed class Http2ClientConnection
             {
                 await _connection.WriteDataAsync(_streamId, buffer, endStream: false, cancellationToken);
             }
-        }
-
-        private static ResponseHead ParseHttp1ResponseHead(string text)
-        {
-            var lines = text.Split("\r\n", StringSplitOptions.None);
-            var statusParts = lines[0].Split(' ', 3, StringSplitOptions.RemoveEmptyEntries);
-            var statusCode = statusParts.Length >= 2 && int.TryParse(statusParts[1], out var parsed) ? parsed : 502;
-            List<Http1HeaderField> headers = [];
-            for (var index = 1; index < lines.Length; index++)
-            {
-                var colon = lines[index].IndexOf(':');
-                if (colon <= 0)
-                {
-                    continue;
-                }
-
-                var name = lines[index][..colon].Trim().ToLowerInvariant();
-                var value = lines[index][(colon + 1)..].Trim();
-                if (!HopByHopHeaderPolicy.IsHopByHopHeader(name))
-                {
-                    headers.Add(new Http1HeaderField(name, value));
-                }
-            }
-
-            return new ResponseHead(statusCode, headers);
-        }
-
-        private static bool IsZeroContentLength(IReadOnlyList<Http1HeaderField> headers)
-        {
-            return headers.Any(static header =>
-                string.Equals(header.Name, "content-length", StringComparison.OrdinalIgnoreCase)
-                && string.Equals(header.Value.Trim(), "0", StringComparison.Ordinal));
         }
 
         private static int IndexOfHeaderEnd(ReadOnlySpan<byte> bytes)
@@ -1855,8 +1828,6 @@ public sealed class Http2ClientConnection
     }
 
     private readonly record struct HeaderField(string Name, string Value);
-
-    private readonly record struct ResponseHead(int StatusCode, IReadOnlyList<Http1HeaderField> Headers);
 
     private readonly record struct Http2Frame(Http2FrameType Type, byte Flags, int StreamId, ReadOnlyMemory<byte> Payload);
 

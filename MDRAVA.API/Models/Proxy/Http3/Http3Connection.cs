@@ -8,7 +8,6 @@ using MDRAVA.API.Proxy.Forwarding;
 using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Observability;
-using MDRAVA.API.Proxy.Protocol;
 using MDRAVA.API.Proxy.Runtime;
 
 namespace MDRAVA.API.Proxy.Http3;
@@ -1279,18 +1278,24 @@ public sealed class Http3Connection
                     return;
                 }
 
-                var headText = Encoding.ASCII.GetString(bytes, 0, split);
                 var bodyOffset = split + 4;
-                var statusAndHeaders = ParseHttp1ResponseHead(headText);
-                _dropBody = string.Equals(_method, "HEAD", StringComparison.OrdinalIgnoreCase)
-                    || statusAndHeaders.StatusCode is 204 or 304;
-                _decodeChunkedBody = statusAndHeaders.ChunkedTransfer && !_dropBody;
+                if (!Http1ResponseParser.TryParse(bytes.AsSpan(0, bodyOffset), _method, out var responseHead, out var parseError))
+                {
+                    throw new IOException($"Invalid HTTP/1 response head: {parseError}.");
+                }
+
+                _dropBody = Http1ResponseParser.IsNoBodyResponse(_method, responseHead.StatusCode);
+                _decodeChunkedBody = responseHead.Framing.Kind == Http1BodyKind.Chunked && !_dropBody;
+                var headers = new HopByHopHeaderPolicy().FilterForForwarding(
+                    responseHead.Headers,
+                    preserveTransferEncoding: false,
+                    preserveTrailer: false);
                 var bodyBytes = bytes.AsMemory(bodyOffset);
-                var endWithHeaders = _dropBody || (!_decodeChunkedBody && IsZeroContentLength(statusAndHeaders.Headers));
+                var endWithHeaders = _dropBody || (!_decodeChunkedBody && responseHead.Framing.Kind == Http1BodyKind.None);
                 await _connection.WriteHeadersAsync(
                     _stream,
-                    statusAndHeaders.StatusCode,
-                    statusAndHeaders.Headers,
+                    responseHead.StatusCode,
+                    headers,
                     completeWrites: endWithHeaders,
                     cancellationToken);
                 _headWritten = true;
@@ -1457,45 +1462,6 @@ public sealed class Http3Connection
             _connection._metrics.Http3ResponseStreamEnded();
         }
 
-        private static ResponseHead ParseHttp1ResponseHead(string text)
-        {
-            var lines = text.Split("\r\n", StringSplitOptions.None);
-            var statusParts = lines[0].Split(' ', 3, StringSplitOptions.RemoveEmptyEntries);
-            var statusCode = statusParts.Length >= 2 && int.TryParse(statusParts[1], out var parsed) ? parsed : 502;
-            List<Http1HeaderField> headers = [];
-            var chunkedTransfer = false;
-            for (var index = 1; index < lines.Length; index++)
-            {
-                var colon = lines[index].IndexOf(':');
-                if (colon <= 0)
-                {
-                    continue;
-                }
-
-                var name = lines[index][..colon].Trim().ToLowerInvariant();
-                var value = lines[index][(colon + 1)..].Trim();
-                if (string.Equals(name, "transfer-encoding", StringComparison.OrdinalIgnoreCase)
-                    && value.Contains("chunked", StringComparison.OrdinalIgnoreCase))
-                {
-                    chunkedTransfer = true;
-                }
-
-                if (!HopByHopHeaderPolicy.IsHopByHopHeader(name))
-                {
-                    headers.Add(new Http1HeaderField(name, value));
-                }
-            }
-
-            return new ResponseHead(statusCode, headers, chunkedTransfer);
-        }
-
-        private static bool IsZeroContentLength(IReadOnlyList<Http1HeaderField> headers)
-        {
-            return headers.Any(static header =>
-                string.Equals(header.Name, "content-length", StringComparison.OrdinalIgnoreCase)
-                && string.Equals(header.Value.Trim(), "0", StringComparison.Ordinal));
-        }
-
         private static int IndexOfHeaderEnd(ReadOnlySpan<byte> bytes)
         {
             for (var index = 3; index < bytes.Length; index++)
@@ -1548,5 +1514,4 @@ public sealed class Http3Connection
         Complete
     }
 
-    private readonly record struct ResponseHead(int StatusCode, IReadOnlyList<Http1HeaderField> Headers, bool ChunkedTransfer);
 }
