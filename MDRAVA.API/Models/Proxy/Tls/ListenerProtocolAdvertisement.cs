@@ -6,29 +6,15 @@ public static class ListenerProtocolAdvertisement
 {
     public static List<SslApplicationProtocol> BuildTcpAlpn(RuntimeListenerProtocols protocols)
     {
-        List<SslApplicationProtocol> advertised = [];
-        if (protocols.HasFlag(RuntimeListenerProtocols.Http2))
-        {
-            advertised.Add(SslApplicationProtocol.Http2);
-        }
-
-        if (protocols.HasFlag(RuntimeListenerProtocols.Http1))
-        {
-            advertised.Add(SslApplicationProtocol.Http11);
-        }
-
-        return advertised;
+        return ListenerProtocolAdvertisementPolicy.BuildTcpAlpnProtocolNames(protocols)
+            .Select(static protocol => new SslApplicationProtocol(protocol))
+            .ToList();
     }
 
     public static List<SslApplicationProtocol> BuildHttp3Alpn(RuntimeListener listener)
     {
-        return listener.Http3.EnabledForTraffic
-            ? [new SslApplicationProtocol("h3")]
-            : [];
-    }
-
-    public static string ToConfigText(RuntimeListenerProtocols protocols)
-    {
-        return protocols.ToConfigText();
+        return ListenerProtocolAdvertisementPolicy.BuildHttp3AlpnProtocolNames(listener)
+            .Select(static protocol => new SslApplicationProtocol(protocol))
+            .ToList();
     }
 }

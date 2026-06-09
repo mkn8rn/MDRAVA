@@ -374,9 +374,15 @@ internal static class Http3InfrastructureTests
     {
         var listener = RuntimeListenerFor("http1AndHttp2AndHttp3");
         var protocols = listener.Protocols;
+        var tcpPolicy = ListenerProtocolAdvertisementPolicy.BuildTcpAlpnProtocolNames(protocols);
+        var quicPolicy = ListenerProtocolAdvertisementPolicy.BuildHttp3AlpnProtocolNames(listener);
         var tcpAlpn = ListenerProtocolAdvertisement.BuildTcpAlpn(protocols);
         var quicAlpn = ListenerProtocolAdvertisement.BuildHttp3Alpn(listener);
 
+        AssertEx.True(tcpPolicy.Contains(ListenerProtocolAdvertisementPolicy.Http2Alpn));
+        AssertEx.True(tcpPolicy.Contains(ListenerProtocolAdvertisementPolicy.Http1Alpn));
+        AssertEx.False(tcpPolicy.Contains(ListenerProtocolAdvertisementPolicy.Http3Alpn));
+        AssertEx.True(quicPolicy.Contains(ListenerProtocolAdvertisementPolicy.Http3Alpn));
         AssertEx.True(tcpAlpn.Contains(SslApplicationProtocol.Http2));
         AssertEx.True(tcpAlpn.Contains(SslApplicationProtocol.Http11));
         AssertEx.False(tcpAlpn.Any(static protocol => protocol.Protocol.Span.SequenceEqual("h3"u8)));
