@@ -63,6 +63,8 @@ public static class ProxyServiceCollectionExtensions
             static services => services.GetRequiredService<ProxyMetrics>());
         services.AddSingleton<IProxyUpstreamHealthMetricsSink>(
             static services => services.GetRequiredService<ProxyMetrics>());
+        services.AddSingleton<IProxyHttp3AltSvcMetricsSink>(
+            static services => services.GetRequiredService<ProxyMetrics>());
         services.AddSingleton<PrometheusMetricsExporter>();
         services.AddSingleton<IProxyMetricsExportAvailabilityReader, ProxyMetricsExportAvailabilityReader>();
         services.AddSingleton<ProxyMetricsExportAvailabilityService>();

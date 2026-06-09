@@ -7,7 +7,8 @@ public sealed class ProxyMetrics :
     IProxyStatusMetricsSource,
     IProxyUpstreamSelectionMetricsSink,
     IProxyCircuitBreakerMetricsSink,
-    IProxyUpstreamHealthMetricsSink
+    IProxyUpstreamHealthMetricsSink,
+    IProxyHttp3AltSvcMetricsSink
 {
     private static readonly ProxyFailureKind[] FailureKinds = Enum.GetValues<ProxyFailureKind>();
     private const int MaxLabelLength = 96;

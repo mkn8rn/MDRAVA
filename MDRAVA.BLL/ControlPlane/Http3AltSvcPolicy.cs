@@ -1,15 +1,15 @@
-using MDRAVA.API.Proxy.Hosting;
-using MDRAVA.API.Proxy.Metrics;
-using MDRAVA.API.Proxy.Protocol;
+using MDRAVA.BLL.Configuration;
 
-namespace MDRAVA.API.Proxy.Http3;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed class Http3AltSvcPolicy
 {
-    private readonly ProxyRuntimeState _runtimeState;
-    private readonly ProxyMetrics _metrics;
+    private readonly IProxyStatusRuntimeStateSource _runtimeState;
+    private readonly IProxyHttp3AltSvcMetricsSink _metrics;
 
-    public Http3AltSvcPolicy(ProxyRuntimeState runtimeState, ProxyMetrics metrics)
+    public Http3AltSvcPolicy(
+        IProxyStatusRuntimeStateSource runtimeState,
+        IProxyHttp3AltSvcMetricsSink metrics)
     {
         _runtimeState = runtimeState;
         _metrics = metrics;
@@ -24,7 +24,7 @@ public sealed class Http3AltSvcPolicy
             return false;
         }
 
-        var runtime = _runtimeState.Snapshot();
+        var runtime = _runtimeState.ReadRuntime();
         if (!RuntimeHttp3AltSvcPolicy.HasActiveQuicListener(listener, runtime.Listeners))
         {
             _metrics.Http3AltSvcSuppressed();

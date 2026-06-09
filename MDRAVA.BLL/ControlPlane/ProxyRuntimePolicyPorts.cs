@@ -29,6 +29,13 @@ public interface IProxyUpstreamHealthMetricsSink
     void UpstreamRequestFailed(RuntimeUpstream upstream);
 }
 
+public interface IProxyHttp3AltSvcMetricsSink
+{
+    void Http3AltSvcEmitted();
+
+    void Http3AltSvcSuppressed();
+}
+
 public interface IUpstreamConnectionPruner
 {
     void PruneIdleConnections(RuntimeUpstream upstream);
