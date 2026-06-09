@@ -1,9 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Net;
-using MDRAVA.API.Proxy.Protocol;
+using MDRAVA.BLL.Configuration;
 
-namespace MDRAVA.API.Proxy.Forwarding;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed class ForwardedHeadersPolicy
 {

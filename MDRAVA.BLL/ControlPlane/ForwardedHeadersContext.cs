@@ -1,6 +1,6 @@
 using System.Net;
 
-namespace MDRAVA.API.Models.Forwarding;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed record ForwardedHeadersContext(
     IPAddress? ResolvedClientIp,
