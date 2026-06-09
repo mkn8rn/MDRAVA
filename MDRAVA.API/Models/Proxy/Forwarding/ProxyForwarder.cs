@@ -9,7 +9,6 @@ using MDRAVA.API.Proxy.Http2;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Observability;
 using MDRAVA.API.Proxy.Protocol;
-using MDRAVA.API.Proxy.Routing;
 
 namespace MDRAVA.API.Proxy.Forwarding;
 

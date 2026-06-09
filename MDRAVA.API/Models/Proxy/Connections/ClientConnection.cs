@@ -11,9 +11,7 @@ using MDRAVA.API.Proxy.Http3;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Observability;
 using MDRAVA.API.Proxy.Protocol;
-using MDRAVA.API.Proxy.Routing;
 using MDRAVA.API.Proxy.Runtime;
-using MDRAVA.API.Proxy.Resilience;
 using MDRAVA.API.Proxy.Tls;
 using System.Net;
 

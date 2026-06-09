@@ -8,6 +8,4 @@ global using MDRAVA.INF.Observability;
 global using MDRAVA.INF.Runtime;
 global using MDRAVA.API.Models.Acme;
 global using MDRAVA.API.Models.Forwarding;
-global using MDRAVA.API.Models.Health;
 global using MDRAVA.API.Models.Observability;
-global using MDRAVA.API.Models.Routing;

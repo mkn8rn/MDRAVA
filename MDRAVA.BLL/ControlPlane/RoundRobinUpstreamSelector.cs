@@ -1,21 +1,19 @@
 using System.Collections.Concurrent;
-using MDRAVA.API.Proxy.Health;
-using MDRAVA.API.Proxy.Metrics;
-using MDRAVA.API.Proxy.Resilience;
+using MDRAVA.BLL.Configuration;
 
-namespace MDRAVA.API.Proxy.Routing;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed class RoundRobinUpstreamSelector : IUpstreamSelector
 {
     private readonly UpstreamHealthStore _healthStore;
     private readonly CircuitBreakerStore _circuitBreakerStore;
-    private readonly ProxyMetrics _metrics;
+    private readonly IProxyUpstreamSelectionMetricsSink _metrics;
     private readonly ConcurrentDictionary<string, int> _nextIndexes = new(StringComparer.OrdinalIgnoreCase);
 
     public RoundRobinUpstreamSelector(
         UpstreamHealthStore healthStore,
         CircuitBreakerStore circuitBreakerStore,
-        ProxyMetrics metrics)
+        IProxyUpstreamSelectionMetricsSink metrics)
     {
         _healthStore = healthStore;
         _circuitBreakerStore = circuitBreakerStore;

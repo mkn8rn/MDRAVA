@@ -1,31 +1,29 @@
 using System.Collections.Concurrent;
-using MDRAVA.API.Proxy.Connections;
-using MDRAVA.API.Proxy.Metrics;
-using MDRAVA.API.Proxy.Resilience;
+using MDRAVA.BLL.Configuration;
 
-namespace MDRAVA.API.Proxy.Health;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
 {
     private readonly ConcurrentDictionary<string, MutableUpstreamHealth> _states = new(StringComparer.OrdinalIgnoreCase);
-    private readonly ProxyMetrics _metrics;
-    private readonly UpstreamConnectionPool _connectionPool;
+    private readonly IProxyUpstreamHealthMetricsSink _metrics;
+    private readonly IUpstreamConnectionPruner _connectionPruner;
     private readonly CircuitBreakerStore? _circuitBreakerStore;
 
     public UpstreamHealthStore(
-        ProxyMetrics metrics,
-        UpstreamConnectionPool connectionPool,
+        IProxyUpstreamHealthMetricsSink metrics,
+        IUpstreamConnectionPruner connectionPruner,
         CircuitBreakerStore? circuitBreakerStore)
     {
         _metrics = metrics;
-        _connectionPool = connectionPool;
+        _connectionPruner = connectionPruner;
         _circuitBreakerStore = circuitBreakerStore;
     }
 
     public UpstreamHealthStore(
-        ProxyMetrics metrics,
-        UpstreamConnectionPool connectionPool)
-        : this(metrics, connectionPool, null)
+        IProxyUpstreamHealthMetricsSink metrics,
+        IUpstreamConnectionPruner connectionPruner)
+        : this(metrics, connectionPruner, null)
     {
     }
 
@@ -88,7 +86,7 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
                 _metrics.UpstreamHealthTransition();
                 if (state.State == UpstreamHealthState.Unhealthy)
                 {
-                    _connectionPool.PruneIdleConnections(upstream);
+                    _connectionPruner.PruneIdleConnections(upstream);
                 }
             }
 

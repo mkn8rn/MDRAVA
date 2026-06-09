@@ -9,8 +9,6 @@ using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Hosting;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Protocol;
-using MDRAVA.API.Proxy.Resilience;
-using MDRAVA.API.Proxy.Routing;
 using MDRAVA.API.Proxy.Security;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;

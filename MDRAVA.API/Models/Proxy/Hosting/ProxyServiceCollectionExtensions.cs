@@ -9,9 +9,7 @@ using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Http3;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Observability;
-using MDRAVA.API.Proxy.Routing;
 using MDRAVA.API.Proxy.Runtime;
-using MDRAVA.API.Proxy.Resilience;
 using MDRAVA.API.Proxy.Security;
 using MDRAVA.API.Proxy.Tls;
 using MDRAVA.BLL.Infrastructure;
@@ -59,6 +57,12 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<IProxyConfigurationReadOperations<ProxyConfigurationProjection>, ProxyConfigurationReadOperations<ProxyConfigurationProjection>>();
         services.AddSingleton<ProxyConfigurationReadAdministrationService<ProxyConfigurationProjection>>();
         services.AddSingleton<ProxyMetrics>();
+        services.AddSingleton<IProxyUpstreamSelectionMetricsSink>(
+            static services => services.GetRequiredService<ProxyMetrics>());
+        services.AddSingleton<IProxyCircuitBreakerMetricsSink>(
+            static services => services.GetRequiredService<ProxyMetrics>());
+        services.AddSingleton<IProxyUpstreamHealthMetricsSink>(
+            static services => services.GetRequiredService<ProxyMetrics>());
         services.AddSingleton<PrometheusMetricsExporter>();
         services.AddSingleton<IProxyMetricsExportAvailabilityReader, ProxyMetricsExportAvailabilityReader>();
         services.AddSingleton<ProxyMetricsExportAvailabilityService>();
@@ -131,6 +135,8 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<IUpstreamSelector, RoundRobinUpstreamSelector>();
         services.AddSingleton<UpstreamConnectionFactory>();
         services.AddSingleton<UpstreamConnectionPool>();
+        services.AddSingleton<IUpstreamConnectionPruner>(
+            static services => services.GetRequiredService<UpstreamConnectionPool>());
         services.AddSingleton<Http3UpstreamConnectionPool>();
         services.AddSingleton<UpstreamHealthCheckClient>();
         services.AddSingleton<HopByHopHeaderPolicy>();

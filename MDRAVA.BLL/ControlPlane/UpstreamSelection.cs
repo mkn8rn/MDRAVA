@@ -1,6 +1,6 @@
-using MDRAVA.API.Proxy.Resilience;
+using MDRAVA.BLL.Configuration;
 
-namespace MDRAVA.API.Models.Routing;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed record UpstreamSelection(
     RuntimeRoute Route,

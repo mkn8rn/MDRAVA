@@ -2,7 +2,7 @@ using MDRAVA.API.Proxy.Metrics;
 
 namespace MDRAVA.API.Proxy.Connections;
 
-public sealed class UpstreamConnectionPool : IDisposable
+public sealed class UpstreamConnectionPool : IUpstreamConnectionPruner, IDisposable
 {
     private readonly UpstreamConnectionFactory _connectionFactory;
     private readonly ProxyMetrics _metrics;

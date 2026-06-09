@@ -1,5 +1,4 @@
 using MDRAVA.API.Proxy.Metrics;
-using MDRAVA.API.Proxy.Routing;
 
 namespace MDRAVA.API.Proxy.Diagnostics;
 

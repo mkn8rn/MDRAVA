@@ -3,7 +3,11 @@ using MDRAVA.API.Proxy.Observability;
 
 namespace MDRAVA.API.Proxy.Metrics;
 
-public sealed class ProxyMetrics : IProxyStatusMetricsSource
+public sealed class ProxyMetrics :
+    IProxyStatusMetricsSource,
+    IProxyUpstreamSelectionMetricsSink,
+    IProxyCircuitBreakerMetricsSink,
+    IProxyUpstreamHealthMetricsSink
 {
     private static readonly ProxyFailureKind[] FailureKinds = Enum.GetValues<ProxyFailureKind>();
     private const int MaxLabelLength = 96;
@@ -335,19 +339,16 @@ public sealed class ProxyMetrics : IProxyStatusMetricsSource
 
     public void TunnelRelayFailed() => Interlocked.Increment(ref _tunnelRelayFailures);
 
-    public void UpstreamSelected(object upstream)
+    public void UpstreamSelected(RuntimeUpstream upstream)
     {
         Interlocked.Increment(ref _upstreamSelections);
-        if (upstream is RuntimeUpstream runtimeUpstream)
-        {
-            var key = new UpstreamSelectionKey(
-                NormalizeLabel(runtimeUpstream.RouteName),
-                NormalizeLabel(runtimeUpstream.Name),
-                NormalizeLabel(runtimeUpstream.Scheme),
-                NormalizeLabel(runtimeUpstream.Protocol));
-            var counter = _upstreamSelectionsByUpstream.GetOrAdd(key, static _ => new RequestSeriesCounter());
-            Interlocked.Increment(ref counter.Count);
-        }
+        var key = new UpstreamSelectionKey(
+            NormalizeLabel(upstream.RouteName),
+            NormalizeLabel(upstream.Name),
+            NormalizeLabel(upstream.Scheme),
+            NormalizeLabel(upstream.Protocol));
+        var counter = _upstreamSelectionsByUpstream.GetOrAdd(key, static _ => new RequestSeriesCounter());
+        Interlocked.Increment(ref counter.Count);
     }
 
     public void NoHealthyUpstream() => Interlocked.Increment(ref _noHealthyUpstreamFailures);
@@ -362,7 +363,7 @@ public sealed class ProxyMetrics : IProxyStatusMetricsSource
 
     public void UpstreamHealthTransition() => Interlocked.Increment(ref _upstreamHealthTransitions);
 
-    public void UpstreamRequestFailed(object _) => Interlocked.Increment(ref _upstreamRequestFailures);
+    public void UpstreamRequestFailed(RuntimeUpstream upstream) => Interlocked.Increment(ref _upstreamRequestFailures);
 
     public void RequestIdGenerated() => Interlocked.Increment(ref _requestIdsGenerated);
 
@@ -435,13 +436,13 @@ public sealed class ProxyMetrics : IProxyStatusMetricsSource
         Interlocked.Increment(ref counter.Count);
     }
 
-    public void CircuitOpened(object _) => Interlocked.Increment(ref _circuitOpened);
+    public void CircuitOpened(RuntimeUpstream upstream) => Interlocked.Increment(ref _circuitOpened);
 
-    public void CircuitHalfOpened(object _) => Interlocked.Increment(ref _circuitHalfOpened);
+    public void CircuitHalfOpened(RuntimeUpstream upstream) => Interlocked.Increment(ref _circuitHalfOpened);
 
-    public void CircuitClosed(object _) => Interlocked.Increment(ref _circuitClosed);
+    public void CircuitClosed(RuntimeUpstream upstream) => Interlocked.Increment(ref _circuitClosed);
 
-    public void CircuitRejected(object _) => Interlocked.Increment(ref _circuitRejections);
+    public void CircuitRejected(RuntimeUpstream upstream) => Interlocked.Increment(ref _circuitRejections);
 
     public void ListenerReloadAttempted() => Interlocked.Increment(ref _listenerReloadAttempts);
 

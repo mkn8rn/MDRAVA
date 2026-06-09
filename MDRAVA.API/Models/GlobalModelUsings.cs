@@ -7,7 +7,5 @@ global using MDRAVA.INF.Configuration.Loading;
 global using MDRAVA.INF.Runtime;
 global using MDRAVA.API.Models.Acme;
 global using MDRAVA.API.Models.Forwarding;
-global using MDRAVA.API.Models.Health;
 global using MDRAVA.API.Models.Observability;
-global using MDRAVA.API.Models.Routing;
 global using MDRAVA.API.Models.Tls;

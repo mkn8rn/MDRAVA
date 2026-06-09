@@ -1,5 +1,6 @@
+using MDRAVA.BLL.Configuration;
 
-namespace MDRAVA.API.Proxy.Resilience;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed class CircuitBreakerLease : IDisposable
 {

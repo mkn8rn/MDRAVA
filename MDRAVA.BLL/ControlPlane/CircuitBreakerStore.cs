@@ -1,15 +1,15 @@
 using System.Collections.Concurrent;
-using MDRAVA.API.Proxy.Metrics;
+using MDRAVA.BLL.Configuration;
 
-namespace MDRAVA.API.Proxy.Resilience;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed class CircuitBreakerStore
 {
     private readonly ConcurrentDictionary<string, MutableCircuitState> _states = new(StringComparer.OrdinalIgnoreCase);
-    private readonly ProxyMetrics _metrics;
+    private readonly IProxyCircuitBreakerMetricsSink _metrics;
     private readonly TimeProvider _timeProvider;
 
-    public CircuitBreakerStore(ProxyMetrics metrics, TimeProvider timeProvider)
+    public CircuitBreakerStore(IProxyCircuitBreakerMetricsSink metrics, TimeProvider timeProvider)
     {
         _metrics = metrics;
         _timeProvider = timeProvider;

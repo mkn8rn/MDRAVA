@@ -1,5 +1,6 @@
+using MDRAVA.BLL.Configuration;
 
-namespace MDRAVA.API.Proxy.Routing;
+namespace MDRAVA.BLL.ControlPlane;
 
 public interface IUpstreamSelector
 {
