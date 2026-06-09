@@ -83,7 +83,7 @@ public sealed class ProxyConfigurationReloadService
                 loadResult.Discovery,
                 loadResult.Errors,
                 loadResult.FileErrors,
-                existing is null ? null : ProxyConfigurationMapper.ToProjection(existing));
+                existing is null ? null : ProxyConfigurationProjectionMapper.ToProjection(existing));
         }
 
         ProxyListenerReloadResult? listenerReload = null;
@@ -112,7 +112,7 @@ public sealed class ProxyConfigurationReloadService
                     loadResult.Discovery,
                     listenerReload.Errors,
                     listenerReload.Errors.Select(static error => new ProxyConfigurationFileError(null, error)).ToArray(),
-                    existing is null ? null : ProxyConfigurationMapper.ToProjection(existing))
+                    existing is null ? null : ProxyConfigurationProjectionMapper.ToProjection(existing))
                 {
                     ListenerReload = listenerReload
                 };
@@ -138,7 +138,7 @@ public sealed class ProxyConfigurationReloadService
             loadResult.Discovery,
             [],
             [],
-            ProxyConfigurationMapper.ToProjection(snapshot))
+            ProxyConfigurationProjectionMapper.ToProjection(snapshot))
         {
             ListenerReload = listenerReload
         };

@@ -232,7 +232,7 @@ internal static class PerformanceSmokeRunner
         {
             var result = await loader.LoadAsync(CancellationToken.None);
             AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
-            var projection = ProxyConfigurationMapper.ToProjection(AssertEx.NotNull(result.Snapshot));
+            var projection = ProxyConfigurationProjectionMapper.ToProjection(AssertEx.NotNull(result.Snapshot));
             AssertEx.Equal(sites, projection.Routes.Count);
         }
 

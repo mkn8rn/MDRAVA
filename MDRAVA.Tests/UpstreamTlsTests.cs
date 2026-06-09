@@ -217,7 +217,7 @@ internal static class UpstreamTlsTests
         var result = await CreateLoader(temp.Path).LoadAsync(CancellationToken.None);
 
         AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
-        var projection = ProxyConfigurationMapper.ToProjection(AssertEx.NotNull(result.Snapshot));
+        var projection = ProxyConfigurationProjectionMapper.ToProjection(AssertEx.NotNull(result.Snapshot));
         var upstream = projection.Routes[0].Upstreams[0];
         AssertEx.Equal("https", upstream.Scheme);
         AssertEx.False(upstream.Tls.ValidateCertificate);

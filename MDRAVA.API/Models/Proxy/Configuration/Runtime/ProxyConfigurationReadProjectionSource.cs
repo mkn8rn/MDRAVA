@@ -15,7 +15,7 @@ public sealed class ProxyConfigurationReadProjectionSource
     public ProxyConfigurationProjection? ReadCurrent()
     {
         return _configurationStore.TryGetSnapshot(out var snapshot) && snapshot is not null
-            ? ProxyConfigurationMapper.ToProjection(snapshot)
+            ? ProxyConfigurationProjectionMapper.ToProjection(snapshot)
             : null;
     }
 }

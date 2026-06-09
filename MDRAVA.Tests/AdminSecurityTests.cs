@@ -279,7 +279,7 @@ internal static class AdminSecurityTests
     {
         var store = CreateStoreWithAdminAuthentication();
 
-        var projection = ProxyConfigurationMapper.ToProjection(store.Snapshot);
+        var projection = ProxyConfigurationProjectionMapper.ToProjection(store.Snapshot);
 
         AssertEx.Equal(true, projection.AdminSecurity.RequireAuthentication);
         AssertEx.Equal(true, projection.AdminSecurity.HasConfiguredToken);

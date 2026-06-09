@@ -372,7 +372,7 @@ internal static class ConfigurationTests
         var snapshot = AssertEx.NotNull(result.Snapshot);
         AssertEx.Equal(RuntimeListenerTransport.Https, snapshot.Listeners[0].Transport);
         AssertEx.Equal(1, snapshot.Certificates.Count);
-        var projection = ProxyConfigurationMapper.ToProjection(snapshot);
+        var projection = ProxyConfigurationProjectionMapper.ToProjection(snapshot);
         AssertEx.Equal(1, projection.Certificates.Count);
         AssertEx.Equal(true, projection.Certificates[0].HasConfiguredPassword);
     }
@@ -838,7 +838,7 @@ internal static class ConfigurationTests
         var result = await CreateLoader(temp.Path).LoadAsync(CancellationToken.None);
 
         AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
-        var projection = ProxyConfigurationMapper.ToProjection(AssertEx.NotNull(result.Snapshot));
+        var projection = ProxyConfigurationProjectionMapper.ToProjection(AssertEx.NotNull(result.Snapshot));
         AssertEx.True(projection.Certificates[0].NotAfter < DateTime.UtcNow);
         AssertEx.True(projection.Certificates[0].NotBefore < projection.Certificates[0].NotAfter);
     }
@@ -859,7 +859,7 @@ internal static class ConfigurationTests
         var result = await CreateLoader(temp.Path).LoadAsync(CancellationToken.None);
 
         AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
-        var projection = ProxyConfigurationMapper.ToProjection(AssertEx.NotNull(result.Snapshot));
+        var projection = ProxyConfigurationProjectionMapper.ToProjection(AssertEx.NotNull(result.Snapshot));
         AssertEx.True(projection.Certificates[0].NotBefore > DateTime.UtcNow);
         AssertEx.True(projection.Certificates[0].NotAfter > projection.Certificates[0].NotBefore);
     }
