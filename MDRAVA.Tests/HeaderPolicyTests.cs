@@ -37,4 +37,29 @@ internal static class HeaderPolicyTests
         AssertEx.Equal(1, filtered.Count);
         AssertEx.Equal("Host", filtered[0].Name);
     }
+
+    public static void ClassifiesHopByHopNamesAndConnectionTokens()
+    {
+        var policy = new HopByHopHeaderPolicy();
+        var filtered = policy.FilterForForwarding(
+            [
+                new Http1HeaderField("Host", "example.test"),
+                new Http1HeaderField("Proxy-Connection", "keep-alive"),
+                new Http1HeaderField("TE", "trailers"),
+                new Http1HeaderField("Trailer", "expires")
+            ],
+            preserveTransferEncoding: false,
+            preserveTrailer: false);
+
+        AssertEx.Equal(1, filtered.Count);
+        AssertEx.Equal("Host", filtered[0].Name);
+        AssertEx.True(HopByHopHeaderPolicy.IsHopByHopHeader("proxy-connection"));
+        AssertEx.True(HopByHopHeaderPolicy.IsHopByHopHeader("TE"));
+        AssertEx.True(HopByHopHeaderPolicy.HasConnectionToken(
+            [new Http1HeaderField("Connection", "keep-alive, Upgrade")],
+            "upgrade"));
+        AssertEx.False(HopByHopHeaderPolicy.HasConnectionToken(
+            [new Http1HeaderField("Connection", "keep-alive")],
+            "upgrade"));
+    }
 }

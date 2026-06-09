@@ -4,7 +4,7 @@ public sealed class UpgradeRequestPolicy
 {
     public bool IsUpgradeRequest(Http1RequestHead requestHead)
     {
-        return HasConnectionToken(requestHead.Headers, "upgrade")
+        return HopByHopHeaderPolicy.HasConnectionToken(requestHead.Headers, "upgrade")
             || HasHeader(requestHead.Headers, "Upgrade");
     }
 
@@ -22,7 +22,7 @@ public sealed class UpgradeRequestPolicy
             return false;
         }
 
-        if (!HasConnectionToken(requestHead.Headers, "upgrade"))
+        if (!HopByHopHeaderPolicy.HasConnectionToken(requestHead.Headers, "upgrade"))
         {
             rejectionReason = "HTTP Upgrade requires Connection: Upgrade.";
             return false;
@@ -80,27 +80,6 @@ public sealed class UpgradeRequestPolicy
         }
 
         return null;
-    }
-
-    public static bool HasConnectionToken(IReadOnlyList<Http1HeaderField> headers, string token)
-    {
-        foreach (var header in headers)
-        {
-            if (!string.Equals(header.Name, "Connection", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            foreach (var value in header.Value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
-            {
-                if (string.Equals(value, token, StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
     }
 
     private static bool HasHeader(IReadOnlyList<Http1HeaderField> headers, string name)

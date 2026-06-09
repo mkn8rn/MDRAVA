@@ -491,7 +491,7 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
                 throw new Http3UpstreamProtocolException("Upstream sent an invalid HTTP/3 response pseudo-header.");
             }
 
-            if (IsHopByHopHeader(header.Name))
+            if (HopByHopHeaderPolicy.IsHopByHopHeader(header.Name))
             {
                 throw new Http3UpstreamProtocolException("Upstream sent a forbidden HTTP/3 hop-by-hop response header.");
             }
@@ -523,17 +523,6 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
         }
 
         return new IPEndPoint(addresses[0], upstream.Port);
-    }
-
-    private static bool IsHopByHopHeader(string name)
-    {
-        return string.Equals(name, "connection", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(name, "keep-alive", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(name, "proxy-connection", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(name, "proxy-authenticate", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(name, "proxy-authorization", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(name, "transfer-encoding", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(name, "upgrade", StringComparison.OrdinalIgnoreCase);
     }
 
     private static async ValueTask DisposePartialConnectionAsync(

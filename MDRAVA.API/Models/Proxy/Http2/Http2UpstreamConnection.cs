@@ -433,7 +433,7 @@ internal sealed class Http2UpstreamConnection
                 throw new Http2UpstreamProtocolException("Upstream sent an invalid HTTP/2 response pseudo-header.");
             }
 
-            if (IsHopByHopHeader(header.Name))
+            if (HopByHopHeaderPolicy.IsHopByHopHeader(header.Name))
             {
                 throw new Http2UpstreamProtocolException("Upstream sent a forbidden HTTP/2 hop-by-hop response header.");
             }
@@ -510,17 +510,6 @@ internal sealed class Http2UpstreamConnection
         }
 
         return payload[..^padding];
-    }
-
-    private static bool IsHopByHopHeader(string name)
-    {
-        return string.Equals(name, "connection", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(name, "keep-alive", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(name, "proxy-connection", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(name, "proxy-authenticate", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(name, "proxy-authorization", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(name, "transfer-encoding", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(name, "upgrade", StringComparison.OrdinalIgnoreCase);
     }
 
     private readonly record struct Http2Frame(

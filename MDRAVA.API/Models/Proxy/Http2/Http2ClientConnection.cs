@@ -831,7 +831,7 @@ public sealed class Http2ClientConnection
             0,
             (long)Math.Floor((DateTimeOffset.UtcNow - response.StoredAtUtc).TotalSeconds));
         var headers = response.Headers
-            .Where(static header => !IsHopByHopHeader(header.Name))
+            .Where(static header => !HopByHopHeaderPolicy.IsHopByHopHeader(header.Name))
             .Append(new Http1HeaderField("age", ageSeconds.ToString(CultureInfo.InvariantCulture)))
             .Append(new Http1HeaderField("x-request-id", context.RequestId))
             .Append(new Http1HeaderField("content-length", response.Body.Length.ToString(CultureInfo.InvariantCulture)))
@@ -859,7 +859,7 @@ public sealed class Http2ClientConnection
         }
 
         headers.Add(new Http1HeaderField("x-request-id", context.RequestId));
-        headers.AddRange(response.Headers.Where(static header => !IsHopByHopHeader(header.Name)));
+        headers.AddRange(response.Headers.Where(static header => !HopByHopHeaderPolicy.IsHopByHopHeader(header.Name)));
         var body = Encoding.UTF8.GetBytes(response.Body);
         headers.Add(new Http1HeaderField("content-length", body.Length.ToString(CultureInfo.InvariantCulture)));
         AddAltSvcHeader(headers);
@@ -1108,18 +1108,7 @@ public sealed class Http2ClientConnection
             return !string.Equals(value, "trailers", StringComparison.OrdinalIgnoreCase);
         }
 
-        return IsHopByHopHeader(name);
-    }
-
-    private static bool IsHopByHopHeader(string name)
-    {
-        return string.Equals(name, "connection", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(name, "keep-alive", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(name, "proxy-connection", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(name, "proxy-authenticate", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(name, "proxy-authorization", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(name, "transfer-encoding", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(name, "upgrade", StringComparison.OrdinalIgnoreCase);
+        return HopByHopHeaderPolicy.IsHopByHopHeader(name);
     }
 
     private static string ExtractPath(string target)
@@ -1328,7 +1317,7 @@ public sealed class Http2ClientConnection
 
                 var name = lines[index][..colon].Trim().ToLowerInvariant();
                 var value = lines[index][(colon + 1)..].Trim();
-                if (!IsHopByHopHeader(name))
+                if (!HopByHopHeaderPolicy.IsHopByHopHeader(name))
                 {
                     headers.Add(new Http1HeaderField(name, value));
                 }
@@ -1564,7 +1553,7 @@ public sealed class Http2ClientConnection
             foreach (var header in headers)
             {
                 var name = header.Name.ToLowerInvariant();
-                if (IsHopByHopHeader(name))
+                if (HopByHopHeaderPolicy.IsHopByHopHeader(name))
                 {
                     continue;
                 }
@@ -1607,7 +1596,7 @@ public sealed class Http2ClientConnection
 
             foreach (var header in headers)
             {
-                if (IsHopByHopHeader(header.Name))
+                if (HopByHopHeaderPolicy.IsHopByHopHeader(header.Name))
                 {
                     continue;
                 }

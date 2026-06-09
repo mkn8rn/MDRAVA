@@ -341,16 +341,9 @@ public sealed class ResponseCacheStore : IProxyCacheControl
     private static bool IsStoredResponseManagedHeader(string headerName)
     {
         return string.Equals(headerName, "Age", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(headerName, "Connection", StringComparison.OrdinalIgnoreCase)
             || string.Equals(headerName, "Content-Length", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(headerName, "Keep-Alive", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(headerName, "Proxy-Authenticate", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(headerName, "Proxy-Authorization", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(headerName, "TE", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(headerName, "Trailer", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(headerName, "Transfer-Encoding", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(headerName, "Upgrade", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(headerName, "X-Request-Id", StringComparison.OrdinalIgnoreCase);
+            || string.Equals(headerName, "X-Request-Id", StringComparison.OrdinalIgnoreCase)
+            || HopByHopHeaderPolicy.IsHopByHopHeader(headerName);
     }
 
     private void EvictRouteOverCapacity(string routeName, long maxTotalBytes)

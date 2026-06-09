@@ -460,7 +460,7 @@ public sealed class UpgradeForwarder
         Http1ResponseHead responseHead,
         UpgradeRequestInfo upgrade)
     {
-        if (!UpgradeRequestPolicy.HasConnectionToken(responseHead.Headers, "upgrade"))
+        if (!HopByHopHeaderPolicy.HasConnectionToken(responseHead.Headers, "upgrade"))
         {
             return false;
         }

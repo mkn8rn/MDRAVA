@@ -6,6 +6,7 @@ public sealed class HopByHopHeaderPolicy
     {
         "Connection",
         "Keep-Alive",
+        "Proxy-Connection",
         "Proxy-Authenticate",
         "Proxy-Authorization",
         "TE",
@@ -13,6 +14,32 @@ public sealed class HopByHopHeaderPolicy
         "Transfer-Encoding",
         "Upgrade"
     };
+
+    public static bool IsHopByHopHeader(string name)
+    {
+        return StandardHopByHopHeaders.Contains(name);
+    }
+
+    public static bool HasConnectionToken(IReadOnlyList<Http1HeaderField> headers, string token)
+    {
+        foreach (var header in headers)
+        {
+            if (!string.Equals(header.Name, "Connection", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            foreach (var value in header.Value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (string.Equals(value, token, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
 
     public IReadOnlyList<Http1HeaderField> FilterForForwarding(
         IReadOnlyList<Http1HeaderField> headers,

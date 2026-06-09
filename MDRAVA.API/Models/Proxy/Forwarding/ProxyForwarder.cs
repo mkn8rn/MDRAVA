@@ -1249,7 +1249,7 @@ public sealed class ProxyForwarder
                 throw new Http1UpstreamProtocolException($"Upstream response head was invalid: {error}.");
             }
 
-            var upstreamWantsClose = HasConnectionToken(responseHead.Headers, "close");
+            var upstreamWantsClose = HopByHopHeaderPolicy.HasConnectionToken(responseHead.Headers, "close");
             var keepClientConnectionOpen = preferClientKeepAlive
                 && responseHead.Framing.Kind != Http1BodyKind.CloseDelimited;
             initialBodyBytes = responseHeadRead.InitialBodyBytes;
@@ -1979,27 +1979,6 @@ public sealed class ProxyForwarder
             ProxyTimeoutKind.DownstreamWrite => ProxyFailureKind.ClientDisconnected,
             _ => ProxyFailureKind.InternalError
         };
-    }
-
-    public static bool HasConnectionToken(IReadOnlyList<Http1HeaderField> headers, string token)
-    {
-        foreach (var header in headers)
-        {
-            if (!string.Equals(header.Name, "Connection", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            foreach (var value in header.Value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
-            {
-                if (string.Equals(value, token, StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
     }
 
     private static int FindHeadLength(ReadOnlySpan<byte> bytes)

@@ -746,7 +746,7 @@ public sealed class Http3Connection
             0,
             (long)Math.Floor((DateTimeOffset.UtcNow - response.StoredAtUtc).TotalSeconds));
         var headers = response.Headers
-            .Where(static header => !IsHopByHopHeader(header.Name))
+            .Where(static header => !HopByHopHeaderPolicy.IsHopByHopHeader(header.Name))
             .Append(new Http1HeaderField("age", ageSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture)))
             .Append(new Http1HeaderField("x-request-id", context.RequestId))
             .Append(new Http1HeaderField("content-length", response.Body.Length.ToString(System.Globalization.CultureInfo.InvariantCulture)))
@@ -805,7 +805,7 @@ public sealed class Http3Connection
         {
             foreach (var header in extraHeaders)
             {
-                if (!IsHopByHopHeader(header.Name))
+                if (!HopByHopHeaderPolicy.IsHopByHopHeader(header.Name))
                 {
                     headers.Add(new Http1HeaderField(header.Name.ToLowerInvariant(), header.Value));
                 }
@@ -852,7 +852,7 @@ public sealed class Http3Connection
         List<Http1HeaderField> encodedHeaders = [new(":status", Http3Codec.StatusText(statusCode))];
         foreach (var header in headers)
         {
-            if (!header.Name.StartsWith(':') && !IsHopByHopHeader(header.Name))
+            if (!header.Name.StartsWith(':') && !HopByHopHeaderPolicy.IsHopByHopHeader(header.Name))
             {
                 encodedHeaders.Add(new Http1HeaderField(header.Name.ToLowerInvariant(), header.Value));
             }
@@ -959,17 +959,6 @@ public sealed class Http3Connection
         context.ResponseStatusCode = result.ResponseStatusCode;
         context.KeepClientConnectionOpen = true;
         context.FailureKind = result.FailureKind;
-    }
-
-    private static bool IsHopByHopHeader(string header)
-    {
-        return string.Equals(header, "connection", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(header, "transfer-encoding", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(header, "upgrade", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(header, "keep-alive", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(header, "proxy-connection", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(header, "proxy-authenticate", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(header, "proxy-authorization", StringComparison.OrdinalIgnoreCase);
     }
 
     private sealed record Http3HeaderReadResult(
@@ -1491,7 +1480,7 @@ public sealed class Http3Connection
                     chunkedTransfer = true;
                 }
 
-                if (!IsHopByHopHeader(name))
+                if (!HopByHopHeaderPolicy.IsHopByHopHeader(name))
                 {
                     headers.Add(new Http1HeaderField(name, value));
                 }

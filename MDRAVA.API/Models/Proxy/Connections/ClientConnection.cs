@@ -1071,7 +1071,7 @@ public sealed class ClientConnection
 
     private static bool ShouldKeepClientConnectionOpen(Http1RequestHead requestHead)
     {
-        if (ProxyForwarder.HasConnectionToken(requestHead.Headers, "close"))
+        if (HopByHopHeaderPolicy.HasConnectionToken(requestHead.Headers, "close"))
         {
             return false;
         }
