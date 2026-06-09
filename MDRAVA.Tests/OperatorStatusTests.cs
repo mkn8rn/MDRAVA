@@ -63,6 +63,115 @@ internal static class OperatorStatusTests
         AssertEx.Equal(77, readiness.ConfigGeneration);
     }
 
+    public static void SubsystemSummaryBuilderCountsNarrowListenerRouteAndUpstreamSources()
+    {
+        ProxyConfiguredListenerSummarySource[] configuredListeners =
+        [
+            new(Enabled: true, Http1Enabled: true, Http2Enabled: false, Http3EnabledForTraffic: true),
+            new(Enabled: false, Http1Enabled: true, Http2Enabled: true, Http3EnabledForTraffic: false)
+        ];
+        ProxyRuntimeListenerSummarySource[] runtimeListeners =
+        [
+            new(IsQuic: false, ProxyListenerState.Active),
+            new(IsQuic: true, ProxyListenerState.Active),
+            new(IsQuic: false, ProxyListenerState.Failed),
+            new(IsQuic: false, ProxyListenerState.Draining)
+        ];
+        ProxyRouteSummarySource[] routes =
+        [
+            new("main", IsProxyRoute: true, CacheEnabled: true, HasHttp3Upstream: false),
+            new("main", IsProxyRoute: false, CacheEnabled: false, HasHttp3Upstream: true),
+            new("api", IsProxyRoute: true, CacheEnabled: false, HasHttp3Upstream: false)
+        ];
+        ProxyUpstreamSummarySource[] upstreams =
+        [
+            new(UpstreamHealthState.Healthy, HealthCheckEnabled: true, CircuitBreakerEnabled: true, CircuitBreakerRuntimeState.Closed),
+            new(UpstreamHealthState.Unhealthy, HealthCheckEnabled: true, CircuitBreakerEnabled: true, CircuitBreakerRuntimeState.Open),
+            new(UpstreamHealthState.Unknown, HealthCheckEnabled: false, CircuitBreakerEnabled: false, CircuitBreakerRuntimeState.Disabled)
+        ];
+
+        var listeners = ProxySubsystemSummaryBuilder.BuildListeners(configuredListeners, runtimeListeners);
+        var routeSummary = ProxySubsystemSummaryBuilder.BuildRoutes(routes);
+        var upstreamSummary = ProxySubsystemSummaryBuilder.BuildUpstreams(upstreams);
+        var circuitSummary = ProxySubsystemSummaryBuilder.BuildCircuits(upstreams);
+        var protocolSummary = ProxySubsystemSummaryBuilder.BuildProtocols(
+            configuredListeners,
+            clientHttp3Enabled: true,
+            clientHttp3Ready: false,
+            routes);
+
+        AssertEx.Equal(2, listeners.Configured);
+        AssertEx.Equal(1, listeners.Enabled);
+        AssertEx.Equal(2, listeners.Active);
+        AssertEx.Equal(1, listeners.Failed);
+        AssertEx.Equal(1, listeners.Draining);
+        AssertEx.Equal(1, listeners.Http1Enabled);
+        AssertEx.Equal(0, listeners.Http2Enabled);
+        AssertEx.Equal(1, listeners.Http3Enabled);
+        AssertEx.Equal(1, listeners.QuicReady);
+        AssertEx.Equal(2, routeSummary.Sites);
+        AssertEx.Equal(3, routeSummary.Routes);
+        AssertEx.Equal(2, routeSummary.ProxyRoutes);
+        AssertEx.Equal(1, routeSummary.GeneratedRoutes);
+        AssertEx.Equal(1, routeSummary.CacheEnabledRoutes);
+        AssertEx.Equal(3, upstreamSummary.Total);
+        AssertEx.Equal(1, upstreamSummary.Healthy);
+        AssertEx.Equal(1, upstreamSummary.Unhealthy);
+        AssertEx.Equal(1, upstreamSummary.UnknownHealth);
+        AssertEx.Equal(2, upstreamSummary.HealthChecksEnabled);
+        AssertEx.Equal(2, circuitSummary.Enabled);
+        AssertEx.Equal(1, circuitSummary.Open);
+        AssertEx.Equal(0, circuitSummary.HalfOpen);
+        AssertEx.Equal(1, circuitSummary.Closed);
+        AssertEx.True(protocolSummary.ClientHttp1Enabled);
+        AssertEx.False(protocolSummary.ClientHttp2Enabled);
+        AssertEx.True(protocolSummary.ClientHttp3Enabled);
+        AssertEx.False(protocolSummary.ClientHttp3Ready);
+        AssertEx.True(protocolSummary.UpstreamHttp3Configured);
+    }
+
+    public static void SubsystemSummaryBuilderClassifiesCertificateIssuesFromNarrowSources()
+    {
+        var now = new DateTimeOffset(2026, 6, 9, 12, 0, 0, TimeSpan.Zero);
+        var source = new ProxyCertificateSummarySource(
+            ReferencedCertificateIds:
+            [
+                "missing-cert",
+                "expired-cert",
+                "future-cert",
+                "soon-cert"
+            ],
+            LoadedCertificates:
+            [
+                new ProxyCertificateValiditySource(
+                    "expired-cert",
+                    new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                    new DateTime(2026, 6, 8, 0, 0, 0, DateTimeKind.Utc)),
+                new ProxyCertificateValiditySource(
+                    "future-cert",
+                    new DateTime(2026, 6, 10, 0, 0, 0, DateTimeKind.Utc),
+                    new DateTime(2026, 12, 31, 0, 0, 0, DateTimeKind.Utc)),
+                new ProxyCertificateValiditySource(
+                    "soon-cert",
+                    new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                    new DateTime(2026, 6, 20, 0, 0, 0, DateTimeKind.Utc))
+            ]);
+
+        var summary = ProxySubsystemSummaryBuilder.BuildCertificates(source, now);
+
+        AssertEx.Equal(4, summary.Configured);
+        AssertEx.Equal(3, summary.Loaded);
+        AssertEx.Equal(1, summary.MissingReferences);
+        AssertEx.Equal(1, summary.Expired);
+        AssertEx.Equal(1, summary.NotYetValid);
+        AssertEx.Equal(1, summary.ExpiringSoon);
+        AssertEx.NotNull(summary.LastIssue);
+        AssertEx.Equal("certificate", summary.LastIssue!.Category);
+        AssertEx.Equal("missing_reference", summary.LastIssue.Reason);
+        AssertEx.Equal("missing-cert", summary.LastIssue.AffectedIdentity);
+        AssertEx.Equal(now, summary.LastIssue.TimestampUtc);
+    }
+
     public static void StatusReadinessReportsLogPersistenceFailureAsDegraded()
     {
         const string querySecret = "phase-49-query-secret";
