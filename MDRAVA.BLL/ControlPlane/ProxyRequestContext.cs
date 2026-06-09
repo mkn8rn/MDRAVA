@@ -1,5 +1,6 @@
+using MDRAVA.BLL.Configuration;
 
-namespace MDRAVA.API.Models.Observability;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed class ProxyRequestContext
 {

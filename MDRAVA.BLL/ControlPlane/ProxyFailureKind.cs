@@ -1,4 +1,4 @@
-namespace MDRAVA.API.Models.Observability;
+namespace MDRAVA.BLL.ControlPlane;
 
 public enum ProxyFailureKind
 {
