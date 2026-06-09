@@ -62,6 +62,15 @@ internal static class HeaderPolicyTests
             "upgrade"));
     }
 
+    public static void ClassifiesManagedHttp1FramingHeaders()
+    {
+        AssertEx.True(Http1ManagedHeaderPolicy.IsManagedFramingHeader("Content-Length"));
+        AssertEx.True(Http1ManagedHeaderPolicy.IsManagedFramingHeader("transfer-encoding"));
+        AssertEx.True(Http1ManagedHeaderPolicy.IsManagedFramingHeader("Connection"));
+        AssertEx.True(Http1ManagedHeaderPolicy.IsManagedFramingHeader("x-request-id"));
+        AssertEx.False(Http1ManagedHeaderPolicy.IsManagedFramingHeader("X-Application"));
+    }
+
     public static void AppliesRequestHeaderMutationPolicy()
     {
         var policy = new RuntimeHeaderPolicy(

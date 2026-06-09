@@ -33,6 +33,7 @@ internal static partial class TestRegistry
     Test("Header policy filters standard hop-by-hop headers", Sync(HeaderPolicyTests.FiltersStandardHopByHopHeaders), TestTaxonomy.Headers),
     Test("Header policy filters Connection-nominated headers", Sync(HeaderPolicyTests.FiltersConnectionNominatedHeaders), TestTaxonomy.Headers),
     Test("Header policy classifies hop-by-hop names and Connection tokens", Sync(HeaderPolicyTests.ClassifiesHopByHopNamesAndConnectionTokens), TestTaxonomy.Headers),
+    Test("Header policy classifies managed HTTP/1 framing headers", Sync(HeaderPolicyTests.ClassifiesManagedHttp1FramingHeaders), TestTaxonomy.Headers),
     Test("Header mutation policy applies request changes", Sync(HeaderPolicyTests.AppliesRequestHeaderMutationPolicy), TestTaxonomy.Headers),
     Test("Header mutation policy applies response changes", Sync(HeaderPolicyTests.AppliesResponseHeaderMutationPolicy), TestTaxonomy.Headers),
     Test("SingleUpstreamRouteMatcher matches wildcard route", Sync(RouteMatcherTests.MatchesWildcardRoute), TestTaxonomy.Routing),

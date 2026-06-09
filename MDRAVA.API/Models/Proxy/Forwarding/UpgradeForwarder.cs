@@ -360,7 +360,7 @@ public sealed class UpgradeForwarder
         var responseHeaders = ProxyHeaderMutationPolicy.ApplyResponseHeaders(filtered, route.HeaderPolicy);
         foreach (var header in responseHeaders)
         {
-            if (IsManagedFramingHeader(header.Name))
+            if (Http1ManagedHeaderPolicy.IsManagedFramingHeader(header.Name))
             {
                 continue;
             }
@@ -616,14 +616,6 @@ public sealed class UpgradeForwarder
     {
         return string.Equals(headerName, "Connection", StringComparison.OrdinalIgnoreCase)
             || string.Equals(headerName, "Upgrade", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static bool IsManagedFramingHeader(string headerName)
-    {
-        return string.Equals(headerName, "Content-Length", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(headerName, "Transfer-Encoding", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(headerName, "Connection", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(headerName, "X-Request-Id", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsUnsafeUpgradeResponseHeader(string headerName)

@@ -1160,7 +1160,7 @@ public sealed class ProxyForwarder
         var requestHeaders = ProxyHeaderMutationPolicy.ApplyRequestHeaders(filtered, route.HeaderPolicy, forwardedHeaders);
         foreach (var header in requestHeaders)
         {
-            if (IsManagedFramingHeader(header.Name))
+            if (Http1ManagedHeaderPolicy.IsManagedFramingHeader(header.Name))
             {
                 continue;
             }
@@ -1327,7 +1327,7 @@ public sealed class ProxyForwarder
 
         foreach (var header in responseHeaders)
         {
-            if (IsManagedFramingHeader(header.Name))
+            if (Http1ManagedHeaderPolicy.IsManagedFramingHeader(header.Name))
             {
                 continue;
             }
@@ -1375,7 +1375,7 @@ public sealed class ProxyForwarder
 
         foreach (var header in responseHeaders)
         {
-            if (IsManagedFramingHeader(header.Name))
+            if (Http1ManagedHeaderPolicy.IsManagedFramingHeader(header.Name))
             {
                 continue;
             }
@@ -1737,14 +1737,6 @@ public sealed class ProxyForwarder
             timeout,
             ProxyTimeoutKind.DownstreamWrite,
             cancellationToken);
-    }
-
-    private static bool IsManagedFramingHeader(string headerName)
-    {
-        return string.Equals(headerName, "Content-Length", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(headerName, "Transfer-Encoding", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(headerName, "Connection", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(headerName, "X-Request-Id", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool ContainsStatus(IReadOnlyList<int> statusCodes, int statusCode)
