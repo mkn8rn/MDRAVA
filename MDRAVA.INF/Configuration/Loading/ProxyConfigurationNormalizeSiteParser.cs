@@ -1,7 +1,8 @@
 using System.Text.Json;
+using MDRAVA.BLL.ControlPlane;
 using YamlDotNet.Core;
 
-namespace MDRAVA.API.Proxy.Configuration.Loading;
+namespace MDRAVA.INF.Configuration.Loading;
 
 public sealed class ProxyConfigurationNormalizeSiteParser
     : IProxyConfigurationNormalizeSiteParser
