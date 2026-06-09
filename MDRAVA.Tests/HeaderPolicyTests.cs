@@ -71,6 +71,16 @@ internal static class HeaderPolicyTests
         AssertEx.False(Http1ManagedHeaderPolicy.IsManagedFramingHeader("X-Application"));
     }
 
+    public static void ClassifiesManagedStoredResponseHeaders()
+    {
+        AssertEx.True(Http1ManagedHeaderPolicy.IsManagedStoredResponseHeader("Age"));
+        AssertEx.True(Http1ManagedHeaderPolicy.IsManagedStoredResponseHeader("content-length"));
+        AssertEx.True(Http1ManagedHeaderPolicy.IsManagedStoredResponseHeader("Transfer-Encoding"));
+        AssertEx.True(Http1ManagedHeaderPolicy.IsManagedStoredResponseHeader("Keep-Alive"));
+        AssertEx.True(Http1ManagedHeaderPolicy.IsManagedStoredResponseHeader("x-request-id"));
+        AssertEx.False(Http1ManagedHeaderPolicy.IsManagedStoredResponseHeader("Cache-Control"));
+    }
+
     public static void AppliesRequestHeaderMutationPolicy()
     {
         var policy = new RuntimeHeaderPolicy(

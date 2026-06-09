@@ -9,4 +9,11 @@ public static class Http1ManagedHeaderPolicy
             || string.Equals(headerName, "Connection", StringComparison.OrdinalIgnoreCase)
             || string.Equals(headerName, "X-Request-Id", StringComparison.OrdinalIgnoreCase);
     }
+
+    public static bool IsManagedStoredResponseHeader(string headerName)
+    {
+        return string.Equals(headerName, "Age", StringComparison.OrdinalIgnoreCase)
+            || IsManagedFramingHeader(headerName)
+            || HopByHopHeaderPolicy.IsHopByHopHeader(headerName);
+    }
 }

@@ -205,17 +205,9 @@ public sealed class ResponseCacheStore : IProxyCacheControl
     private static IReadOnlyList<Http1HeaderField> SanitizeStoredHeaders(IReadOnlyList<Http1HeaderField> headers)
     {
         return headers
-            .Where(static header => !IsStoredResponseManagedHeader(header.Name))
+            .Where(static header => !Http1ManagedHeaderPolicy.IsManagedStoredResponseHeader(header.Name))
             .Select(static header => new Http1HeaderField(header.Name, header.Value))
             .ToArray();
-    }
-
-    private static bool IsStoredResponseManagedHeader(string headerName)
-    {
-        return string.Equals(headerName, "Age", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(headerName, "Content-Length", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(headerName, "X-Request-Id", StringComparison.OrdinalIgnoreCase)
-            || HopByHopHeaderPolicy.IsHopByHopHeader(headerName);
     }
 
     private void EvictRouteOverCapacity(string routeName, long maxTotalBytes)
