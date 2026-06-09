@@ -1,0 +1,47 @@
+namespace MDRAVA.BLL.ControlPlane;
+
+public static class ProxyRequestMethodPolicy
+{
+    public const string ConnectUnsupportedReason = "connect_unsupported";
+
+    public const string MethodUnsupportedReason = "method_unsupported";
+
+    private static readonly HashSet<string> SupportedApplicationMethods = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "GET",
+        "HEAD",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE"
+    };
+
+    public static bool IsConnectTunnelMethod(string method)
+    {
+        return string.Equals(method, "CONNECT", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static bool IsValidMethodToken(string method)
+    {
+        return !string.IsNullOrWhiteSpace(method)
+            && method.All(static character => character is '!' or '#' or '$' or '%' or '&' or '\'' or '*' or '+'
+                or '-' or '.' or '^' or '_' or '`' or '|' or '~'
+                || character is >= 'A' and <= 'Z'
+                || character is >= 'a' and <= 'z'
+                || character is >= '0' and <= '9');
+    }
+
+    public static bool IsSupportedApplicationMethod(string method, out string rejectionReason)
+    {
+        if (SupportedApplicationMethods.Contains(method))
+        {
+            rejectionReason = "";
+            return true;
+        }
+
+        rejectionReason = IsConnectTunnelMethod(method)
+            ? ConnectUnsupportedReason
+            : MethodUnsupportedReason;
+        return false;
+    }
+}

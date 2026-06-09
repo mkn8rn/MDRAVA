@@ -292,7 +292,7 @@ public sealed class ClientConnection
                     return;
                 }
 
-                if (IsUnsupportedConnectionMethod(requestHead.Method))
+                if (ProxyRequestMethodPolicy.IsConnectTunnelMethod(requestHead.Method))
                 {
                     _metrics.UnsupportedRequestFramingRejected();
                     await WriteGeneratedResponseAsync(
@@ -1061,11 +1061,6 @@ public sealed class ClientConnection
             context.TunnelBytesClientToUpstream = result.Tunnel.BytesClientToUpstream;
             context.TunnelBytesUpstreamToClient = result.Tunnel.BytesUpstreamToClient;
         }
-    }
-
-    private static bool IsUnsupportedConnectionMethod(string method)
-    {
-        return string.Equals(method, "CONNECT", StringComparison.Ordinal);
     }
 
     private static bool ShouldKeepClientConnectionOpen(Http1RequestHead requestHead)

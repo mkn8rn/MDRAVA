@@ -83,7 +83,7 @@ public static class Http3RequestTranslator
             return false;
         }
 
-        if (string.Equals(method, "CONNECT", StringComparison.OrdinalIgnoreCase))
+        if (ProxyRequestMethodPolicy.IsConnectTunnelMethod(method))
         {
             return TryBuildConnectRequest(pseudo, regularHeaders, listener, method, out requestHead, out rejectionReason);
         }
@@ -103,7 +103,7 @@ public static class Http3RequestTranslator
             return false;
         }
 
-        if (!IsValidMethod(method))
+        if (!ProxyRequestMethodPolicy.IsValidMethodToken(method))
         {
             rejectionReason = "invalid_method";
             return false;
@@ -139,25 +139,6 @@ public static class Http3RequestTranslator
             framing,
             regularHeaders);
         return true;
-    }
-
-    public static bool IsSupportedMethod(string method, out string rejectionReason)
-    {
-        if (string.Equals(method, "GET", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(method, "HEAD", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(method, "POST", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(method, "PUT", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(method, "PATCH", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(method, "DELETE", StringComparison.OrdinalIgnoreCase))
-        {
-            rejectionReason = "";
-            return true;
-        }
-
-        rejectionReason = string.Equals(method, "CONNECT", StringComparison.OrdinalIgnoreCase)
-            ? "connect_unsupported"
-            : "method_unsupported";
-        return false;
     }
 
     private static bool IsAllowedPseudoHeader(string name)
@@ -223,16 +204,6 @@ public static class Http3RequestTranslator
             Http1RequestFraming.None,
             regularHeaders);
         return true;
-    }
-
-    private static bool IsValidMethod(string method)
-    {
-        return !string.IsNullOrWhiteSpace(method)
-            && method.All(static character => character is '!' or '#' or '$' or '%' or '&' or '\'' or '*' or '+'
-                or '-' or '.' or '^' or '_' or '`' or '|' or '~'
-                || character is >= 'A' and <= 'Z'
-                || character is >= 'a' and <= 'z'
-                || character is >= '0' and <= '9');
     }
 
     private static bool IsValidAuthority(string authority)

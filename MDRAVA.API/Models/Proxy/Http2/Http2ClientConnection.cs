@@ -351,7 +351,7 @@ public sealed class Http2ClientConnection
                 return;
             }
 
-            if (IsUnsupportedConnectionMethod(requestHead.Method))
+            if (ProxyRequestMethodPolicy.IsConnectTunnelMethod(requestHead.Method))
             {
                 _metrics.UnsupportedRequestFramingRejected();
                 await WriteGeneratedResponseAsync(
@@ -594,7 +594,7 @@ public sealed class Http2ClientConnection
             return false;
         }
 
-        if (pseudo.ContainsKey(":protocol") || string.Equals(method, "CONNECT", StringComparison.OrdinalIgnoreCase))
+        if (pseudo.ContainsKey(":protocol") || ProxyRequestMethodPolicy.IsConnectTunnelMethod(method))
         {
             rejectionReason = "extended_connect_unsupported";
             return false;
@@ -1084,11 +1084,6 @@ public sealed class Http2ClientConnection
         context.ResponseStatusCode = result.ResponseStatusCode;
         context.KeepClientConnectionOpen = true;
         context.FailureKind = result.FailureKind;
-    }
-
-    private static bool IsUnsupportedConnectionMethod(string method)
-    {
-        return string.Equals(method, "CONNECT", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsAllowedRequestPseudoHeader(string name)

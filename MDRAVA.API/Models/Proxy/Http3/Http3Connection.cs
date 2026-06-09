@@ -160,7 +160,7 @@ public sealed class Http3Connection
             _metrics.Http3RequestReceived();
             context.SetRequest(requestHead.Method, requestHead.Host, requestHead.Target, ProxyExternalRequestIdPolicy.Extract(requestHead));
 
-            if (!Http3RequestTranslator.IsSupportedMethod(requestHead.Method, out rejectionReason))
+            if (!ProxyRequestMethodPolicy.IsSupportedApplicationMethod(requestHead.Method, out rejectionReason))
             {
                 _metrics.Http3RequestRejected(rejectionReason);
                 await WriteGeneratedResponseAsync(stream, 501, "Not Implemented", "Not Implemented", context, requestHead.Method, cancellationToken);
