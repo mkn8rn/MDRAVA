@@ -555,6 +555,24 @@ internal static class ResilienceTests
         AssertEx.Equal(2, status.Upstreams[0].Weight);
     }
 
+    public static void RetryPolicySuppressesConfiguredStatusOnlyWhenAllowed()
+    {
+        var retry = new RuntimeRetryPolicy(
+            true,
+            2,
+            null,
+            false,
+            false,
+            [503],
+            ["GET"],
+            TimeSpan.Zero);
+
+        AssertEx.True(ProxyRetryPolicy.ShouldSuppressRetryableStatusResponse(retry, 503, true));
+        AssertEx.False(ProxyRetryPolicy.ShouldSuppressRetryableStatusResponse(retry, 503, false));
+        AssertEx.False(ProxyRetryPolicy.ShouldSuppressRetryableStatusResponse(retry, 502, true));
+        AssertEx.False(ProxyRetryPolicy.ShouldSuppressRetryableStatusResponse(retry with { Enabled = false }, 503, true));
+    }
+
     public static void TimeoutPolicyAppliesRouteAndRetryAttemptTimeouts()
     {
         var baseTimeouts = Timeouts();

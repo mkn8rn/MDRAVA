@@ -480,7 +480,7 @@ public sealed class ProxyForwarder
             timeouts,
             cancellationToken);
         var responseHead = BuildHttp2ResponseHead(requestHead, upstreamResponse);
-        if (ShouldSuppressRetryableStatusResponse(route, responseHead, suppressRetryableStatusResponse))
+        if (ProxyRetryPolicy.ShouldSuppressRetryableStatusResponse(route.Retry, responseHead.StatusCode, suppressRetryableStatusResponse))
         {
             return CreateRetrySuppressedResult(responseHead.StatusCode);
         }
@@ -590,7 +590,7 @@ public sealed class ProxyForwarder
             timeouts,
             cancellationToken);
         var responseHead = BuildHttp3ResponseHead(requestHead, upstreamResponse);
-        if (ShouldSuppressRetryableStatusResponse(route, responseHead, suppressRetryableStatusResponse))
+        if (ProxyRetryPolicy.ShouldSuppressRetryableStatusResponse(route.Retry, responseHead.StatusCode, suppressRetryableStatusResponse))
         {
             return CreateRetrySuppressedResult(responseHead.StatusCode);
         }
@@ -1255,7 +1255,7 @@ public sealed class ProxyForwarder
 
             if (!Http1ResponseParser.IsInformational(responseHead))
             {
-                if (ShouldSuppressRetryableStatusResponse(route, responseHead, suppressRetryableStatusResponse))
+                if (ProxyRetryPolicy.ShouldSuppressRetryableStatusResponse(route.Retry, responseHead.StatusCode, suppressRetryableStatusResponse))
                 {
                     return CreateRetrySuppressedResult(responseHead.StatusCode);
                 }
@@ -1441,15 +1441,6 @@ public sealed class ProxyForwarder
             preserveTrailer: responseHead.Framing.Kind == Http1BodyKind.Chunked);
 
         return ProxyHeaderMutationPolicy.ApplyResponseHeaders(filtered, route.HeaderPolicy);
-    }
-
-    private static bool ShouldSuppressRetryableStatusResponse(
-        RuntimeRoute route,
-        Http1ResponseHead responseHead,
-        bool suppressRetryableStatusResponse)
-    {
-        return suppressRetryableStatusResponse
-            && ContainsStatus(route.Retry.RetryOnStatusCodes, responseHead.StatusCode);
     }
 
     private static ResponseForwardingResult CreateRetrySuppressedResult(int statusCode)
@@ -1737,11 +1728,6 @@ public sealed class ProxyForwarder
             timeout,
             ProxyTimeoutKind.DownstreamWrite,
             cancellationToken);
-    }
-
-    private static bool ContainsStatus(IReadOnlyList<int> statusCodes, int statusCode)
-    {
-        return statusCodes.Any(code => code == statusCode);
     }
 
     private static ReadOnlyMemory<byte> BuildGeneratedBadRequest(string requestId)
