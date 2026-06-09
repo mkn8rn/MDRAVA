@@ -1,0 +1,22 @@
+namespace MDRAVA.BLL.Configuration;
+
+public sealed record RuntimeUpstream(
+    string RouteName,
+    string Name,
+    string Scheme,
+    string Protocol,
+    string Address,
+    int Port,
+    int Weight,
+    RuntimeUpstreamTlsOptions Tls)
+{
+    public string Endpoint => $"{Address}:{Port}";
+
+    public string UriEndpoint => $"{Scheme}://{Address}:{Port}";
+
+    public string EffectiveSniHost => string.IsNullOrWhiteSpace(Tls.SniHost) ? Address : Tls.SniHost!;
+
+    public string Identity => $"{RouteName}|{Name}|{Scheme}|{Protocol}|{Address}|{Port}|{EffectiveSniHost}|{Tls.ValidateCertificate}";
+
+    public RuntimeCircuitBreakerPolicy CircuitBreaker { get; init; } = RuntimeCircuitBreakerPolicy.Disabled;
+}
