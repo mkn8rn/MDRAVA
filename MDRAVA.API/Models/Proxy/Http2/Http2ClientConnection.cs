@@ -328,7 +328,7 @@ public sealed class Http2ClientConnection
                 requestHead.Method,
                 requestHead.Host,
                 requestHead.Target,
-                ExtractExternalRequestId(requestHead));
+                ProxyExternalRequestIdPolicy.Extract(requestHead));
 
             var forwardedHeaders = _forwardedHeadersPolicy.Build(
                 requestHead,
@@ -1085,28 +1085,6 @@ public sealed class Http2ClientConnection
         context.ResponseStatusCode = result.ResponseStatusCode;
         context.KeepClientConnectionOpen = true;
         context.FailureKind = result.FailureKind;
-    }
-
-    private static string? ExtractExternalRequestId(Http1RequestHead requestHead)
-    {
-        foreach (var header in requestHead.Headers)
-        {
-            if (!string.Equals(header.Name, "X-Request-Id", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            var value = header.Value.Trim();
-            return value.Length is > 0 and <= 128 && value.All(IsExternalRequestIdCharacter) ? value : null;
-        }
-
-        return null;
-    }
-
-    private static bool IsExternalRequestIdCharacter(char character)
-    {
-        return char.IsAsciiLetterOrDigit(character)
-            || character is '-' or '_' or '.' or ':' or '/';
     }
 
     private static bool IsUnsupportedConnectionMethod(string method)

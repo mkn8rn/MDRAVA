@@ -270,7 +270,7 @@ public sealed class ClientConnection
                     requestHead.Method,
                     requestHead.Host,
                     requestHead.Target,
-                    ExtractExternalRequestId(requestHead));
+                    ProxyExternalRequestIdPolicy.Extract(requestHead));
 
                 var forwardedHeaders = _forwardedHeadersPolicy.Build(
                     requestHead,
@@ -1062,40 +1062,6 @@ public sealed class ClientConnection
             context.TunnelBytesClientToUpstream = result.Tunnel.BytesClientToUpstream;
             context.TunnelBytesUpstreamToClient = result.Tunnel.BytesUpstreamToClient;
         }
-    }
-
-    private static string? ExtractExternalRequestId(Http1RequestHead requestHead)
-    {
-        foreach (var header in requestHead.Headers)
-        {
-            if (!string.Equals(header.Name, "X-Request-Id", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            var value = header.Value.Trim();
-            return IsValidExternalRequestId(value) ? value : null;
-        }
-
-        return null;
-    }
-
-    private static bool IsValidExternalRequestId(string value)
-    {
-        if (value.Length is 0 or > 128)
-        {
-            return false;
-        }
-
-        foreach (var character in value)
-        {
-            if (char.IsControl(character))
-            {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     private static bool IsUnsupportedConnectionMethod(string method)

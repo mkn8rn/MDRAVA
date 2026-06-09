@@ -159,7 +159,7 @@ public sealed class Http3Connection
 
             _metrics.RequestReceived();
             _metrics.Http3RequestReceived();
-            context.SetRequest(requestHead.Method, requestHead.Host, requestHead.Target, ExtractExternalRequestId(requestHead));
+            context.SetRequest(requestHead.Method, requestHead.Host, requestHead.Target, ProxyExternalRequestIdPolicy.Extract(requestHead));
 
             if (!Http3RequestTranslator.IsSupportedMethod(requestHead.Method, out rejectionReason))
             {
@@ -970,21 +970,6 @@ public sealed class Http3Connection
             || string.Equals(header, "proxy-connection", StringComparison.OrdinalIgnoreCase)
             || string.Equals(header, "proxy-authenticate", StringComparison.OrdinalIgnoreCase)
             || string.Equals(header, "proxy-authorization", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static string? ExtractExternalRequestId(Http1RequestHead requestHead)
-    {
-        foreach (var header in requestHead.Headers)
-        {
-            if (string.Equals(header.Name, "x-request-id", StringComparison.OrdinalIgnoreCase)
-                && header.Value.Length is > 0 and <= 128
-                && !header.Value.Any(static character => char.IsControl(character)))
-            {
-                return header.Value;
-            }
-        }
-
-        return null;
     }
 
     private sealed record Http3HeaderReadResult(

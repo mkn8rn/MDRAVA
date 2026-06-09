@@ -86,6 +86,38 @@ internal static class ObservabilityTests
         AssertEx.False(diagnostic.ToString().Contains("certificate-password", StringComparison.OrdinalIgnoreCase));
     }
 
+    public static void ExternalRequestIdPolicyNormalizesSafeHeaderValues()
+    {
+        var validHead = new Http1RequestHead(
+            "GET",
+            "/",
+            "/",
+            "HTTP/1.1",
+            "example.test",
+            Http1RequestFraming.None,
+            [new Http1HeaderField("X-Request-Id", "  client-123  ")]);
+        var controlHead = new Http1RequestHead(
+            "GET",
+            "/",
+            "/",
+            "HTTP/1.1",
+            "example.test",
+            Http1RequestFraming.None,
+            [new Http1HeaderField("X-Request-Id", "client\r123")]);
+        var tooLongHead = new Http1RequestHead(
+            "GET",
+            "/",
+            "/",
+            "HTTP/1.1",
+            "example.test",
+            Http1RequestFraming.None,
+            [new Http1HeaderField("X-Request-Id", new string('a', 129))]);
+
+        AssertEx.Equal("client-123", ProxyExternalRequestIdPolicy.Extract(validHead));
+        AssertEx.True(ProxyExternalRequestIdPolicy.Extract(controlHead) is null);
+        AssertEx.True(ProxyExternalRequestIdPolicy.Extract(tooLongHead) is null);
+    }
+
     private static ProxyRequestDiagnosticSourceEvent CreateEvent(string requestId, string target)
     {
         return new ProxyRequestDiagnosticSourceEvent(
