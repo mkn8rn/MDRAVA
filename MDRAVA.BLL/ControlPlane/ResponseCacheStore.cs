@@ -5,20 +5,6 @@ namespace MDRAVA.BLL.ControlPlane;
 
 public sealed class ResponseCacheStore : IProxyCacheControl
 {
-    private const string ReasonAuthorization = "authorization";
-    private const string ReasonCacheControlMustRevalidate = "cache-control-must-revalidate";
-    private const string ReasonCacheControlNoCache = "cache-control-no-cache";
-    private const string ReasonCacheControlNoStore = "cache-control-no-store";
-    private const string ReasonCacheControlPrivate = "cache-control-private";
-    private const string ReasonCookie = "cookie";
-    private const string ReasonFraming = "framing";
-    private const string ReasonMethod = "method";
-    private const string ReasonOversized = "oversized";
-    private const string ReasonRequestBody = "request-body";
-    private const string ReasonSetCookie = "set-cookie";
-    private const string ReasonStatus = "status";
-    private const string ReasonTtl = "ttl";
-
     private readonly TimeProvider _timeProvider;
     private readonly object _gate = new();
     private readonly Dictionary<string, CacheEntry> _entries = new(StringComparer.Ordinal);
@@ -92,27 +78,14 @@ public sealed class ResponseCacheStore : IProxyCacheControl
             return;
         }
 
-        if (!ContainsStatus(route.Cache.CacheableStatusCodes, responseHead.StatusCode))
+        var responseEligibility = ProxyCacheEligibilityPolicy.EvaluateStoredResponse(
+            route,
+            responseHead,
+            body.LongLength,
+            out var ttl);
+        if (!responseEligibility.CanCache)
         {
-            RecordRejection(ReasonStatus);
-            return;
-        }
-
-        if (ContainsHeader(responseHead.Headers, "Set-Cookie"))
-        {
-            RecordRejection(ReasonSetCookie);
-            return;
-        }
-
-        if (!TryResolveTtl(route.Cache, responseHead.Headers, out var ttl, out rejectionReason))
-        {
-            RecordRejection(rejectionReason ?? ReasonTtl);
-            return;
-        }
-
-        if (body.Length > route.Cache.MaxEntryBytes)
-        {
-            RecordRejection(ReasonOversized);
+            RecordRejection(responseEligibility.RejectionReason ?? ProxyCacheEligibilityPolicy.ReasonTtl);
             return;
         }
 
@@ -120,7 +93,7 @@ public sealed class ResponseCacheStore : IProxyCacheControl
         var sizeBytes = CalculateSize(storedHeaders, body);
         if (sizeBytes > route.Cache.MaxEntryBytes || sizeBytes > route.Cache.MaxTotalBytes)
         {
-            RecordRejection(ReasonOversized);
+            RecordRejection(ProxyCacheEligibilityPolicy.ReasonOversized);
             return;
         }
 
@@ -203,32 +176,10 @@ public sealed class ResponseCacheStore : IProxyCacheControl
     {
         key = "";
         rejectionReason = null;
-        if (!route.Cache.Enabled)
+        var requestEligibility = ProxyCacheEligibilityPolicy.EvaluateRequest(route, requestHead);
+        if (!requestEligibility.CanCache)
         {
-            return false;
-        }
-
-        if (!ContainsMethod(route.Cache.Methods, requestHead.Method))
-        {
-            rejectionReason = ReasonMethod;
-            return false;
-        }
-
-        if (requestHead.Framing.Kind != Http1BodyKind.None)
-        {
-            rejectionReason = ReasonRequestBody;
-            return false;
-        }
-
-        if (ContainsHeader(requestHead.Headers, "Authorization"))
-        {
-            rejectionReason = ReasonAuthorization;
-            return false;
-        }
-
-        if (ContainsHeader(requestHead.Headers, "Cookie"))
-        {
-            rejectionReason = ReasonCookie;
+            rejectionReason = requestEligibility.RejectionReason;
             return false;
         }
 
@@ -249,85 +200,6 @@ public sealed class ResponseCacheStore : IProxyCacheControl
 
         key = builder.ToString();
         return true;
-    }
-
-    private static bool TryResolveTtl(
-        RuntimeCachePolicy policy,
-        IReadOnlyList<Http1HeaderField> headers,
-        out TimeSpan ttl,
-        out string? rejectionReason)
-    {
-        ttl = policy.DefaultTtl;
-        rejectionReason = null;
-        if (!policy.RespectOriginCacheControl)
-        {
-            return ttl > TimeSpan.Zero;
-        }
-
-        var directives = CacheControlDirectives(headers);
-        if (directives.ContainsKey("no-store"))
-        {
-            rejectionReason = ReasonCacheControlNoStore;
-            return false;
-        }
-
-        if (directives.ContainsKey("private"))
-        {
-            rejectionReason = ReasonCacheControlPrivate;
-            return false;
-        }
-
-        if (directives.ContainsKey("no-cache"))
-        {
-            rejectionReason = ReasonCacheControlNoCache;
-            return false;
-        }
-
-        if (directives.ContainsKey("must-revalidate"))
-        {
-            rejectionReason = ReasonCacheControlMustRevalidate;
-            return false;
-        }
-
-        if (directives.TryGetValue("max-age", out var maxAgeValue)
-            && int.TryParse(maxAgeValue, out var maxAgeSeconds))
-        {
-            ttl = TimeSpan.FromSeconds(maxAgeSeconds);
-        }
-
-        if (ttl <= TimeSpan.Zero)
-        {
-            rejectionReason = ReasonTtl;
-            return false;
-        }
-
-        return true;
-    }
-
-    private static Dictionary<string, string?> CacheControlDirectives(IReadOnlyList<Http1HeaderField> headers)
-    {
-        Dictionary<string, string?> directives = new(StringComparer.OrdinalIgnoreCase);
-        foreach (var header in headers)
-        {
-            if (!string.Equals(header.Name, "Cache-Control", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            foreach (var part in header.Value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
-            {
-                var equals = part.IndexOf('=');
-                if (equals < 0)
-                {
-                    directives[part] = null;
-                    continue;
-                }
-
-                directives[part[..equals].Trim()] = part[(equals + 1)..].Trim().Trim('"');
-            }
-        }
-
-        return directives;
     }
 
     private static IReadOnlyList<Http1HeaderField> SanitizeStoredHeaders(IReadOnlyList<Http1HeaderField> headers)
@@ -396,21 +268,6 @@ public sealed class ResponseCacheStore : IProxyCacheControl
     private static long CalculateSize(IReadOnlyList<Http1HeaderField> headers, byte[] body)
     {
         return body.LongLength + headers.Sum(static header => header.Name.Length + header.Value.Length + 4L);
-    }
-
-    private static bool ContainsHeader(IReadOnlyList<Http1HeaderField> headers, string name)
-    {
-        return headers.Any(header => string.Equals(header.Name, name, StringComparison.OrdinalIgnoreCase));
-    }
-
-    private static bool ContainsStatus(IReadOnlyList<int> statusCodes, int statusCode)
-    {
-        return statusCodes.Any(code => code == statusCode);
-    }
-
-    private static bool ContainsMethod(IReadOnlyList<string> methods, string method)
-    {
-        return methods.Any(value => string.Equals(value, method, StringComparison.OrdinalIgnoreCase));
     }
 
     private static string JoinHeaderValues(IReadOnlyList<Http1HeaderField> headers, string name)

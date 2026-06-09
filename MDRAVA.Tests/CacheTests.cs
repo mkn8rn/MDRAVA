@@ -191,6 +191,18 @@ internal static class CacheTests
         AssertEx.True(snapshot.Rejections.Any(static rejection => rejection.Reason == "cookie" && rejection.Count == 1));
     }
 
+    public static void CacheEligibilityRejectsCookieBeforeBuffering()
+    {
+        var route = Route(CachePolicy());
+        var request = Request("GET", "/private", "cache.test", [new Http1HeaderField("Cookie", "sid=secret")]);
+        var response = Response("200 OK", []);
+
+        var result = ProxyCacheEligibilityPolicy.EvaluateResponseForBuffering(route, request, response);
+
+        AssertEx.False(result.CanCache);
+        AssertEx.Equal(ProxyCacheEligibilityPolicy.ReasonCookie, result.RejectionReason);
+    }
+
     public static void SetCookieResponseIsNotCachedByDefault()
     {
         AssertRejectedResponse([new Http1HeaderField("Set-Cookie", "id=1")]);
@@ -199,6 +211,18 @@ internal static class CacheTests
     public static void NoStoreResponseIsNotCached()
     {
         AssertRejectedResponse([new Http1HeaderField("Cache-Control", "no-store")]);
+    }
+
+    public static void CacheEligibilityRejectsNoStoreBeforeBuffering()
+    {
+        var route = Route(CachePolicy());
+        var request = Request("GET", "/no-store", "cache.test");
+        var response = Response("200 OK", [new Http1HeaderField("Cache-Control", "no-store")]);
+
+        var result = ProxyCacheEligibilityPolicy.EvaluateResponseForBuffering(route, request, response);
+
+        AssertEx.False(result.CanCache);
+        AssertEx.Equal(ProxyCacheEligibilityPolicy.ReasonCacheControlNoStore, result.RejectionReason);
     }
 
     public static void NoCacheResponseIsNotCached()
@@ -246,6 +270,40 @@ internal static class CacheTests
         AssertEx.Equal(2, result.UpstreamRequests.Count);
         AssertEx.True(result.FirstResponse.EndsWith(body, StringComparison.Ordinal), result.FirstResponse);
         AssertEx.True(result.SecondResponse.EndsWith(body, StringComparison.Ordinal), result.SecondResponse);
+    }
+
+    public static void CacheEligibilityClassifiesUnbufferableFraming()
+    {
+        var route = Route(CachePolicy());
+        var request = Request("GET", "/chunked", "cache.test");
+        var response = new Http1ResponseHead(
+            "HTTP/1.1",
+            200,
+            "OK",
+            Http1ResponseFraming.Chunked,
+            [new Http1HeaderField("Transfer-Encoding", "chunked")]);
+
+        var result = ProxyCacheEligibilityPolicy.EvaluateResponseForBuffering(route, request, response);
+
+        AssertEx.False(result.CanCache);
+        AssertEx.Equal(ProxyCacheEligibilityPolicy.ReasonFraming, result.RejectionReason);
+    }
+
+    public static void CacheEligibilityClassifiesOversizedContentLength()
+    {
+        var route = Route(CachePolicy(maxEntryBytes: 4));
+        var request = Request("GET", "/big", "cache.test");
+        var response = new Http1ResponseHead(
+            "HTTP/1.1",
+            200,
+            "OK",
+            Http1ResponseFraming.FromContentLength(10),
+            [new Http1HeaderField("Content-Length", "10")]);
+
+        var result = ProxyCacheEligibilityPolicy.EvaluateResponseForBuffering(route, request, response);
+
+        AssertEx.False(result.CanCache);
+        AssertEx.Equal(ProxyCacheEligibilityPolicy.ReasonOversized, result.RejectionReason);
     }
 
     public static void HopByHopHeadersAndTransferEncodingAreNotStored()

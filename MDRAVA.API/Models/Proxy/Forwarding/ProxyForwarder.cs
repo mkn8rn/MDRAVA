@@ -487,7 +487,7 @@ public sealed class ProxyForwarder
 
         var keepClientConnectionOpen = preferClientKeepAlive;
         var responseHeaders = BuildResponseHeaders(responseHead, route);
-        if (ShouldBufferForCache(route, requestHead, responseHead))
+        if (ProxyCacheEligibilityPolicy.EvaluateResponseForBuffering(route, requestHead, responseHead).CanCache)
         {
             var body = await ReadFramedUpstreamCacheCandidateBodyAsync(
                 (readTimeouts, token) => ReadHttp2DataChunkAsync(upstreamHttp2, readTimeouts, token),
@@ -597,7 +597,7 @@ public sealed class ProxyForwarder
 
         var keepClientConnectionOpen = preferClientKeepAlive;
         var responseHeaders = BuildResponseHeaders(responseHead, route);
-        if (ShouldBufferForCache(route, requestHead, responseHead))
+        if (ProxyCacheEligibilityPolicy.EvaluateResponseForBuffering(route, requestHead, responseHead).CanCache)
         {
             var body = await ReadFramedUpstreamCacheCandidateBodyAsync(
                 (readTimeouts, token) => ReadHttp3DataChunkAsync(upstreamHttp3, readTimeouts, token),
@@ -1261,7 +1261,7 @@ public sealed class ProxyForwarder
                 }
 
                 var responseHeaders = BuildResponseHeaders(responseHead, route);
-                if (ShouldBufferForCache(route, requestHead, responseHead))
+                if (ProxyCacheEligibilityPolicy.EvaluateResponseForBuffering(route, requestHead, responseHead).CanCache)
                 {
                     var body = await ReadCacheCandidateBodyAsync(
                         upstreamStream,
@@ -1462,46 +1462,11 @@ public sealed class ProxyForwarder
             SuppressedForRetry: true);
     }
 
-    private static bool ShouldBufferForCache(
-        RuntimeRoute route,
-        Http1RequestHead requestHead,
-        Http1ResponseHead responseHead)
-    {
-        if (!route.Cache.Enabled
-            || !ContainsMethod(route.Cache.Methods, requestHead.Method)
-            || requestHead.Framing.Kind != Http1BodyKind.None
-            || ContainsHeader(requestHead.Headers, "Authorization")
-            || !ContainsStatus(route.Cache.CacheableStatusCodes, responseHead.StatusCode)
-            || ContainsHeader(responseHead.Headers, "Set-Cookie")
-            || (route.Cache.RespectOriginCacheControl && HasUncacheableCacheControl(responseHead.Headers)))
-        {
-            return false;
-        }
-
-        if (responseHead.Framing.Kind == Http1BodyKind.None)
-        {
-            return true;
-        }
-
-        return responseHead.Framing.Kind == Http1BodyKind.ContentLength
-            && responseHead.Framing.ContentLength.GetValueOrDefault() <= route.Cache.MaxEntryBytes;
-    }
-
     private void RecordUncacheableFraming(RuntimeRoute route, Http1ResponseHead responseHead)
     {
-        if (!route.Cache.Enabled)
+        if (ProxyCacheEligibilityPolicy.TryGetResponseFramingRejection(route, responseHead, out var reason))
         {
-            return;
-        }
-
-        if (responseHead.Framing.Kind is Http1BodyKind.Chunked or Http1BodyKind.CloseDelimited)
-        {
-            _cacheStore.RecordUncacheable(route, "framing");
-        }
-        else if (responseHead.Framing.Kind == Http1BodyKind.ContentLength
-            && responseHead.Framing.ContentLength.GetValueOrDefault() > route.Cache.MaxEntryBytes)
-        {
-            _cacheStore.RecordUncacheable(route, "oversized");
+            _cacheStore.RecordUncacheable(route, reason);
         }
     }
 
@@ -1876,44 +1841,9 @@ public sealed class ProxyForwarder
         return headerNames.Any(name => string.Equals(name, headerName, StringComparison.OrdinalIgnoreCase));
     }
 
-    private static bool ContainsHeader(IReadOnlyList<Http1HeaderField> headers, string headerName)
-    {
-        return headers.Any(header => string.Equals(header.Name, headerName, StringComparison.OrdinalIgnoreCase));
-    }
-
     private static bool ContainsStatus(IReadOnlyList<int> statusCodes, int statusCode)
     {
         return statusCodes.Any(code => code == statusCode);
-    }
-
-    private static bool ContainsMethod(IReadOnlyList<string> methods, string method)
-    {
-        return methods.Any(value => string.Equals(value, method, StringComparison.OrdinalIgnoreCase));
-    }
-
-    private static bool HasUncacheableCacheControl(IReadOnlyList<Http1HeaderField> headers)
-    {
-        foreach (var header in headers)
-        {
-            if (!string.Equals(header.Name, "Cache-Control", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            foreach (var directive in header.Value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
-            {
-                var name = directive.Split('=', 2)[0].Trim();
-                if (string.Equals(name, "no-store", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(name, "private", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(name, "no-cache", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(name, "must-revalidate", StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
     }
 
     private static ReadOnlyMemory<byte> BuildGeneratedBadRequest(string requestId)
