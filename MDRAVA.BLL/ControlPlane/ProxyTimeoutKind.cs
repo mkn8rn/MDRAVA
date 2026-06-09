@@ -1,4 +1,4 @@
-namespace MDRAVA.API.Models.Forwarding;
+namespace MDRAVA.BLL.ControlPlane;
 
 public enum ProxyTimeoutKind
 {

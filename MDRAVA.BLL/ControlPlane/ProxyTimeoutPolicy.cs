@@ -1,4 +1,4 @@
-namespace MDRAVA.API.Proxy.Forwarding;
+namespace MDRAVA.BLL.ControlPlane;
 
 public static class ProxyTimeoutPolicy
 {
