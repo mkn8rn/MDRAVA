@@ -762,8 +762,7 @@ public static class ProxyOptionsValidationRules
         for (var index = 0; index < cache.Methods.Count; index++)
         {
             var method = cache.Methods[index];
-            if (!string.Equals(method, "GET", StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(method, "HEAD", StringComparison.OrdinalIgnoreCase))
+            if (!ProxyRequestMethodPolicy.IsSafeReadMethod(method))
             {
                 failures.Add($"{routePrefix}:Cache:Methods:{index} must be GET or HEAD.");
             }
@@ -814,8 +813,7 @@ public static class ProxyOptionsValidationRules
         for (var index = 0; index < retry.RetryMethods.Count; index++)
         {
             var method = retry.RetryMethods[index];
-            if (!string.Equals(method, "GET", StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(method, "HEAD", StringComparison.OrdinalIgnoreCase))
+            if (!ProxyRequestMethodPolicy.IsSafeReadMethod(method))
             {
                 failures.Add($"{routePrefix}:Retry:RetryMethods:{index} must be GET or HEAD.");
             }

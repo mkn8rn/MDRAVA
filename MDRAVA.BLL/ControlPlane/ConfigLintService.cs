@@ -221,7 +221,7 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
                 findings.Add(Warning("cache_private_path", $"Route '{route.Name}' enables cache on a path or header pattern that commonly serves private content.", sourceName, routePath, "Keep caching disabled for authenticated or user-specific resources."));
             }
 
-            if (route.RetryEnabled && route.RetryMethods.Any(static method => !IsSafeRetryMethod(method)))
+            if (route.RetryEnabled && route.RetryMethods.Any(static method => !ProxyRequestMethodPolicy.IsSafeReadMethod(method)))
             {
                 findings.Add(Error("retry_unsafe_method", $"Route '{route.Name}' allows retry for an unsafe method.", sourceName, routePath, "Restrict retry methods to GET and HEAD."));
             }
@@ -254,7 +254,7 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
                     }
 
                     if (route.RetryEnabled
-                        && route.RetryMethods.Any(static method => !IsSafeRetryMethod(method)))
+                        && route.RetryMethods.Any(static method => !ProxyRequestMethodPolicy.IsSafeReadMethod(method)))
                     {
                         findings.Add(Warning("upstream_http3_retry_body_safety", $"Route '{route.Name}' combines HTTP/3 upstreams with retry methods beyond GET/HEAD.", sourceName, upstreamPath, "Keep HTTP/3 upstream retries limited to methods without request bodies unless replay is explicitly safe."));
                     }
@@ -377,12 +377,6 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
             || path.Contains("user", StringComparison.Ordinal)
             || route.CacheVaryByHeaders.Any(static header => string.Equals(header, "Authorization", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(header, "Cookie", StringComparison.OrdinalIgnoreCase));
-    }
-
-    private static bool IsSafeRetryMethod(string method)
-    {
-        return string.Equals(method, "GET", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(method, "HEAD", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsNonLocalAdminUrl(string url)

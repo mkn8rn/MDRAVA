@@ -21,6 +21,14 @@ internal static class ProxyRequestMethodPolicyTests
         AssertEx.Equal("", lowerPostReason);
     }
 
+    public static void ClassifiesSafeReadMethods()
+    {
+        AssertEx.True(ProxyRequestMethodPolicy.IsSafeReadMethod("GET"));
+        AssertEx.True(ProxyRequestMethodPolicy.IsSafeReadMethod("head"));
+        AssertEx.False(ProxyRequestMethodPolicy.IsSafeReadMethod("POST"));
+        AssertEx.False(ProxyRequestMethodPolicy.IsSafeReadMethod("DELETE"));
+    }
+
     public static void ClassifiesUnsupportedMethods()
     {
         var traceSupported = ProxyRequestMethodPolicy.IsSupportedApplicationMethod("TRACE", out var traceReason);

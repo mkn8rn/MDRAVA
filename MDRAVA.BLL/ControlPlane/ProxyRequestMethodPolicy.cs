@@ -16,9 +16,20 @@ public static class ProxyRequestMethodPolicy
         "DELETE"
     };
 
+    private static readonly HashSet<string> SafeReadMethods = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "GET",
+        "HEAD"
+    };
+
     public static bool IsConnectTunnelMethod(string method)
     {
         return string.Equals(method, "CONNECT", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static bool IsSafeReadMethod(string method)
+    {
+        return SafeReadMethods.Contains(method);
     }
 
     public static bool IsValidMethodToken(string method)
