@@ -524,8 +524,8 @@ internal static class RouteDiagnosticsTests
         return new RouteMatchDiagnosticsService(
             new ProxyRouteDiagnosticsConfigurationSource(store),
             new ProxyRouteDiagnosticsMatcher(new SingleUpstreamRouteMatcher()),
-            new ProxyRouteDiagnosticsActionPolicy(new ProxyRouteActionPolicy()),
-            new ProxyRouteDiagnosticsPathRewritePolicy(new PathRewritePolicy()),
+            new ProxyRouteDiagnosticsActionPolicyAdapter(new ProxyRouteActionPolicy()),
+            new ProxyRouteDiagnosticsPathRewritePolicyAdapter(new PathRewritePolicy()),
             new ProxyRouteDiagnosticsMetricsSink(metrics),
             TimeProvider.System);
     }

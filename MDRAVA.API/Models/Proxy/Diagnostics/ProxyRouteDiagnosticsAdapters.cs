@@ -56,12 +56,12 @@ public sealed class ProxyRouteDiagnosticsMatcher
     }
 }
 
-public sealed class ProxyRouteDiagnosticsActionPolicy
+public sealed class ProxyRouteDiagnosticsActionPolicyAdapter
     : IProxyRouteDiagnosticsActionPolicy
 {
     private readonly ProxyRouteActionPolicy _routeActionPolicy;
 
-    public ProxyRouteDiagnosticsActionPolicy(ProxyRouteActionPolicy routeActionPolicy)
+    public ProxyRouteDiagnosticsActionPolicyAdapter(ProxyRouteActionPolicy routeActionPolicy)
     {
         _routeActionPolicy = routeActionPolicy;
     }
@@ -99,12 +99,12 @@ public sealed class ProxyRouteDiagnosticsActionPolicy
     }
 }
 
-public sealed class ProxyRouteDiagnosticsPathRewritePolicy
+public sealed class ProxyRouteDiagnosticsPathRewritePolicyAdapter
     : IProxyRouteDiagnosticsPathRewritePolicy
 {
     private readonly PathRewritePolicy _pathRewritePolicy;
 
-    public ProxyRouteDiagnosticsPathRewritePolicy(PathRewritePolicy pathRewritePolicy)
+    public ProxyRouteDiagnosticsPathRewritePolicyAdapter(PathRewritePolicy pathRewritePolicy)
     {
         _pathRewritePolicy = pathRewritePolicy;
     }
