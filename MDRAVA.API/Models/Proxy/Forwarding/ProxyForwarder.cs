@@ -713,7 +713,7 @@ public sealed class ProxyForwarder
             requestHead.Headers,
             preserveTransferEncoding: false,
             preserveTrailer: false);
-        var requestHeaders = ApplyRequestHeaderPolicy(filtered, route.HeaderPolicy, forwardedHeaders);
+        var requestHeaders = ProxyHeaderMutationPolicy.ApplyRequestHeaders(filtered, route.HeaderPolicy, forwardedHeaders);
         var authority = requestHeaders.FirstOrDefault(static header =>
             string.Equals(header.Name, "Host", StringComparison.OrdinalIgnoreCase))?.Value;
         if (string.IsNullOrWhiteSpace(authority))
@@ -1157,7 +1157,7 @@ public sealed class ProxyForwarder
             preserveTransferEncoding: false,
             preserveTrailer: requestHead.Framing.Kind == Http1BodyKind.Chunked);
 
-        var requestHeaders = ApplyRequestHeaderPolicy(filtered, route.HeaderPolicy, forwardedHeaders);
+        var requestHeaders = ProxyHeaderMutationPolicy.ApplyRequestHeaders(filtered, route.HeaderPolicy, forwardedHeaders);
         foreach (var header in requestHeaders)
         {
             if (IsManagedFramingHeader(header.Name))
@@ -1440,7 +1440,7 @@ public sealed class ProxyForwarder
             preserveTransferEncoding: false,
             preserveTrailer: responseHead.Framing.Kind == Http1BodyKind.Chunked);
 
-        return ApplyResponseHeaderPolicy(filtered, route.HeaderPolicy);
+        return ProxyHeaderMutationPolicy.ApplyResponseHeaders(filtered, route.HeaderPolicy);
     }
 
     private static bool ShouldSuppressRetryableStatusResponse(
@@ -1800,45 +1800,6 @@ public sealed class ProxyForwarder
             || string.Equals(headerName, "Transfer-Encoding", StringComparison.OrdinalIgnoreCase)
             || string.Equals(headerName, "Connection", StringComparison.OrdinalIgnoreCase)
             || string.Equals(headerName, "X-Request-Id", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static IReadOnlyList<Http1HeaderField> ApplyRequestHeaderPolicy(
-        IReadOnlyList<Http1HeaderField> headers,
-        RuntimeHeaderPolicy policy,
-        ForwardedHeadersContext forwardedHeaders)
-    {
-        var result = headers
-            .Where(header => !ForwardedHeadersPolicy.IsForwardedHeader(header.Name))
-            .Where(header => !ContainsHeaderName(policy.RemoveRequestHeaders, header.Name))
-            .Where(header => !ContainsHeaderName(policy.SetRequestHeaders.Select(static set => set.Name), header.Name))
-            .ToList();
-
-        result.AddRange(policy.SetRequestHeaders);
-        foreach (var forwardedHeader in forwardedHeaders.Headers)
-        {
-            result.RemoveAll(header => string.Equals(header.Name, forwardedHeader.Name, StringComparison.OrdinalIgnoreCase));
-            result.Add(forwardedHeader);
-        }
-
-        return result;
-    }
-
-    private static IReadOnlyList<Http1HeaderField> ApplyResponseHeaderPolicy(
-        IReadOnlyList<Http1HeaderField> headers,
-        RuntimeHeaderPolicy policy)
-    {
-        var result = headers
-            .Where(header => !ContainsHeaderName(policy.RemoveResponseHeaders, header.Name))
-            .Where(header => !ContainsHeaderName(policy.SetResponseHeaders.Select(static set => set.Name), header.Name))
-            .ToList();
-
-        result.AddRange(policy.SetResponseHeaders);
-        return result;
-    }
-
-    private static bool ContainsHeaderName(IEnumerable<string> headerNames, string headerName)
-    {
-        return headerNames.Any(name => string.Equals(name, headerName, StringComparison.OrdinalIgnoreCase));
     }
 
     private static bool ContainsStatus(IReadOnlyList<int> statusCodes, int statusCode)

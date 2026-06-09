@@ -61,4 +61,62 @@ internal static class HeaderPolicyTests
             [new Http1HeaderField("Connection", "keep-alive")],
             "upgrade"));
     }
+
+    public static void AppliesRequestHeaderMutationPolicy()
+    {
+        var policy = new RuntimeHeaderPolicy(
+            [new Http1HeaderField("X-Set", "new")],
+            ["X-Remove"],
+            [],
+            []);
+        var forwardedHeaders = new ForwardedHeadersContext(
+            System.Net.IPAddress.Parse("203.0.113.10"),
+            "203.0.113.10:443",
+            [
+                new Http1HeaderField("Forwarded", "for=203.0.113.10;proto=https"),
+                new Http1HeaderField("X-Forwarded-For", "203.0.113.10")
+            ]);
+
+        var result = ProxyHeaderMutationPolicy.ApplyRequestHeaders(
+            [
+                new Http1HeaderField("Host", "example.test"),
+                new Http1HeaderField("X-Remove", "old"),
+                new Http1HeaderField("X-Set", "old"),
+                new Http1HeaderField("Forwarded", "for=10.0.0.1"),
+                new Http1HeaderField("X-Keep", "yes")
+            ],
+            policy,
+            forwardedHeaders);
+
+        AssertEx.True(result.Any(static header => header.Name == "Host" && header.Value == "example.test"));
+        AssertEx.True(result.Any(static header => header.Name == "X-Keep" && header.Value == "yes"));
+        AssertEx.True(result.Any(static header => header.Name == "X-Set" && header.Value == "new"));
+        AssertEx.True(result.Any(static header => header.Name == "Forwarded" && header.Value == "for=203.0.113.10;proto=https"));
+        AssertEx.True(result.Any(static header => header.Name == "X-Forwarded-For" && header.Value == "203.0.113.10"));
+        AssertEx.False(result.Any(static header => header.Name == "X-Remove"));
+        AssertEx.False(result.Any(static header => header.Name == "X-Set" && header.Value == "old"));
+        AssertEx.False(result.Any(static header => header.Name == "Forwarded" && header.Value == "for=10.0.0.1"));
+    }
+
+    public static void AppliesResponseHeaderMutationPolicy()
+    {
+        var policy = new RuntimeHeaderPolicy(
+            [],
+            [],
+            [new Http1HeaderField("X-Set", "new")],
+            ["X-Remove"]);
+
+        var result = ProxyHeaderMutationPolicy.ApplyResponseHeaders(
+            [
+                new Http1HeaderField("Content-Type", "text/plain"),
+                new Http1HeaderField("X-Remove", "old"),
+                new Http1HeaderField("X-Set", "old")
+            ],
+            policy);
+
+        AssertEx.True(result.Any(static header => header.Name == "Content-Type" && header.Value == "text/plain"));
+        AssertEx.True(result.Any(static header => header.Name == "X-Set" && header.Value == "new"));
+        AssertEx.False(result.Any(static header => header.Name == "X-Remove"));
+        AssertEx.False(result.Any(static header => header.Name == "X-Set" && header.Value == "old"));
+    }
 }
