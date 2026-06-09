@@ -13,7 +13,7 @@ using MDRAVA.API.Proxy.Tls;
 
 namespace MDRAVA.API.Proxy.Hosting;
 
-public sealed class ProxyListenerService : BackgroundService, IProxyListenerManager
+public sealed class ProxyListenerService : BackgroundService, IProxyListenerReloadApplier
 {
     private readonly IProxyConfigurationStore _configurationStore;
     private readonly IRouteMatcher _routeMatcher;

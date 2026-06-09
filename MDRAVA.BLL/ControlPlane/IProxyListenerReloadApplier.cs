@@ -1,12 +1,11 @@
+using MDRAVA.BLL.Configuration;
 
-namespace MDRAVA.API.Proxy.Hosting;
+namespace MDRAVA.BLL.ControlPlane;
 
-public interface IProxyListenerManager
+public interface IProxyListenerReloadApplier
 {
     ValueTask<ProxyListenerReloadResult> ApplyReloadAsync(
         ProxyConfigurationSnapshot snapshot,
         Func<ProxyConfigurationSnapshot, ProxyConfigurationSnapshot> activateSnapshot,
         CancellationToken cancellationToken);
-
-    IReadOnlyList<ProxyListenerStatus> Snapshot();
 }

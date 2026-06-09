@@ -1,5 +1,3 @@
-using MDRAVA.API.Proxy.Hosting;
-
 namespace MDRAVA.API.Proxy.Configuration.Loading;
 
 public sealed class ProxyConfigurationReloadService
@@ -10,7 +8,7 @@ public sealed class ProxyConfigurationReloadService
     private readonly IProxyConfigurationStore _store;
     private readonly ResponseCacheStore? _cacheStore;
     private readonly ProxyMetrics? _metrics;
-    private readonly IProxyListenerManager? _listenerManager;
+    private readonly IProxyListenerReloadApplier? _listenerReloadApplier;
     private readonly ILogger<ProxyConfigurationReloadService> _logger;
 
     public ProxyConfigurationReloadService(
@@ -18,14 +16,14 @@ public sealed class ProxyConfigurationReloadService
         IProxyConfigurationStore store,
         ResponseCacheStore? cacheStore,
         ProxyMetrics? metrics,
-        IProxyListenerManager? listenerManager,
+        IProxyListenerReloadApplier? listenerReloadApplier,
         ILogger<ProxyConfigurationReloadService> logger)
     {
         _loader = loader;
         _store = store;
         _cacheStore = cacheStore;
         _metrics = metrics;
-        _listenerManager = listenerManager;
+        _listenerReloadApplier = listenerReloadApplier;
         _logger = logger;
     }
 
@@ -84,13 +82,13 @@ public sealed class ProxyConfigurationReloadService
 
         ProxyListenerReloadResult? listenerReload = null;
         ProxyConfigurationSnapshot snapshot;
-        if (_listenerManager is null)
+        if (_listenerReloadApplier is null)
         {
             snapshot = _store.Replace(loadResult.Snapshot);
         }
         else
         {
-            listenerReload = await _listenerManager.ApplyReloadAsync(
+            listenerReload = await _listenerReloadApplier.ApplyReloadAsync(
                 loadResult.Snapshot,
                 candidate => _store.Replace(candidate),
                 cancellationToken);
