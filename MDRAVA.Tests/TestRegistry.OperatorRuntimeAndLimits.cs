@@ -56,6 +56,7 @@ internal static partial class TestRegistry
     Test("Rate limiter enforces upgrade limit", Sync(HardeningTests.RateLimiterEnforcesUpgradeLimit), TestTaxonomy.Limits),
     Test("Rate limiter uses normalized client address keys", Sync(HardeningTests.RateLimiterUsesNormalizedClientAddressKeys), TestTaxonomy.Limits),
     Test("Rate limiter cleans stale entries", Sync(HardeningTests.RateLimiterCleansStaleEntries), TestTaxonomy.Limits),
-    Test("Shutdown coordinator exposes grace deadline", Sync(HardeningTests.ShutdownCoordinatorExposesGraceDeadlineAndCancels), TestTaxonomy.Limits)
+    Test("Shutdown coordinator exposes grace deadline", Sync(HardeningTests.ShutdownCoordinatorExposesGraceDeadlineAndCancels), TestTaxonomy.Limits),
+    Test("Shutdown coordinator begin shutdown is idempotent", Sync(HardeningTests.ShutdownCoordinatorBeginShutdownIsIdempotent), TestTaxonomy.Limits)
     ];
 }

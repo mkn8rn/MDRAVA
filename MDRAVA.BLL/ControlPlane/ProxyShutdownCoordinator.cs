@@ -1,4 +1,4 @@
-namespace MDRAVA.API.Proxy.Runtime;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed class ProxyShutdownCoordinator : IDisposable
 {

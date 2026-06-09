@@ -164,4 +164,18 @@ internal static class HardeningTests
         Thread.Sleep(250);
         AssertEx.True(token.IsCancellationRequested);
     }
+
+    public static void ShutdownCoordinatorBeginShutdownIsIdempotent()
+    {
+        using var coordinator = new ProxyShutdownCoordinator();
+
+        var firstToken = coordinator.BeginShutdown(TimeSpan.FromSeconds(5));
+        var firstStartedAtUtc = coordinator.StartedAtUtc;
+        var firstDeadlineUtc = coordinator.DeadlineUtc;
+        var secondToken = coordinator.BeginShutdown(TimeSpan.FromMinutes(1));
+
+        AssertEx.Equal(firstToken, secondToken);
+        AssertEx.Equal(firstStartedAtUtc, coordinator.StartedAtUtc);
+        AssertEx.Equal(firstDeadlineUtc, coordinator.DeadlineUtc);
+    }
 }
