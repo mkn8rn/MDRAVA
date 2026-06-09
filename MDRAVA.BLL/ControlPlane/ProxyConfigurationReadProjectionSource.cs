@@ -1,5 +1,7 @@
+using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.Infrastructure;
 
-namespace MDRAVA.API.Proxy.Configuration;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed class ProxyConfigurationReadProjectionSource
     : IProxyConfigurationReadProjectionSource<ProxyConfigurationProjection>

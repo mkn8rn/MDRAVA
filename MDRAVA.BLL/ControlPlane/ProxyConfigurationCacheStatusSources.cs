@@ -1,4 +1,6 @@
-namespace MDRAVA.API.Proxy.Caching;
+using MDRAVA.BLL.Infrastructure;
+
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed class ProxyCacheStatusConfigurationSource
     : IProxyCacheStatusConfigurationSource

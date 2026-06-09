@@ -1,4 +1,3 @@
-using MDRAVA.API.Proxy.Caching;
 using MDRAVA.API.Proxy.Hosting;
 using MDRAVA.API.Proxy.Metrics;
 

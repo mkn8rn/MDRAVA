@@ -1,5 +1,6 @@
+using MDRAVA.BLL.Infrastructure;
 
-namespace MDRAVA.API.Proxy.Metrics;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed class ProxyMetricsExportAvailabilityReader : IProxyMetricsExportAvailabilityReader
 {

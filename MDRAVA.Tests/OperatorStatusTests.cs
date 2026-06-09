@@ -1,7 +1,6 @@
 using System.Text.Json;
 using MDRAVA.API.Controllers;
 using MDRAVA.API.Proxy.Acme;
-using MDRAVA.API.Proxy.Caching;
 using MDRAVA.INF.Configuration.Paths;
 using MDRAVA.API.Proxy.Connections;
 using MDRAVA.API.Proxy.Health;
