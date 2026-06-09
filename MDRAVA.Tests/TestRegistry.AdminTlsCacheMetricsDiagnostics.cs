@@ -32,6 +32,8 @@ internal static partial class TestRegistry
     Test("ACME status projection does not expose private material", AcmeTests.AcmeStatusProjectionDoesNotExposePrivateMaterial, TestTaxonomy.Config, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
     Test("ACME status snapshot reader projects source state", Sync(AcmeTests.AcmeStatusSnapshotReaderProjectsSourceState), TestTaxonomy.Tls),
     Test("ACME renewal avoids tight retry loop after failure", AcmeTests.AcmeRenewalAvoidsTightRetryLoopAfterFailure, TestTaxonomy.Tls, TestTaxonomy.RetryCircuit, TestTaxonomy.SecurityNegativePaths),
+    Test("ACME renewal schedule uses disabled backoff without active config", Sync(AcmeTests.AcmeRenewalScheduleUsesDisabledBackoffWithoutActiveConfig), TestTaxonomy.Tls, TestTaxonomy.Config),
+    Test("ACME renewal schedule clamps configured interval", Sync(AcmeTests.AcmeRenewalScheduleClampsConfiguredInterval), TestTaxonomy.Tls, TestTaxonomy.Config),
     Test("Existing HTTP upstream config remains valid", UpstreamTlsTests.ExistingHttpUpstreamConfigRemainsValid, TestTaxonomy.UpstreamHttp1, TestTaxonomy.Tls),
     Test("HTTPS upstream config parses and validates", UpstreamTlsTests.HttpsUpstreamConfigParsesAndValidates, TestTaxonomy.UpstreamHttp1, TestTaxonomy.Tls),
     Test("Unsupported upstream scheme is rejected", UpstreamTlsTests.UnsupportedUpstreamSchemeIsRejected, TestTaxonomy.UpstreamHttp1, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),

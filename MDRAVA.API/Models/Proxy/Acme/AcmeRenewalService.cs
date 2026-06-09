@@ -5,17 +5,20 @@ public sealed class AcmeRenewalService : BackgroundService
 {
     private readonly IProxyConfigurationStore _configurationStore;
     private readonly AcmeCertificateManager _manager;
+    private readonly AcmeRenewalSchedulePolicy _schedulePolicy;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<AcmeRenewalService> _logger;
 
     public AcmeRenewalService(
         IProxyConfigurationStore configurationStore,
         AcmeCertificateManager manager,
+        AcmeRenewalSchedulePolicy schedulePolicy,
         TimeProvider timeProvider,
         ILogger<AcmeRenewalService> logger)
     {
         _configurationStore = configurationStore;
         _manager = manager;
+        _schedulePolicy = schedulePolicy;
         _timeProvider = timeProvider;
         _logger = logger;
     }
@@ -51,11 +54,7 @@ public sealed class AcmeRenewalService : BackgroundService
 
     private TimeSpan ResolveDelay()
     {
-        if (_configurationStore.TryGetSnapshot(out var snapshot) && snapshot is not null && snapshot.Acme.Enabled)
-        {
-            return TimeSpan.FromMinutes(Math.Clamp(snapshot.Acme.CheckIntervalMinutes, 5, 1440));
-        }
-
-        return TimeSpan.FromHours(12);
+        _configurationStore.TryGetSnapshot(out var snapshot);
+        return _schedulePolicy.ResolveDelay(snapshot);
     }
 }

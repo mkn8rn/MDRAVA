@@ -1,48 +1,40 @@
+using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.Infrastructure;
 
-namespace MDRAVA.API.Proxy.Acme;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed class AcmeCertificateManager
 {
     private readonly IProxyConfigurationStore _configurationStore;
     private readonly IMdravaDataDirectoryProvider _dataDirectoryProvider;
     private readonly IAcmeCertificateIssuer _issuer;
+    private readonly IAcmeCertificateMaterialWriter _materialWriter;
     private readonly AcmeChallengeStore _challengeStore;
     private readonly AcmeCertificateStatusStore _statusStore;
     private readonly TimeProvider _timeProvider;
-    private readonly ProxyMetrics? _metrics;
-    private readonly ILogger<AcmeCertificateManager> _logger;
+    private readonly ProxyMetrics _metrics;
+    private readonly IAcmeCertificateRenewalEventSink _events;
 
     public AcmeCertificateManager(
         IProxyConfigurationStore configurationStore,
         IMdravaDataDirectoryProvider dataDirectoryProvider,
         IAcmeCertificateIssuer issuer,
+        IAcmeCertificateMaterialWriter materialWriter,
         AcmeChallengeStore challengeStore,
         AcmeCertificateStatusStore statusStore,
         TimeProvider timeProvider,
-        ProxyMetrics? metrics,
-        ILogger<AcmeCertificateManager> logger)
+        ProxyMetrics metrics,
+        IAcmeCertificateRenewalEventSink events)
     {
         _configurationStore = configurationStore;
         _dataDirectoryProvider = dataDirectoryProvider;
         _issuer = issuer;
+        _materialWriter = materialWriter;
         _challengeStore = challengeStore;
         _statusStore = statusStore;
         _timeProvider = timeProvider;
         _metrics = metrics;
-        _logger = logger;
-    }
-
-    public AcmeCertificateManager(
-        IProxyConfigurationStore configurationStore,
-        IMdravaDataDirectoryProvider dataDirectoryProvider,
-        IAcmeCertificateIssuer issuer,
-        AcmeChallengeStore challengeStore,
-        AcmeCertificateStatusStore statusStore,
-        TimeProvider timeProvider,
-        ILogger<AcmeCertificateManager> logger)
-        : this(configurationStore, dataDirectoryProvider, issuer, challengeStore, statusStore, timeProvider, null, logger)
-    {
+        _events = events;
     }
 
     public async ValueTask CheckRenewalsAsync(CancellationToken cancellationToken)
@@ -52,7 +44,7 @@ public sealed class AcmeCertificateManager
             return;
         }
 
-        AcmeCertificateMaterialStore.EnsureLayout(_dataDirectoryProvider.GetDataDirectory(), snapshot.Acme.StoragePath);
+        _materialWriter.EnsureLayout(_dataDirectoryProvider.GetDataDirectory(), snapshot.Acme.StoragePath);
         var nowUtc = _timeProvider.GetUtcNow();
         foreach (var certificateOptions in snapshot.Acme.Certificates)
         {
@@ -98,7 +90,7 @@ public sealed class AcmeCertificateManager
         }
 
         var attemptStartedAtUtc = nowUtc;
-        _metrics?.AcmeRenewalAttempted();
+        _metrics.AcmeRenewalAttempted();
         _statusStore.Upsert(CreateStatus(snapshot, certificateOptions, nowUtc, "attempting", null, null) with
         {
             LastAttemptAtUtc = attemptStartedAtUtc
@@ -122,12 +114,9 @@ public sealed class AcmeCertificateManager
 
         if (!result.Succeeded || result.PfxBytes is null)
         {
-            _metrics?.AcmeRenewalFailed();
+            _metrics.AcmeRenewalFailed();
             var nextAttempt = attemptStartedAtUtc.AddMinutes(snapshot.Acme.RetryAfterMinutes);
-            _logger.LogWarning(
-                "ACME renewal for certificate {CertificateId} failed: {ErrorSummary}",
-                certificateOptions.Id,
-                result.ErrorSummary);
+            _events.RenewalFailed(certificateOptions.Id, result.ErrorSummary);
             _statusStore.Upsert(CreateStatus(snapshot, certificateOptions, nowUtc, "failed", SafeError(result.ErrorSummary), nextAttempt) with
             {
                 LastAttemptAtUtc = attemptStartedAtUtc,
@@ -139,7 +128,7 @@ public sealed class AcmeCertificateManager
         RuntimeCertificate renewedCertificate;
         try
         {
-            renewedCertificate = AcmeCertificateMaterialStore.WriteAndLoad(
+            renewedCertificate = _materialWriter.WriteAndLoad(
                 snapshot.Acme,
                 certificateOptions,
                 _dataDirectoryProvider.GetDataDirectory(),
@@ -147,7 +136,7 @@ public sealed class AcmeCertificateManager
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            _metrics?.AcmeRenewalFailed();
+            _metrics.AcmeRenewalFailed();
             var nextAttempt = attemptStartedAtUtc.AddMinutes(snapshot.Acme.RetryAfterMinutes);
             _statusStore.Upsert(CreateStatus(snapshot, certificateOptions, nowUtc, "failed", SafeError(exception.Message), nextAttempt) with
             {
@@ -158,7 +147,7 @@ public sealed class AcmeCertificateManager
         }
 
         ReplaceCertificate(renewedCertificate);
-        _metrics?.AcmeRenewalSucceeded();
+        _metrics.AcmeRenewalSucceeded();
         var refreshedSnapshot = _configurationStore.Snapshot;
         _statusStore.Upsert(CreateStatus(refreshedSnapshot, certificateOptions, nowUtc, "succeeded", null, CalculateRenewalDueAt(renewedCertificate, certificateOptions)) with
         {

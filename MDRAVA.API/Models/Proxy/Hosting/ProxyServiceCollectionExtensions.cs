@@ -117,11 +117,14 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<AcmeChallengeStore>();
         services.AddSingleton<AcmeHttp01ChallengeResponder>();
         services.AddSingleton<AcmeCertificateStatusStore>();
+        services.AddSingleton<IAcmeCertificateMaterialWriter, AcmeCertificateMaterialWriter>();
+        services.AddSingleton<IAcmeCertificateRenewalEventSink, AcmeCertificateRenewalLogger>();
         services.AddSingleton<IProxyAcmeStatusConfigurationSource, ProxyAcmeStatusConfigurationSource>();
         services.AddSingleton<IProxyAcmeCertificateLifecycleStatusSource, ProxyAcmeCertificateLifecycleStatusSource>();
         services.AddSingleton<IProxyAcmeStatusSnapshotReader, ProxyAcmeStatusSnapshotReader>();
         services.AddSingleton<ProxyAcmeAdministrationService>();
         services.AddSingleton<IAcmeCertificateIssuer, DisabledAcmeCertificateIssuer>();
+        services.AddSingleton<AcmeRenewalSchedulePolicy>();
         services.AddSingleton<AcmeCertificateManager>();
         services.AddSingleton<ProxyAdmissionController>();
         services.AddSingleton<IProxyRuntimeDirectoryProbe, ProxyRuntimeDirectoryProbe>();

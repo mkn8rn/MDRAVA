@@ -274,6 +274,24 @@ internal static class AcmeTests
         AssertEx.True(statusStore.Get("home-acme")?.NextAttemptNotBeforeUtc > now);
     }
 
+    public static void AcmeRenewalScheduleUsesDisabledBackoffWithoutActiveConfig()
+    {
+        var delay = new AcmeRenewalSchedulePolicy().ResolveDelay(null);
+
+        AssertEx.Equal(TimeSpan.FromHours(12), delay);
+    }
+
+    public static void AcmeRenewalScheduleClampsConfiguredInterval()
+    {
+        using var temp = TemporaryDirectory.Create();
+        var policy = new AcmeRenewalSchedulePolicy();
+        var belowMinimum = CreateStore(temp.Path, checkIntervalMinutes: 1).Snapshot;
+        var aboveMaximum = CreateStore(temp.Path, checkIntervalMinutes: 2000).Snapshot;
+
+        AssertEx.Equal(TimeSpan.FromMinutes(5), policy.ResolveDelay(belowMinimum));
+        AssertEx.Equal(TimeSpan.FromMinutes(1440), policy.ResolveDelay(aboveMaximum));
+    }
+
     private static Http1RequestHead Request(string method, string path)
     {
         return new Http1RequestHead(
@@ -286,7 +304,9 @@ internal static class AcmeTests
             []);
     }
 
-    private static ProxyConfigurationStore CreateStore(string dataDirectory)
+    private static ProxyConfigurationStore CreateStore(
+        string dataDirectory,
+        int checkIntervalMinutes = 60)
     {
         var options = new ProxyOperationalOptions
         {
@@ -295,6 +315,7 @@ internal static class AcmeTests
                 Enabled = true,
                 TermsAccepted = true,
                 RetryAfterMinutes = 60,
+                CheckIntervalMinutes = checkIntervalMinutes,
                 Certificates =
                 [
                     new AcmeManagedCertificateOptions
@@ -346,10 +367,12 @@ internal static class AcmeTests
                 DataDirectory = dataDirectory
             }),
             issuer,
+            new AcmeCertificateMaterialWriter(),
             new AcmeChallengeStore(),
             statusStore,
             timeProvider ?? new ManualTimeProvider(DateTimeOffset.UtcNow),
-            NullLogger<AcmeCertificateManager>.Instance);
+            new ProxyMetrics(),
+            SilentAcmeCertificateRenewalEventSink.Instance);
     }
 
     private static ProxyAcmeStatusSnapshotReader CreateStatusReader(
@@ -403,6 +426,19 @@ internal static class AcmeTests
             return ValueTask.FromResult(_pfxBytes is not null
                 ? AcmeCertificateIssueResult.Success(_pfxBytes)
                 : AcmeCertificateIssueResult.Failure(_error ?? "failed"));
+        }
+    }
+
+    private sealed class SilentAcmeCertificateRenewalEventSink : IAcmeCertificateRenewalEventSink
+    {
+        public static SilentAcmeCertificateRenewalEventSink Instance { get; } = new();
+
+        private SilentAcmeCertificateRenewalEventSink()
+        {
+        }
+
+        public void RenewalFailed(string certificateId, string? errorSummary)
+        {
         }
     }
 
