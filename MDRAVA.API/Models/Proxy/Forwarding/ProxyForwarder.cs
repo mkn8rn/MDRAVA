@@ -464,7 +464,7 @@ public sealed class ProxyForwarder
         await upstreamHttp2.InitializeAsync(timeouts, cancellationToken);
 
         var requestHeaders = BuildHttp2RequestHeaders(requestHead, route, upstream, upstreamTarget, forwardedHeaders);
-        var endRequestStream = !HasFramedUpstreamRequestBody(requestHead);
+        var endRequestStream = !Http1RequestFramingPolicy.HasFramedBody(requestHead);
         await upstreamHttp2.SendHeadersAsync(requestHeaders, endRequestStream, timeouts, cancellationToken);
         if (!endRequestStream)
         {
@@ -574,7 +574,7 @@ public sealed class ProxyForwarder
             cancellationToken);
 
         var requestHeaders = BuildHttp2RequestHeaders(requestHead, route, upstream, upstreamTarget, forwardedHeaders);
-        var endRequestStream = !HasFramedUpstreamRequestBody(requestHead);
+        var endRequestStream = !Http1RequestFramingPolicy.HasFramedBody(requestHead);
         await upstreamHttp3.SendHeadersAsync(requestHeaders, endRequestStream, timeouts, cancellationToken);
         if (!endRequestStream)
         {
@@ -797,13 +797,6 @@ public sealed class ProxyForwarder
             _metrics.ClientBodyRelayFailed();
             throw;
         }
-    }
-
-    private static bool HasFramedUpstreamRequestBody(Http1RequestHead requestHead)
-    {
-        return requestHead.Framing.Kind == Http1BodyKind.Chunked
-            || (requestHead.Framing.Kind == Http1BodyKind.ContentLength
-                && requestHead.Framing.ContentLength.GetValueOrDefault() > 0);
     }
 
     private static async ValueTask RelayFixedLengthBodyToFramedUpstreamAsync(
