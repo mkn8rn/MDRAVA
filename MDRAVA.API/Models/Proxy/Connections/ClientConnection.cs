@@ -379,7 +379,7 @@ public sealed class ClientConnection
                 var preferKeepAlive = ShouldKeepClientConnectionOpen(requestHead)
                     && nextRequestCount < _configurationSnapshot.ConnectionLimits.MaxRequestsPerClientConnection;
                 var upstreamTarget = _pathRewritePolicy.Apply(routeMatch.Route, requestHead.Target, requestHead.Path);
-                var effectiveTimeouts = ApplyRouteTimeouts(routeMatch.Route, _configurationSnapshot.Timeouts);
+                var effectiveTimeouts = ProxyTimeoutPolicy.ApplyRouteTimeouts(routeMatch.Route, _configurationSnapshot.Timeouts);
 
                 if (await TryHandleCacheHitAsync(
                         clientStream,
@@ -626,7 +626,7 @@ public sealed class ClientConnection
                 route,
                 selection.Upstream,
                 listener,
-                ApplyRetryAttemptTimeout(route, timeouts),
+                ProxyTimeoutPolicy.ApplyRetryAttemptTimeout(route, timeouts),
                 connectionLimits,
                 limits,
                 upstreamTarget,
@@ -770,7 +770,7 @@ public sealed class ClientConnection
         context.SetUpstream(upgradeSelection.Upstream);
 
         var upstreamTarget = _pathRewritePolicy.Apply(upgradeRouteMatch.Route, requestHead.Target, requestHead.Path);
-        var effectiveTimeouts = ApplyRouteTimeouts(upgradeRouteMatch.Route, _configurationSnapshot.Timeouts);
+        var effectiveTimeouts = ProxyTimeoutPolicy.ApplyRouteTimeouts(upgradeRouteMatch.Route, _configurationSnapshot.Timeouts);
         var upgradeResult = await _upgradeForwarder.ForwardAsync(
             clientStream,
             requestHead,
@@ -1047,28 +1047,6 @@ public sealed class ClientConnection
             context.AccessLogEnabled ?? _configurationSnapshot.Observability.AccessLogEnabled,
             _configurationSnapshot.Observability.RecentDiagnosticsCapacity);
         context = null;
-    }
-
-    private static RuntimeTimeouts ApplyRouteTimeouts(RuntimeRoute route, RuntimeTimeouts timeouts)
-    {
-        return timeouts with
-        {
-            UpstreamResponseHeadTimeout = route.ResolvedOptions.UpstreamResponseHeadTimeout
-        };
-    }
-
-    private static RuntimeTimeouts ApplyRetryAttemptTimeout(RuntimeRoute route, RuntimeTimeouts timeouts)
-    {
-        if (route.Retry.PerAttemptTimeout is not { } perAttemptTimeout)
-        {
-            return timeouts;
-        }
-
-        return timeouts with
-        {
-            UpstreamConnectTimeout = perAttemptTimeout,
-            UpstreamResponseHeadTimeout = perAttemptTimeout
-        };
     }
 
     private static void ApplyForwardingResult(ProxyRequestContext context, ForwardingResult result)

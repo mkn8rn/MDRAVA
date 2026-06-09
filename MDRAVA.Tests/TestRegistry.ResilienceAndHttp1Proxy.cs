@@ -28,6 +28,7 @@ internal static partial class TestRegistry
     Test("All unavailable upstreams return safe failure", ResilienceTests.AllUnavailableUpstreamsReturnSafeFailure, TestTaxonomy.RetryCircuit, TestTaxonomy.SecurityNegativePaths),
     Test("Metrics include retry circuit and balancing counters", Sync(ResilienceTests.MetricsIncludeRetryCircuitAndBalancingCounters), TestTaxonomy.RetryCircuit, TestTaxonomy.Metrics),
     Test("Effective and status projections show resilience state", Sync(ResilienceTests.EffectiveAndStatusProjectionsShowSafeResilienceState), TestTaxonomy.Config, TestTaxonomy.RetryCircuit),
+    Test("Timeout policy applies route and retry attempt timeouts", Sync(ResilienceTests.TimeoutPolicyAppliesRouteAndRetryAttemptTimeouts), TestTaxonomy.RetryCircuit, TestTaxonomy.Limits),
     Test("Host startup succeeds from fresh data directory", StartupSmokeTests.StartsFromFreshDataDirectory, TestTaxonomy.Config, TestTaxonomy.Headers),
     Test("Host startup fails when existing site config is invalid", StartupSmokeTests.FailsStartupWhenExistingSiteConfigIsInvalid, TestTaxonomy.Config, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
     Test("Host startup succeeds with valid site config", StartupSmokeTests.StartsWithValidSiteConfig, TestTaxonomy.Config, TestTaxonomy.Headers),

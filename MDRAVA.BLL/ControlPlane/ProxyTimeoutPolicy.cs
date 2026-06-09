@@ -1,3 +1,5 @@
+using MDRAVA.BLL.Configuration;
+
 namespace MDRAVA.BLL.ControlPlane;
 
 public static class ProxyTimeoutPolicy
@@ -38,5 +40,27 @@ public static class ProxyTimeoutPolicy
         {
             throw new ProxyTimeoutException(kind, timeout);
         }
+    }
+
+    public static RuntimeTimeouts ApplyRouteTimeouts(RuntimeRoute route, RuntimeTimeouts timeouts)
+    {
+        return timeouts with
+        {
+            UpstreamResponseHeadTimeout = route.ResolvedOptions.UpstreamResponseHeadTimeout
+        };
+    }
+
+    public static RuntimeTimeouts ApplyRetryAttemptTimeout(RuntimeRoute route, RuntimeTimeouts timeouts)
+    {
+        if (route.Retry.PerAttemptTimeout is not { } perAttemptTimeout)
+        {
+            return timeouts;
+        }
+
+        return timeouts with
+        {
+            UpstreamConnectTimeout = perAttemptTimeout,
+            UpstreamResponseHeadTimeout = perAttemptTimeout
+        };
     }
 }

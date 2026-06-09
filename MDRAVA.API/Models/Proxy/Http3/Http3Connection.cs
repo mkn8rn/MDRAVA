@@ -239,7 +239,7 @@ public sealed class Http3Connection
                 requestHead.Framing,
                 cancellationToken);
             var upstreamTarget = _pathRewritePolicy.Apply(routeMatch.Route, requestHead.Target, requestHead.Path);
-            var effectiveTimeouts = ApplyRouteTimeouts(routeMatch.Route, _configurationSnapshot.Timeouts);
+            var effectiveTimeouts = ProxyTimeoutPolicy.ApplyRouteTimeouts(routeMatch.Route, _configurationSnapshot.Timeouts);
             if (await TryHandleCacheHitAsync(
                     stream,
                     routeMatch.Route,
@@ -620,7 +620,7 @@ public sealed class Http3Connection
                 route,
                 selection.Upstream,
                 _listener,
-                ApplyRetryAttemptTimeout(route, timeouts),
+                ProxyTimeoutPolicy.ApplyRetryAttemptTimeout(route, timeouts),
                 connectionLimits,
                 limits,
                 upstreamTarget,
@@ -951,28 +951,6 @@ public sealed class Http3Connection
         }
 
         return context.ResponseStatusCode.Value < 400 ? "success" : "error";
-    }
-
-    private static RuntimeTimeouts ApplyRouteTimeouts(RuntimeRoute route, RuntimeTimeouts timeouts)
-    {
-        return timeouts with
-        {
-            UpstreamResponseHeadTimeout = route.ResolvedOptions.UpstreamResponseHeadTimeout
-        };
-    }
-
-    private static RuntimeTimeouts ApplyRetryAttemptTimeout(RuntimeRoute route, RuntimeTimeouts timeouts)
-    {
-        if (route.Retry.PerAttemptTimeout is not { } perAttemptTimeout)
-        {
-            return timeouts;
-        }
-
-        return timeouts with
-        {
-            UpstreamConnectTimeout = perAttemptTimeout,
-            UpstreamResponseHeadTimeout = perAttemptTimeout
-        };
     }
 
     private static void ApplyForwardingResult(ProxyRequestContext context, ForwardingResult result)

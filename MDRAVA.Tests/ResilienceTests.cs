@@ -556,6 +556,34 @@ internal static class ResilienceTests
         AssertEx.Equal(2, status.Upstreams[0].Weight);
     }
 
+    public static void TimeoutPolicyAppliesRouteAndRetryAttemptTimeouts()
+    {
+        var baseTimeouts = Timeouts();
+        var route = Route([Upstream("first", weight: 1)]) with
+        {
+            Retry = new RuntimeRetryPolicy(
+                true,
+                3,
+                TimeSpan.FromSeconds(2),
+                true,
+                false,
+                [],
+                ["GET"],
+                TimeSpan.Zero)
+        };
+
+        var routeTimeouts = ProxyTimeoutPolicy.ApplyRouteTimeouts(route, baseTimeouts);
+        var retryAttemptTimeouts = ProxyTimeoutPolicy.ApplyRetryAttemptTimeout(route, routeTimeouts);
+
+        AssertEx.Equal(TimeSpan.FromSeconds(10), baseTimeouts.UpstreamConnectTimeout);
+        AssertEx.Equal(TimeSpan.FromSeconds(10), baseTimeouts.UpstreamResponseHeadTimeout);
+        AssertEx.Equal(TimeSpan.FromSeconds(10), routeTimeouts.UpstreamConnectTimeout);
+        AssertEx.Equal(TimeSpan.FromSeconds(30), routeTimeouts.UpstreamResponseHeadTimeout);
+        AssertEx.Equal(TimeSpan.FromSeconds(2), retryAttemptTimeouts.UpstreamConnectTimeout);
+        AssertEx.Equal(TimeSpan.FromSeconds(2), retryAttemptTimeouts.UpstreamResponseHeadTimeout);
+        AssertEx.Equal(routeTimeouts.DownstreamWriteTimeout, retryAttemptTimeouts.DownstreamWriteTimeout);
+    }
+
     private static async Task<ClosedUpstreamResult> RunClosedUpstreamScenarioAsync(
         string request,
         string retryJson)
