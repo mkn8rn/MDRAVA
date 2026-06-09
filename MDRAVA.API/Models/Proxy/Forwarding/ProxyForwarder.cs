@@ -737,7 +737,7 @@ public sealed class ProxyForwarder
 
         foreach (var header in requestHeaders)
         {
-            if (IsManagedHttp2RequestHeader(header.Name))
+            if (Http2HeaderPolicy.IsManagedUpstreamRequestHeader(header.Name))
             {
                 continue;
             }
@@ -1110,19 +1110,6 @@ public sealed class ProxyForwarder
         await WriteWithTimeoutAsync(clientStream, data, writeTimeout, cancellationToken);
         await WriteWithTimeoutAsync(clientStream, "\r\n"u8.ToArray(), writeTimeout, cancellationToken);
         _metrics.AddBytesWritten(prefix.Length + data.Length + 2);
-    }
-
-    private static bool IsManagedHttp2RequestHeader(string headerName)
-    {
-        return headerName.StartsWith(':')
-            || string.Equals(headerName, "Host", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(headerName, "Connection", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(headerName, "Content-Length", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(headerName, "Transfer-Encoding", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(headerName, "Upgrade", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(headerName, "Keep-Alive", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(headerName, "Proxy-Connection", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(headerName, "X-Request-Id", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool TryGetContentLength(

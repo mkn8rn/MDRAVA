@@ -560,7 +560,7 @@ public sealed class Http2ClientConnection
             {
                 if (regularHeaderSeen
                     || pseudo.ContainsKey(header.Name)
-                    || !IsAllowedRequestPseudoHeader(header.Name))
+                    || !Http2HeaderPolicy.IsAllowedRequestPseudoHeader(header.Name))
                 {
                     rejectionReason = "invalid_pseudo_header";
                     return false;
@@ -571,7 +571,7 @@ public sealed class Http2ClientConnection
             }
 
             regularHeaderSeen = true;
-            if (IsForbiddenHttp2Header(header.Name, header.Value))
+            if (Http2HeaderPolicy.IsForbiddenRequestHeader(header.Name, header.Value))
             {
                 rejectionReason = "forbidden_header";
                 return false;
@@ -1084,25 +1084,6 @@ public sealed class Http2ClientConnection
         context.ResponseStatusCode = result.ResponseStatusCode;
         context.KeepClientConnectionOpen = true;
         context.FailureKind = result.FailureKind;
-    }
-
-    private static bool IsAllowedRequestPseudoHeader(string name)
-    {
-        return string.Equals(name, ":method", StringComparison.Ordinal)
-            || string.Equals(name, ":scheme", StringComparison.Ordinal)
-            || string.Equals(name, ":authority", StringComparison.Ordinal)
-            || string.Equals(name, ":path", StringComparison.Ordinal)
-            || string.Equals(name, ":protocol", StringComparison.Ordinal);
-    }
-
-    private static bool IsForbiddenHttp2Header(string name, string value)
-    {
-        if (string.Equals(name, "te", StringComparison.OrdinalIgnoreCase))
-        {
-            return !string.Equals(value, "trailers", StringComparison.OrdinalIgnoreCase);
-        }
-
-        return HopByHopHeaderPolicy.IsHopByHopHeader(name);
     }
 
     private static string ExtractPath(string target)
