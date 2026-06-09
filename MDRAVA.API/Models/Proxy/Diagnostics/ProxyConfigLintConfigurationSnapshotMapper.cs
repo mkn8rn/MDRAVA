@@ -1,5 +1,3 @@
-using MDRAVA.API.Proxy.Http3;
-
 namespace MDRAVA.API.Proxy.Diagnostics;
 
 internal static class ProxyConfigLintConfigurationSnapshotMapper
@@ -25,7 +23,7 @@ internal static class ProxyConfigLintConfigurationSnapshotMapper
                     listener.Http3.EnabledForTraffic,
                     listener.Http3.DisabledReason,
                     listener.Http3.EnablementLevel,
-                    Http3AltSvcPolicy.IsEnabled(listener),
+                    RuntimeHttp3AltSvcPolicy.IsEnabled(listener),
                     listener.QuicIdentity?.Key))
                 .ToArray(),
             snapshot.Routes

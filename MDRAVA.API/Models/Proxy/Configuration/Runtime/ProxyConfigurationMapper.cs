@@ -1,5 +1,4 @@
 using MDRAVA.API.Proxy.Security;
-using MDRAVA.API.Proxy.Http3;
 
 namespace MDRAVA.API.Proxy.Configuration.Runtime;
 

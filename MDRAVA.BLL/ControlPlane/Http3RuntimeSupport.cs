@@ -1,6 +1,7 @@
 using System.Net.Quic;
+using MDRAVA.BLL.Configuration;
 
-namespace MDRAVA.API.Proxy.Http3;
+namespace MDRAVA.BLL.ControlPlane;
 
 public static class Http3RuntimeSupport
 {
@@ -14,12 +15,12 @@ public static class Http3RuntimeSupport
         var quicReady = runtimeListeners?.Any(static listener =>
             string.Equals(listener.Kind, "quic", StringComparison.OrdinalIgnoreCase)
             && listener.State == ProxyListenerState.Active) ?? false;
-        var altSvcConfigured = listeners.Any(static listener => Http3AltSvcPolicy.IsEnabled(listener));
+        var altSvcConfigured = listeners.Any(static listener => RuntimeHttp3AltSvcPolicy.IsEnabled(listener));
         var altSvcActive = altSvcConfigured
             && runtimeListeners is not null
-            && listeners.Any(listener => Http3AltSvcPolicy.IsEnabled(listener) && Http3AltSvcPolicy.HasActiveQuicListener(listener, runtimeListeners));
+            && listeners.Any(listener => RuntimeHttp3AltSvcPolicy.IsEnabled(listener) && RuntimeHttp3AltSvcPolicy.HasActiveQuicListener(listener, runtimeListeners));
         var maxAge = listeners
-            .Where(static listener => Http3AltSvcPolicy.IsEnabled(listener))
+            .Where(static listener => RuntimeHttp3AltSvcPolicy.IsEnabled(listener))
             .Select(static listener => (int?)listener.Http3AltSvc.MaxAgeSeconds)
             .FirstOrDefault();
         var support = Check();

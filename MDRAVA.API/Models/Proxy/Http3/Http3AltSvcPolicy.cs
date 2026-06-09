@@ -18,14 +18,14 @@ public sealed class Http3AltSvcPolicy
     public bool TryCreateHeader(RuntimeListener listener, out Http1HeaderField header)
     {
         header = null!;
-        if (!IsEnabled(listener))
+        if (!RuntimeHttp3AltSvcPolicy.IsEnabled(listener))
         {
             _metrics.Http3AltSvcSuppressed();
             return false;
         }
 
         var runtime = _runtimeState.Snapshot();
-        if (!HasActiveQuicListener(listener, runtime.Listeners))
+        if (!RuntimeHttp3AltSvcPolicy.HasActiveQuicListener(listener, runtime.Listeners))
         {
             _metrics.Http3AltSvcSuppressed();
             return false;
@@ -36,24 +36,5 @@ public sealed class Http3AltSvcPolicy
             $"h3=\":{listener.Port}\"; ma={listener.Http3AltSvc.MaxAgeSeconds}");
         _metrics.Http3AltSvcEmitted();
         return true;
-    }
-
-    public static bool IsEnabled(RuntimeListener listener)
-    {
-        return listener.Http3.EnabledForTraffic
-            && (listener.Http3AltSvc.Enabled
-                || string.Equals(listener.Http3.EnablementLevel, "default", StringComparison.OrdinalIgnoreCase));
-    }
-
-    public static bool HasActiveQuicListener(
-        RuntimeListener listener,
-        IReadOnlyList<ProxyListenerStatus> runtimeListeners)
-    {
-        var identity = listener.QuicIdentity;
-        return identity is not null
-            && runtimeListeners.Any(candidate =>
-                string.Equals(candidate.Kind, "quic", StringComparison.OrdinalIgnoreCase)
-                && candidate.State == ProxyListenerState.Active
-                && string.Equals(candidate.Identity, identity.Key, StringComparison.OrdinalIgnoreCase));
     }
 }

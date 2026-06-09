@@ -4,7 +4,6 @@ using MDRAVA.API.Proxy.Configuration.Storage;
 using MDRAVA.API.Proxy.Diagnostics;
 using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Hosting;
-using MDRAVA.API.Proxy.Http3;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Runtime;
 
