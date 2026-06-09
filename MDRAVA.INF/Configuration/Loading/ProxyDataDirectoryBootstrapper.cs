@@ -1,6 +1,7 @@
 using MDRAVA.BLL.Infrastructure;
+using MDRAVA.BLL.ControlPlane;
 
-namespace MDRAVA.API.Proxy.Configuration.Loading;
+namespace MDRAVA.INF.Configuration.Loading;
 
 public sealed class ProxyDataDirectoryBootstrapper
 {
