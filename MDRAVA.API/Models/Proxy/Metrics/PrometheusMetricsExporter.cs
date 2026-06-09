@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Text;
 using MDRAVA.API.Proxy.Acme;
 using MDRAVA.API.Proxy.Caching;
-using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Health;
 
 namespace MDRAVA.API.Proxy.Metrics;

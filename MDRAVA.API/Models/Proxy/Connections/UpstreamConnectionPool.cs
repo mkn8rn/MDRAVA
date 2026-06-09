@@ -1,4 +1,3 @@
-using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Metrics;
 
 namespace MDRAVA.API.Proxy.Connections;

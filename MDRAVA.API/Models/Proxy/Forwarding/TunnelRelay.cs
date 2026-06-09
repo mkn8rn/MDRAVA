@@ -1,7 +1,6 @@
 using System.Buffers;
 using System.Diagnostics;
 using System.Net.Sockets;
-using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Metrics;
 
 namespace MDRAVA.API.Proxy.Forwarding;
