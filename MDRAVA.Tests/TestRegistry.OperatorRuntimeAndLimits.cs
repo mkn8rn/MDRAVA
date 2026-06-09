@@ -49,6 +49,7 @@ internal static partial class TestRegistry
     Test("Admission controller enforces client limit", Sync(HardeningTests.AdmissionControllerEnforcesClientLimit), TestTaxonomy.Limits),
     Test("Admission lease disposal releases client slot", Sync(HardeningTests.AdmissionLeaseDisposalReleasesClientSlot), TestTaxonomy.Limits),
     Test("Admission controller enforces TLS handshake limit", Sync(HardeningTests.AdmissionControllerEnforcesTlsHandshakeLimit), TestTaxonomy.Tls, TestTaxonomy.Limits),
+    Test("Client address policy normalizes client IP addresses", Sync(ProxyClientAddressPolicyTests.NormalizesClientIpAddresses), TestTaxonomy.Limits, TestTaxonomy.Admin),
     Test("Rate limiter enforces request limit and refill", Sync(HardeningTests.RateLimiterEnforcesRequestLimitAndRefills), TestTaxonomy.Limits),
     Test("Concurrent rate limiter boundary allows only configured limit", Sync(HardeningTests.ConcurrentRateLimiterBoundaryAllowsOnlyConfiguredLimit), TestTaxonomy.Limits),
     Test("Rate limiter enforces upgrade limit", Sync(HardeningTests.RateLimiterEnforcesUpgradeLimit), TestTaxonomy.Limits),

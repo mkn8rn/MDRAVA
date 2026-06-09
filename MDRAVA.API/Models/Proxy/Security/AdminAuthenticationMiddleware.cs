@@ -1,4 +1,3 @@
-using System.Net;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.INF.Observability;
 
@@ -110,7 +109,7 @@ public sealed class AdminAuthenticationMiddleware
         bool succeeded,
         int capacity)
     {
-        var clientIp = NormalizeClientIp(context.Connection.RemoteIpAddress);
+        var clientIp = ProxyClientAddressPolicy.NormalizeClientIp(context.Connection.RemoteIpAddress);
         var path = context.Request.Path.HasValue
             ? context.Request.Path.Value!
             : "/";
@@ -127,13 +126,4 @@ public sealed class AdminAuthenticationMiddleware
             capacity);
     }
 
-    private static string? NormalizeClientIp(IPAddress? address)
-    {
-        if (address is null)
-        {
-            return null;
-        }
-
-        return address.IsIPv4MappedToIPv6 ? address.MapToIPv4().ToString() : address.ToString();
-    }
 }

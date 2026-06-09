@@ -69,7 +69,7 @@ public sealed class ClientRateLimiter
 
     private bool TryAcquire(IPAddress ipAddress, int perMinuteLimit, Func<BucketSet, TokenBucket> selectBucket)
     {
-        var key = NormalizeIp(ipAddress);
+        var key = ProxyClientAddressPolicy.NormalizeRequiredClientIp(ipAddress);
         var now = _getUtcNow();
 
         lock (_gate)
@@ -104,13 +104,6 @@ public sealed class ClientRateLimiter
         {
             _buckets.Remove(staleKey);
         }
-    }
-
-    private static string NormalizeIp(IPAddress address)
-    {
-        return address.IsIPv4MappedToIPv6
-            ? address.MapToIPv4().ToString()
-            : address.ToString();
     }
 
     private sealed class BucketSet
