@@ -4,8 +4,6 @@ namespace MDRAVA.API.Proxy.Configuration.Loading;
 
 public sealed class ProxyDataDirectoryBootstrapper
 {
-    public const string ExampleSiteFileName = "example.site.yaml";
-
     private readonly IMdravaDataDirectoryProvider _dataDirectoryProvider;
 
     public ProxyDataDirectoryBootstrapper(IMdravaDataDirectoryProvider dataDirectoryProvider)
@@ -36,7 +34,7 @@ public sealed class ProxyDataDirectoryBootstrapper
 
         EnsureFile(layout.ProxyConfigPath, "{}" + Environment.NewLine, created, existing);
         EnsureFile(
-            Path.Combine(layout.SitesDirectory, ExampleSiteFileName),
+            Path.Combine(layout.SitesDirectory, SiteConfigurationPlaceholderFiles.ExampleSiteFileName),
             ExampleSiteText(),
             created,
             existing);

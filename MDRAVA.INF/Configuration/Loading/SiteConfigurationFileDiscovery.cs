@@ -1,14 +1,9 @@
-namespace MDRAVA.API.Proxy.Configuration.Loading;
+using MDRAVA.BLL.ControlPlane;
+
+namespace MDRAVA.INF.Configuration.Loading;
 
 public static class SiteConfigurationFileDiscovery
 {
-    private static readonly HashSet<string> PlaceholderFileNames = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ProxyDataDirectoryBootstrapper.ExampleSiteFileName,
-        "example.site.yml",
-        "example.site.json"
-    };
-
     public static IReadOnlyList<(string Path, SiteConfigurationFormat Format)> DiscoverLoadableSiteFiles(
         string sitesDirectory,
         List<ProxyConfigurationFileDiscovery> discoveries)
@@ -33,7 +28,7 @@ public static class SiteConfigurationFileDiscovery
         {
             if (TryGetFormat(file, out var format))
             {
-                if (PlaceholderFileNames.Contains(System.IO.Path.GetFileName(file)))
+                if (SiteConfigurationPlaceholderFiles.IsPlaceholderFileName(System.IO.Path.GetFileName(file)))
                 {
                     discoveries.Add(new ProxyConfigurationFileDiscovery(
                         file,
