@@ -1,4 +1,4 @@
-namespace MDRAVA.API.Proxy.Configuration.Loading;
+namespace MDRAVA.INF.Configuration.Loading;
 
 public enum SiteConfigurationFormat
 {

@@ -2,7 +2,9 @@ using System.Text.Json;
 using YamlDotNet.Core;
 using YamlDotNet.Serialization;
 
-namespace MDRAVA.API.Proxy.Configuration.Loading;
+using MDRAVA.BLL.Configuration;
+
+namespace MDRAVA.INF.Configuration.Loading;
 
 public sealed class SiteConfigurationParser
 {
