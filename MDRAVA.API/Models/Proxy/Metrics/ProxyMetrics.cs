@@ -9,7 +9,8 @@ public sealed class ProxyMetrics :
     IProxyCircuitBreakerMetricsSink,
     IProxyUpstreamHealthMetricsSink,
     IProxyHttp3AltSvcMetricsSink,
-    IProxyRequestDiagnosticsMetricsSink
+    IProxyRequestDiagnosticsMetricsSink,
+    IProxyRateLimitMetricsSink
 {
     private static readonly ProxyFailureKind[] FailureKinds = Enum.GetValues<ProxyFailureKind>();
 

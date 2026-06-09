@@ -41,6 +41,13 @@ public interface IProxyRequestDiagnosticsMetricsSink
     void RecentDiagnosticOverwritten();
 }
 
+public interface IProxyRateLimitMetricsSink
+{
+    void RequestRateLimited();
+
+    void UpgradeRateLimited();
+}
+
 public interface IUpstreamConnectionPruner
 {
     void PruneIdleConnections(RuntimeUpstream upstream);

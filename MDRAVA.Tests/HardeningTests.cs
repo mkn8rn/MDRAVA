@@ -99,6 +99,18 @@ internal static class HardeningTests
         AssertEx.Equal(1L, metrics.Snapshot().RateLimitedUpgrades);
     }
 
+    public static void RateLimiterUsesNormalizedClientAddressKeys()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var metrics = new ProxyMetrics();
+        var limiter = new ClientRateLimiter(metrics, () => now);
+
+        AssertEx.True(limiter.TryAcquireRequest(IPAddress.Parse("127.0.0.1"), 1));
+        AssertEx.False(limiter.TryAcquireRequest(IPAddress.Parse("::ffff:127.0.0.1"), 1));
+        AssertEx.Equal(1, limiter.EntryCount);
+        AssertEx.Equal(1L, metrics.Snapshot().RateLimitedRequests);
+    }
+
     public static void RateLimiterCleansStaleEntries()
     {
         var now = DateTimeOffset.UtcNow;

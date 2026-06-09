@@ -1,24 +1,23 @@
 using System.Net;
-using MDRAVA.API.Proxy.Metrics;
 
-namespace MDRAVA.API.Proxy.Runtime;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed class ClientRateLimiter
 {
     private static readonly TimeSpan StaleEntryAge = TimeSpan.FromMinutes(5);
 
-    private readonly ProxyMetrics _metrics;
+    private readonly IProxyRateLimitMetricsSink _metrics;
     private readonly Func<DateTimeOffset> _getUtcNow;
     private readonly object _gate = new();
     private readonly Dictionary<string, BucketSet> _buckets = new(StringComparer.Ordinal);
     private long _operationCount;
 
-    public ClientRateLimiter(ProxyMetrics metrics)
+    public ClientRateLimiter(IProxyRateLimitMetricsSink metrics)
         : this(metrics, static () => DateTimeOffset.UtcNow)
     {
     }
 
-    public ClientRateLimiter(ProxyMetrics metrics, Func<DateTimeOffset> getUtcNow)
+    public ClientRateLimiter(IProxyRateLimitMetricsSink metrics, Func<DateTimeOffset> getUtcNow)
     {
         _metrics = metrics;
         _getUtcNow = getUtcNow;
