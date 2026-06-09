@@ -1,4 +1,4 @@
-namespace MDRAVA.API.Proxy.Acme;
+namespace MDRAVA.BLL.ControlPlane;
 
 public interface IAcmeCertificateIssuer
 {

@@ -1,4 +1,4 @@
-namespace MDRAVA.API.Models.Acme;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed record AcmeChallengeRegistration(
     string Token,
