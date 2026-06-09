@@ -1,4 +1,6 @@
-namespace MDRAVA.API.Proxy.Hosting;
+using MDRAVA.BLL.Configuration;
+
+namespace MDRAVA.BLL.ControlPlane;
 
 public static class ProxyListenerHttp3StatusMapper
 {
