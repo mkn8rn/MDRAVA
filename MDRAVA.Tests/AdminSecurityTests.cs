@@ -187,7 +187,7 @@ internal static class AdminSecurityTests
                 }
                 else
                 {
-                    context.Request.Headers[AdminAuthenticationMiddleware.AdminApiKeyHeaderName] = AdminToken;
+                    context.Request.Headers[ProxyAdminAuthenticationPolicy.AdminApiKeyHeaderName] = AdminToken;
                 }
 
                 var nextCalled = false;
@@ -219,7 +219,7 @@ internal static class AdminSecurityTests
         var context = CreateAdminContext("/admin/proxy/status");
         context.Request.QueryString = new QueryString("?token=query-secret");
         context.Request.Headers.Authorization = $"Bearer {badBearer}";
-        context.Request.Headers[AdminAuthenticationMiddleware.AdminApiKeyHeaderName] = badApiKey;
+        context.Request.Headers[ProxyAdminAuthenticationPolicy.AdminApiKeyHeaderName] = badApiKey;
         var middleware = CreateMiddleware(store, audit, _ => Task.CompletedTask);
 
         await middleware.InvokeAsync(context);

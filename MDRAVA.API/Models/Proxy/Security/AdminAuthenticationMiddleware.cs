@@ -1,16 +1,11 @@
 using System.Net;
-using System.Security.Cryptography;
-using System.Text;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.INF.Observability;
-using Microsoft.Extensions.Primitives;
 
 namespace MDRAVA.API.Proxy.Security;
 
 public sealed class AdminAuthenticationMiddleware
 {
-    public const string AdminApiKeyHeaderName = "X-MDRAVA-Admin-Key";
-
     private readonly RequestDelegate _next;
     private readonly IProxyConfigurationStore _configurationStore;
     private readonly AdminAuditStore _auditStore;
@@ -49,16 +44,21 @@ public sealed class AdminAuthenticationMiddleware
         }
 
         var security = ResolveSecurityOptions();
-        var authResult = "not-required";
+        var authDecision = ProxyAdminAuthenticationPolicy.Authenticate(new ProxyAdminAuthenticationInput(
+            security.RequireAuthentication,
+            security.Token,
+            context.Request.Headers.Authorization.ToArray(),
+            context.Request.Headers[ProxyAdminAuthenticationPolicy.AdminApiKeyHeaderName].ToArray()));
+        var authResult = authDecision.Result;
         var requestAllowed = true;
 
-        if (security.RequireAuthentication)
+        if (authDecision.AuthenticationRequired)
         {
-            requestAllowed = TryAuthenticate(context.Request, security, out authResult);
+            requestAllowed = authDecision.Allowed;
             if (!requestAllowed)
             {
-                context.Response.StatusCode = authResult == "missing" ? StatusCodes.Status401Unauthorized : StatusCodes.Status403Forbidden;
-                if (context.Response.StatusCode == StatusCodes.Status401Unauthorized)
+                context.Response.StatusCode = authDecision.ShouldChallenge ? StatusCodes.Status401Unauthorized : StatusCodes.Status403Forbidden;
+                if (authDecision.ShouldChallenge)
                 {
                     context.Response.Headers.WWWAuthenticate = "Bearer";
                 }
@@ -101,75 +101,6 @@ public sealed class AdminAuthenticationMiddleware
         return ProxyConfigurationRuntimeMapper.ToRuntimeAdminSecurityOptions(
             adminOptions,
             ProxyAdminSecurityTokenPolicy.Resolve(adminOptions, Environment.GetEnvironmentVariable));
-    }
-
-    private static bool TryAuthenticate(
-        HttpRequest request,
-        RuntimeAdminSecurityOptions security,
-        out string authResult)
-    {
-        if (string.IsNullOrEmpty(security.Token))
-        {
-            authResult = "not-configured";
-            return false;
-        }
-
-        var presentedToken = ReadBearerToken(request.Headers.Authorization)
-            ?? ReadApiKey(request.Headers[AdminApiKeyHeaderName]);
-
-        if (presentedToken is null)
-        {
-            authResult = "missing";
-            return false;
-        }
-
-        if (!FixedTimeEquals(security.Token, presentedToken))
-        {
-            authResult = "invalid";
-            return false;
-        }
-
-        authResult = "valid";
-        return true;
-    }
-
-    private static string? ReadBearerToken(StringValues authorizationValues)
-    {
-        foreach (var value in authorizationValues)
-        {
-            if (value is null)
-            {
-                continue;
-            }
-
-            const string prefix = "Bearer ";
-            if (value.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-            {
-                var token = value[prefix.Length..].Trim();
-                return token.Length == 0 ? null : token;
-            }
-        }
-
-        return null;
-    }
-
-    private static string? ReadApiKey(StringValues values)
-    {
-        var value = values.FirstOrDefault();
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-
-        return value.Trim();
-    }
-
-    private static bool FixedTimeEquals(string expected, string actual)
-    {
-        var expectedBytes = Encoding.UTF8.GetBytes(expected);
-        var actualBytes = Encoding.UTF8.GetBytes(actual);
-        return expectedBytes.Length == actualBytes.Length
-            && CryptographicOperations.FixedTimeEquals(expectedBytes, actualBytes);
     }
 
     private void AddAudit(

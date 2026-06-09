@@ -77,7 +77,7 @@ internal static class LogPersistenceTests
         var context = CreateAdminContext("/admin/proxy/status");
         context.Request.QueryString = new QueryString("?token=query-secret");
         context.Request.Headers.Authorization = $"Bearer {badBearer}";
-        context.Request.Headers[AdminAuthenticationMiddleware.AdminApiKeyHeaderName] = badApiKey;
+        context.Request.Headers[ProxyAdminAuthenticationPolicy.AdminApiKeyHeaderName] = badApiKey;
         var middleware = new AdminAuthenticationMiddleware(
             _ => Task.CompletedTask,
             store,
