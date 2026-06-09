@@ -10,6 +10,7 @@ public sealed class ProxyMetrics :
     IProxyUpstreamHealthMetricsSink,
     IProxyHttp3AltSvcMetricsSink,
     IProxyRequestDiagnosticsMetricsSink,
+    IProxyRequestIdMetricsSink,
     IProxyRateLimitMetricsSink,
     IProxyAdmissionMetricsSink
 {

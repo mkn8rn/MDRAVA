@@ -41,6 +41,11 @@ public interface IProxyRequestDiagnosticsMetricsSink
     void RecentDiagnosticOverwritten();
 }
 
+public interface IProxyRequestIdMetricsSink
+{
+    void RequestIdGenerated();
+}
+
 public interface IProxyRateLimitMetricsSink
 {
     void RequestRateLimited();

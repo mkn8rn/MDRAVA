@@ -118,6 +118,20 @@ internal static class ObservabilityTests
         AssertEx.True(ProxyExternalRequestIdPolicy.Extract(tooLongHead) is null);
     }
 
+    public static void RequestIdGeneratorCreatesDistinctIdsAndRecordsMetric()
+    {
+        var metrics = new RequestIdMetricsSink();
+        var generator = new RequestIdGenerator(metrics);
+
+        var first = generator.Create();
+        var second = generator.Create();
+
+        AssertEx.True(first.StartsWith("mdr-", StringComparison.Ordinal), first);
+        AssertEx.True(second.StartsWith("mdr-", StringComparison.Ordinal), second);
+        AssertEx.False(string.Equals(first, second, StringComparison.Ordinal));
+        AssertEx.Equal(2, metrics.GeneratedCount);
+    }
+
     private static ProxyRequestDiagnosticSourceEvent CreateEvent(string requestId, string target)
     {
         return new ProxyRequestDiagnosticSourceEvent(
@@ -195,6 +209,16 @@ internal static class ObservabilityTests
         {
             LastLimit = limit;
             return _events;
+        }
+    }
+
+    private sealed class RequestIdMetricsSink : IProxyRequestIdMetricsSink
+    {
+        public int GeneratedCount { get; private set; }
+
+        public void RequestIdGenerated()
+        {
+            GeneratedCount++;
         }
     }
 }

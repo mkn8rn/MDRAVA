@@ -1,14 +1,13 @@
 using System.Globalization;
-using MDRAVA.API.Proxy.Metrics;
 
-namespace MDRAVA.API.Proxy.Observability;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed class RequestIdGenerator
 {
-    private readonly ProxyMetrics _metrics;
+    private readonly IProxyRequestIdMetricsSink _metrics;
     private long _nextId;
 
-    public RequestIdGenerator(ProxyMetrics metrics)
+    public RequestIdGenerator(IProxyRequestIdMetricsSink metrics)
     {
         _metrics = metrics;
     }
