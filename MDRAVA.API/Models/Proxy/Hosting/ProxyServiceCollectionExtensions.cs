@@ -127,6 +127,7 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<IProxyStatusConfigurationSource>(static services => services.GetRequiredService<ProxyConfigurationStore>());
         services.AddSingleton<IProxyStatusMetricsSource>(static services => services.GetRequiredService<ProxyMetrics>());
         services.AddSingleton<IProxyStatusRuntimePreflightSource>(static services => services.GetRequiredService<ProxyRuntimePreflightService>());
+        services.AddSingleton<IProxyStatusInputReader, ProxyStatusInputReader>();
         services.AddSingleton<IProxyStatusOperations, ProxyStatusOperations>();
         services.AddSingleton<ProxyStatusAdministrationService>();
         services.AddSingleton<CircuitBreakerStore>();

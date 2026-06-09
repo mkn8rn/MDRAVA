@@ -27,7 +27,7 @@ internal static class ProxyStatusOperationFactory
             ? FixedRuntimePreflightSource.Instance
             : preflightService;
 
-        return new ProxyStatusOperations(
+        var inputReader = new ProxyStatusInputReader(
             runtime,
             metrics,
             store,
@@ -39,6 +39,7 @@ internal static class ProxyStatusOperationFactory
                 new ProxyCacheRuntimeStatusSource(cache)),
             new ProxyAcmeCertificateLifecycleStatusSource(acme),
             preflightSource);
+        return new ProxyStatusOperations(inputReader);
     }
 
     private sealed class FixedConfigLintOperations : IProxyConfigLintOperations

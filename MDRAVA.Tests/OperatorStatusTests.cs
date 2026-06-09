@@ -38,6 +38,81 @@ internal static class OperatorStatusTests
         AssertEx.Equal("healthy", status.Subsystems.Logs.State);
     }
 
+    public static void StatusInputReaderAssemblesNamedInputFromSources()
+    {
+        using var fixture = StatusFixture.Create();
+        var listener = Listener();
+        var upstream = Upstream();
+        var route = ProxyRoute(upstream, healthEnabled: true);
+        fixture.Store.Replace(Snapshot([listener], [route]));
+        fixture.Runtime.ReplaceListeners([ListenerStatus(listener, ProxyListenerState.Active)], null);
+        fixture.Health.RecordHealthCheckResult(
+            route,
+            upstream,
+            new HealthCheckSample(true, "status_200"),
+            DateTimeOffset.UtcNow);
+
+        var input = fixture.InputReader().Read();
+
+        AssertEx.NotNull(input.Configuration);
+        AssertEx.Equal(1, input.Configuration!.Version);
+        AssertEx.Equal(1, input.Runtime.Listeners.Count);
+        AssertEx.Equal(1, input.Upstreams.Count);
+        AssertEx.Equal(UpstreamHealthState.Healthy, input.Upstreams[0].HealthState);
+        AssertEx.Equal(ProxyStatusText.Healthy, input.LogPersistence.State);
+        AssertEx.Equal(ProxyRuntimePreflightStatus.Unknown, input.RuntimePreflight);
+        AssertEx.True(input.ConfigLint.Available);
+    }
+
+    public static void StatusResponseBuilderBuildsResponseFromNamedInput()
+    {
+        var listener = Listener();
+        var route = StaticRoute(cache: CachePolicy());
+        var snapshot = Snapshot([listener], [route]);
+        var runtime = new ProxyRuntimeSnapshot(
+            true,
+            "main",
+            "127.0.0.1:18080",
+            DateTimeOffset.UnixEpoch,
+            null,
+            null)
+        {
+            Listeners = [ListenerStatus(listener, ProxyListenerState.Active)]
+        };
+        var metrics = new ProxyMetrics().Snapshot();
+        var input = new ProxyStatusInput(
+            runtime,
+            snapshot,
+            metrics,
+            [],
+            Http3RuntimeSupport.Project(snapshot.Listeners, runtime.Listeners, snapshot.Routes),
+            new ProxyLogPersistenceStatus(
+                true,
+                true,
+                null,
+                0,
+                0,
+                ProxyStatusText.Healthy,
+                "ok",
+                null,
+                null),
+            new ProxyCacheStatusResponse(3, 1024, 0, 0, 0, 0, 0, null, null, [], []),
+            [],
+            ProxyRuntimePreflightStatus.Unknown,
+            ConfigLintStatus.Empty);
+
+        var status = ProxyStatusResponseBuilder.Build(input);
+
+        AssertEx.True(status.ListenerLive);
+        AssertEx.Equal("main", status.ListenerName);
+        AssertEx.Equal(1, status.ConfiguredListeners);
+        AssertEx.Equal(1, status.ConfiguredRoutes);
+        AssertEx.Equal(3, status.Subsystems.Cache.EntryCount);
+        AssertEx.Equal(1024, status.Subsystems.Cache.ApproximateBytes);
+        AssertEx.Equal("healthy", status.Readiness.State);
+        AssertEx.Equal(ConfigLintStatus.Empty, status.ConfigLint);
+    }
+
     public static void ReadinessEvaluatorConsumesNarrowFactsWithoutRuntimeSnapshots()
     {
         var evaluatedAt = new DateTimeOffset(2026, 6, 9, 12, 0, 0, TimeSpan.Zero);
@@ -669,6 +744,22 @@ internal static class OperatorStatusTests
             return new ProxyStatusController(new ProxyStatusAdministrationService(statusOperations));
         }
 
+        public ProxyStatusInputReader InputReader(ProxyRuntimePreflightService? preflight = null)
+        {
+            return new ProxyStatusInputReader(
+                Runtime,
+                Metrics,
+                Store,
+                Health,
+                FixedConfigLintOperations.Instance,
+                Writer,
+                new ProxyCacheStatusReader(
+                    new ProxyCacheStatusConfigurationSource(Store),
+                    new ProxyCacheRuntimeStatusSource(Cache)),
+                new ProxyAcmeCertificateLifecycleStatusSource(Acme),
+                preflight is null ? FixedRuntimePreflightSource.Instance : preflight);
+        }
+
         public void Dispose()
         {
             Pool.Dispose();
@@ -682,6 +773,43 @@ internal static class OperatorStatusTests
             catch
             {
             }
+        }
+    }
+
+    private sealed class FixedConfigLintOperations : IProxyConfigLintOperations
+    {
+        public static FixedConfigLintOperations Instance { get; } = new();
+
+        public ConfigLintStatus LastActiveStatus => ConfigLintStatus.Empty;
+
+        public ConfigLintResult LintActive()
+        {
+            return EmptyResult();
+        }
+
+        public ConfigLintResult LintSubmitted(ConfigLintRequest request)
+        {
+            return EmptyResult();
+        }
+
+        private static ConfigLintResult EmptyResult()
+        {
+            return new ConfigLintResult(
+                true,
+                DateTimeOffset.UnixEpoch,
+                ConfigLintSummary.Empty,
+                [],
+                []);
+        }
+    }
+
+    private sealed class FixedRuntimePreflightSource : IProxyStatusRuntimePreflightSource
+    {
+        public static FixedRuntimePreflightSource Instance { get; } = new();
+
+        public ProxyRuntimePreflightStatus ReadRuntimePreflight()
+        {
+            return ProxyRuntimePreflightStatus.Unknown;
         }
     }
 }
