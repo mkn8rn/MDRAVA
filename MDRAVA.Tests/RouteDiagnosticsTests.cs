@@ -480,12 +480,11 @@ internal static class RouteDiagnosticsTests
         context.Request.Path = "/admin/proxy/routes/match";
         context.Response.Body = new MemoryStream();
         context.Connection.RemoteIpAddress = IPAddress.Parse("127.0.0.1");
-        var middleware = new AdminAuthenticationMiddleware(
+        var middleware = ProxyAdminAuthenticationTestFactory.CreateMiddleware(
             _ => Task.CompletedTask,
             store,
             audit,
-            metrics,
-            NullLogger<AdminAuthenticationMiddleware>.Instance);
+            metrics);
 
         await middleware.InvokeAsync(context);
 

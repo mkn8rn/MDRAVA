@@ -77,11 +77,10 @@ internal static class LogPersistenceTests
         context.Request.QueryString = new QueryString("?token=query-secret");
         context.Request.Headers.Authorization = $"Bearer {badBearer}";
         context.Request.Headers[ProxyAdminAuthenticationPolicy.AdminApiKeyHeaderName] = badApiKey;
-        var middleware = new AdminAuthenticationMiddleware(
+        var middleware = ProxyAdminAuthenticationTestFactory.CreateMiddleware(
             _ => Task.CompletedTask,
             store,
-            audit,
-            NullLogger<AdminAuthenticationMiddleware>.Instance);
+            audit);
 
         await middleware.InvokeAsync(context);
 

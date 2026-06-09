@@ -350,11 +350,7 @@ internal static class AdminSecurityTests
         AdminAuditStore audit,
         RequestDelegate next)
     {
-        return new AdminAuthenticationMiddleware(
-            next,
-            store,
-            audit,
-            NullLogger<AdminAuthenticationMiddleware>.Instance);
+        return ProxyAdminAuthenticationTestFactory.CreateMiddleware(next, store, audit);
     }
 
     private static DefaultHttpContext CreateAdminContext()

@@ -3,7 +3,7 @@ using MDRAVA.BLL.Infrastructure;
 
 namespace MDRAVA.INF.Observability;
 
-public sealed class AdminAuditStore : IProxyAdminAuditReader
+public sealed class AdminAuditStore : IProxyAdminAuditReader, IProxyAdminAuditRecorder
 {
     public const int MaximumReadLimit = 500;
 

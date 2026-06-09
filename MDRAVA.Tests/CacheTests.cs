@@ -438,11 +438,10 @@ internal static class CacheTests
         context.Request.Path = "/admin/proxy/cache/clear";
         context.Response.Body = new MemoryStream();
         context.Connection.RemoteIpAddress = IPAddress.Parse("127.0.0.1");
-        var middleware = new AdminAuthenticationMiddleware(
+        var middleware = ProxyAdminAuthenticationTestFactory.CreateMiddleware(
             _ => Task.CompletedTask,
             store,
-            audit,
-            NullLogger<AdminAuthenticationMiddleware>.Instance);
+            audit);
 
         await middleware.InvokeAsync(context);
 
