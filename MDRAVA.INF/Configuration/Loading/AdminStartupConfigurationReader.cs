@@ -1,15 +1,13 @@
 using System.Text.Json;
+using MDRAVA.BLL.Configuration;
 using MDRAVA.INF.Configuration.Paths;
 
-namespace MDRAVA.API.Proxy.Security;
+namespace MDRAVA.INF.Configuration.Loading;
 
 public static class AdminStartupConfigurationReader
 {
-    public static AdminStartupSecurityOptions Read(IConfiguration configuration)
+    public static AdminStartupSecurityOptions Read(MdravaDataDirectoryOptions dataOptions)
     {
-        var dataOptions = new MdravaDataDirectoryOptions();
-        configuration.GetSection(MdravaDataDirectoryOptions.SectionName).Bind(dataOptions);
-
         var dataDirectory = new MdravaDataDirectoryProvider(dataOptions);
         var proxyConfigPath = dataDirectory.GetProxyOperationalConfigPath();
 

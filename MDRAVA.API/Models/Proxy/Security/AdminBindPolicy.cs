@@ -10,7 +10,10 @@ public static class AdminBindPolicy
 
     public static AdminBindResolution Apply(WebApplicationBuilder builder)
     {
-        var startupSecurity = AdminStartupConfigurationReader.Read(builder.Configuration);
+        var dataOptions = new MdravaDataDirectoryOptions();
+        builder.Configuration.GetSection(MdravaDataDirectoryOptions.SectionName).Bind(dataOptions);
+
+        var startupSecurity = AdminStartupConfigurationReader.Read(dataOptions);
         var resolution = Resolve(builder.Configuration, startupSecurity);
 
         if (resolution.ApplyToWebHost)

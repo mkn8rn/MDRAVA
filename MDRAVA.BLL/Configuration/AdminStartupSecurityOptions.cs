@@ -1,4 +1,4 @@
-namespace MDRAVA.API.Proxy.Security;
+namespace MDRAVA.BLL.Configuration;
 
 public sealed record AdminStartupSecurityOptions(
     IReadOnlyList<string> Urls,
