@@ -141,8 +141,14 @@ public sealed class UpgradeForwarder
         }
         catch (ProxyTimeoutException exception)
         {
+            var timeoutFailure = ProxyTimeoutFailurePolicy.ClassifyForwardingTimeout(exception.Kind, responseStarted);
             await HandleTimeoutAsync(clientStream, requestHead, upstream, responseStarted, exception, timeouts, requestId, cancellationToken);
-            return new ForwardingResult(false, responseStarted, false, StatusCodeForTimeout(exception.Kind, responseStarted), FailureKindForTimeout(exception.Kind));
+            return new ForwardingResult(
+                false,
+                responseStarted,
+                false,
+                timeoutFailure.ResponseStatusCode,
+                timeoutFailure.FailureKind);
         }
         catch (Http1UpstreamProtocolException exception)
         {
@@ -644,33 +650,6 @@ public sealed class UpgradeForwarder
     {
         return Encoding.ASCII.GetBytes(
             $"HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\nContent-Length: 19\r\nContent-Type: text/plain\r\nX-Request-Id: {requestId}\r\n\r\nService Unavailable");
-    }
-
-    private static int? StatusCodeForTimeout(ProxyTimeoutKind timeoutKind, bool responseStarted)
-    {
-        if (responseStarted)
-        {
-            return null;
-        }
-
-        return timeoutKind switch
-        {
-            ProxyTimeoutKind.UpstreamConnect => 504,
-            ProxyTimeoutKind.UpstreamResponseHead => 504,
-            _ => null
-        };
-    }
-
-    private static ProxyFailureKind FailureKindForTimeout(ProxyTimeoutKind timeoutKind)
-    {
-        return timeoutKind switch
-        {
-            ProxyTimeoutKind.UpstreamConnect => ProxyFailureKind.UpstreamConnectTimeout,
-            ProxyTimeoutKind.UpstreamResponseHead => ProxyFailureKind.UpstreamResponseHeadTimeout,
-            ProxyTimeoutKind.UpstreamResponseBodyIdle => ProxyFailureKind.UpstreamResponseBodyTimeout,
-            ProxyTimeoutKind.DownstreamWrite => ProxyFailureKind.ClientDisconnected,
-            _ => ProxyFailureKind.InternalError
-        };
     }
 
     private static int FindHeadLength(ReadOnlySpan<byte> bytes)

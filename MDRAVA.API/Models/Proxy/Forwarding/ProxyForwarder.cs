@@ -175,8 +175,14 @@ public sealed class ProxyForwarder
         }
         catch (ProxyTimeoutException exception)
         {
+            var timeoutFailure = ProxyTimeoutFailurePolicy.ClassifyForwardingTimeout(exception.Kind, responseStarted);
             await HandleTimeoutAsync(clientStream, requestHead, upstream, responseStarted, exception, timeouts, requestId, cancellationToken, suppressGeneratedFailureResponse);
-            return new ForwardingResult(false, responseStarted, false, StatusCodeForTimeout(exception.Kind, responseStarted), FailureKindForTimeout(exception.Kind));
+            return new ForwardingResult(
+                false,
+                responseStarted,
+                false,
+                timeoutFailure.ResponseStatusCode,
+                timeoutFailure.FailureKind);
         }
         catch (Http1PayloadTooLargeException exception)
         {
@@ -1760,38 +1766,9 @@ public sealed class ProxyForwarder
             $"HTTP/1.1 413 Payload Too Large\r\nConnection: close\r\nContent-Length: 17\r\nContent-Type: text/plain\r\nX-Request-Id: {requestId}\r\n\r\nPayload Too Large");
     }
 
-    private static int? StatusCodeForTimeout(ProxyTimeoutKind timeoutKind, bool responseStarted)
-    {
-        if (responseStarted)
-        {
-            return null;
-        }
-
-        return timeoutKind switch
-        {
-            ProxyTimeoutKind.ClientRequestBodyIdle => 408,
-            ProxyTimeoutKind.UpstreamConnect => 504,
-            ProxyTimeoutKind.UpstreamResponseHead => 504,
-            _ => null
-        };
-    }
-
     private static bool CanWriteGeneratedFailure(bool responseStarted, bool suppressGeneratedFailureResponse)
     {
         return !responseStarted && !suppressGeneratedFailureResponse;
-    }
-
-    private static ProxyFailureKind FailureKindForTimeout(ProxyTimeoutKind timeoutKind)
-    {
-        return timeoutKind switch
-        {
-            ProxyTimeoutKind.ClientRequestBodyIdle => ProxyFailureKind.ClientRequestBodyTimeout,
-            ProxyTimeoutKind.UpstreamConnect => ProxyFailureKind.UpstreamConnectTimeout,
-            ProxyTimeoutKind.UpstreamResponseHead => ProxyFailureKind.UpstreamResponseHeadTimeout,
-            ProxyTimeoutKind.UpstreamResponseBodyIdle => ProxyFailureKind.UpstreamResponseBodyTimeout,
-            ProxyTimeoutKind.DownstreamWrite => ProxyFailureKind.ClientDisconnected,
-            _ => ProxyFailureKind.InternalError
-        };
     }
 
     private static int FindHeadLength(ReadOnlySpan<byte> bytes)
