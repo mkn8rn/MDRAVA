@@ -50,6 +50,25 @@ internal static class HardeningTests
         AssertEx.Equal(1L, metrics.Snapshot().ActiveTlsHandshakes);
     }
 
+    public static void AdmissionLeaseDisposalReleasesTlsHandshakeSlot()
+    {
+        var metrics = new ProxyMetrics();
+        var admission = new ProxyAdmissionController(metrics);
+
+        using (var lease = admission.TryAcquireTlsHandshake(1))
+        {
+            AssertEx.True(lease is not null);
+            AssertEx.Equal(1, admission.ActiveTlsHandshakes);
+            AssertEx.Equal(1L, metrics.Snapshot().ActiveTlsHandshakes);
+            AssertEx.Equal(null, admission.TryAcquireTlsHandshake(1));
+        }
+
+        using var reacquired = admission.TryAcquireTlsHandshake(1);
+        AssertEx.True(reacquired is not null);
+        AssertEx.Equal(1, admission.ActiveTlsHandshakes);
+        AssertEx.Equal(1L, metrics.Snapshot().ActiveTlsHandshakes);
+    }
+
     public static void RateLimiterEnforcesRequestLimitAndRefills()
     {
         var now = DateTimeOffset.UtcNow;

@@ -48,6 +48,17 @@ public interface IProxyRateLimitMetricsSink
     void UpgradeRateLimited();
 }
 
+public interface IProxyAdmissionMetricsSink
+{
+    void ConnectionAdmissionRejected();
+
+    void TlsHandshakeStarted();
+
+    void TlsHandshakeEnded();
+
+    void TlsHandshakeAdmissionRejected();
+}
+
 public interface IUpstreamConnectionPruner
 {
     void PruneIdleConnections(RuntimeUpstream upstream);

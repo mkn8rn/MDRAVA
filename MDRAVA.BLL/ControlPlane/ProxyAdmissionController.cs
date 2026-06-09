@@ -1,14 +1,12 @@
-using MDRAVA.API.Proxy.Metrics;
-
-namespace MDRAVA.API.Proxy.Runtime;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed class ProxyAdmissionController
 {
-    private readonly ProxyMetrics _metrics;
+    private readonly IProxyAdmissionMetricsSink _metrics;
     private int _activeClientConnections;
     private int _activeTlsHandshakes;
 
-    public ProxyAdmissionController(ProxyMetrics metrics)
+    public ProxyAdmissionController(IProxyAdmissionMetricsSink metrics)
     {
         _metrics = metrics;
     }
