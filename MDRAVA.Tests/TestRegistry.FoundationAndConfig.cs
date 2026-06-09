@@ -24,6 +24,7 @@ internal static partial class TestRegistry
     Test("Http1ResponseParser treats 204 as no body", Sync(Http1ResponseParserTests.TreatsNoContentAsNoBody), TestTaxonomy.Http1),
     Test("Http1ResponseParser treats 304 as no body", Sync(Http1ResponseParserTests.TreatsNotModifiedAsNoBody), TestTaxonomy.Http1),
     Test("Http1ResponseParser rejects invalid Content-Length", Sync(Http1ResponseParserTests.RejectsInvalidResponseContentLength), TestTaxonomy.Http1, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
+    Test("Framed upstream response policy builds HTTP/1 heads from narrow facts", Sync(FramedUpstreamResponsePolicyTests.BuildsHttp1HeadFromNarrowUpstreamFacts), TestTaxonomy.Http1, TestTaxonomy.Http2, TestTaxonomy.Http3, TestTaxonomy.Headers),
     Test("Http2 header policy classifies allowed request pseudo headers", Sync(Http2HeaderPolicyTests.ClassifiesAllowedRequestPseudoHeaders), TestTaxonomy.Http2, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
     Test("Http2 header policy classifies forbidden request headers", Sync(Http2HeaderPolicyTests.ClassifiesForbiddenRequestHeaders), TestTaxonomy.Http2, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
     Test("Http2 header policy classifies managed upstream request headers", Sync(Http2HeaderPolicyTests.ClassifiesManagedUpstreamRequestHeaders), TestTaxonomy.Http2, TestTaxonomy.Headers),

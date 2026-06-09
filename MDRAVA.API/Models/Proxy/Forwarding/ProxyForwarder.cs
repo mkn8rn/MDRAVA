@@ -485,7 +485,12 @@ public sealed class ProxyForwarder
             listener.MaxResponseHeadBytes,
             timeouts,
             cancellationToken);
-        var responseHead = BuildHttp2ResponseHead(requestHead, upstreamResponse);
+        var responseHead = FramedUpstreamResponsePolicy.BuildHttp1ResponseHead(
+            requestHead,
+            new FramedUpstreamResponseTranslationInput(
+                upstreamResponse.StatusCode,
+                upstreamResponse.Headers,
+                upstreamResponse.EndStream));
         if (ProxyRetryPolicy.ShouldSuppressRetryableStatusResponse(route.Retry, responseHead.StatusCode, suppressRetryableStatusResponse))
         {
             return CreateRetrySuppressedResult(responseHead.StatusCode);
@@ -595,7 +600,12 @@ public sealed class ProxyForwarder
             listener.MaxResponseHeadBytes,
             timeouts,
             cancellationToken);
-        var responseHead = BuildHttp3ResponseHead(requestHead, upstreamResponse);
+        var responseHead = FramedUpstreamResponsePolicy.BuildHttp1ResponseHead(
+            requestHead,
+            new FramedUpstreamResponseTranslationInput(
+                upstreamResponse.StatusCode,
+                upstreamResponse.Headers,
+                ResponseEndedWithHead: false));
         if (ProxyRetryPolicy.ShouldSuppressRetryableStatusResponse(route.Retry, responseHead.StatusCode, suppressRetryableStatusResponse))
         {
             return CreateRetrySuppressedResult(responseHead.StatusCode);
@@ -919,45 +929,6 @@ public sealed class ProxyForwarder
         }
     }
 
-    private static Http1ResponseHead BuildHttp2ResponseHead(
-        Http1RequestHead requestHead,
-        Http2UpstreamResponseHead upstreamResponse)
-    {
-        var noBody = upstreamResponse.EndStream
-            || string.Equals(requestHead.Method, "HEAD", StringComparison.OrdinalIgnoreCase)
-            || upstreamResponse.StatusCode is 204 or 304;
-        var framing = noBody
-            ? Http1ResponseFraming.None
-            : TryGetContentLength(upstreamResponse.Headers, out var contentLength)
-                ? Http1ResponseFraming.FromContentLength(contentLength)
-                : Http1ResponseFraming.Chunked;
-        return new Http1ResponseHead(
-            "HTTP/1.1",
-            upstreamResponse.StatusCode,
-            ProxyRouteActionPolicy.ReasonPhrase(upstreamResponse.StatusCode),
-            framing,
-            upstreamResponse.Headers);
-    }
-
-    private static Http1ResponseHead BuildHttp3ResponseHead(
-        Http1RequestHead requestHead,
-        Http3UpstreamResponseHead upstreamResponse)
-    {
-        var noBody = string.Equals(requestHead.Method, "HEAD", StringComparison.OrdinalIgnoreCase)
-            || upstreamResponse.StatusCode is 204 or 304;
-        var framing = noBody
-            ? Http1ResponseFraming.None
-            : TryGetContentLength(upstreamResponse.Headers, out var contentLength)
-                ? Http1ResponseFraming.FromContentLength(contentLength)
-                : Http1ResponseFraming.Chunked;
-        return new Http1ResponseHead(
-            "HTTP/1.1",
-            upstreamResponse.StatusCode,
-            ProxyRouteActionPolicy.ReasonPhrase(upstreamResponse.StatusCode),
-            framing,
-            upstreamResponse.Headers);
-    }
-
     private static async ValueTask<byte[]> ReadFramedUpstreamCacheCandidateBodyAsync(
         ReadFramedUpstreamDataAsync readDataAsync,
         Http1ResponseHead responseHead,
@@ -1103,25 +1074,6 @@ public sealed class ProxyForwarder
         await WriteWithTimeoutAsync(clientStream, data, writeTimeout, cancellationToken);
         await WriteWithTimeoutAsync(clientStream, "\r\n"u8.ToArray(), writeTimeout, cancellationToken);
         _metrics.AddBytesWritten(prefix.Length + data.Length + 2);
-    }
-
-    private static bool TryGetContentLength(
-        IReadOnlyList<Http1HeaderField> headers,
-        out long contentLength)
-    {
-        contentLength = 0;
-        foreach (var header in headers)
-        {
-            if (!string.Equals(header.Name, "content-length", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            return long.TryParse(header.Value, NumberStyles.None, CultureInfo.InvariantCulture, out contentLength)
-                && contentLength >= 0;
-        }
-
-        return false;
     }
 
     private async ValueTask WriteRequestHeadAsync(
