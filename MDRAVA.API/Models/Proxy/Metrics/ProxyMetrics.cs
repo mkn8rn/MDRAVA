@@ -12,7 +12,6 @@ public sealed class ProxyMetrics :
     IProxyRequestDiagnosticsMetricsSink
 {
     private static readonly ProxyFailureKind[] FailureKinds = Enum.GetValues<ProxyFailureKind>();
-    private const int MaxLabelLength = 96;
 
     private long _acceptedConnections;
     private long _activeConnections;
@@ -345,10 +344,10 @@ public sealed class ProxyMetrics :
     {
         Interlocked.Increment(ref _upstreamSelections);
         var key = new UpstreamSelectionKey(
-            NormalizeLabel(upstream.RouteName),
-            NormalizeLabel(upstream.Name),
-            NormalizeLabel(upstream.Scheme),
-            NormalizeLabel(upstream.Protocol));
+            ProxyMetricLabelPolicy.NormalizeValue(upstream.RouteName),
+            ProxyMetricLabelPolicy.NormalizeValue(upstream.Name),
+            ProxyMetricLabelPolicy.NormalizeValue(upstream.Scheme),
+            ProxyMetricLabelPolicy.NormalizeValue(upstream.Protocol));
         var counter = _upstreamSelectionsByUpstream.GetOrAdd(key, static _ => new RequestSeriesCounter());
         Interlocked.Increment(ref counter.Count);
     }
@@ -406,10 +405,10 @@ public sealed class ProxyMetrics :
     public void RequestCompleted(string? site, string? route, string? action, int? statusCode)
     {
         var key = new RequestSeriesKey(
-            NormalizeLabel(site),
-            NormalizeLabel(route),
-            NormalizeLabel(action),
-            StatusClass(statusCode));
+            ProxyMetricLabelPolicy.NormalizeValue(site),
+            ProxyMetricLabelPolicy.NormalizeValue(route),
+            ProxyMetricLabelPolicy.NormalizeValue(action),
+            ProxyMetricLabelPolicy.StatusClass(statusCode));
         var counter = _requestsByRoute.GetOrAdd(key, static _ => new RequestSeriesCounter());
         Interlocked.Increment(ref counter.Count);
     }
@@ -434,7 +433,7 @@ public sealed class ProxyMetrics :
 
     public void RetrySkipped(string reason)
     {
-        var counter = _retrySkippedByReason.GetOrAdd(NormalizeLabel(reason), static _ => new RequestSeriesCounter());
+        var counter = _retrySkippedByReason.GetOrAdd(ProxyMetricLabelPolicy.NormalizeValue(reason), static _ => new RequestSeriesCounter());
         Interlocked.Increment(ref counter.Count);
     }
 
@@ -475,7 +474,7 @@ public sealed class ProxyMetrics :
 
     public void Http2ProtocolError(string reason)
     {
-        var counter = _http2ProtocolErrors.GetOrAdd(NormalizeLabel(reason), static _ => new RequestSeriesCounter());
+        var counter = _http2ProtocolErrors.GetOrAdd(ProxyMetricLabelPolicy.NormalizeValue(reason), static _ => new RequestSeriesCounter());
         Interlocked.Increment(ref counter.Count);
     }
 
@@ -515,7 +514,7 @@ public sealed class ProxyMetrics :
 
     public void UpstreamHttp3ProtocolError(string reason)
     {
-        var counter = _upstreamHttp3ProtocolErrors.GetOrAdd(NormalizeLabel(reason), static _ => new RequestSeriesCounter());
+        var counter = _upstreamHttp3ProtocolErrors.GetOrAdd(ProxyMetricLabelPolicy.NormalizeValue(reason), static _ => new RequestSeriesCounter());
         Interlocked.Increment(ref counter.Count);
     }
 
@@ -532,9 +531,9 @@ public sealed class ProxyMetrics :
     public void Http3RequestCompleted(string? method, int? statusCode, string? outcome)
     {
         var key = new Http3OutcomeKey(
-            NormalizeLabel(method),
-            NormalizeLabel(outcome),
-            StatusClass(statusCode));
+            ProxyMetricLabelPolicy.NormalizeValue(method),
+            ProxyMetricLabelPolicy.NormalizeValue(outcome),
+            ProxyMetricLabelPolicy.StatusClass(statusCode));
         var counter = _http3RequestsByOutcome.GetOrAdd(key, static _ => new RequestSeriesCounter());
         Interlocked.Increment(ref counter.Count);
     }
@@ -579,13 +578,13 @@ public sealed class ProxyMetrics :
 
     public void Http3RequestRejected(string reason)
     {
-        var counter = _http3RejectedRequests.GetOrAdd(NormalizeLabel(reason), static _ => new RequestSeriesCounter());
+        var counter = _http3RejectedRequests.GetOrAdd(ProxyMetricLabelPolicy.NormalizeValue(reason), static _ => new RequestSeriesCounter());
         Interlocked.Increment(ref counter.Count);
     }
 
     public void Http3ProtocolError(string reason)
     {
-        var counter = _http3ProtocolErrors.GetOrAdd(NormalizeLabel(reason), static _ => new RequestSeriesCounter());
+        var counter = _http3ProtocolErrors.GetOrAdd(ProxyMetricLabelPolicy.NormalizeValue(reason), static _ => new RequestSeriesCounter());
         Interlocked.Increment(ref counter.Count);
     }
 
@@ -601,8 +600,8 @@ public sealed class ProxyMetrics :
         foreach (var finding in findings)
         {
             var key = new ConfigLintFindingKey(
-                NormalizeLabel(finding.Severity),
-                NormalizeLabel(finding.Code));
+                ProxyMetricLabelPolicy.NormalizeValue(finding.Severity),
+                ProxyMetricLabelPolicy.NormalizeValue(finding.Code));
             var counter = _configLintFindings.GetOrAdd(key, static _ => new RequestSeriesCounter());
             Interlocked.Increment(ref counter.Count);
         }
@@ -616,7 +615,7 @@ public sealed class ProxyMetrics :
             return;
         }
 
-        var counter = _routeMatchDryRunFailures.GetOrAdd(NormalizeLabel(failureReason), static _ => new RequestSeriesCounter());
+        var counter = _routeMatchDryRunFailures.GetOrAdd(ProxyMetricLabelPolicy.NormalizeValue(failureReason), static _ => new RequestSeriesCounter());
         Interlocked.Increment(ref counter.Count);
     }
 
@@ -830,47 +829,6 @@ public sealed class ProxyMetrics :
     public ProxyMetricsSnapshot ReadMetrics()
     {
         return Snapshot();
-    }
-
-    private static string StatusClass(int? statusCode)
-    {
-        if (!statusCode.HasValue)
-        {
-            return "none";
-        }
-
-        var value = statusCode.Value;
-        return value is >= 100 and <= 599
-            ? $"{value / 100}xx"
-            : "other";
-    }
-
-    private static string NormalizeLabel(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return "none";
-        }
-
-        Span<char> buffer = stackalloc char[Math.Min(value.Length, MaxLabelLength)];
-        var index = 0;
-        foreach (var character in value.Trim())
-        {
-            if (index >= buffer.Length)
-            {
-                break;
-            }
-
-            buffer[index++] = IsSafeLabelCharacter(character) ? character : '_';
-        }
-
-        return index == 0 ? "none" : new string(buffer[..index]);
-    }
-
-    private static bool IsSafeLabelCharacter(char character)
-    {
-        return char.IsAsciiLetterOrDigit(character)
-            || character is '-' or '_' or '.';
     }
 
     private readonly record struct RequestSeriesKey(

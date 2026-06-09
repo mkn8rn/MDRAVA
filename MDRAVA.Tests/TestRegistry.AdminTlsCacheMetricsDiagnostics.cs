@@ -86,6 +86,8 @@ internal static partial class TestRegistry
     Test("Metrics failure matrix does not expose authorization cookie or query secrets", MetricsTests.MetricsFailureMatrixDoesNotExposeAuthorizationCookieOrQuerySecrets, TestTaxonomy.Admin, TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),
     Test("Public metrics exposure is disabled by default", Sync(MetricsTests.PublicMetricsExposureIsDisabledByDefault), TestTaxonomy.Metrics),
     Test("Invalid metrics config is rejected", Sync(MetricsTests.InvalidMetricsConfigIsRejected), TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),
+    Test("Metric label policy normalizes bounded safe values", Sync(ProxyMetricLabelPolicyTests.NormalizesBoundedSafeLabelValues), TestTaxonomy.Limits, TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),
+    Test("Metric label policy classifies status codes", Sync(ProxyMetricLabelPolicyTests.ClassifiesMetricStatusCodes), TestTaxonomy.Metrics),
     Test("Metric labels are bounded and sanitized", Sync(MetricsTests.MetricLabelsAreBoundedAndSanitized), TestTaxonomy.Limits, TestTaxonomy.Metrics),
     Test("Route dry-run matches dataplane matcher", Sync(RouteDiagnosticsTests.DryRunMatchesSameRouteAsDataplaneMatcher), TestTaxonomy.Routing),
     Test("Route dry-run has no upstream I/O or retry circuit cache mutation", Sync(RouteDiagnosticsTests.DryRunDoesNotPerformUpstreamIoOrMutateRetryCircuitOrCacheState), TestTaxonomy.Routing, TestTaxonomy.Caching, TestTaxonomy.RetryCircuit),

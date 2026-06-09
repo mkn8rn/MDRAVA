@@ -9,7 +9,6 @@ namespace MDRAVA.API.Proxy.Metrics;
 public sealed class PrometheusMetricsExporter
 {
     public const string ContentType = "text/plain; version=0.0.4; charset=utf-8";
-    private const int MaxLabelLength = 96;
 
     private readonly ProxyMetrics _metrics;
     private readonly ResponseCacheStore _cacheStore;
@@ -403,7 +402,7 @@ public sealed class PrometheusMetricsExporter
                 builder
                     .Append(labels[index].Name)
                     .Append("=\"")
-                    .Append(EscapeLabelValue(SafeLabelValue(labels[index].Value)))
+                    .Append(EscapeLabelValue(ProxyMetricLabelPolicy.NormalizeValue(labels[index].Value)))
                     .Append('"');
             }
 
@@ -413,30 +412,6 @@ public sealed class PrometheusMetricsExporter
         builder.Append(' ')
             .Append(value.ToString(CultureInfo.InvariantCulture))
             .Append('\n');
-    }
-
-    private static string SafeLabelValue(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return "none";
-        }
-
-        Span<char> buffer = stackalloc char[Math.Min(value.Length, MaxLabelLength)];
-        var index = 0;
-        foreach (var character in value.Trim())
-        {
-            if (index >= buffer.Length)
-            {
-                break;
-            }
-
-            buffer[index++] = char.IsAsciiLetterOrDigit(character) || character is '-' or '_' or '.'
-                ? character
-                : '_';
-        }
-
-        return index == 0 ? "none" : new string(buffer[..index]);
     }
 
     private static string EscapeLabelValue(string value)
