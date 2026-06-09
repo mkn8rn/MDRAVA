@@ -1,4 +1,4 @@
-using System.Globalization;
+using System.Diagnostics.CodeAnalysis;
 
 namespace MDRAVA.BLL.ControlPlane;
 
@@ -9,54 +9,63 @@ public sealed record FramedUpstreamResponseTranslationInput(
 
 public static class FramedUpstreamResponsePolicy
 {
-    public static Http1ResponseHead BuildHttp1ResponseHead(
+    public static bool TryBuildHttp1ResponseHead(
         Http1RequestHead requestHead,
-        FramedUpstreamResponseTranslationInput upstreamResponse)
+        FramedUpstreamResponseTranslationInput upstreamResponse,
+        [NotNullWhen(true)] out Http1ResponseHead? responseHead,
+        out string rejectionReason)
     {
         ArgumentNullException.ThrowIfNull(requestHead);
         ArgumentNullException.ThrowIfNull(upstreamResponse);
 
-        var framing = DetermineFraming(requestHead, upstreamResponse);
-        return new Http1ResponseHead(
+        responseHead = null;
+        if (!TryDetermineFraming(requestHead, upstreamResponse, out var framing, out rejectionReason))
+        {
+            return false;
+        }
+
+        responseHead = new Http1ResponseHead(
             "HTTP/1.1",
             upstreamResponse.StatusCode,
             ProxyRouteActionPolicy.ReasonPhrase(upstreamResponse.StatusCode),
             framing,
             upstreamResponse.Headers);
+        return true;
     }
 
-    private static Http1ResponseFraming DetermineFraming(
+    private static bool TryDetermineFraming(
         Http1RequestHead requestHead,
-        FramedUpstreamResponseTranslationInput upstreamResponse)
+        FramedUpstreamResponseTranslationInput upstreamResponse,
+        out Http1ResponseFraming framing,
+        out string rejectionReason)
     {
+        rejectionReason = "";
         if (upstreamResponse.ResponseEndedWithHead
             || string.Equals(requestHead.Method, "HEAD", StringComparison.OrdinalIgnoreCase)
             || upstreamResponse.StatusCode is 204 or 304)
         {
-            return Http1ResponseFraming.None;
+            framing = Http1ResponseFraming.None;
+            return true;
         }
 
-        return TryGetContentLength(upstreamResponse.Headers, out var contentLength)
-            ? Http1ResponseFraming.FromContentLength(contentLength)
-            : Http1ResponseFraming.Chunked;
-    }
-
-    private static bool TryGetContentLength(
-        IReadOnlyList<Http1HeaderField> headers,
-        out long contentLength)
-    {
-        contentLength = 0;
-        foreach (var header in headers)
+        var contentLengthValues = upstreamResponse.Headers
+            .Where(header => string.Equals(header.Name, "content-length", StringComparison.OrdinalIgnoreCase))
+            .Select(header => header.Value)
+            .ToArray();
+        if (contentLengthValues.Length > 0)
         {
-            if (!string.Equals(header.Name, "content-length", StringComparison.OrdinalIgnoreCase))
+            if (!Http1RequestParser.TryAnalyzeContentLength(contentLengthValues, out var contentLength, out var error))
             {
-                continue;
+                framing = Http1ResponseFraming.None;
+                rejectionReason = error.ToString();
+                return false;
             }
 
-            return long.TryParse(header.Value, NumberStyles.None, CultureInfo.InvariantCulture, out contentLength)
-                && contentLength >= 0;
+            framing = Http1ResponseFraming.FromContentLength(contentLength);
+            return true;
         }
 
-        return false;
+        framing = Http1ResponseFraming.Chunked;
+        return true;
     }
 }

@@ -42,20 +42,46 @@ internal static class FramedUpstreamResponsePolicyTests
             ResponseEndedWithHead: false));
         AssertEx.Equal(Http1BodyKind.Chunked, missingContentLength.Framing.Kind);
 
-        var invalidContentLength = Build("GET", new FramedUpstreamResponseTranslationInput(
+        var invalidContentLength = Reject("GET", new FramedUpstreamResponseTranslationInput(
             200,
             [new Http1HeaderField("content-length", "-1")],
             ResponseEndedWithHead: false));
-        AssertEx.Equal(Http1BodyKind.Chunked, invalidContentLength.Framing.Kind);
+        AssertEx.Equal(Http1ParseError.InvalidContentLength.ToString(), invalidContentLength);
+
+        var conflictingContentLength = Reject("GET", new FramedUpstreamResponseTranslationInput(
+            200,
+            [
+                new Http1HeaderField("content-length", "4"),
+                new Http1HeaderField("content-length", "5")
+            ],
+            ResponseEndedWithHead: false));
+        AssertEx.Equal(Http1ParseError.ConflictingContentLength.ToString(), conflictingContentLength);
     }
 
     private static Http1ResponseHead Build(
         string method,
         FramedUpstreamResponseTranslationInput input)
     {
-        return FramedUpstreamResponsePolicy.BuildHttp1ResponseHead(
+        AssertEx.True(FramedUpstreamResponsePolicy.TryBuildHttp1ResponseHead(
             CreateRequestHead(method),
-            input);
+            input,
+            out var responseHead,
+            out var rejectionReason),
+            rejectionReason);
+        return AssertEx.NotNull(responseHead);
+    }
+
+    private static string Reject(
+        string method,
+        FramedUpstreamResponseTranslationInput input)
+    {
+        AssertEx.False(FramedUpstreamResponsePolicy.TryBuildHttp1ResponseHead(
+            CreateRequestHead(method),
+            input,
+            out var responseHead,
+            out var rejectionReason));
+        AssertEx.Equal(null, responseHead);
+        return rejectionReason;
     }
 
     private static Http1RequestHead CreateRequestHead(string method)

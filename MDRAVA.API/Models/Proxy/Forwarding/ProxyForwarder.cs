@@ -485,12 +485,19 @@ public sealed class ProxyForwarder
             listener.MaxResponseHeadBytes,
             timeouts,
             cancellationToken);
-        var responseHead = FramedUpstreamResponsePolicy.BuildHttp1ResponseHead(
+        if (!FramedUpstreamResponsePolicy.TryBuildHttp1ResponseHead(
             requestHead,
             new FramedUpstreamResponseTranslationInput(
                 upstreamResponse.StatusCode,
                 upstreamResponse.Headers,
-                upstreamResponse.EndStream));
+                upstreamResponse.EndStream),
+            out var responseHead,
+            out var responseHeadRejectionReason))
+        {
+            throw new Http2UpstreamProtocolException(
+                $"Upstream HTTP/2 response framing was invalid: {responseHeadRejectionReason}.");
+        }
+
         if (ProxyRetryPolicy.ShouldSuppressRetryableStatusResponse(route.Retry, responseHead.StatusCode, suppressRetryableStatusResponse))
         {
             return CreateRetrySuppressedResult(responseHead.StatusCode);
@@ -600,12 +607,19 @@ public sealed class ProxyForwarder
             listener.MaxResponseHeadBytes,
             timeouts,
             cancellationToken);
-        var responseHead = FramedUpstreamResponsePolicy.BuildHttp1ResponseHead(
+        if (!FramedUpstreamResponsePolicy.TryBuildHttp1ResponseHead(
             requestHead,
             new FramedUpstreamResponseTranslationInput(
                 upstreamResponse.StatusCode,
                 upstreamResponse.Headers,
-                ResponseEndedWithHead: false));
+                ResponseEndedWithHead: false),
+            out var responseHead,
+            out var responseHeadRejectionReason))
+        {
+            throw new Http3UpstreamProtocolException(
+                $"Upstream HTTP/3 response framing was invalid: {responseHeadRejectionReason}.");
+        }
+
         if (ProxyRetryPolicy.ShouldSuppressRetryableStatusResponse(route.Retry, responseHead.StatusCode, suppressRetryableStatusResponse))
         {
             return CreateRetrySuppressedResult(responseHead.StatusCode);
