@@ -32,6 +32,8 @@ internal static partial class TestRegistry
     Test("Request method policy classifies supported methods", Sync(ProxyRequestMethodPolicyTests.ClassifiesSupportedApplicationMethods), TestTaxonomy.Http1, TestTaxonomy.Http2, TestTaxonomy.Http3),
     Test("Request method policy classifies safe read methods", Sync(ProxyRequestMethodPolicyTests.ClassifiesSafeReadMethods), TestTaxonomy.Http1, TestTaxonomy.Caching, TestTaxonomy.RetryCircuit),
     Test("Request method policy classifies unsupported methods", Sync(ProxyRequestMethodPolicyTests.ClassifiesUnsupportedMethods), TestTaxonomy.Http1, TestTaxonomy.Http2, TestTaxonomy.Http3, TestTaxonomy.SecurityNegativePaths),
+    Test("Upgrade request policy classifies managed upgrade headers", Sync(UpgradeRequestPolicyTests.ClassifiesManagedUpgradeHeaders), TestTaxonomy.Http1, TestTaxonomy.Headers),
+    Test("Upgrade request policy classifies unsafe switching protocols response headers", Sync(UpgradeRequestPolicyTests.ClassifiesUnsafeSwitchingProtocolsResponseHeaders), TestTaxonomy.Http1, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
     Test("Header policy filters standard hop-by-hop headers", Sync(HeaderPolicyTests.FiltersStandardHopByHopHeaders), TestTaxonomy.Headers),
     Test("Header policy filters Connection-nominated headers", Sync(HeaderPolicyTests.FiltersConnectionNominatedHeaders), TestTaxonomy.Headers),
     Test("Header policy classifies hop-by-hop names and Connection tokens", Sync(HeaderPolicyTests.ClassifiesHopByHopNamesAndConnectionTokens), TestTaxonomy.Headers),

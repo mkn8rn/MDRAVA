@@ -82,6 +82,22 @@ public sealed class UpgradeRequestPolicy
         return null;
     }
 
+    public static bool IsManagedUpgradeHeader(string headerName)
+    {
+        return string.Equals(headerName, "Connection", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(headerName, "Upgrade", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static bool IsUnsafeSwitchingProtocolsResponseHeader(string headerName)
+    {
+        return string.Equals(headerName, "Keep-Alive", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(headerName, "Proxy-Authenticate", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(headerName, "Proxy-Authorization", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(headerName, "TE", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(headerName, "Trailer", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(headerName, "Transfer-Encoding", StringComparison.OrdinalIgnoreCase);
+    }
+
     private static bool HasHeader(IReadOnlyList<Http1HeaderField> headers, string name)
     {
         return headers.Any(header => string.Equals(header.Name, name, StringComparison.OrdinalIgnoreCase));

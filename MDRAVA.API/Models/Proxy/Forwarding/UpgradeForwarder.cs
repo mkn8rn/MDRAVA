@@ -274,7 +274,7 @@ public sealed class UpgradeForwarder
         var requestHeaders = ProxyHeaderMutationPolicy.ApplyRequestHeaders(filtered, route.HeaderPolicy, forwardedHeaders);
         foreach (var header in requestHeaders)
         {
-            if (IsManagedUpgradeHeader(header.Name))
+            if (UpgradeRequestPolicy.IsManagedUpgradeHeader(header.Name))
             {
                 continue;
             }
@@ -306,8 +306,8 @@ public sealed class UpgradeForwarder
         var responseHeaders = ProxyHeaderMutationPolicy.ApplyResponseHeaders(responseHead.Headers, route.HeaderPolicy);
         foreach (var header in responseHeaders)
         {
-            if (IsManagedUpgradeHeader(header.Name)
-                || IsUnsafeUpgradeResponseHeader(header.Name))
+            if (UpgradeRequestPolicy.IsManagedUpgradeHeader(header.Name)
+                || UpgradeRequestPolicy.IsUnsafeSwitchingProtocolsResponseHeader(header.Name))
             {
                 continue;
             }
@@ -616,22 +616,6 @@ public sealed class UpgradeForwarder
             timeout,
             ProxyTimeoutKind.DownstreamWrite,
             cancellationToken);
-    }
-
-    private static bool IsManagedUpgradeHeader(string headerName)
-    {
-        return string.Equals(headerName, "Connection", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(headerName, "Upgrade", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static bool IsUnsafeUpgradeResponseHeader(string headerName)
-    {
-        return string.Equals(headerName, "Keep-Alive", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(headerName, "Proxy-Authenticate", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(headerName, "Proxy-Authorization", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(headerName, "TE", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(headerName, "Trailer", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(headerName, "Transfer-Encoding", StringComparison.OrdinalIgnoreCase);
     }
 
     private static ReadOnlyMemory<byte> BuildGeneratedBadGateway(string requestId)
