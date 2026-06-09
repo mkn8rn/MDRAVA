@@ -455,7 +455,13 @@ internal static class CacheTests
         ConfigurationTests.WriteSite(temp.Path, "reload.json", 18080, 15000);
         var store = new ProxyConfigurationStore();
         var cache = new ResponseCacheStore(new ManualTimeProvider());
-        var service = new ProxyConfigurationReloadService(CreateLoader(temp.Path), store, cache, NullLogger<ProxyConfigurationReloadService>.Instance);
+        var service = new ProxyConfigurationReloadService(
+            CreateLoader(temp.Path),
+            store,
+            cache,
+            new ProxyMetrics(),
+            ActivatingProxyListenerReloadApplier.Instance,
+            SilentProxyConfigurationReloadEventSink.Instance);
 
         var first = await service.ReloadAsync(CancellationToken.None);
         AssertEx.True(first.Succeeded);
@@ -475,7 +481,13 @@ internal static class CacheTests
         ConfigurationTests.WriteSite(temp.Path, "reload.json", 18080, 15000);
         var store = new ProxyConfigurationStore();
         var cache = new ResponseCacheStore(new ManualTimeProvider());
-        var service = new ProxyConfigurationReloadService(CreateLoader(temp.Path), store, cache, NullLogger<ProxyConfigurationReloadService>.Instance);
+        var service = new ProxyConfigurationReloadService(
+            CreateLoader(temp.Path),
+            store,
+            cache,
+            new ProxyMetrics(),
+            ActivatingProxyListenerReloadApplier.Instance,
+            SilentProxyConfigurationReloadEventSink.Instance);
         var first = await service.ReloadAsync(CancellationToken.None);
         AssertEx.True(first.Succeeded);
         SeedCache(cache, store.Snapshot.Routes[0], store.Snapshot.Listeners[0]);

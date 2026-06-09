@@ -1181,7 +1181,10 @@ internal static class ConfigurationTests
         return new ProxyConfigurationReloadService(
             CreateLoader(dataDirectory),
             store,
-            NullLogger<ProxyConfigurationReloadService>.Instance);
+            new ResponseCacheStore(TimeProvider.System),
+            new ProxyMetrics(),
+            ActivatingProxyListenerReloadApplier.Instance,
+            SilentProxyConfigurationReloadEventSink.Instance);
     }
 
     private static ProxyConfigurationReadAdministrationService<ProxyConfigurationProjection> CreateReadAdministration(
