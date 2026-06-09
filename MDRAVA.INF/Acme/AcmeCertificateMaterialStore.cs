@@ -1,9 +1,11 @@
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
-using MDRAVA.API.Proxy.Configuration.Loading;
+using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane;
+using MDRAVA.INF.Configuration.Loading;
 
-namespace MDRAVA.API.Proxy.Acme;
+namespace MDRAVA.INF.Acme;
 
 public static class AcmeCertificateMaterialStore
 {
