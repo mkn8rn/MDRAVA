@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Text;
-using MDRAVA.API.Proxy.Acme;
 using MDRAVA.API.Proxy.Health;
 
 namespace MDRAVA.API.Proxy.Metrics;

@@ -1,4 +1,3 @@
-using MDRAVA.API.Proxy.Acme;
 using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Hosting;
 using MDRAVA.API.Proxy.Metrics;

@@ -1,5 +1,6 @@
+using MDRAVA.BLL.Infrastructure;
 
-namespace MDRAVA.API.Proxy.Diagnostics;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed class ProxyConfigLintActiveConfigurationSource
     : IProxyConfigLintActiveConfigurationSource
@@ -21,5 +22,20 @@ public sealed class ProxyConfigLintActiveConfigurationSource
 
         snapshot = ProxyConfigLintConfigurationSnapshotMapper.ToLintSnapshot(runtimeSnapshot);
         return true;
+    }
+}
+
+public sealed class ProxyConfigLintRuntimeStateSource : IProxyConfigLintRuntimeStateSource
+{
+    private readonly ProxyRuntimeState _runtimeState;
+
+    public ProxyConfigLintRuntimeStateSource(ProxyRuntimeState runtimeState)
+    {
+        _runtimeState = runtimeState;
+    }
+
+    public IReadOnlyList<ProxyListenerStatus> GetListeners()
+    {
+        return _runtimeState.Snapshot().Listeners;
     }
 }

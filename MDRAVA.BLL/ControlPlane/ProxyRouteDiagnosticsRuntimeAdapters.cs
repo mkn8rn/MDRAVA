@@ -1,6 +1,7 @@
-using MDRAVA.API.Proxy.Metrics;
+using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.Infrastructure;
 
-namespace MDRAVA.API.Proxy.Diagnostics;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed class ProxyRouteDiagnosticsConfigurationSource
     : IProxyRouteDiagnosticsConfigurationSource
@@ -114,22 +115,6 @@ public sealed class ProxyRouteDiagnosticsPathRewritePolicyAdapter
         var runtimeRoute = route as ProxyRouteDiagnosticsRuntimeRoute
             ?? throw new InvalidOperationException("Route diagnostics path rewrite policy requires a runtime route source.");
         return _pathRewritePolicy.Apply(runtimeRoute.RuntimeRoute, target, path);
-    }
-}
-
-public sealed class ProxyRouteDiagnosticsMetricsSink
-    : IProxyRouteDiagnosticsMetricsSink
-{
-    private readonly ProxyMetrics _metrics;
-
-    public ProxyRouteDiagnosticsMetricsSink(ProxyMetrics metrics)
-    {
-        _metrics = metrics;
-    }
-
-    public void RouteMatchDryRun(string? failureReason)
-    {
-        _metrics.RouteMatchDryRun(failureReason);
     }
 }
 
