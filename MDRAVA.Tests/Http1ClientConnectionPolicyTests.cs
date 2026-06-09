@@ -1,0 +1,43 @@
+namespace MDRAVA.Tests;
+
+internal static class Http1ClientConnectionPolicyTests
+{
+    public static void KeepsHttp11OpenByDefault()
+    {
+        var requestHead = Request("HTTP/1.1");
+
+        AssertEx.True(Http1ClientConnectionPolicy.ShouldKeepOpen(requestHead));
+    }
+
+    public static void ClosesWhenConnectionCloseIsPresent()
+    {
+        var requestHead = Request(
+            "HTTP/1.1",
+            new Http1HeaderField("Connection", "keep-alive, close"));
+
+        AssertEx.False(Http1ClientConnectionPolicy.ShouldKeepOpen(requestHead));
+    }
+
+    public static void ClosesHttp10ByDefault()
+    {
+        var requestHead = Request(
+            "HTTP/1.0",
+            new Http1HeaderField("Connection", "keep-alive"));
+
+        AssertEx.False(Http1ClientConnectionPolicy.ShouldKeepOpen(requestHead));
+    }
+
+    private static Http1RequestHead Request(
+        string version,
+        params Http1HeaderField[] headers)
+    {
+        return new Http1RequestHead(
+            "GET",
+            "/",
+            "/",
+            version,
+            "example.test",
+            Http1RequestFraming.None,
+            headers);
+    }
+}

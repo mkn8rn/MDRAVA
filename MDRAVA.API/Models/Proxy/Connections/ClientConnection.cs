@@ -375,7 +375,7 @@ public sealed class ClientConnection
                 }
 
                 var nextRequestCount = requestsProcessed + 1;
-                var preferKeepAlive = ShouldKeepClientConnectionOpen(requestHead)
+                var preferKeepAlive = Http1ClientConnectionPolicy.ShouldKeepOpen(requestHead)
                     && nextRequestCount < _configurationSnapshot.ConnectionLimits.MaxRequestsPerClientConnection;
                 var upstreamTarget = _pathRewritePolicy.Apply(routeMatch.Route, requestHead.Target, requestHead.Path);
                 var effectiveTimeouts = ProxyTimeoutPolicy.ApplyRouteTimeouts(routeMatch.Route, _configurationSnapshot.Timeouts);
@@ -1061,16 +1061,6 @@ public sealed class ClientConnection
             context.TunnelBytesClientToUpstream = result.Tunnel.BytesClientToUpstream;
             context.TunnelBytesUpstreamToClient = result.Tunnel.BytesUpstreamToClient;
         }
-    }
-
-    private static bool ShouldKeepClientConnectionOpen(Http1RequestHead requestHead)
-    {
-        if (HopByHopHeaderPolicy.HasConnectionToken(requestHead.Headers, "close"))
-        {
-            return false;
-        }
-
-        return string.Equals(requestHead.Version, "HTTP/1.1", StringComparison.OrdinalIgnoreCase);
     }
 
     private static int FindRequestHeadLength(ReadOnlySpan<byte> bytes)
