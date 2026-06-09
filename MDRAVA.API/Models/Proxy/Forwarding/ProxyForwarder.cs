@@ -68,7 +68,7 @@ public sealed class ProxyForwarder
             {
                 preReadRequestBodyReader = new Http1BodyReader(clientStream, requestHeadRead.InitialBodyBytes, _metrics, timeouts.ClientRequestBodyIdleTimeout, ProxyTimeoutKind.ClientRequestBodyIdle);
                 preReadChunkLine = await preReadRequestBodyReader.ReadLineWithCrlfAsync(listener.MaxChunkLineBytes, cancellationToken);
-                if (!TryParseChunkSize(preReadChunkLine.AsSpan(), out _))
+                if (!Http1ChunkSizeParser.TryParseLine(preReadChunkLine.AsSpan(), out _))
                 {
                     throw new Http1ClientProtocolException("Invalid chunk-size line.");
                 }
@@ -852,7 +852,7 @@ public sealed class ProxyForwarder
             while (true)
             {
                 chunkLine ??= await reader.ReadLineWithCrlfAsync(listener.MaxChunkLineBytes, cancellationToken);
-                if (!TryParseChunkSize(chunkLine.AsSpan(), out var chunkSize))
+                if (!Http1ChunkSizeParser.TryParseLine(chunkLine.AsSpan(), out var chunkSize))
                 {
                     throw new Http1ClientProtocolException("Invalid chunk-size line.");
                 }
@@ -1618,7 +1618,7 @@ public sealed class ProxyForwarder
         while (true)
         {
             chunkLine ??= await reader.ReadLineWithCrlfAsync(listener.MaxChunkLineBytes, cancellationToken);
-            if (!TryParseChunkSize(chunkLine.AsSpan(), out var chunkSize))
+            if (!Http1ChunkSizeParser.TryParseLine(chunkLine.AsSpan(), out var chunkSize))
             {
                 throw new Http1ClientProtocolException("Invalid chunk-size line.");
             }
@@ -1723,41 +1723,6 @@ public sealed class ProxyForwarder
         }
     }
 
-    private static bool TryParseChunkSize(ReadOnlySpan<byte> lineWithCrlf, out long chunkSize)
-    {
-        chunkSize = 0;
-        if (lineWithCrlf.Length < 3 || lineWithCrlf[^2] != (byte)'\r' || lineWithCrlf[^1] != (byte)'\n')
-        {
-            return false;
-        }
-
-        var line = lineWithCrlf[..^2];
-        var semicolon = line.IndexOf((byte)';');
-        var sizeBytes = semicolon >= 0 ? line[..semicolon] : line;
-        if (sizeBytes.Length == 0)
-        {
-            return false;
-        }
-
-        foreach (var value in sizeBytes)
-        {
-            var digit = HexValue(value);
-            if (digit < 0)
-            {
-                return false;
-            }
-
-            if (chunkSize > (long.MaxValue - digit) / 16)
-            {
-                return false;
-            }
-
-            chunkSize = chunkSize * 16 + digit;
-        }
-
-        return true;
-    }
-
     private static async ValueTask WriteWithTimeoutAsync(
         Stream destination,
         ReadOnlyMemory<byte> bytes,
@@ -1772,26 +1737,6 @@ public sealed class ProxyForwarder
             timeout,
             ProxyTimeoutKind.DownstreamWrite,
             cancellationToken);
-    }
-
-    private static int HexValue(byte value)
-    {
-        if (value is >= (byte)'0' and <= (byte)'9')
-        {
-            return value - (byte)'0';
-        }
-
-        if (value is >= (byte)'a' and <= (byte)'f')
-        {
-            return value - (byte)'a' + 10;
-        }
-
-        if (value is >= (byte)'A' and <= (byte)'F')
-        {
-            return value - (byte)'A' + 10;
-        }
-
-        return -1;
     }
 
     private static bool IsManagedFramingHeader(string headerName)
