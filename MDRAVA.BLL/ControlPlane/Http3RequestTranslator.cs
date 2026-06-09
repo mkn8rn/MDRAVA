@@ -1,6 +1,7 @@
 using System.Globalization;
+using MDRAVA.BLL.Configuration;
 
-namespace MDRAVA.API.Proxy.Http3;
+namespace MDRAVA.BLL.ControlPlane;
 
 public static class Http3RequestTranslator
 {
