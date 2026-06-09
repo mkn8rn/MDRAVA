@@ -1,4 +1,4 @@
-namespace MDRAVA.INF.DataDirectory;
+namespace MDRAVA.BLL.ControlPlane;
 
 public static class ProxyBackupPathSafety
 {

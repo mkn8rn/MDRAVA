@@ -1,6 +1,5 @@
 using System.Text.Json;
 using MDRAVA.INF.Configuration.Paths;
-using MDRAVA.API.Proxy.Runtime;
 
 namespace MDRAVA.Tests;
 

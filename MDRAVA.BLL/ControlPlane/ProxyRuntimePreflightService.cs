@@ -1,7 +1,6 @@
 using MDRAVA.BLL.Infrastructure;
-using MDRAVA.INF.DataDirectory;
 
-namespace MDRAVA.API.Proxy.Runtime;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed class ProxyRuntimePreflightService : IProxyStatusRuntimePreflightSource
 {

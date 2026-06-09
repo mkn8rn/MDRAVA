@@ -1,6 +1,5 @@
 using System.Net;
 using MDRAVA.API.Proxy.Metrics;
-using MDRAVA.API.Proxy.Runtime;
 
 namespace MDRAVA.Tests;
 
