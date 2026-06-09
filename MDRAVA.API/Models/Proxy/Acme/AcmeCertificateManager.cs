@@ -1,5 +1,4 @@
 using MDRAVA.BLL.Infrastructure;
-using MDRAVA.API.Proxy.Configuration.Storage;
 using MDRAVA.API.Proxy.Metrics;
 
 namespace MDRAVA.API.Proxy.Acme;

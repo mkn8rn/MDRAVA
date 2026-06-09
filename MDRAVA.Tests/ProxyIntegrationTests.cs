@@ -6,7 +6,6 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using MDRAVA.API.Controllers;
 using MDRAVA.API.Proxy.Configuration.Loading;
-using MDRAVA.API.Proxy.Configuration.Storage;
 using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Hosting;
@@ -2023,7 +2022,7 @@ internal static class ProxyIntegrationTests
             var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
             var diagnostics = host.Services.GetRequiredService<RecentRequestDiagnosticsStore>().Recent(50);
             var upstreams = host.Services.GetRequiredService<UpstreamHealthStore>()
-                .Snapshot(host.Services.GetRequiredService<MDRAVA.API.Proxy.Configuration.Storage.IProxyConfigurationStore>().Snapshot)
+                .Snapshot(host.Services.GetRequiredService<MDRAVA.BLL.Infrastructure.IProxyConfigurationStore>().Snapshot)
                 .ToArray();
 
             return new TwoUpstreamHttpResult(firstRequests, secondRequests, metrics, upstreams, diagnostics);
@@ -2266,7 +2265,7 @@ internal static class ProxyIntegrationTests
         CancellationToken cancellationToken)
     {
         var healthStore = host.Services.GetRequiredService<UpstreamHealthStore>();
-        var configurationStore = host.Services.GetRequiredService<MDRAVA.API.Proxy.Configuration.Storage.IProxyConfigurationStore>();
+        var configurationStore = host.Services.GetRequiredService<MDRAVA.BLL.Infrastructure.IProxyConfigurationStore>();
         while (true)
         {
             var records = healthStore.Snapshot(configurationStore.Snapshot);

@@ -1,5 +1,9 @@
 
-namespace MDRAVA.API.Proxy.Configuration.Storage;
+using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane;
+using MDRAVA.BLL.Infrastructure;
+
+namespace MDRAVA.INF.Runtime;
 
 public sealed class ProxyConfigurationStore
     : IProxyConfigurationStore,

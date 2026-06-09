@@ -7,7 +7,6 @@ using MDRAVA.API.Proxy.Caching;
 using MDRAVA.API.Proxy.Configuration;
 using MDRAVA.API.Proxy.Configuration.Loading;
 using MDRAVA.INF.Configuration.Paths;
-using MDRAVA.API.Proxy.Configuration.Storage;
 using MDRAVA.API.Proxy.Connections;
 using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Hosting;

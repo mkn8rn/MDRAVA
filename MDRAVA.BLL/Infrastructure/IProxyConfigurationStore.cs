@@ -1,5 +1,7 @@
 
-namespace MDRAVA.API.Proxy.Configuration.Storage;
+using MDRAVA.BLL.Configuration;
+
+namespace MDRAVA.BLL.Infrastructure;
 
 public interface IProxyConfigurationStore
 {
