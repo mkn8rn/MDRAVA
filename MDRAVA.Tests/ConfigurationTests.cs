@@ -1167,7 +1167,6 @@ internal static class ConfigurationTests
             {
                 DataDirectory = dataDirectory
             }),
-            new MDRAVA.API.Proxy.Configuration.ProxyOptionsValidator(),
             new ProxyDataDirectoryBootstrapper(new MdravaDataDirectoryProvider(new MdravaDataDirectoryOptions
             {
                 DataDirectory = dataDirectory

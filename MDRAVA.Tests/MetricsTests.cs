@@ -413,7 +413,6 @@ internal static class MetricsTests
 
         return new ProxyConfigurationLoader(
             provider,
-            new ProxyOptionsValidator(),
             new ProxyDataDirectoryBootstrapper(provider),
             new SiteConfigurationParser(),
             NullLogger<ProxyConfigurationLoader>.Instance);

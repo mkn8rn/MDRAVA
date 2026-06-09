@@ -640,7 +640,6 @@ internal static class UpstreamHttp2Tests
 
         return new ProxyConfigurationLoader(
             provider,
-            new ProxyOptionsValidator(),
             new ProxyDataDirectoryBootstrapper(provider),
             new SiteConfigurationParser(),
             NullLogger<ProxyConfigurationLoader>.Instance);

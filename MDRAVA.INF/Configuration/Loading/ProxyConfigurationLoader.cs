@@ -1,18 +1,18 @@
 using System.Text.Json;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane;
 using MDRAVA.BLL.Infrastructure;
-using MDRAVA.API.Proxy.Acme;
-using MDRAVA.API.Proxy.Security;
-using Microsoft.Extensions.Options;
+using MDRAVA.INF.Acme;
+using Microsoft.Extensions.Logging;
 using YamlDotNet.Core;
 
-namespace MDRAVA.API.Proxy.Configuration.Loading;
+namespace MDRAVA.INF.Configuration.Loading;
 
 public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxyRestoreConfigurationValidator
 {
     private readonly IMdravaDataDirectoryProvider _dataDirectoryProvider;
-    private readonly IValidateOptions<ProxyOptions> _validator;
     private readonly ProxyDataDirectoryBootstrapper _bootstrapper;
     private readonly SiteConfigurationParser _siteParser;
     private readonly ILogger<ProxyConfigurationLoader> _logger;
@@ -20,13 +20,11 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
 
     public ProxyConfigurationLoader(
         IMdravaDataDirectoryProvider dataDirectoryProvider,
-        IValidateOptions<ProxyOptions> validator,
         ProxyDataDirectoryBootstrapper bootstrapper,
         SiteConfigurationParser siteParser,
         ILogger<ProxyConfigurationLoader> logger)
     {
         _dataDirectoryProvider = dataDirectoryProvider;
-        _validator = validator;
         _bootstrapper = bootstrapper;
         _siteParser = siteParser;
         _logger = logger;
@@ -127,7 +125,9 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
                 wouldBeVersion);
         }
 
-        var operationalFailures = ProxyOperationalOptionsValidator.Validate(operationalOptions);
+        var operationalFailures = ProxyOperationalOptionsValidationRules.Validate(
+            operationalOptions,
+            Environment.GetEnvironmentVariable);
         if (operationalFailures.Count > 0)
         {
             return ProxyConfigurationLoadResult.Failure(
@@ -154,15 +154,15 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
 
         if (siteFiles.Length > 0)
         {
-            var validation = _validator.Validate(null, options);
-            if (validation.Failed)
+            var validationFailures = ProxyOptionsValidationRules.Validate(options);
+            if (validationFailures.Count > 0)
             {
                 return ProxyConfigurationLoadResult.Failure(
                     sourceDirectory,
                     attemptedAtUtc,
                     siteFiles,
                     BuildDiscovery(),
-                    validation.Failures.Select(static failure => new ProxyConfigurationFileError(null, failure)).ToArray(),
+                    validationFailures.Select(static failure => new ProxyConfigurationFileError(null, failure)).ToArray(),
                     wouldBeVersion);
             }
         }
@@ -205,7 +205,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
         var snapshot = ProxyConfigurationRuntimeMapper.ToRuntimeSnapshot(
             options,
             operationalOptions,
-            AdminSecurityTokenResolver.Resolve(operationalOptions.Admin),
+            ProxyAdminSecurityTokenPolicy.Resolve(operationalOptions.Admin, Environment.GetEnvironmentVariable),
             certificates,
             version,
             DateTimeOffset.UtcNow,

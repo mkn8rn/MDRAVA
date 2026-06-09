@@ -160,7 +160,6 @@ internal static class BackupRestoreTests
         var provider = Provider(dataDirectory);
         return new ProxyConfigurationLoader(
             provider,
-            new MDRAVA.API.Proxy.Configuration.ProxyOptionsValidator(),
             new ProxyDataDirectoryBootstrapper(provider),
             new SiteConfigurationParser(),
             NullLogger<ProxyConfigurationLoader>.Instance);

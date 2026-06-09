@@ -502,7 +502,6 @@ internal static class PerformanceSmokeRunner
 
         return new ProxyConfigurationLoader(
             dataDirectoryProvider,
-            new ProxyOptionsValidator(),
             new ProxyDataDirectoryBootstrapper(dataDirectoryProvider),
             new SiteConfigurationParser(),
             NullLogger<ProxyConfigurationLoader>.Instance);
