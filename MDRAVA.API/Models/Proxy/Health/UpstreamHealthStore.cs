@@ -6,7 +6,7 @@ using MDRAVA.API.Proxy.Resilience;
 
 namespace MDRAVA.API.Proxy.Health;
 
-public sealed class UpstreamHealthStore
+public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
 {
     private readonly ConcurrentDictionary<string, MutableUpstreamHealth> _states = new(StringComparer.OrdinalIgnoreCase);
     private readonly ProxyMetrics _metrics;
@@ -141,6 +141,32 @@ public sealed class UpstreamHealthStore
         }
 
         return records;
+    }
+
+    public IReadOnlyList<ProxyUpstreamStatusResponse> ReadUpstreams(ProxyConfigurationSnapshot? configuration)
+    {
+        return Snapshot(configuration)
+            .Select(static upstream => new ProxyUpstreamStatusResponse(
+                upstream.RouteName,
+                upstream.UpstreamName,
+                upstream.Endpoint,
+                upstream.Scheme,
+                upstream.TlsCertificateValidationEnabled,
+                upstream.SniHost,
+                upstream.HealthCheckEnabled,
+                upstream.State,
+                upstream.LastResult,
+                upstream.LastCheckedAtUtc,
+                upstream.ConsecutiveSuccesses,
+                upstream.ConsecutiveFailures,
+                upstream.SelectedRequests,
+                upstream.RequestFailures)
+            {
+                Protocol = upstream.Protocol,
+                Weight = upstream.Weight,
+                CircuitBreaker = upstream.CircuitBreaker
+            })
+            .ToArray();
     }
 
     private static CircuitBreakerStatus DisabledCircuitBreaker(RuntimeUpstream upstream)

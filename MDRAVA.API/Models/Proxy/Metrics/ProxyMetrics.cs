@@ -3,7 +3,7 @@ using MDRAVA.API.Proxy.Observability;
 
 namespace MDRAVA.API.Proxy.Metrics;
 
-public sealed class ProxyMetrics
+public sealed class ProxyMetrics : IProxyStatusMetricsSource
 {
     private static readonly ProxyFailureKind[] FailureKinds = Enum.GetValues<ProxyFailureKind>();
     private const int MaxLabelLength = 96;
@@ -822,6 +822,11 @@ public sealed class ProxyMetrics
             configLintFindings,
             Interlocked.Read(ref _routeMatchDryRuns),
             routeMatchDryRunFailures);
+    }
+
+    public ProxyMetricsSnapshot ReadMetrics()
+    {
+        return Snapshot();
     }
 
     private static string StatusClass(int? statusCode)

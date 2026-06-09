@@ -2,7 +2,7 @@ using System.Net;
 
 namespace MDRAVA.API.Proxy.Hosting;
 
-public sealed class ProxyRuntimeState
+public sealed class ProxyRuntimeState : IProxyStatusRuntimeStateSource
 {
     private readonly object _gate = new();
     private int _isRunning;
@@ -36,6 +36,11 @@ public sealed class ProxyRuntimeState
                 LastListenerReload = _lastListenerReload
             };
         }
+    }
+
+    public ProxyRuntimeSnapshot ReadRuntime()
+    {
+        return Snapshot();
     }
 
     public void MarkRunning(string listenerName, EndPoint endpoint)

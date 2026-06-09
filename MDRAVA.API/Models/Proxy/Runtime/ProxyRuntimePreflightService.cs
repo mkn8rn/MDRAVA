@@ -3,7 +3,7 @@ using MDRAVA.INF.DataDirectory;
 
 namespace MDRAVA.API.Proxy.Runtime;
 
-public sealed class ProxyRuntimePreflightService
+public sealed class ProxyRuntimePreflightService : IProxyStatusRuntimePreflightSource
 {
     private const int MaxReasons = 12;
     private readonly IMdravaDataDirectoryProvider _dataDirectoryProvider;
@@ -28,6 +28,11 @@ public sealed class ProxyRuntimePreflightService
                 return _lastStatus;
             }
         }
+    }
+
+    public ProxyRuntimePreflightStatus ReadRuntimePreflight()
+    {
+        return LastStatus;
     }
 
     public ProxyRuntimePreflightStatus RunStartupChecks()

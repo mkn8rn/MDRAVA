@@ -2,7 +2,10 @@ using MDRAVA.API.Proxy.Configuration.Runtime;
 
 namespace MDRAVA.API.Proxy.Configuration.Storage;
 
-public sealed class ProxyConfigurationStore : IProxyConfigurationStore, IProxyActiveConfigurationVersionReader
+public sealed class ProxyConfigurationStore
+    : IProxyConfigurationStore,
+        IProxyActiveConfigurationVersionReader,
+        IProxyStatusConfigurationSource
 {
     private ProxyConfigurationSnapshot? _snapshot;
 
@@ -18,6 +21,11 @@ public sealed class ProxyConfigurationStore : IProxyConfigurationStore, IProxyAc
     {
         snapshot = Volatile.Read(ref _snapshot);
         return snapshot is not null;
+    }
+
+    public bool TryReadSnapshot(out ProxyConfigurationSnapshot? snapshot)
+    {
+        return TryGetSnapshot(out snapshot);
     }
 
     public ProxyConfigurationSnapshot Replace(ProxyConfigurationSnapshot snapshot)

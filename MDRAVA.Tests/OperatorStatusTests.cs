@@ -11,7 +11,6 @@ using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Observability;
 using MDRAVA.API.Proxy.Resilience;
 using MDRAVA.API.Proxy.Runtime;
-using MDRAVA.API.Proxy.Status;
 using MDRAVA.BLL.ControlPlane;
 using MDRAVA.INF.Observability;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -509,7 +508,7 @@ internal static class OperatorStatusTests
 
         public ProxyStatusController Controller(ProxyRuntimePreflightService? preflight = null)
         {
-            var statusOperations = new ProxyStatusOperations(
+            var statusOperations = ProxyStatusOperationFactory.Create(
                 Runtime,
                 Metrics,
                 Store,
