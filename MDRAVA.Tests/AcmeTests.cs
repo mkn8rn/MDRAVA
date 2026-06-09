@@ -1,5 +1,4 @@
 using MDRAVA.API.Controllers;
-using MDRAVA.API.Proxy.Acme;
 using MDRAVA.API.Proxy.Configuration.Loading;
 using MDRAVA.INF.Configuration.Paths;
 using Microsoft.AspNetCore.Mvc;
