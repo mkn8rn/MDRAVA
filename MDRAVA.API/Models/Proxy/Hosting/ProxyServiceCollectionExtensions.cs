@@ -65,6 +65,8 @@ public static class ProxyServiceCollectionExtensions
             static services => services.GetRequiredService<ProxyMetrics>());
         services.AddSingleton<IProxyHttp3AltSvcMetricsSink>(
             static services => services.GetRequiredService<ProxyMetrics>());
+        services.AddSingleton<IProxyRequestDiagnosticsMetricsSink>(
+            static services => services.GetRequiredService<ProxyMetrics>());
         services.AddSingleton<PrometheusMetricsExporter>();
         services.AddSingleton<IProxyMetricsExportAvailabilityReader, ProxyMetricsExportAvailabilityReader>();
         services.AddSingleton<ProxyMetricsExportAvailabilityService>();
@@ -98,7 +100,8 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<IProxyCacheStatusReader>(static services => services.GetRequiredService<ProxyCacheStatusReader>());
         services.AddSingleton<ProxyCacheAdministrationService>();
         services.AddSingleton<RecentRequestDiagnosticsStore>();
-        services.AddSingleton<IProxyRequestDiagnosticsSource, ProxyRequestDiagnosticsSource>();
+        services.AddSingleton<IProxyRequestDiagnosticsSource>(
+            static services => services.GetRequiredService<RecentRequestDiagnosticsStore>());
         services.AddSingleton<IProxyRequestDiagnosticsReader, ProxyRequestDiagnosticsReader>();
         services.AddSingleton<ProxyDiagnosticsAdministrationService>();
         services.AddSingleton<IProxyLogPersistenceSettingsReader, ProxyLogPersistenceSettingsReader>();

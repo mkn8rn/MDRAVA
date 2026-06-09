@@ -23,7 +23,7 @@ public sealed class AccessLogEmitter
 
     public void Complete(ProxyRequestContext context, bool accessLogEnabled, int diagnosticsCapacity)
     {
-        var diagnostic = new ProxyRequestDiagnosticEvent(
+        var diagnostic = new ProxyRequestDiagnosticSourceEvent(
             context.StartedAtUtc,
             TruncateRequired(context.RequestId),
             Truncate(context.ExternalRequestId),

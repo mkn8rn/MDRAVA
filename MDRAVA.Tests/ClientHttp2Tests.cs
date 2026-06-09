@@ -1260,7 +1260,7 @@ internal static class ClientHttp2Tests
         Http2Response Response,
         string UpstreamRequest,
         ProxyMetricsSnapshot Metrics,
-        IReadOnlyList<ProxyRequestDiagnosticEvent> Diagnostics,
+        IReadOnlyList<ProxyRequestDiagnosticSourceEvent> Diagnostics,
         SslApplicationProtocol NegotiatedProtocol);
 
     private sealed record Http2ManualScenarioResult<T>(

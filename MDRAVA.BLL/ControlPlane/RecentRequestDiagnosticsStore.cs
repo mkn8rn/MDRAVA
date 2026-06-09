@@ -1,21 +1,19 @@
-using MDRAVA.API.Proxy.Metrics;
+namespace MDRAVA.BLL.ControlPlane;
 
-namespace MDRAVA.API.Proxy.Observability;
-
-public sealed class RecentRequestDiagnosticsStore
+public sealed class RecentRequestDiagnosticsStore : IProxyRequestDiagnosticsSource
 {
     public const int MaximumReadLimit = 500;
 
-    private readonly ProxyMetrics _metrics;
+    private readonly IProxyRequestDiagnosticsMetricsSink _metrics;
     private readonly object _gate = new();
-    private readonly LinkedList<ProxyRequestDiagnosticEvent> _events = new();
+    private readonly LinkedList<ProxyRequestDiagnosticSourceEvent> _events = new();
 
-    public RecentRequestDiagnosticsStore(ProxyMetrics metrics)
+    public RecentRequestDiagnosticsStore(IProxyRequestDiagnosticsMetricsSink metrics)
     {
         _metrics = metrics;
     }
 
-    public void Add(ProxyRequestDiagnosticEvent diagnostic, int capacity)
+    public void Add(ProxyRequestDiagnosticSourceEvent diagnostic, int capacity)
     {
         lock (_gate)
         {
@@ -30,10 +28,10 @@ public sealed class RecentRequestDiagnosticsStore
         }
     }
 
-    public IReadOnlyList<ProxyRequestDiagnosticEvent> Recent(int limit)
+    public IReadOnlyList<ProxyRequestDiagnosticSourceEvent> Recent(int limit)
     {
         var boundedLimit = Math.Clamp(limit, 1, MaximumReadLimit);
-        List<ProxyRequestDiagnosticEvent> results = [];
+        List<ProxyRequestDiagnosticSourceEvent> results = [];
 
         lock (_gate)
         {

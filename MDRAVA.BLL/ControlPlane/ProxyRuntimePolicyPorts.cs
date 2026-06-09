@@ -36,6 +36,11 @@ public interface IProxyHttp3AltSvcMetricsSink
     void Http3AltSvcSuppressed();
 }
 
+public interface IProxyRequestDiagnosticsMetricsSink
+{
+    void RecentDiagnosticOverwritten();
+}
+
 public interface IUpstreamConnectionPruner
 {
     void PruneIdleConnections(RuntimeUpstream upstream);

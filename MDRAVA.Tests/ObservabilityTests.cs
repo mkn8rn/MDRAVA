@@ -86,9 +86,9 @@ internal static class ObservabilityTests
         AssertEx.False(diagnostic.ToString().Contains("certificate-password", StringComparison.OrdinalIgnoreCase));
     }
 
-    private static ProxyRequestDiagnosticEvent CreateEvent(string requestId, string target)
+    private static ProxyRequestDiagnosticSourceEvent CreateEvent(string requestId, string target)
     {
-        return new ProxyRequestDiagnosticEvent(
+        return new ProxyRequestDiagnosticSourceEvent(
             DateTimeOffset.UtcNow,
             requestId,
             null,
@@ -117,7 +117,7 @@ internal static class ObservabilityTests
     private static ProxyRequestDiagnosticsReader CreateRequestDiagnosticsReader(
         RecentRequestDiagnosticsStore store)
     {
-        return new ProxyRequestDiagnosticsReader(new ProxyRequestDiagnosticsSource(store));
+        return new ProxyRequestDiagnosticsReader(store);
     }
 
     private static ProxyRequestDiagnosticSourceEvent CreateSourceEvent(string requestId, string target)
