@@ -97,14 +97,14 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
         }
     }
 
-    public IReadOnlyList<UpstreamHealthRecord> Snapshot(ProxyConfigurationSnapshot? configuration)
+    public IReadOnlyList<ProxyUpstreamStatusResponse> Snapshot(ProxyConfigurationSnapshot? configuration)
     {
         if (configuration is null)
         {
             return [];
         }
 
-        List<UpstreamHealthRecord> records = [];
+        List<ProxyUpstreamStatusResponse> records = [];
         foreach (var route in configuration.Routes)
         {
             foreach (var upstream in route.Upstreams)
@@ -113,7 +113,7 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
                 lock (state.Gate)
                 {
                     state.HealthCheckEnabled = route.HealthCheck.Enabled;
-                    records.Add(new UpstreamHealthRecord(
+                    records.Add(new ProxyUpstreamStatusResponse(
                         upstream.RouteName,
                         upstream.Name,
                         upstream.Endpoint,
@@ -145,28 +145,7 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
 
     public IReadOnlyList<ProxyUpstreamStatusResponse> ReadUpstreams(ProxyConfigurationSnapshot? configuration)
     {
-        return Snapshot(configuration)
-            .Select(static upstream => new ProxyUpstreamStatusResponse(
-                upstream.RouteName,
-                upstream.UpstreamName,
-                upstream.Endpoint,
-                upstream.Scheme,
-                upstream.TlsCertificateValidationEnabled,
-                upstream.SniHost,
-                upstream.HealthCheckEnabled,
-                upstream.State,
-                upstream.LastResult,
-                upstream.LastCheckedAtUtc,
-                upstream.ConsecutiveSuccesses,
-                upstream.ConsecutiveFailures,
-                upstream.SelectedRequests,
-                upstream.RequestFailures)
-            {
-                Protocol = upstream.Protocol,
-                Weight = upstream.Weight,
-                CircuitBreaker = upstream.CircuitBreaker
-            })
-            .ToArray();
+        return Snapshot(configuration);
     }
 
     private static CircuitBreakerStatus DisabledCircuitBreaker(RuntimeUpstream upstream)

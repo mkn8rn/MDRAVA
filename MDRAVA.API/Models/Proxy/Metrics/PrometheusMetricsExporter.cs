@@ -314,7 +314,7 @@ public sealed class PrometheusMetricsExporter
     private static void AppendUpstreamHealth(
         StringBuilder builder,
         RuntimeMetricsOptions options,
-        IReadOnlyList<UpstreamHealthRecord> health)
+        IReadOnlyList<ProxyUpstreamStatusResponse> health)
     {
         if (!options.IncludePerUpstreamLabels)
         {
@@ -324,7 +324,7 @@ public sealed class PrometheusMetricsExporter
         AppendHelpAndType(builder, "mdrava_upstream_health_up", "Current upstream health status, 1 for healthy and 0 otherwise.", "gauge");
         foreach (var upstream in health)
         {
-            var value = upstream.State == UpstreamHealthState.Healthy ? 1 : 0;
+            var value = upstream.HealthState == UpstreamHealthState.Healthy ? 1 : 0;
             AppendSample(
                 builder,
                 "mdrava_upstream_health_up",
@@ -333,7 +333,7 @@ public sealed class PrometheusMetricsExporter
                 new Label("upstream", upstream.UpstreamName),
                 new Label("scheme", upstream.Scheme),
                 new Label("protocol", upstream.Protocol),
-                new Label("state", upstream.State.ToString()));
+                new Label("state", upstream.HealthState.ToString()));
         }
     }
 

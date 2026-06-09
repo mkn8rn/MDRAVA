@@ -2024,21 +2024,6 @@ internal static class ProxyIntegrationTests
             var diagnostics = host.Services.GetRequiredService<RecentRequestDiagnosticsStore>().Recent(50);
             var upstreams = host.Services.GetRequiredService<UpstreamHealthStore>()
                 .Snapshot(host.Services.GetRequiredService<MDRAVA.API.Proxy.Configuration.Storage.IProxyConfigurationStore>().Snapshot)
-                .Select(static status => new ProxyUpstreamStatusResponse(
-                    status.RouteName,
-                    status.UpstreamName,
-                    status.Endpoint,
-                    status.Scheme,
-                    status.TlsCertificateValidationEnabled,
-                    status.SniHost,
-                    status.HealthCheckEnabled,
-                    status.State,
-                    status.LastResult,
-                    status.LastCheckedAtUtc,
-                    status.ConsecutiveSuccesses,
-                    status.ConsecutiveFailures,
-                    status.SelectedRequests,
-                    status.RequestFailures))
                 .ToArray();
 
             return new TwoUpstreamHttpResult(firstRequests, secondRequests, metrics, upstreams, diagnostics);
@@ -2284,23 +2269,7 @@ internal static class ProxyIntegrationTests
         var configurationStore = host.Services.GetRequiredService<MDRAVA.API.Proxy.Configuration.Storage.IProxyConfigurationStore>();
         while (true)
         {
-            var records = healthStore.Snapshot(configurationStore.Snapshot)
-                .Select(static status => new ProxyUpstreamStatusResponse(
-                    status.RouteName,
-                    status.UpstreamName,
-                    status.Endpoint,
-                    status.Scheme,
-                    status.TlsCertificateValidationEnabled,
-                    status.SniHost,
-                    status.HealthCheckEnabled,
-                    status.State,
-                    status.LastResult,
-                    status.LastCheckedAtUtc,
-                    status.ConsecutiveSuccesses,
-                    status.ConsecutiveFailures,
-                    status.SelectedRequests,
-                    status.RequestFailures))
-                .ToArray();
+            var records = healthStore.Snapshot(configurationStore.Snapshot);
             if (predicate(records))
             {
                 return records;
