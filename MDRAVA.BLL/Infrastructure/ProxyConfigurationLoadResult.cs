@@ -1,5 +1,8 @@
 
-namespace MDRAVA.API.Models.Configuration.Loading;
+using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane;
+
+namespace MDRAVA.BLL.Infrastructure;
 
 public sealed record ProxyConfigurationLoadResult(
     bool Succeeded,
