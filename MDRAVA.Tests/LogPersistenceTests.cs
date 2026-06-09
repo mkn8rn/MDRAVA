@@ -2,7 +2,6 @@ using System.Text.Json;
 using MDRAVA.API.Controllers;
 using MDRAVA.API.Proxy.Connections;
 using MDRAVA.INF.Configuration.Paths;
-using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Configuration.Storage;
 using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Hosting;
@@ -339,9 +338,10 @@ internal static class LogPersistenceTests
                 LogPersistence = logPersistence ?? new ProxyLogPersistenceOptions()
             }
         };
-        var snapshot = ProxyConfigurationMapper.ToRuntimeSnapshot(
+        var snapshot = ProxyConfigurationRuntimeMapper.ToRuntimeSnapshot(
             new ProxyOptions(),
             operationalOptions,
+            ProxyAdminSecurityTokenPolicy.Resolve(operationalOptions.Admin, static _ => null),
             new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),
             version: 1,
             loadedAtUtc: DateTimeOffset.UtcNow,

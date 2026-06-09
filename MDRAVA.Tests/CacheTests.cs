@@ -6,7 +6,6 @@ using MDRAVA.API.Proxy.Caching;
 using MDRAVA.API.Proxy.Configuration;
 using MDRAVA.API.Proxy.Configuration.Loading;
 using MDRAVA.INF.Configuration.Paths;
-using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Configuration.Storage;
 using MDRAVA.API.Proxy.Hosting;
 using MDRAVA.API.Proxy.Protocol;
@@ -788,16 +787,18 @@ internal static class CacheTests
 
     private static ProxyConfigurationStore CreateStoreWithAdminAuthentication()
     {
-        var snapshot = ProxyConfigurationMapper.ToRuntimeSnapshot(
-            new ProxyOptions(),
-            new ProxyOperationalOptions
+        var operationalOptions = new ProxyOperationalOptions
+        {
+            Admin = new ProxyAdminOptions
             {
-                Admin = new ProxyAdminOptions
-                {
-                    RequireAuthentication = true,
-                    Token = "cache-admin-token"
-                }
-            },
+                RequireAuthentication = true,
+                Token = "cache-admin-token"
+            }
+        };
+        var snapshot = ProxyConfigurationRuntimeMapper.ToRuntimeSnapshot(
+            new ProxyOptions(),
+            operationalOptions,
+            ProxyAdminSecurityTokenPolicy.Resolve(operationalOptions.Admin, static _ => null),
             new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),
             1,
             DateTimeOffset.UtcNow,

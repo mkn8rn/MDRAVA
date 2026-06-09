@@ -8,7 +8,6 @@ using System.Text;
 using MDRAVA.API.Controllers;
 using MDRAVA.API.Proxy.Configuration.Loading;
 using MDRAVA.INF.Configuration.Paths;
-using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Configuration.Storage;
 using MDRAVA.API.Proxy.Configuration;
 using MDRAVA.API.Proxy.Diagnostics;
@@ -386,7 +385,8 @@ internal static class ClientHttp3Tests
 
     public static void StatusAndEffectiveConfigUseCurrentHttp3Projection()
     {
-        var snapshot = ProxyConfigurationMapper.ToRuntimeSnapshot(
+        var operationalOptions = new ProxyOperationalOptions();
+        var snapshot = ProxyConfigurationRuntimeMapper.ToRuntimeSnapshot(
             new ProxyOptions
             {
                 Listeners =
@@ -412,7 +412,8 @@ internal static class ClientHttp3Tests
                     }
                 ]
             },
-            new ProxyOperationalOptions(),
+            operationalOptions,
+            ProxyAdminSecurityTokenPolicy.Resolve(operationalOptions.Admin, static _ => null),
             new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),
             1,
             DateTimeOffset.UtcNow,

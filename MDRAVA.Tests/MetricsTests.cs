@@ -7,7 +7,6 @@ using MDRAVA.API.Proxy.Caching;
 using MDRAVA.API.Proxy.Configuration;
 using MDRAVA.API.Proxy.Configuration.Loading;
 using MDRAVA.INF.Configuration.Paths;
-using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Configuration.Storage;
 using MDRAVA.API.Proxy.Connections;
 using MDRAVA.API.Proxy.Health;
@@ -422,10 +421,12 @@ internal static class MetricsTests
 
     private static ProxyConfigurationStore CreateStore(ProxyOperationalOptions? operationalOptions = null)
     {
+        var options = operationalOptions ?? new ProxyOperationalOptions();
         var store = new ProxyConfigurationStore();
-        store.Replace(ProxyConfigurationMapper.ToRuntimeSnapshot(
+        store.Replace(ProxyConfigurationRuntimeMapper.ToRuntimeSnapshot(
             new ProxyOptions(),
-            operationalOptions ?? new ProxyOperationalOptions(),
+            options,
+            ProxyAdminSecurityTokenPolicy.Resolve(options.Admin, static _ => null),
             new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),
             1,
             DateTimeOffset.UtcNow,
@@ -459,9 +460,11 @@ internal static class MetricsTests
 
     private static ProxyConfigurationStore CreateStoreWithRoute(RuntimeRoute route)
     {
-        var snapshot = ProxyConfigurationMapper.ToRuntimeSnapshot(
+        var operationalOptions = new ProxyOperationalOptions();
+        var snapshot = ProxyConfigurationRuntimeMapper.ToRuntimeSnapshot(
             new ProxyOptions(),
-            new ProxyOperationalOptions(),
+            operationalOptions,
+            ProxyAdminSecurityTokenPolicy.Resolve(operationalOptions.Admin, static _ => null),
             new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),
             1,
             DateTimeOffset.UtcNow,

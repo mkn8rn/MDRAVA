@@ -3,7 +3,6 @@ using MDRAVA.API.Controllers;
 using MDRAVA.API.Proxy.Caching;
 using MDRAVA.API.Proxy.Configuration;
 using MDRAVA.API.Proxy.Configuration.Loading;
-using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Configuration.Storage;
 using MDRAVA.API.Proxy.Diagnostics;
 using MDRAVA.API.Proxy.Forwarding;
@@ -585,16 +584,18 @@ internal static class RouteDiagnosticsTests
 
     private static ProxyConfigurationSnapshot Snapshot(ProxyOptions options)
     {
-        return ProxyConfigurationMapper.ToRuntimeSnapshot(
-            options,
-            new ProxyOperationalOptions
+        var operationalOptions = new ProxyOperationalOptions
+        {
+            Admin = new ProxyAdminOptions
             {
-                Admin = new ProxyAdminOptions
-                {
-                    RequireAuthentication = true,
-                    Token = AdminToken
-                }
-            },
+                RequireAuthentication = true,
+                Token = AdminToken
+            }
+        };
+        return ProxyConfigurationRuntimeMapper.ToRuntimeSnapshot(
+            options,
+            operationalOptions,
+            ProxyAdminSecurityTokenPolicy.Resolve(operationalOptions.Admin, static _ => null),
             new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),
             1,
             DateTimeOffset.UnixEpoch,

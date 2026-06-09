@@ -1,6 +1,5 @@
 using System.Text.Json;
 using MDRAVA.API.Proxy.Configuration;
-using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Configuration.Loading;
 using Microsoft.Extensions.Options;
 using YamlDotNet.Core;
@@ -55,9 +54,11 @@ public sealed class ProxyConfigLintSubmittedConfigurationSource
             ? validation.Failures.Select(static failure => new ProxyConfigurationFileError("lint-input", failure)).ToArray()
             : [];
 
-        var snapshot = ProxyConfigurationMapper.ToRuntimeSnapshot(
+        var operationalOptions = new ProxyOperationalOptions();
+        var snapshot = ProxyConfigurationRuntimeMapper.ToRuntimeSnapshot(
             options,
-            new ProxyOperationalOptions(),
+            operationalOptions,
+            ProxyAdminSecurityTokenPolicy.Resolve(operationalOptions.Admin, static _ => null),
             new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),
             version: 0,
             loadedAtUtc: loadedAtUtc,

@@ -9,14 +9,7 @@ public static class AdminSecurityTokenResolver
     public static RuntimeAdminSecurityOptions ToRuntimeOptions(ProxyAdminOptions options)
     {
         var resolved = Resolve(options);
-        return new RuntimeAdminSecurityOptions(
-            NormalizeUrls(options.Urls),
-            options.RequireAuthentication,
-            !string.IsNullOrEmpty(resolved.Token),
-            resolved.Token,
-            resolved.TokenEnvironmentVariable,
-            resolved.TokenSource,
-            options.RecentAuditCapacity);
+        return ProxyConfigurationRuntimeMapper.ToRuntimeAdminSecurityOptions(options, resolved);
     }
 
     public static bool IsAuthenticationEnabled(ProxyAdminOptions options)

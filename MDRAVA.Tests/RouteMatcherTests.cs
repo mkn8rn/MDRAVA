@@ -1,5 +1,4 @@
 using MDRAVA.API.Proxy.Configuration;
-using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Protocol;
 using MDRAVA.API.Proxy.Routing;
 
@@ -164,9 +163,11 @@ internal static class RouteMatcherTests
 
     private static ProxyConfigurationSnapshot Snapshot(ProxyOptions options)
     {
-        return ProxyConfigurationMapper.ToRuntimeSnapshot(
+        var operationalOptions = new ProxyOperationalOptions();
+        return ProxyConfigurationRuntimeMapper.ToRuntimeSnapshot(
             options,
-            new ProxyOperationalOptions(),
+            operationalOptions,
+            ProxyAdminSecurityTokenPolicy.Resolve(operationalOptions.Admin, static _ => null),
             new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),
             1,
             DateTimeOffset.UnixEpoch,

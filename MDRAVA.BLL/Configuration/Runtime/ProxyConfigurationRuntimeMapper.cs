@@ -1,12 +1,13 @@
-using MDRAVA.API.Proxy.Security;
+using MDRAVA.BLL.ControlPlane;
 
-namespace MDRAVA.API.Proxy.Configuration.Runtime;
+namespace MDRAVA.BLL.Configuration;
 
-public static class ProxyConfigurationMapper
+public static class ProxyConfigurationRuntimeMapper
 {
     public static ProxyConfigurationSnapshot ToRuntimeSnapshot(
         ProxyOptions options,
         ProxyOperationalOptions operationalOptions,
+        ProxyAdminTokenResolution adminTokenResolution,
         IReadOnlyDictionary<string, RuntimeCertificate> certificates,
         int version,
         DateTimeOffset loadedAtUtc,
@@ -99,7 +100,7 @@ public static class ProxyConfigurationMapper
                 .Select(static trustedProxy => trustedProxy!)
                 .ToArray());
 
-        var adminSecurity = AdminSecurityTokenResolver.ToRuntimeOptions(operationalOptions.Admin);
+        var adminSecurity = ToRuntimeAdminSecurityOptions(operationalOptions.Admin, adminTokenResolution);
         var acme = ToRuntimeAcmeOptions(operationalOptions.Acme);
         var metrics = ToRuntimeMetricsOptions(operationalOptions.Metrics);
 
@@ -107,6 +108,20 @@ public static class ProxyConfigurationMapper
         {
             Metrics = metrics
         };
+    }
+
+    public static RuntimeAdminSecurityOptions ToRuntimeAdminSecurityOptions(
+        ProxyAdminOptions options,
+        ProxyAdminTokenResolution resolvedToken)
+    {
+        return new RuntimeAdminSecurityOptions(
+            ProxyAdminSecurityTokenPolicy.NormalizeUrls(options.Urls),
+            options.RequireAuthentication,
+            !string.IsNullOrEmpty(resolvedToken.Token),
+            resolvedToken.Token,
+            resolvedToken.TokenEnvironmentVariable,
+            resolvedToken.TokenSource,
+            options.RecentAuditCapacity);
     }
 
     public static RuntimeAcmeOptions ToRuntimeAcmeOptions(ProxyAcmeOptions options)

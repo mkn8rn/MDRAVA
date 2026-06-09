@@ -3,7 +3,6 @@ using MDRAVA.API.Proxy.Acme;
 using MDRAVA.API.Proxy.Configuration;
 using MDRAVA.API.Proxy.Configuration.Loading;
 using MDRAVA.INF.Configuration.Paths;
-using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Configuration.Storage;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -120,7 +119,7 @@ internal static class AcmeTests
                 }
             ]
         };
-        var runtimeAcme = ProxyConfigurationMapper.ToRuntimeAcmeOptions(acmeOptions);
+        var runtimeAcme = ProxyConfigurationRuntimeMapper.ToRuntimeAcmeOptions(acmeOptions);
         AcmeCertificateMaterialStore.WriteAndLoad(
             runtimeAcme,
             runtimeAcme.Certificates[0],
@@ -307,9 +306,10 @@ internal static class AcmeTests
                 ]
             }
         };
-        var snapshot = ProxyConfigurationMapper.ToRuntimeSnapshot(
+        var snapshot = ProxyConfigurationRuntimeMapper.ToRuntimeSnapshot(
             new ProxyOptions(),
             options,
+            ProxyAdminSecurityTokenPolicy.Resolve(options.Admin, static _ => null),
             new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),
             1,
             DateTimeOffset.UtcNow,

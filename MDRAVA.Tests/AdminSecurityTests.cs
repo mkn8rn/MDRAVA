@@ -437,9 +437,10 @@ internal static class AdminSecurityTests
             }
         };
 
-        var snapshot = ProxyConfigurationMapper.ToRuntimeSnapshot(
+        var snapshot = ProxyConfigurationRuntimeMapper.ToRuntimeSnapshot(
             new ProxyOptions(),
             operationalOptions,
+            ProxyAdminSecurityTokenPolicy.Resolve(operationalOptions.Admin, static _ => null),
             new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),
             version: 1,
             loadedAtUtc: DateTimeOffset.UtcNow,

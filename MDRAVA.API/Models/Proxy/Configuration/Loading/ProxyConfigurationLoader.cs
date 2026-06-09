@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using MDRAVA.BLL.Infrastructure;
 using MDRAVA.API.Proxy.Acme;
-using MDRAVA.API.Proxy.Configuration.Runtime;
+using MDRAVA.API.Proxy.Security;
 using Microsoft.Extensions.Options;
 using YamlDotNet.Core;
 
@@ -202,9 +202,10 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
         }
 
         var version = Interlocked.Increment(ref _nextVersion);
-        var snapshot = ProxyConfigurationMapper.ToRuntimeSnapshot(
+        var snapshot = ProxyConfigurationRuntimeMapper.ToRuntimeSnapshot(
             options,
             operationalOptions,
+            AdminSecurityTokenResolver.Resolve(operationalOptions.Admin),
             certificates,
             version,
             DateTimeOffset.UtcNow,

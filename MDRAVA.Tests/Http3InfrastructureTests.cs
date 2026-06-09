@@ -2,7 +2,6 @@ using System.Net.Security;
 using System.Net.Quic;
 using MDRAVA.API.Proxy.Configuration;
 using MDRAVA.API.Proxy.Configuration.Loading;
-using MDRAVA.API.Proxy.Configuration.Runtime;
 using MDRAVA.API.Proxy.Http3;
 using MDRAVA.API.Proxy.Tls;
 
@@ -108,9 +107,11 @@ internal static class Http3InfrastructureTests
     {
         var listener = Http3Listener("main", "http1AndHttp2AndHttp3");
         var validation = new ProxyOptionsValidator().Validate(null, ValidProxyOptions(listener));
-        var snapshot = ProxyConfigurationMapper.ToRuntimeSnapshot(
+        var operationalOptions = new ProxyOperationalOptions();
+        var snapshot = ProxyConfigurationRuntimeMapper.ToRuntimeSnapshot(
             ValidProxyOptions(listener),
-            new ProxyOperationalOptions(),
+            operationalOptions,
+            ProxyAdminSecurityTokenPolicy.Resolve(operationalOptions.Admin, static _ => null),
             new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),
             1,
             DateTimeOffset.UtcNow,
@@ -384,9 +385,11 @@ internal static class Http3InfrastructureTests
 
     public static void StatusAndEffectiveProjectionReportHttp3Enabled()
     {
-        var snapshot = ProxyConfigurationMapper.ToRuntimeSnapshot(
+        var operationalOptions = new ProxyOperationalOptions();
+        var snapshot = ProxyConfigurationRuntimeMapper.ToRuntimeSnapshot(
             ValidProxyOptions(Http3Listener("current", "http1AndHttp2AndHttp3")),
-            new ProxyOperationalOptions(),
+            operationalOptions,
+            ProxyAdminSecurityTokenPolicy.Resolve(operationalOptions.Admin, static _ => null),
             new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),
             1,
             DateTimeOffset.UtcNow,
@@ -420,9 +423,11 @@ internal static class Http3InfrastructureTests
             Address = "upstream.test",
             Port = 443
         };
-        var snapshot = ProxyConfigurationMapper.ToRuntimeSnapshot(
+        var operationalOptions = new ProxyOperationalOptions();
+        var snapshot = ProxyConfigurationRuntimeMapper.ToRuntimeSnapshot(
             options,
-            new ProxyOperationalOptions(),
+            operationalOptions,
+            ProxyAdminSecurityTokenPolicy.Resolve(operationalOptions.Admin, static _ => null),
             new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),
             1,
             DateTimeOffset.UtcNow,
