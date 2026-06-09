@@ -4,7 +4,6 @@ using MDRAVA.API.Proxy.Connections;
 using MDRAVA.INF.Configuration.Paths;
 using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Hosting;
-using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Observability;
 using MDRAVA.API.Proxy.Security;
 using MDRAVA.BLL.ControlPlane;

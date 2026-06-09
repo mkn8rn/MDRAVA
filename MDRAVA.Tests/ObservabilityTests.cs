@@ -1,5 +1,4 @@
 using MDRAVA.API.Controllers;
-using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Observability;
 
 namespace MDRAVA.Tests;

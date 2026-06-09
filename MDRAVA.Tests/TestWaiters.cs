@@ -1,4 +1,3 @@
-using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Hosting;
 
 namespace MDRAVA.Tests;

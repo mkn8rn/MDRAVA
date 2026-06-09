@@ -1,5 +1,4 @@
 using MDRAVA.API.Proxy.Hosting;
-using MDRAVA.API.Proxy.Metrics;
 
 namespace MDRAVA.API.Proxy.Configuration.Loading;
 

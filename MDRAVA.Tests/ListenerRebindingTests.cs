@@ -4,7 +4,6 @@ using System.Text;
 using MDRAVA.API.Proxy.Configuration.Loading;
 using MDRAVA.INF.Configuration.Paths;
 using MDRAVA.API.Proxy.Hosting;
-using MDRAVA.API.Proxy.Metrics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;

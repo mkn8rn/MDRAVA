@@ -9,11 +9,9 @@ using MDRAVA.API.Controllers;
 using MDRAVA.API.Proxy.Configuration.Loading;
 using MDRAVA.INF.Configuration.Paths;
 using MDRAVA.API.Proxy.Configuration;
-using MDRAVA.API.Proxy.Diagnostics;
 using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Hosting;
 using MDRAVA.API.Proxy.Http3;
-using MDRAVA.API.Proxy.Metrics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -1935,7 +1933,7 @@ internal static class ClientHttp3Tests
             new ProxyConfigLintActiveConfigurationSource(new ProxyConfigurationStore()),
             new ProxyConfigLintSubmittedConfigurationSource(new SiteConfigurationParser()),
             new ProxyConfigLintRuntimeStateSource(new ProxyRuntimeState()),
-            new ProxyConfigLintMetricsSink(new ProxyMetrics()),
+            new ProxyMetrics(),
             TimeProvider.System);
         var result = service.LintSubmitted(new ConfigLintRequest(
             "json",

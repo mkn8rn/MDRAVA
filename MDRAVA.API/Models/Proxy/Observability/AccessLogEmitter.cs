@@ -5,13 +5,13 @@ public sealed class AccessLogEmitter
     private const int MaxDiagnosticTextLength = 512;
 
     private readonly RecentRequestDiagnosticsStore _diagnostics;
-    private readonly Metrics.ProxyMetrics _metrics;
+    private readonly ProxyMetrics _metrics;
     private readonly ILogger<AccessLogEmitter> _logger;
     private readonly IProxyLogPersistenceStore? _logPersistenceStore;
 
     public AccessLogEmitter(
         RecentRequestDiagnosticsStore diagnostics,
-        Metrics.ProxyMetrics metrics,
+        ProxyMetrics metrics,
         ILogger<AccessLogEmitter> logger,
         IProxyLogPersistenceStore? logPersistenceStore = null)
     {

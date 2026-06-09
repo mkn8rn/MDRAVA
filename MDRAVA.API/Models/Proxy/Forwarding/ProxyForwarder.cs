@@ -5,7 +5,6 @@ using System.Text;
 using MDRAVA.API.Proxy.Connections;
 using MDRAVA.API.Proxy.Http3;
 using MDRAVA.API.Proxy.Http2;
-using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Observability;
 
 namespace MDRAVA.API.Proxy.Forwarding;

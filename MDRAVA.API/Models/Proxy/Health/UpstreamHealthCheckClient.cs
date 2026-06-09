@@ -5,7 +5,6 @@ using MDRAVA.API.Proxy.Connections;
 using MDRAVA.API.Proxy.Forwarding;
 using MDRAVA.API.Proxy.Http2;
 using MDRAVA.API.Proxy.Http3;
-using MDRAVA.API.Proxy.Metrics;
 
 namespace MDRAVA.API.Proxy.Health;
 

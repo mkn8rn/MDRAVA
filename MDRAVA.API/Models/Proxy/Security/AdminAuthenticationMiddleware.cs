@@ -1,4 +1,3 @@
-using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.INF.Observability;
 
 namespace MDRAVA.API.Proxy.Security;

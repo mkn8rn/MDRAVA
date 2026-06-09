@@ -1,6 +1,5 @@
 using System.Buffers.Binary;
 using MDRAVA.API.Proxy.Forwarding;
-using MDRAVA.API.Proxy.Metrics;
 
 namespace MDRAVA.API.Proxy.Http2;
 

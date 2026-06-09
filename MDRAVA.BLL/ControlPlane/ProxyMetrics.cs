@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
-using MDRAVA.API.Proxy.Observability;
+using MDRAVA.BLL.Configuration;
 
-namespace MDRAVA.API.Proxy.Metrics;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed class ProxyMetrics :
     IProxyStatusMetricsSource,
@@ -12,7 +12,9 @@ public sealed class ProxyMetrics :
     IProxyRequestDiagnosticsMetricsSink,
     IProxyRequestIdMetricsSink,
     IProxyRateLimitMetricsSink,
-    IProxyAdmissionMetricsSink
+    IProxyAdmissionMetricsSink,
+    IProxyConfigLintMetricsSink,
+    IProxyRouteDiagnosticsMetricsSink
 {
     private static readonly ProxyFailureKind[] FailureKinds = Enum.GetValues<ProxyFailureKind>();
 
@@ -597,7 +599,7 @@ public sealed class ProxyMetrics :
 
     public void SetActiveQuicListeners(long count) => Interlocked.Exchange(ref _activeQuicListeners, count);
 
-    public void ConfigLintRun(IEnumerable<ConfigLintFinding> findings)
+    public void ConfigLintRun(IReadOnlyList<ConfigLintFinding> findings)
     {
         Interlocked.Increment(ref _configLintRuns);
         foreach (var finding in findings)

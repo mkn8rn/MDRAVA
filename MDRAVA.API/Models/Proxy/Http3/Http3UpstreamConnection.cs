@@ -6,7 +6,6 @@ using System.Net.Security;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using MDRAVA.API.Proxy.Forwarding;
-using MDRAVA.API.Proxy.Metrics;
 
 namespace MDRAVA.API.Proxy.Http3;
 

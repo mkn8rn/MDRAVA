@@ -2,7 +2,6 @@ using MDRAVA.API.Proxy.Configuration;
 using MDRAVA.API.Proxy.Acme;
 using MDRAVA.API.Proxy.Configuration.Loading;
 using MDRAVA.API.Proxy.Connections;
-using MDRAVA.API.Proxy.Diagnostics;
 using MDRAVA.API.Proxy.Forwarding;
 using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Http3;
@@ -83,7 +82,7 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<IProxyConfigLintActiveConfigurationSource, ProxyConfigLintActiveConfigurationSource>();
         services.AddSingleton<IProxyConfigLintSubmittedConfigurationSource, ProxyConfigLintSubmittedConfigurationSource>();
         services.AddSingleton<IProxyConfigLintRuntimeStateSource, ProxyConfigLintRuntimeStateSource>();
-        services.AddSingleton<IProxyConfigLintMetricsSink, ProxyConfigLintMetricsSink>();
+        services.AddSingleton<IProxyConfigLintMetricsSink>(static services => services.GetRequiredService<ProxyMetrics>());
         services.AddSingleton<ConfigLintService>();
         services.AddSingleton<IProxyConfigLintOperations>(static services => services.GetRequiredService<ConfigLintService>());
         services.AddSingleton<ProxyConfigLintAdministrationService>();
@@ -91,7 +90,7 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<IProxyRouteDiagnosticsMatcher, ProxyRouteDiagnosticsMatcher>();
         services.AddSingleton<IProxyRouteDiagnosticsActionPolicy, ProxyRouteDiagnosticsActionPolicyAdapter>();
         services.AddSingleton<IProxyRouteDiagnosticsPathRewritePolicy, ProxyRouteDiagnosticsPathRewritePolicyAdapter>();
-        services.AddSingleton<IProxyRouteDiagnosticsMetricsSink, ProxyRouteDiagnosticsMetricsSink>();
+        services.AddSingleton<IProxyRouteDiagnosticsMetricsSink>(static services => services.GetRequiredService<ProxyMetrics>());
         services.AddSingleton<RouteMatchDiagnosticsService>();
         services.AddSingleton<IProxyRouteDiagnosticsOperations>(static services => services.GetRequiredService<RouteMatchDiagnosticsService>());
         services.AddSingleton<ProxyRouteDiagnosticsAdministrationService>();
