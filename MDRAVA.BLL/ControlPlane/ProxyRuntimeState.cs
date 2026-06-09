@@ -1,6 +1,4 @@
-using System.Net;
-
-namespace MDRAVA.API.Proxy.Hosting;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed class ProxyRuntimeState : IProxyStatusRuntimeStateSource
 {
@@ -41,32 +39,6 @@ public sealed class ProxyRuntimeState : IProxyStatusRuntimeStateSource
     public ProxyRuntimeSnapshot ReadRuntime()
     {
         return Snapshot();
-    }
-
-    public void MarkRunning(string listenerName, EndPoint endpoint)
-    {
-        lock (_gate)
-        {
-            _listenerName = listenerName;
-            _endpoint = endpoint.ToString();
-            _startedAt = DateTimeOffset.UtcNow;
-            _stoppedAt = null;
-            _lastError = null;
-            Volatile.Write(ref _isShuttingDown, 0);
-            _shutdownStartedAtUtc = null;
-            _shutdownDeadlineUtc = null;
-            Volatile.Write(ref _isRunning, 1);
-        }
-    }
-
-    public void MarkStopped(string? error = null)
-    {
-        lock (_gate)
-        {
-            _stoppedAt = DateTimeOffset.UtcNow;
-            _lastError = error;
-            Volatile.Write(ref _isRunning, 0);
-        }
     }
 
     public void MarkShuttingDown(DateTimeOffset startedAtUtc, DateTimeOffset deadlineUtc)
