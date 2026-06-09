@@ -1934,7 +1934,7 @@ internal static class ClientHttp3Tests
     {
         var service = new ConfigLintService(
             new ProxyConfigLintActiveConfigurationSource(new ProxyConfigurationStore()),
-            new ProxyConfigLintSubmittedConfigurationSource(new SiteConfigurationParser(), new ProxyOptionsValidator()),
+            new ProxyConfigLintSubmittedConfigurationSource(new SiteConfigurationParser()),
             new ProxyConfigLintRuntimeStateSource(new ProxyRuntimeState()),
             new ProxyConfigLintMetricsSink(new ProxyMetrics()),
             TimeProvider.System);

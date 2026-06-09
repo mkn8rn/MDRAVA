@@ -1,23 +1,18 @@
 using System.Text.Json;
-using MDRAVA.API.Proxy.Configuration;
-using MDRAVA.API.Proxy.Configuration.Loading;
-using Microsoft.Extensions.Options;
+using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane;
 using YamlDotNet.Core;
 
-namespace MDRAVA.API.Proxy.Diagnostics;
+namespace MDRAVA.INF.Configuration.Loading;
 
 public sealed class ProxyConfigLintSubmittedConfigurationSource
     : IProxyConfigLintSubmittedConfigurationSource
 {
     private readonly SiteConfigurationParser _siteParser;
-    private readonly IValidateOptions<ProxyOptions> _validator;
 
-    public ProxyConfigLintSubmittedConfigurationSource(
-        SiteConfigurationParser siteParser,
-        IValidateOptions<ProxyOptions> validator)
+    public ProxyConfigLintSubmittedConfigurationSource(SiteConfigurationParser siteParser)
     {
         _siteParser = siteParser;
-        _validator = validator;
     }
 
     public ProxyConfigLintSubmittedConfigurationResult Read(
@@ -49,10 +44,9 @@ public sealed class ProxyConfigLintSubmittedConfigurationSource
         }
 
         var options = SiteOptionsAggregator.ToProxyOptions([new SiteConfigurationSource("lint-input", site)]);
-        var validation = _validator.Validate(null, options);
-        var validationErrors = validation.Failed
-            ? validation.Failures.Select(static failure => new ProxyConfigurationFileError("lint-input", failure)).ToArray()
-            : [];
+        var validationErrors = ProxyOptionsValidationRules.Validate(options)
+            .Select(static failure => new ProxyConfigurationFileError("lint-input", failure))
+            .ToArray();
 
         var operationalOptions = new ProxyOperationalOptions();
         var snapshot = ProxyConfigurationRuntimeMapper.ToRuntimeSnapshot(

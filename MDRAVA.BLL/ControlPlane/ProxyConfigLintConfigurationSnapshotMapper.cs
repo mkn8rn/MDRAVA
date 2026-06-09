@@ -1,6 +1,8 @@
-namespace MDRAVA.API.Proxy.Diagnostics;
+using MDRAVA.BLL.Configuration;
 
-internal static class ProxyConfigLintConfigurationSnapshotMapper
+namespace MDRAVA.BLL.ControlPlane;
+
+public static class ProxyConfigLintConfigurationSnapshotMapper
 {
     public static ProxyConfigLintConfigurationSnapshot ToLintSnapshot(ProxyConfigurationSnapshot snapshot)
     {

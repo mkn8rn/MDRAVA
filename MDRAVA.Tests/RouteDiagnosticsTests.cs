@@ -569,7 +569,7 @@ internal static class RouteDiagnosticsTests
     {
         return new ConfigLintService(
             new ProxyConfigLintActiveConfigurationSource(store),
-            new ProxyConfigLintSubmittedConfigurationSource(new SiteConfigurationParser(), new ProxyOptionsValidator()),
+            new ProxyConfigLintSubmittedConfigurationSource(new SiteConfigurationParser()),
             new ProxyConfigLintRuntimeStateSource(new ProxyRuntimeState()),
             new ProxyConfigLintMetricsSink(metrics),
             TimeProvider.System);
