@@ -16,8 +16,17 @@ public static class ProxyStatusReadinessBuilder
         ProxyRuntimePreflightStatus? runtimePreflight = null)
     {
         var now = DateTimeOffset.UtcNow;
+        var runtimePreflightStatus = runtimePreflight ?? ProxyRuntimePreflightStatus.Unknown;
         var subsystems = BuildSubsystems(snapshot, runtime, metrics, upstreams, http3, logPersistence, cacheStatus, acmeStatuses, now);
-        var readiness = Classify(snapshot, runtime, subsystems, logPersistence, runtimePreflight ?? ProxyRuntimePreflightStatus.Unknown, now);
+        var readiness = ProxyReadinessEvaluator.Evaluate(new ProxyReadinessEvaluationInput(
+            snapshot is not null,
+            snapshot?.Version,
+            runtime.IsShuttingDown,
+            runtime.LastListenerReload is { Succeeded: false },
+            logPersistence.State,
+            runtimePreflightStatus,
+            subsystems,
+            now));
         return (readiness, subsystems);
     }
 
@@ -313,112 +322,4 @@ public static class ProxyStatusReadinessBuilder
         return new string(buffer[..length]);
     }
 
-    private static ProxyReadinessStatus Classify(
-        ProxyConfigurationSnapshot? snapshot,
-        ProxyRuntimeSnapshot runtime,
-        ProxySubsystemSummaries subsystems,
-        ProxyLogPersistenceStatus logPersistence,
-        ProxyRuntimePreflightStatus runtimePreflight,
-        DateTimeOffset now)
-    {
-        List<string> notReadyReasons = [];
-        List<string> degradedReasons = [];
-
-        if (snapshot is null)
-        {
-            notReadyReasons.Add("config_missing");
-        }
-
-        if (runtime.IsShuttingDown)
-        {
-            notReadyReasons.Add("shutdown_in_progress");
-        }
-
-        if (subsystems.Listeners.Enabled == 0)
-        {
-            notReadyReasons.Add("no_enabled_listeners");
-        }
-        else if (subsystems.Listeners.Active == 0)
-        {
-            notReadyReasons.Add("no_active_listeners");
-        }
-
-        if (subsystems.Listeners.Failed > 0)
-        {
-            degradedReasons.Add("listener_start_failed");
-        }
-
-        if (runtime.LastListenerReload is { Succeeded: false })
-        {
-            degradedReasons.Add("last_listener_reload_failed");
-        }
-
-        if (string.Equals(logPersistence.State, ProxyStatusText.Degraded, StringComparison.OrdinalIgnoreCase))
-        {
-            degradedReasons.Add("log_persistence_degraded");
-        }
-
-        if (string.Equals(runtimePreflight.State, ProxyStatusText.Failed, StringComparison.OrdinalIgnoreCase))
-        {
-            notReadyReasons.Add("runtime_preflight_failed");
-        }
-        else if (string.Equals(runtimePreflight.State, ProxyStatusText.Degraded, StringComparison.OrdinalIgnoreCase))
-        {
-            degradedReasons.Add("runtime_preflight_degraded");
-        }
-
-        if (subsystems.Upstreams.Unhealthy > 0)
-        {
-            degradedReasons.Add("upstream_unhealthy");
-        }
-
-        if (subsystems.Upstreams.HealthChecksEnabled > 0
-            && subsystems.Upstreams.Unhealthy == subsystems.Upstreams.HealthChecksEnabled)
-        {
-            degradedReasons.Add("all_health_checked_upstreams_unhealthy");
-        }
-
-        if (subsystems.Circuits.Open > 0 || subsystems.Circuits.HalfOpen > 0)
-        {
-            degradedReasons.Add("circuit_not_closed");
-        }
-
-        if (subsystems.Certificates.MissingReferences > 0)
-        {
-            degradedReasons.Add("certificate_reference_missing");
-        }
-
-        if (subsystems.Certificates.Expired > 0)
-        {
-            degradedReasons.Add("certificate_expired");
-        }
-
-        if (subsystems.Certificates.NotYetValid > 0)
-        {
-            degradedReasons.Add("certificate_not_yet_valid");
-        }
-
-        if (subsystems.Certificates.ExpiringSoon > 0)
-        {
-            degradedReasons.Add("certificate_expiring_soon");
-        }
-
-        if (subsystems.Acme.Failed > 0 || subsystems.Acme.RenewalBackoff > 0)
-        {
-            degradedReasons.Add("acme_degraded");
-        }
-
-        if (subsystems.Protocols.ClientHttp3Enabled && !subsystems.Protocols.ClientHttp3Ready)
-        {
-            degradedReasons.Add("http3_not_ready");
-        }
-
-        var state = notReadyReasons.Count > 0 ? ProxyStatusText.NotReady : degradedReasons.Count > 0 ? ProxyStatusText.Degraded : ProxyStatusText.Healthy;
-        var reasons = notReadyReasons.Count > 0 ? notReadyReasons : degradedReasons;
-        return new ProxyReadinessStatus(
-            state,
-            reasons.Distinct(StringComparer.OrdinalIgnoreCase).Take(12).ToArray(),
-            now,
-            snapshot?.Version);
-    }
 }

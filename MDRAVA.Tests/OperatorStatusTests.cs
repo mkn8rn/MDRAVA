@@ -38,6 +38,31 @@ internal static class OperatorStatusTests
         AssertEx.Equal("healthy", status.Subsystems.Logs.State);
     }
 
+    public static void ReadinessEvaluatorConsumesNarrowFactsWithoutRuntimeSnapshots()
+    {
+        var evaluatedAt = new DateTimeOffset(2026, 6, 9, 12, 0, 0, TimeSpan.Zero);
+        var input = new ProxyReadinessEvaluationInput(
+            HasActiveConfiguration: true,
+            ConfigGeneration: 77,
+            IsShuttingDown: false,
+            LastListenerReloadFailed: true,
+            LogPersistenceState: ProxyStatusText.Healthy,
+            RuntimePreflight: ProxyRuntimePreflightStatus.Unknown,
+            Subsystems: HealthyReadinessSubsystems() with
+            {
+                Listeners = new ProxyListenerSubsystemSummary(1, 1, 1, 1, 0, 1, 0, 0, 0)
+            },
+            EvaluatedAtUtc: evaluatedAt);
+
+        var readiness = ProxyReadinessEvaluator.Evaluate(input);
+
+        AssertEx.Equal("degraded", readiness.State);
+        AssertEx.True(readiness.Reasons.Contains("listener_start_failed"), string.Join(",", readiness.Reasons));
+        AssertEx.True(readiness.Reasons.Contains("last_listener_reload_failed"), string.Join(",", readiness.Reasons));
+        AssertEx.Equal(evaluatedAt, readiness.GeneratedAtUtc);
+        AssertEx.Equal(77, readiness.ConfigGeneration);
+    }
+
     public static void StatusReadinessReportsLogPersistenceFailureAsDegraded()
     {
         const string querySecret = "phase-49-query-secret";
@@ -453,6 +478,23 @@ internal static class OperatorStatusTests
             TimeSpan.FromSeconds(10),
             TimeSpan.FromSeconds(10),
             TimeSpan.FromSeconds(10));
+    }
+
+    private static ProxySubsystemSummaries HealthyReadinessSubsystems()
+    {
+        return new ProxySubsystemSummaries(
+            new ProxyConfigSubsystemSummary(true, 77, DateTimeOffset.UnixEpoch, true, "listener_reload_succeeded"),
+            new ProxyListenerSubsystemSummary(1, 1, 1, 0, 0, 1, 0, 0, 0),
+            new ProxyRouteSubsystemSummary(1, 1, 1, 0, 0),
+            new ProxyCertificateSubsystemSummary(0, 0, 0, 0, 0, 0, null),
+            new ProxyAcmeSubsystemSummary(false, 0, 0, 0, 0, null),
+            new ProxyUpstreamSubsystemSummary(1, 1, 0, 0, 0),
+            new ProxyCacheSubsystemSummary(false, 0, 0, 0),
+            new ProxyCircuitSubsystemSummary(0, 0, 0, 0),
+            new ProxyLimitSubsystemSummary(4096, 0, 16, 0, 0, 0, 0, 30),
+            new ProxyLogSubsystemSummary(true, true, ProxyStatusText.Healthy, "ok"),
+            new ProxyShutdownSubsystemSummary(true, false, null, null),
+            new ProxyProtocolSubsystemSummary(true, false, false, false, false, []));
     }
 
     private sealed class StatusFixture : IDisposable
