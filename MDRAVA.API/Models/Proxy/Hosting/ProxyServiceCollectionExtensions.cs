@@ -7,7 +7,6 @@ using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Http3;
 using MDRAVA.API.Proxy.Metrics;
 using MDRAVA.API.Proxy.Observability;
-using MDRAVA.API.Proxy.Security;
 using MDRAVA.API.Proxy.Tls;
 using MDRAVA.BLL.Infrastructure;
 using MDRAVA.INF.Configuration.Paths;
@@ -112,7 +111,7 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<IProxyLogPersistenceStore>(static services => services.GetRequiredService<ProxyPersistentLogWriter>());
         services.AddSingleton<AccessLogEmitter>();
         services.AddSingleton<AdminAuditStore>();
-        services.AddSingleton<IProxyAdminAuditReader, ProxyAdminAuditReader>();
+        services.AddSingleton<IProxyAdminAuditReader>(static services => services.GetRequiredService<AdminAuditStore>());
         services.AddSingleton<ProxyAdminAuditAdministrationService>();
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<AcmeChallengeStore>();
