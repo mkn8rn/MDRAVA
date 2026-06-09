@@ -1,8 +1,8 @@
 using System.Globalization;
 using System.Text;
-using MDRAVA.API.Proxy.Health;
+using MDRAVA.BLL.Configuration;
 
-namespace MDRAVA.API.Proxy.Metrics;
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed class PrometheusMetricsExporter
 {

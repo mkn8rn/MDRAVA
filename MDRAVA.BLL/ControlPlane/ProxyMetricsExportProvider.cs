@@ -1,5 +1,7 @@
 
-namespace MDRAVA.API.Proxy.Metrics;
+using MDRAVA.BLL.Infrastructure;
+
+namespace MDRAVA.BLL.ControlPlane;
 
 public sealed class ProxyMetricsExportProvider : IProxyMetricsExportProvider
 {
