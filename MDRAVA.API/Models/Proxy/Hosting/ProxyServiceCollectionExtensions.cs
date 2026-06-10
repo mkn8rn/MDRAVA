@@ -1,11 +1,11 @@
 using MDRAVA.API.Proxy.Configuration;
 using MDRAVA.API.Proxy.Acme;
 using MDRAVA.API.Proxy.Configuration.Loading;
-using MDRAVA.API.Proxy.Connections;
 using MDRAVA.API.Proxy.Forwarding;
 using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Http3;
 using MDRAVA.API.Proxy.Security;
+using MDRAVA.INF.Proxy.Connections;
 using MDRAVA.INF.Proxy.Tls;
 using MDRAVA.BLL.Infrastructure;
 using MDRAVA.INF.Configuration.Paths;

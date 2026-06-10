@@ -1,5 +1,7 @@
+using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane;
 
-namespace MDRAVA.API.Proxy.Connections;
+namespace MDRAVA.INF.Proxy.Connections;
 
 public sealed class UpstreamConnectionPool : IUpstreamConnectionPruner, IDisposable
 {

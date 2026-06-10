@@ -1,6 +1,6 @@
 using System.Net;
 using System.Net.Sockets;
-using MDRAVA.API.Proxy.Connections;
+using MDRAVA.INF.Proxy.Connections;
 using MDRAVA.API.Proxy.Health;
 
 namespace MDRAVA.Tests;

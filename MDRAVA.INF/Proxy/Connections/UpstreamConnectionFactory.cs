@@ -4,9 +4,10 @@ using System.Net.Sockets;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
-using MDRAVA.API.Proxy.Forwarding;
+using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane;
 
-namespace MDRAVA.API.Proxy.Connections;
+namespace MDRAVA.INF.Proxy.Connections;
 
 public sealed class UpstreamConnectionFactory
 {

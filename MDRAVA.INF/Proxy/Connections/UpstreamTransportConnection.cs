@@ -1,6 +1,7 @@
 using System.Net.Sockets;
+using MDRAVA.BLL.Configuration;
 
-namespace MDRAVA.API.Proxy.Connections;
+namespace MDRAVA.INF.Proxy.Connections;
 
 public sealed class UpstreamTransportConnection : IDisposable
 {

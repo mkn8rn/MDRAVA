@@ -1,4 +1,4 @@
-namespace MDRAVA.API.Proxy.Connections;
+namespace MDRAVA.INF.Proxy.Connections;
 
 public sealed class UpstreamConnectionLease : IAsyncDisposable
 {

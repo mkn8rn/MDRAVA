@@ -8,7 +8,7 @@ using System.Text;
 using MDRAVA.API.Proxy.Configuration;
 using MDRAVA.API.Proxy.Configuration.Loading;
 using MDRAVA.INF.Configuration.Paths;
-using MDRAVA.API.Proxy.Connections;
+using MDRAVA.INF.Proxy.Connections;
 using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Hosting;
 using Microsoft.Extensions.Configuration;
