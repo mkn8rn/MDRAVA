@@ -1,5 +1,6 @@
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.Caching;
+using MDRAVA.BLL.ControlPlane.Http3;
 using MDRAVA.BLL.ControlPlane.Listeners;
 using MDRAVA.BLL.Infrastructure;
 
@@ -15,6 +16,7 @@ public sealed class ProxyConfigurationReloadService
     private readonly IProxyConfigurationReloadMetricsSink _metrics;
     private readonly IProxyListenerReloadApplier _listenerReloadApplier;
     private readonly IProxyConfigurationReloadEventSink _events;
+    private readonly IRuntimeHttp3PlatformSupportSource _http3PlatformSupportSource;
 
     public ProxyConfigurationReloadService(
         IProxyConfigurationLoader loader,
@@ -22,7 +24,8 @@ public sealed class ProxyConfigurationReloadService
         ResponseCacheStore cacheStore,
         IProxyConfigurationReloadMetricsSink metrics,
         IProxyListenerReloadApplier listenerReloadApplier,
-        IProxyConfigurationReloadEventSink events)
+        IProxyConfigurationReloadEventSink events,
+        IRuntimeHttp3PlatformSupportSource http3PlatformSupportSource)
     {
         _loader = loader;
         _store = store;
@@ -30,6 +33,7 @@ public sealed class ProxyConfigurationReloadService
         _metrics = metrics;
         _listenerReloadApplier = listenerReloadApplier;
         _events = events;
+        _http3PlatformSupportSource = http3PlatformSupportSource;
     }
 
     public async ValueTask<ProxyConfigurationReloadResult<ProxyConfigurationProjection>> ReloadAsync(
@@ -52,7 +56,7 @@ public sealed class ProxyConfigurationReloadService
                 loadResult.Discovery,
                 loadResult.Errors,
                 loadResult.FileErrors,
-                existing is null ? null : ProxyConfigurationProjectionMapper.ToProjection(existing));
+                existing is null ? null : ToProjection(existing));
         }
 
         var listenerReload = await _listenerReloadApplier.ApplyReloadAsync(
@@ -73,7 +77,7 @@ public sealed class ProxyConfigurationReloadService
                 loadResult.Discovery,
                 listenerReload.Errors,
                 listenerReload.Errors.Select(static error => new ProxyConfigurationFileError(null, error)).ToArray(),
-                existing is null ? null : ProxyConfigurationProjectionMapper.ToProjection(existing))
+                existing is null ? null : ToProjection(existing))
             {
                 ListenerReload = listenerReload
             };
@@ -94,7 +98,7 @@ public sealed class ProxyConfigurationReloadService
             loadResult.Discovery,
             [],
             [],
-            ProxyConfigurationProjectionMapper.ToProjection(snapshot))
+            ToProjection(snapshot))
         {
             ListenerReload = listenerReload
         };
@@ -115,5 +119,12 @@ public sealed class ProxyConfigurationReloadService
             loadResult.Discovery,
             loadResult.Errors,
             loadResult.FileErrors);
+    }
+
+    private ProxyConfigurationProjection ToProjection(ProxyConfigurationSnapshot snapshot)
+    {
+        return ProxyConfigurationProjectionMapper.ToProjection(
+            snapshot,
+            _http3PlatformSupportSource.Read());
     }
 }

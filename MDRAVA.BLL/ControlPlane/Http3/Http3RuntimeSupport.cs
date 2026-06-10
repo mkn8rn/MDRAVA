@@ -1,4 +1,3 @@
-using System.Net.Quic;
 using MDRAVA.BLL.ControlPlane.Listeners;
 using MDRAVA.BLL.Configuration;
 
@@ -8,6 +7,7 @@ public static class Http3RuntimeSupport
 {
     public static RuntimeHttp3SupportProjection Project(
         IReadOnlyList<RuntimeListener> listeners,
+        RuntimeHttp3PlatformSupport platformSupport,
         IReadOnlyList<ProxyListenerStatus>? runtimeListeners = null,
         IReadOnlyList<RuntimeRoute>? routes = null)
     {
@@ -24,8 +24,7 @@ public static class Http3RuntimeSupport
             .Where(static listener => RuntimeHttp3AltSvcPolicy.IsEnabled(listener))
             .Select(static listener => (int?)listener.Http3AltSvc.MaxAgeSeconds)
             .FirstOrDefault();
-        var support = Check();
-        var blockers = DefaultReadinessBlockers(listeners, support);
+        var blockers = DefaultReadinessBlockers(listeners, platformSupport);
         var defaultState = !http3Configured
             ? "disabled"
             : blockers.Count == 0 && http3Enabled
@@ -39,9 +38,9 @@ public static class Http3RuntimeSupport
         var upstreamHttp3Configured = routes?.Any(static route => route.Upstreams.Any(static upstream =>
             RuntimeUpstreamProtocol.IsHttp3(upstream.Protocol))) ?? false;
         return new RuntimeHttp3SupportProjection(
-            support.RuntimeSupport,
-            support.QuicListenerSupported,
-            support.QuicConnectionSupported,
+            platformSupport.RuntimeSupport,
+            platformSupport.QuicListenerSupported,
+            platformSupport.QuicConnectionSupported,
             ConfiguredMode(listeners),
             EnablementLevel(listeners),
             http3Enabled,
@@ -67,31 +66,6 @@ public static class Http3RuntimeSupport
             UpstreamPoolingLimitationReason = ""
         };
     }
-
-    private static RuntimeHttp3RuntimeSupport Check()
-    {
-        try
-        {
-            var listenerSupported = QuicListener.IsSupported;
-            var connectionSupported = QuicConnection.IsSupported;
-            return new RuntimeHttp3RuntimeSupport(
-                listenerSupported && connectionSupported ? "supported" : "unsupported",
-                listenerSupported,
-                connectionSupported);
-        }
-        catch
-        {
-            return new RuntimeHttp3RuntimeSupport(
-                "unknown",
-                QuicListenerSupported: false,
-                QuicConnectionSupported: false);
-        }
-    }
-
-    private sealed record RuntimeHttp3RuntimeSupport(
-        string RuntimeSupport,
-        bool QuicListenerSupported,
-        bool QuicConnectionSupported);
 
     private static string EnablementLevel(IReadOnlyList<RuntimeListener> listeners)
     {
@@ -127,10 +101,10 @@ public static class Http3RuntimeSupport
 
     private static IReadOnlyList<string> DefaultReadinessBlockers(
         IReadOnlyList<RuntimeListener> listeners,
-        RuntimeHttp3RuntimeSupport support)
+        RuntimeHttp3PlatformSupport platformSupport)
     {
         List<string> blockers = [];
-        if (!support.QuicListenerSupported || !support.QuicConnectionSupported)
+        if (!platformSupport.QuicListenerSupported || !platformSupport.QuicConnectionSupported)
         {
             blockers.Add("runtime_quic_unsupported");
         }

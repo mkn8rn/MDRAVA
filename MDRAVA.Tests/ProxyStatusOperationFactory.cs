@@ -35,7 +35,8 @@ internal static class ProxyStatusOperationFactory
                 new ProxyCacheStatusConfigurationSource(store),
                 new ProxyCacheRuntimeStatusSource(cache)),
             new ProxyAcmeCertificateLifecycleStatusSource(acme),
-            preflightSource);
+            preflightSource,
+            TestHttp3PlatformSupport.SupportedSource);
         return new ProxyStatusOperations(inputReader);
     }
 

@@ -1,4 +1,5 @@
 using MDRAVA.BLL.Infrastructure;
+using MDRAVA.BLL.ControlPlane.Http3;
 
 namespace MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 
@@ -6,16 +7,20 @@ public sealed class ProxyConfigurationReadProjectionSource
     : IProxyConfigurationReadProjectionSource<ProxyConfigurationProjection>
 {
     private readonly IProxyConfigurationStore _configurationStore;
+    private readonly IRuntimeHttp3PlatformSupportSource _http3PlatformSupportSource;
 
-    public ProxyConfigurationReadProjectionSource(IProxyConfigurationStore configurationStore)
+    public ProxyConfigurationReadProjectionSource(
+        IProxyConfigurationStore configurationStore,
+        IRuntimeHttp3PlatformSupportSource http3PlatformSupportSource)
     {
         _configurationStore = configurationStore;
+        _http3PlatformSupportSource = http3PlatformSupportSource;
     }
 
     public ProxyConfigurationProjection? ReadCurrent()
     {
         return _configurationStore.TryGetSnapshot(out var snapshot) && snapshot is not null
-            ? ProxyConfigurationProjectionMapper.ToProjection(snapshot)
+            ? ProxyConfigurationProjectionMapper.ToProjection(snapshot, _http3PlatformSupportSource.Read())
             : null;
     }
 }

@@ -422,7 +422,9 @@ internal static class ClientHttp3Tests
                 [],
                 []));
 
-        var projection = ProxyConfigurationProjectionMapper.ToProjection(snapshot);
+        var projection = ProxyConfigurationProjectionMapper.ToProjection(
+            snapshot,
+            TestHttp3PlatformSupport.Supported);
 
         AssertEx.Equal("default", projection.Http3.Configured);
         AssertEx.True(projection.Http3.EnabledForTraffic);
@@ -1930,8 +1932,12 @@ internal static class ClientHttp3Tests
     public static void ConfigLintReportsHttp3DefaultReadinessIssues()
     {
         var service = new ConfigLintService(
-            new ProxyConfigLintActiveConfigurationSource(new ProxyConfigurationStore()),
-            new ProxyConfigLintSubmittedConfigurationSource(new SiteConfigurationParser()),
+            new ProxyConfigLintActiveConfigurationSource(
+                new ProxyConfigurationStore(),
+                TestHttp3PlatformSupport.SupportedSource),
+            new ProxyConfigLintSubmittedConfigurationSource(
+                new SiteConfigurationParser(),
+                TestHttp3PlatformSupport.SupportedSource),
             new ProxyConfigLintRuntimeStateSource(new ProxyRuntimeState()),
             new ProxyMetrics(),
             TimeProvider.System);

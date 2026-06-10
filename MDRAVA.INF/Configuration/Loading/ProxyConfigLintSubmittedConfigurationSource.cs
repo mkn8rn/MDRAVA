@@ -2,6 +2,7 @@ using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 using System.Text.Json;
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.ConfigLint;
+using MDRAVA.BLL.ControlPlane.Http3;
 using YamlDotNet.Core;
 
 namespace MDRAVA.INF.Configuration.Loading;
@@ -10,10 +11,14 @@ public sealed class ProxyConfigLintSubmittedConfigurationSource
     : IProxyConfigLintSubmittedConfigurationSource
 {
     private readonly SiteConfigurationParser _siteParser;
+    private readonly IRuntimeHttp3PlatformSupportSource _http3PlatformSupportSource;
 
-    public ProxyConfigLintSubmittedConfigurationSource(SiteConfigurationParser siteParser)
+    public ProxyConfigLintSubmittedConfigurationSource(
+        SiteConfigurationParser siteParser,
+        IRuntimeHttp3PlatformSupportSource http3PlatformSupportSource)
     {
         _siteParser = siteParser;
+        _http3PlatformSupportSource = http3PlatformSupportSource;
     }
 
     public ProxyConfigLintSubmittedConfigurationResult Read(
@@ -66,7 +71,9 @@ public sealed class ProxyConfigLintSubmittedConfigurationSource
                 []));
 
         return new ProxyConfigLintSubmittedConfigurationResult(
-            ProxyConfigLintConfigurationSnapshotMapper.ToLintSnapshot(snapshot),
+            ProxyConfigLintConfigurationSnapshotMapper.ToLintSnapshot(
+                snapshot,
+                _http3PlatformSupportSource.Read()),
             validationErrors,
             null);
     }

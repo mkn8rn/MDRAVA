@@ -81,7 +81,11 @@ internal static class OperatorStatusTests
             snapshot,
             metrics,
             [],
-            Http3RuntimeSupport.Project(snapshot.Listeners, runtime.Listeners, snapshot.Routes),
+            Http3RuntimeSupport.Project(
+                snapshot.Listeners,
+                TestHttp3PlatformSupport.Supported,
+                runtime.Listeners,
+                snapshot.Routes),
             new ProxyLogPersistenceStatus(
                 true,
                 true,
@@ -753,7 +757,8 @@ internal static class OperatorStatusTests
                     new ProxyCacheStatusConfigurationSource(Store),
                     new ProxyCacheRuntimeStatusSource(Cache)),
                 new ProxyAcmeCertificateLifecycleStatusSource(Acme),
-                preflight is null ? FixedRuntimePreflightSource.Instance : preflight);
+                preflight is null ? FixedRuntimePreflightSource.Instance : preflight,
+                TestHttp3PlatformSupport.SupportedSource);
         }
 
         public void Dispose()

@@ -569,8 +569,12 @@ internal static class RouteDiagnosticsTests
         ProxyMetrics metrics)
     {
         return new ConfigLintService(
-            new ProxyConfigLintActiveConfigurationSource(store),
-            new ProxyConfigLintSubmittedConfigurationSource(new SiteConfigurationParser()),
+            new ProxyConfigLintActiveConfigurationSource(
+                store,
+                TestHttp3PlatformSupport.SupportedSource),
+            new ProxyConfigLintSubmittedConfigurationSource(
+                new SiteConfigurationParser(),
+                TestHttp3PlatformSupport.SupportedSource),
             new ProxyConfigLintRuntimeStateSource(new ProxyRuntimeState()),
             metrics,
             TimeProvider.System);

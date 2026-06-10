@@ -18,6 +18,7 @@ public sealed class ProxyStatusInputReader : IProxyStatusInputReader
     private readonly IProxyCacheStatusReader _cacheStatusReader;
     private readonly IProxyAcmeCertificateLifecycleStatusSource _acmeStatusSource;
     private readonly IProxyStatusRuntimePreflightSource _preflightSource;
+    private readonly IRuntimeHttp3PlatformSupportSource _http3PlatformSupportSource;
 
     public ProxyStatusInputReader(
         IProxyStatusRuntimeStateSource runtimeSource,
@@ -28,7 +29,8 @@ public sealed class ProxyStatusInputReader : IProxyStatusInputReader
         IProxyLogPersistenceStore logPersistenceStore,
         IProxyCacheStatusReader cacheStatusReader,
         IProxyAcmeCertificateLifecycleStatusSource acmeStatusSource,
-        IProxyStatusRuntimePreflightSource preflightSource)
+        IProxyStatusRuntimePreflightSource preflightSource,
+        IRuntimeHttp3PlatformSupportSource http3PlatformSupportSource)
     {
         _runtimeSource = runtimeSource;
         _metricsSource = metricsSource;
@@ -39,6 +41,7 @@ public sealed class ProxyStatusInputReader : IProxyStatusInputReader
         _cacheStatusReader = cacheStatusReader;
         _acmeStatusSource = acmeStatusSource;
         _preflightSource = preflightSource;
+        _http3PlatformSupportSource = http3PlatformSupportSource;
     }
 
     public ProxyStatusInput Read()
@@ -47,7 +50,11 @@ public sealed class ProxyStatusInputReader : IProxyStatusInputReader
         var configuration = _configurationSource.TryReadSnapshot(out var snapshot) ? snapshot : null;
         var upstreams = _upstreamSource.ReadUpstreams(configuration);
         var metrics = _metricsSource.ReadMetrics();
-        var http3 = Http3RuntimeSupport.Project(configuration?.Listeners ?? [], runtime.Listeners, configuration?.Routes);
+        var http3 = Http3RuntimeSupport.Project(
+            configuration?.Listeners ?? [],
+            _http3PlatformSupportSource.Read(),
+            runtime.Listeners,
+            configuration?.Routes);
         var logPersistence = _logPersistenceStore.GetStatus();
         var runtimePreflight = _preflightSource.ReadRuntimePreflight();
         var cacheStatus = _cacheStatusReader.GetStatus();

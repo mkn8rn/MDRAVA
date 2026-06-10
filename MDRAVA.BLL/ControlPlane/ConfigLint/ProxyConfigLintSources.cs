@@ -1,5 +1,6 @@
 using MDRAVA.BLL.Infrastructure;
 using MDRAVA.BLL.ControlPlane.Listeners;
+using MDRAVA.BLL.ControlPlane.Http3;
 
 namespace MDRAVA.BLL.ControlPlane.ConfigLint;
 
@@ -7,10 +8,14 @@ public sealed class ProxyConfigLintActiveConfigurationSource
     : IProxyConfigLintActiveConfigurationSource
 {
     private readonly IProxyConfigurationStore _configurationStore;
+    private readonly IRuntimeHttp3PlatformSupportSource _http3PlatformSupportSource;
 
-    public ProxyConfigLintActiveConfigurationSource(IProxyConfigurationStore configurationStore)
+    public ProxyConfigLintActiveConfigurationSource(
+        IProxyConfigurationStore configurationStore,
+        IRuntimeHttp3PlatformSupportSource http3PlatformSupportSource)
     {
         _configurationStore = configurationStore;
+        _http3PlatformSupportSource = http3PlatformSupportSource;
     }
 
     public bool TryRead(out ProxyConfigLintConfigurationSnapshot? snapshot)
@@ -21,7 +26,9 @@ public sealed class ProxyConfigLintActiveConfigurationSource
             return false;
         }
 
-        snapshot = ProxyConfigLintConfigurationSnapshotMapper.ToLintSnapshot(runtimeSnapshot);
+        snapshot = ProxyConfigLintConfigurationSnapshotMapper.ToLintSnapshot(
+            runtimeSnapshot,
+            _http3PlatformSupportSource.Read());
         return true;
     }
 }

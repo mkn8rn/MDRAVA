@@ -254,7 +254,7 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
 
                     if (!snapshot.Http3QuicConnectionSupported)
                     {
-                        findings.Add(Warning("upstream_http3_runtime_unavailable", $"Upstream '{upstream.Name}' uses HTTP/3 but this runtime does not report QUIC client support.", sourceName, upstreamPath, "Use HTTP/1.1 or HTTP/2 for this upstream on runtimes without System.Net.Quic client support."));
+                        findings.Add(Warning("upstream_http3_runtime_unavailable", $"Upstream '{upstream.Name}' uses HTTP/3 but this runtime does not report QUIC client support.", sourceName, upstreamPath, "Use HTTP/1.1 or HTTP/2 for this upstream on runtimes without QUIC client support."));
                     }
 
                     if (route.RetryEnabled

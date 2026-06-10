@@ -278,7 +278,9 @@ internal static class AdminSecurityTests
     {
         var store = CreateStoreWithAdminAuthentication();
 
-        var projection = ProxyConfigurationProjectionMapper.ToProjection(store.Snapshot);
+        var projection = ProxyConfigurationProjectionMapper.ToProjection(
+            store.Snapshot,
+            TestHttp3PlatformSupport.Supported);
 
         AssertEx.Equal(true, projection.AdminSecurity.RequireAuthentication);
         AssertEx.Equal(true, projection.AdminSecurity.HasConfiguredToken);
@@ -457,7 +459,9 @@ internal static class AdminSecurityTests
     {
         return new ProxyConfigurationReadAdministrationService<ProxyConfigurationProjection>(
             new ProxyConfigurationReadOperations<ProxyConfigurationProjection>(
-                new ProxyConfigurationReadProjectionSource(store)));
+                new ProxyConfigurationReadProjectionSource(
+                    store,
+                    TestHttp3PlatformSupport.SupportedSource)));
     }
 
     private sealed class NoopReloadService

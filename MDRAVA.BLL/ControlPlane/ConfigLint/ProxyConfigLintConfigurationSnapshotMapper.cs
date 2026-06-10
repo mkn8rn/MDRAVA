@@ -5,9 +5,11 @@ namespace MDRAVA.BLL.ControlPlane.ConfigLint;
 
 public static class ProxyConfigLintConfigurationSnapshotMapper
 {
-    public static ProxyConfigLintConfigurationSnapshot ToLintSnapshot(ProxyConfigurationSnapshot snapshot)
+    public static ProxyConfigLintConfigurationSnapshot ToLintSnapshot(
+        ProxyConfigurationSnapshot snapshot,
+        RuntimeHttp3PlatformSupport platformSupport)
     {
-        var http3 = Http3RuntimeSupport.Project(snapshot.Listeners);
+        var http3 = Http3RuntimeSupport.Project(snapshot.Listeners, platformSupport);
         return new ProxyConfigLintConfigurationSnapshot(
             snapshot.SourceFiles,
             new ProxyConfigLintAdminSecurity(

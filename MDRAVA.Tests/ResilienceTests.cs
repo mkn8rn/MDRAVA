@@ -537,7 +537,9 @@ internal static class ResilienceTests
         var selection = AssertEx.NotNull(fixture.Selector.Select(route));
         fixture.Circuit.RecordFailure(selection.CircuitBreakerLease, "connect_failure");
 
-        var projection = ProxyConfigurationProjectionMapper.ToProjection(fixture.Store.Snapshot);
+        var projection = ProxyConfigurationProjectionMapper.ToProjection(
+            fixture.Store.Snapshot,
+            TestHttp3PlatformSupport.Supported);
         var statusOperations = ProxyStatusOperationFactory.Create(
             new ProxyRuntimeState(),
             fixture.Metrics,

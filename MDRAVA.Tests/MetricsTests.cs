@@ -138,7 +138,8 @@ internal static class MetricsTests
             fixture.Cache,
             fixture.Metrics,
             ActivatingProxyListenerReloadApplier.Instance,
-            SilentProxyConfigurationReloadEventSink.Instance);
+            SilentProxyConfigurationReloadEventSink.Instance,
+            TestHttp3PlatformSupport.SupportedSource);
 
         var first = await service.ReloadAsync(CancellationToken.None);
         AssertEx.True(first.Succeeded);

@@ -27,7 +27,9 @@ internal static class AcmeTests
         var snapshot = AssertEx.NotNull(result.Snapshot);
         var certificate = snapshot.Certificates["manual-cert"];
         AssertEx.Equal("manualPfx", certificate.Source);
-        var projection = ProxyConfigurationProjectionMapper.ToProjection(snapshot);
+        var projection = ProxyConfigurationProjectionMapper.ToProjection(
+            snapshot,
+            TestHttp3PlatformSupport.Supported);
         AssertEx.Equal("manualPfx", projection.Certificates[0].Source);
     }
 

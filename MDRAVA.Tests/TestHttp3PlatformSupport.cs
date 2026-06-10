@@ -1,0 +1,27 @@
+namespace MDRAVA.Tests;
+
+internal static class TestHttp3PlatformSupport
+{
+    public static RuntimeHttp3PlatformSupport Supported { get; } =
+        RuntimeHttp3PlatformSupport.FromFlags(
+            quicListenerSupported: true,
+            quicConnectionSupported: true);
+
+    public static IRuntimeHttp3PlatformSupportSource SupportedSource { get; } =
+        new FixedRuntimeHttp3PlatformSupportSource(Supported);
+
+    private sealed class FixedRuntimeHttp3PlatformSupportSource : IRuntimeHttp3PlatformSupportSource
+    {
+        private readonly RuntimeHttp3PlatformSupport _support;
+
+        public FixedRuntimeHttp3PlatformSupportSource(RuntimeHttp3PlatformSupport support)
+        {
+            _support = support;
+        }
+
+        public RuntimeHttp3PlatformSupport Read()
+        {
+            return _support;
+        }
+    }
+}

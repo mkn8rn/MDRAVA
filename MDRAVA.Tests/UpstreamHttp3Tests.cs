@@ -63,7 +63,9 @@ internal static class UpstreamHttp3Tests
             SiteJson(proxyPort: 18080, upstreamPort: 18443));
 
         var result = await CreateLoader(temp.Path).LoadAsync(CancellationToken.None);
-        var projection = ProxyConfigurationProjectionMapper.ToProjection(AssertEx.NotNull(result.Snapshot));
+        var projection = ProxyConfigurationProjectionMapper.ToProjection(
+            AssertEx.NotNull(result.Snapshot),
+            TestHttp3PlatformSupport.Supported);
 
         AssertEx.True(projection.Http3.UpstreamHttp3Configured);
         AssertEx.Equal("reused_multiplexed", projection.Http3.UpstreamPoolingMode);

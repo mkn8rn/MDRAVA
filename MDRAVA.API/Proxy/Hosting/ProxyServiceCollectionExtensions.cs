@@ -193,6 +193,7 @@ public static class ProxyServiceCollectionExtensions
     {
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<ProxyListenerReloadPlanner>();
+        services.AddSingleton<IRuntimeHttp3PlatformSupportSource, SystemRuntimeHttp3PlatformSupportSource>();
         services.AddSingleton<ProxyListenerService>();
         services.AddSingleton<IProxyListenerReloadApplier>(static services => services.GetRequiredService<ProxyListenerService>());
         services.AddSingleton<ProxyAdmissionController>();
