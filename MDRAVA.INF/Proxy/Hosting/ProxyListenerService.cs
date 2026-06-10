@@ -386,7 +386,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
     {
         try
         {
-            await Task.Delay(Timeout.InfiniteTimeSpan, stoppingToken);
+            await Task.Delay(Timeout.InfiniteTimeSpan, _timeProvider, stoppingToken);
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
@@ -1007,7 +1007,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
             if (activeTasks.Length > 0)
             {
                 var allConnections = Task.WhenAll(activeTasks);
-                var timeout = Task.Delay(drainGracePeriod, cancellationToken);
+                var timeout = Task.Delay(drainGracePeriod, _timeProvider, cancellationToken);
                 await Task.WhenAny(allConnections, timeout);
             }
 
@@ -1203,7 +1203,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
             if (activeTasks.Length > 0)
             {
                 var allConnections = Task.WhenAll(activeTasks);
-                var timeout = Task.Delay(drainGracePeriod, cancellationToken);
+                var timeout = Task.Delay(drainGracePeriod, _timeProvider, cancellationToken);
                 await Task.WhenAny(allConnections, timeout);
             }
 
