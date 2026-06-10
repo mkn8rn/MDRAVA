@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
 using MDRAVA.BLL.ControlPlane;
 using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane.Acme;
+using MDRAVA.BLL.ControlPlane.AdminAuthentication;
 using MDRAVA.BLL.ControlPlane.ConfigLint;
 using MDRAVA.BLL.ControlPlane.RouteDiagnostics;
 
@@ -16,6 +18,10 @@ public sealed class ProxyMetrics :
     IProxyRequestIdMetricsSink,
     IProxyRateLimitMetricsSink,
     IProxyAdmissionMetricsSink,
+    IProxyConfigurationReloadMetricsSink,
+    IProxyHealthCheckMetricsSink,
+    IProxyAcmeMetricsSink,
+    IProxyAdminAuthenticationMetricsSink,
     IProxyConfigLintMetricsSink,
     IProxyRouteDiagnosticsMetricsSink
 {

@@ -1,7 +1,6 @@
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.Caching;
 using MDRAVA.BLL.Infrastructure;
-using MDRAVA.BLL.ControlPlane.Metrics;
 
 namespace MDRAVA.BLL.ControlPlane;
 
@@ -12,7 +11,7 @@ public sealed class ProxyConfigurationReloadService
     private readonly IProxyConfigurationLoader _loader;
     private readonly IProxyConfigurationStore _store;
     private readonly ResponseCacheStore _cacheStore;
-    private readonly ProxyMetrics _metrics;
+    private readonly IProxyConfigurationReloadMetricsSink _metrics;
     private readonly IProxyListenerReloadApplier _listenerReloadApplier;
     private readonly IProxyConfigurationReloadEventSink _events;
 
@@ -20,7 +19,7 @@ public sealed class ProxyConfigurationReloadService
         IProxyConfigurationLoader loader,
         IProxyConfigurationStore store,
         ResponseCacheStore cacheStore,
-        ProxyMetrics metrics,
+        IProxyConfigurationReloadMetricsSink metrics,
         IProxyListenerReloadApplier listenerReloadApplier,
         IProxyConfigurationReloadEventSink events)
     {

@@ -1,5 +1,4 @@
 using MDRAVA.BLL.Configuration;
-using MDRAVA.BLL.ControlPlane.Metrics;
 
 namespace MDRAVA.BLL.ControlPlane;
 
@@ -7,7 +6,7 @@ public sealed class UpstreamHealthCheckCoordinator
 {
     private readonly IUpstreamHealthCheckClient _client;
     private readonly UpstreamHealthStore _healthStore;
-    private readonly ProxyMetrics _metrics;
+    private readonly IProxyHealthCheckMetricsSink _metrics;
     private readonly TimeProvider _timeProvider;
     private readonly IUpstreamHealthCheckEventSink _events;
     private readonly Dictionary<string, DateTimeOffset> _nextChecks = new(StringComparer.OrdinalIgnoreCase);
@@ -15,7 +14,7 @@ public sealed class UpstreamHealthCheckCoordinator
     public UpstreamHealthCheckCoordinator(
         IUpstreamHealthCheckClient client,
         UpstreamHealthStore healthStore,
-        ProxyMetrics metrics,
+        IProxyHealthCheckMetricsSink metrics,
         TimeProvider timeProvider,
         IUpstreamHealthCheckEventSink events)
     {

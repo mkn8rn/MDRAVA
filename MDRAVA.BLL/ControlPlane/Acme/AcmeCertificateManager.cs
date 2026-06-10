@@ -1,6 +1,5 @@
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.Infrastructure;
-using MDRAVA.BLL.ControlPlane.Metrics;
 
 namespace MDRAVA.BLL.ControlPlane.Acme;
 
@@ -13,7 +12,7 @@ public sealed class AcmeCertificateManager
     private readonly AcmeChallengeStore _challengeStore;
     private readonly AcmeCertificateStatusStore _statusStore;
     private readonly TimeProvider _timeProvider;
-    private readonly ProxyMetrics _metrics;
+    private readonly IProxyAcmeMetricsSink _metrics;
     private readonly IAcmeCertificateRenewalEventSink _events;
 
     public AcmeCertificateManager(
@@ -24,7 +23,7 @@ public sealed class AcmeCertificateManager
         AcmeChallengeStore challengeStore,
         AcmeCertificateStatusStore statusStore,
         TimeProvider timeProvider,
-        ProxyMetrics metrics,
+        IProxyAcmeMetricsSink metrics,
         IAcmeCertificateRenewalEventSink events)
     {
         _configurationStore = configurationStore;

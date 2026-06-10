@@ -97,6 +97,14 @@ public static class ProxyServiceCollectionExtensions
             static services => services.GetRequiredService<ProxyMetrics>());
         services.AddSingleton<IProxyAdmissionMetricsSink>(
             static services => services.GetRequiredService<ProxyMetrics>());
+        services.AddSingleton<IProxyConfigurationReloadMetricsSink>(
+            static services => services.GetRequiredService<ProxyMetrics>());
+        services.AddSingleton<IProxyHealthCheckMetricsSink>(
+            static services => services.GetRequiredService<ProxyMetrics>());
+        services.AddSingleton<IProxyAcmeMetricsSink>(
+            static services => services.GetRequiredService<ProxyMetrics>());
+        services.AddSingleton<IProxyAdminAuthenticationMetricsSink>(
+            static services => services.GetRequiredService<ProxyMetrics>());
         services.AddSingleton<PrometheusMetricsExporter>();
         services.AddSingleton<IProxyMetricsExportAvailabilityReader, ProxyMetricsExportAvailabilityReader>();
         services.AddSingleton<ProxyMetricsExportAvailabilityService>();

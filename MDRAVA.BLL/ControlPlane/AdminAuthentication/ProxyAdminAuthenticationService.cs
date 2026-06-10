@@ -1,6 +1,5 @@
 using System.Net;
 using MDRAVA.BLL.ControlPlane.AdminAudit;
-using MDRAVA.BLL.ControlPlane.Metrics;
 
 namespace MDRAVA.BLL.ControlPlane.AdminAuthentication;
 
@@ -13,13 +12,13 @@ public sealed class ProxyAdminAuthenticationService
 
     private readonly IProxyAdminSecurityOptionsReader _securityReader;
     private readonly IProxyAdminAuditRecorder _auditRecorder;
-    private readonly ProxyMetrics _metrics;
+    private readonly IProxyAdminAuthenticationMetricsSink _metrics;
     private readonly IProxyAdminAuthenticationEventSink _events;
 
     public ProxyAdminAuthenticationService(
         IProxyAdminSecurityOptionsReader securityReader,
         IProxyAdminAuditRecorder auditRecorder,
-        ProxyMetrics metrics,
+        IProxyAdminAuthenticationMetricsSink metrics,
         IProxyAdminAuthenticationEventSink events)
     {
         _securityReader = securityReader;
