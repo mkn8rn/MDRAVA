@@ -1,6 +1,7 @@
 using MDRAVA.BLL.ControlPlane.Headers;
 using MDRAVA.BLL.ControlPlane.Http1;
-namespace MDRAVA.BLL.ControlPlane;
+
+namespace MDRAVA.BLL.ControlPlane.Upgrades;
 
 public sealed class UpgradeRequestPolicy
 {
