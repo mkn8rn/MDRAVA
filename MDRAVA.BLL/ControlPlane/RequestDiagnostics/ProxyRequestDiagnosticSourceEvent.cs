@@ -1,6 +1,6 @@
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.RequestDiagnostics;
 
-public sealed record ProxyRecentRequestDiagnosticEvent(
+public sealed record ProxyRequestDiagnosticSourceEvent(
     DateTimeOffset TimestampUtc,
     string RequestId,
     string? ExternalRequestId,
