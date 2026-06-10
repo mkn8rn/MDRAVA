@@ -1,5 +1,3 @@
-using System.Net;
-
 namespace MDRAVA.BLL.ControlPlane.RuntimeGuards;
 
 public sealed class ClientRateLimiter
@@ -23,14 +21,14 @@ public sealed class ClientRateLimiter
         _getUtcNow = getUtcNow;
     }
 
-    public bool TryAcquireRequest(IPAddress? ipAddress, int perMinuteLimit)
+    public bool TryAcquireRequest(string? clientAddressKey, int perMinuteLimit)
     {
-        if (ipAddress is null)
+        if (string.IsNullOrWhiteSpace(clientAddressKey))
         {
             return true;
         }
 
-        var allowed = TryAcquire(ipAddress, perMinuteLimit, static buckets => buckets.Requests);
+        var allowed = TryAcquire(clientAddressKey, perMinuteLimit, static buckets => buckets.Requests);
         if (!allowed)
         {
             _metrics.RequestRateLimited();
@@ -39,14 +37,14 @@ public sealed class ClientRateLimiter
         return allowed;
     }
 
-    public bool TryAcquireUpgrade(IPAddress? ipAddress, int perMinuteLimit)
+    public bool TryAcquireUpgrade(string? clientAddressKey, int perMinuteLimit)
     {
-        if (ipAddress is null)
+        if (string.IsNullOrWhiteSpace(clientAddressKey))
         {
             return true;
         }
 
-        var allowed = TryAcquire(ipAddress, perMinuteLimit, static buckets => buckets.Upgrades);
+        var allowed = TryAcquire(clientAddressKey, perMinuteLimit, static buckets => buckets.Upgrades);
         if (!allowed)
         {
             _metrics.UpgradeRateLimited();
@@ -66,17 +64,16 @@ public sealed class ClientRateLimiter
         }
     }
 
-    private bool TryAcquire(IPAddress ipAddress, int perMinuteLimit, Func<BucketSet, TokenBucket> selectBucket)
+    private bool TryAcquire(string clientAddressKey, int perMinuteLimit, Func<BucketSet, TokenBucket> selectBucket)
     {
-        var key = ProxyClientAddressPolicy.NormalizeRequiredClientIp(ipAddress);
         var now = _getUtcNow();
 
         lock (_gate)
         {
-            if (!_buckets.TryGetValue(key, out var buckets))
+            if (!_buckets.TryGetValue(clientAddressKey, out var buckets))
             {
                 buckets = new BucketSet(now);
-                _buckets.Add(key, buckets);
+                _buckets.Add(clientAddressKey, buckets);
             }
 
             buckets.LastSeenUtc = now;

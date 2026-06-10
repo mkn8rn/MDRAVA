@@ -16,6 +16,7 @@ using MDRAVA.BLL.Http;
 using MDRAVA.BLL.ControlPlane.Acme;
 using MDRAVA.BLL.ControlPlane.Caching;
 using Microsoft.Extensions.Logging;
+using MDRAVA.INF.Proxy.RuntimeGuards;
 using System.Net;
 using System.Net.Quic;
 using System.Text;
@@ -199,7 +200,9 @@ public sealed class Http3Connection
                 _connection.RemoteEndPoint);
             context.SetClientEndpoint(forwardedHeaders.ResolvedClientEndpoint);
 
-            if (!_rateLimiter.TryAcquireRequest(forwardedHeaders.ResolvedClientIp, _configurationSnapshot.Limits.RequestsPerMinutePerIp))
+            if (!_rateLimiter.TryAcquireRequest(
+                ProxyClientAddressPolicy.NormalizeClientIp(forwardedHeaders.ResolvedClientIp),
+                _configurationSnapshot.Limits.RequestsPerMinutePerIp))
             {
                 await WriteGeneratedResponseAsync(stream, 429, "Too Many Requests", "Too Many Requests", context, requestHead.Method, cancellationToken);
                 CompleteContext(ref context);

@@ -23,6 +23,7 @@ using System.Text;
 using MDRAVA.INF.Proxy.Forwarding;
 using MDRAVA.INF.Proxy.Health;
 using MDRAVA.INF.Proxy.Http2;
+using MDRAVA.INF.Proxy.RuntimeGuards;
 using MDRAVA.INF.Proxy.Http3;
 using MDRAVA.INF.Observability;
 using MDRAVA.INF.Proxy.Tls;
@@ -292,7 +293,9 @@ public sealed class ClientConnection
                     GetRemoteEndPoint());
                 currentContext.SetClientEndpoint(forwardedHeaders.ResolvedClientEndpoint);
 
-                if (!_rateLimiter.TryAcquireRequest(forwardedHeaders.ResolvedClientIp, _configurationSnapshot.Limits.RequestsPerMinutePerIp))
+                if (!_rateLimiter.TryAcquireRequest(
+                    ProxyClientAddressPolicy.NormalizeClientIp(forwardedHeaders.ResolvedClientIp),
+                    _configurationSnapshot.Limits.RequestsPerMinutePerIp))
                 {
                     await WriteGeneratedResponseAsync(
                         clientStream,
@@ -701,7 +704,9 @@ public sealed class ClientConnection
         _ = requestHeadRead;
         context.IsUpgrade = true;
         _metrics.UpgradeRequestReceived();
-        if (!_rateLimiter.TryAcquireUpgrade(forwardedHeaders.ResolvedClientIp, _configurationSnapshot.Limits.UpgradeRequestsPerMinutePerIp))
+        if (!_rateLimiter.TryAcquireUpgrade(
+            ProxyClientAddressPolicy.NormalizeClientIp(forwardedHeaders.ResolvedClientIp),
+            _configurationSnapshot.Limits.UpgradeRequestsPerMinutePerIp))
         {
             _metrics.UpgradeRequestRejected();
             await WriteGeneratedResponseAsync(

@@ -72,7 +72,7 @@ internal static class HardeningTests
         var now = DateTimeOffset.UtcNow;
         var metrics = new ProxyMetrics();
         var limiter = new ClientRateLimiter(metrics, () => now);
-        var ip = IPAddress.Parse("127.0.0.1");
+        var ip = "127.0.0.1";
 
         AssertEx.True(limiter.TryAcquireRequest(ip, 1));
         AssertEx.False(limiter.TryAcquireRequest(ip, 1));
@@ -86,7 +86,7 @@ internal static class HardeningTests
         var now = DateTimeOffset.UtcNow;
         var metrics = new ProxyMetrics();
         var limiter = new ClientRateLimiter(metrics, () => now);
-        var ip = IPAddress.Parse("127.0.0.1");
+        var ip = "127.0.0.1";
         var allowed = 0;
 
         Parallel.For(
@@ -109,7 +109,7 @@ internal static class HardeningTests
         var now = DateTimeOffset.UtcNow;
         var metrics = new ProxyMetrics();
         var limiter = new ClientRateLimiter(metrics, () => now);
-        var ip = IPAddress.Parse("::ffff:127.0.0.1");
+        var ip = "127.0.0.1";
 
         AssertEx.True(limiter.TryAcquireUpgrade(ip, 1));
         AssertEx.False(limiter.TryAcquireUpgrade(ip, 1));
@@ -122,8 +122,11 @@ internal static class HardeningTests
         var metrics = new ProxyMetrics();
         var limiter = new ClientRateLimiter(metrics, () => now);
 
-        AssertEx.True(limiter.TryAcquireRequest(IPAddress.Parse("127.0.0.1"), 1));
-        AssertEx.False(limiter.TryAcquireRequest(IPAddress.Parse("::ffff:127.0.0.1"), 1));
+        var firstKey = MDRAVA.INF.Proxy.RuntimeGuards.ProxyClientAddressPolicy.NormalizeRequiredClientIp(IPAddress.Parse("127.0.0.1"));
+        var secondKey = MDRAVA.INF.Proxy.RuntimeGuards.ProxyClientAddressPolicy.NormalizeRequiredClientIp(IPAddress.Parse("::ffff:127.0.0.1"));
+
+        AssertEx.True(limiter.TryAcquireRequest(firstKey, 1));
+        AssertEx.False(limiter.TryAcquireRequest(secondKey, 1));
         AssertEx.Equal(1, limiter.EntryCount);
         AssertEx.Equal(1L, metrics.Snapshot().RateLimitedRequests);
     }
@@ -136,14 +139,14 @@ internal static class HardeningTests
 
         for (var index = 0; index < 300; index++)
         {
-            limiter.TryAcquireRequest(IPAddress.Parse($"10.0.0.{index % 250}"), 10);
+            limiter.TryAcquireRequest($"10.0.0.{index % 250}", 10);
         }
 
         AssertEx.True(limiter.EntryCount > 0);
         now = now.AddMinutes(6);
         for (var index = 0; index < 256; index++)
         {
-            limiter.TryAcquireRequest(IPAddress.Parse($"10.1.0.{index % 250}"), 10);
+            limiter.TryAcquireRequest($"10.1.0.{index % 250}", 10);
         }
 
         AssertEx.True(limiter.EntryCount < 300);

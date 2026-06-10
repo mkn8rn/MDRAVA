@@ -15,6 +15,7 @@ using MDRAVA.BLL.Http;
 using MDRAVA.BLL.ControlPlane.Acme;
 using MDRAVA.BLL.ControlPlane.Caching;
 using Microsoft.Extensions.Logging;
+using MDRAVA.INF.Proxy.RuntimeGuards;
 using System.Buffers.Binary;
 using System.Collections.Concurrent;
 using System.Globalization;
@@ -349,7 +350,9 @@ public sealed class Http2ClientConnection
                 _remoteEndPoint);
             context.SetClientEndpoint(forwardedHeaders.ResolvedClientEndpoint);
 
-            if (!_rateLimiter.TryAcquireRequest(forwardedHeaders.ResolvedClientIp, _configurationSnapshot.Limits.RequestsPerMinutePerIp))
+            if (!_rateLimiter.TryAcquireRequest(
+                ProxyClientAddressPolicy.NormalizeClientIp(forwardedHeaders.ResolvedClientIp),
+                _configurationSnapshot.Limits.RequestsPerMinutePerIp))
             {
                 await WriteGeneratedResponseAsync(
                     stream.Id,

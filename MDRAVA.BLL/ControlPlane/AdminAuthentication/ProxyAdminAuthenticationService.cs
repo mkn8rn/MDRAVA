@@ -1,6 +1,4 @@
-using System.Net;
 using MDRAVA.BLL.ControlPlane.AdminAudit;
-using MDRAVA.BLL.ControlPlane.RuntimeGuards;
 
 namespace MDRAVA.BLL.ControlPlane.AdminAuthentication;
 
@@ -105,7 +103,7 @@ public sealed class ProxyAdminAuthenticationService
                 DateTimeOffset.UtcNow,
                 input.Method,
                 string.IsNullOrEmpty(input.Path) ? "/" : input.Path,
-                ProxyClientAddressPolicy.NormalizeClientIp(input.RemoteIpAddress),
+                input.RemoteClientAddress,
                 authResult,
                 statusCode,
                 succeeded),
@@ -116,7 +114,7 @@ public sealed class ProxyAdminAuthenticationService
 public sealed record ProxyAdminRequestAuthenticationInput(
     string Method,
     string Path,
-    IPAddress? RemoteIpAddress,
+    string? RemoteClientAddress,
     IReadOnlyList<string?> AuthorizationHeaders,
     IReadOnlyList<string?> ApiKeyHeaders);
 

@@ -1,6 +1,6 @@
 using System.Net;
 
-namespace MDRAVA.BLL.ControlPlane.RuntimeGuards;
+namespace MDRAVA.INF.Proxy.RuntimeGuards;
 
 public static class ProxyClientAddressPolicy
 {
