@@ -1,7 +1,7 @@
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.Infrastructure;
 
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.Observability;
 
 public sealed class ProxyLogPersistenceSettingsReader : IProxyLogPersistenceSettingsReader
 {

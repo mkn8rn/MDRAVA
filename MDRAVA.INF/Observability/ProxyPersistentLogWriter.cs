@@ -4,6 +4,7 @@ using System.Text.Json;
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane;
 using MDRAVA.BLL.ControlPlane.AdminAudit;
+using MDRAVA.BLL.ControlPlane.Observability;
 using MDRAVA.BLL.Infrastructure;
 using Microsoft.Extensions.Logging;
 

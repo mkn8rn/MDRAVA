@@ -1,6 +1,7 @@
 using MDRAVA.BLL.ControlPlane.Status;
 using MDRAVA.BLL.ControlPlane;
 using MDRAVA.BLL.ControlPlane.AdminAudit;
+using MDRAVA.BLL.ControlPlane.Observability;
 
 namespace MDRAVA.BLL.Infrastructure;
 

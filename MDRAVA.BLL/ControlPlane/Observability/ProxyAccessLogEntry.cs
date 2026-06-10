@@ -1,4 +1,4 @@
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.Observability;
 
 public sealed record ProxyAccessLogEntry(
     DateTimeOffset TimestampUtc,
