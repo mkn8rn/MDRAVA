@@ -25,6 +25,21 @@ public static class ProxyServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        services.AddProxyConfigurationServices(configuration);
+        services.AddProxyMetricsAndLoggingServices();
+        services.AddProxyAdministrationServices();
+        services.AddProxyAcmeServices();
+        services.AddProxyRuntimeServices();
+        services.AddProxyForwardingServices();
+        services.AddProxyHostedServices();
+
+        return services;
+    }
+
+    private static void AddProxyConfigurationServices(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
         services.AddOptions<MdravaDataDirectoryOptions>()
             .Bind(configuration.GetSection(MdravaDataDirectoryOptions.SectionName));
 
@@ -41,9 +56,6 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<ProxyConfigurationLoader>();
         services.AddSingleton<IProxyConfigurationLoader>(static services => services.GetRequiredService<ProxyConfigurationLoader>());
         services.AddSingleton<IProxyRestoreConfigurationValidator>(static services => services.GetRequiredService<ProxyConfigurationLoader>());
-        services.AddSingleton<ProxyListenerReloadPlanner>();
-        services.AddSingleton<ProxyListenerService>();
-        services.AddSingleton<IProxyListenerReloadApplier>(static services => services.GetRequiredService<ProxyListenerService>());
         services.AddSingleton<IProxyConfigurationReloadEventSink, ProxyConfigurationReloadLogger>();
         services.AddSingleton<ProxyConfigurationReloadService>();
         services.AddSingleton<IProxyConfigurationReloadOperations<ProxyConfigurationProjection>>(
@@ -55,6 +67,10 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<IProxyConfigurationReadProjectionSource<ProxyConfigurationProjection>, ProxyConfigurationReadProjectionSource>();
         services.AddSingleton<IProxyConfigurationReadOperations<ProxyConfigurationProjection>, ProxyConfigurationReadOperations<ProxyConfigurationProjection>>();
         services.AddSingleton<ProxyConfigurationReadAdministrationService<ProxyConfigurationProjection>>();
+    }
+
+    private static void AddProxyMetricsAndLoggingServices(this IServiceCollection services)
+    {
         services.AddSingleton<ProxyMetrics>();
         services.AddSingleton<IProxyUpstreamSelectionMetricsSink>(
             static services => services.GetRequiredService<ProxyMetrics>());
@@ -77,6 +93,14 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<ProxyMetricsExportAvailabilityService>();
         services.AddSingleton<IProxyMetricsExportProvider, ProxyMetricsExportProvider>();
         services.AddSingleton<ProxyMetricsAdministrationService>();
+        services.AddSingleton<IProxyLogPersistenceSettingsReader, ProxyLogPersistenceSettingsReader>();
+        services.AddSingleton<ProxyPersistentLogWriter>();
+        services.AddSingleton<IProxyLogPersistenceStore>(static services => services.GetRequiredService<ProxyPersistentLogWriter>());
+        services.AddSingleton<AccessLogEmitter>();
+    }
+
+    private static void AddProxyAdministrationServices(this IServiceCollection services)
+    {
         services.AddSingleton<IProxyBackupFileSystem, ProxyBackupFileSystem>();
         services.AddSingleton<ProxyBackupService>();
         services.AddSingleton<IProxyBackupOperations>(static services => services.GetRequiredService<ProxyBackupService>());
@@ -109,10 +133,6 @@ public static class ProxyServiceCollectionExtensions
             static services => services.GetRequiredService<RecentRequestDiagnosticsStore>());
         services.AddSingleton<IProxyRequestDiagnosticsReader, ProxyRequestDiagnosticsReader>();
         services.AddSingleton<ProxyDiagnosticsAdministrationService>();
-        services.AddSingleton<IProxyLogPersistenceSettingsReader, ProxyLogPersistenceSettingsReader>();
-        services.AddSingleton<ProxyPersistentLogWriter>();
-        services.AddSingleton<IProxyLogPersistenceStore>(static services => services.GetRequiredService<ProxyPersistentLogWriter>());
-        services.AddSingleton<AccessLogEmitter>();
         services.AddSingleton<AdminAuditStore>();
         services.AddSingleton<IProxyAdminAuditReader>(static services => services.GetRequiredService<AdminAuditStore>());
         services.AddSingleton<IProxyAdminAuditRecorder>(static services => services.GetRequiredService<AdminAuditStore>());
@@ -120,7 +140,10 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<IProxyAdminSecurityOptionsReader, ProxyAdminSecurityOptionsReader>();
         services.AddSingleton<IProxyAdminAuthenticationEventSink, AdminAuthenticationLogger>();
         services.AddSingleton<ProxyAdminAuthenticationService>();
-        services.AddSingleton(TimeProvider.System);
+    }
+
+    private static void AddProxyAcmeServices(this IServiceCollection services)
+    {
         services.AddSingleton<AcmeChallengeStore>();
         services.AddSingleton<AcmeHttp01ChallengeResponder>();
         services.AddSingleton<AcmeCertificateStatusStore>();
@@ -133,6 +156,14 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<IAcmeCertificateIssuer, DisabledAcmeCertificateIssuer>();
         services.AddSingleton<AcmeRenewalSchedulePolicy>();
         services.AddSingleton<AcmeCertificateManager>();
+    }
+
+    private static void AddProxyRuntimeServices(this IServiceCollection services)
+    {
+        services.AddSingleton(TimeProvider.System);
+        services.AddSingleton<ProxyListenerReloadPlanner>();
+        services.AddSingleton<ProxyListenerService>();
+        services.AddSingleton<IProxyListenerReloadApplier>(static services => services.GetRequiredService<ProxyListenerService>());
         services.AddSingleton<ProxyAdmissionController>();
         services.AddSingleton<IProxyRuntimeDirectoryProbe, ProxyRuntimeDirectoryProbe>();
         services.AddSingleton<ProxyRuntimePreflightService>();
@@ -149,6 +180,10 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<IProxyStatusRuntimeStateSource>(static services => services.GetRequiredService<ProxyRuntimeState>());
         services.AddSingleton<UpstreamHealthStore>();
         services.AddSingleton<IProxyStatusUpstreamHealthSource>(static services => services.GetRequiredService<UpstreamHealthStore>());
+    }
+
+    private static void AddProxyForwardingServices(this IServiceCollection services)
+    {
         services.AddSingleton<IRouteMatcher, SingleUpstreamRouteMatcher>();
         services.AddSingleton<IUpstreamSelector, RoundRobinUpstreamSelector>();
         services.AddSingleton<UpstreamConnectionFactory>();
@@ -171,11 +206,13 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<UpgradeForwarder>();
         services.AddSingleton<TlsConnectionAuthenticator>();
         services.AddSingleton<IHttp3QuicListenerFactory, SystemHttp3QuicListenerFactory>();
+    }
+
+    private static void AddProxyHostedServices(this IServiceCollection services)
+    {
         services.AddHostedService<ProxyConfigurationStartupService>();
         services.AddHostedService<AcmeRenewalService>();
         services.AddHostedService<UpstreamHealthCheckService>();
         services.AddHostedService(static services => services.GetRequiredService<ProxyListenerService>());
-
-        return services;
     }
 }
