@@ -9,14 +9,18 @@ public sealed class Http3UpstreamConnectionPool : IDisposable
     private const int DefaultMaxStreamsPerConnection = 8;
 
     private readonly ProxyMetrics _metrics;
+    private readonly TimeProvider _timeProvider;
     private readonly object _gate = new();
     private readonly Dictionary<string, SemaphoreSlim> _keyGates = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, List<Http3UpstreamPooledConnection>> _connections = new(StringComparer.OrdinalIgnoreCase);
     private bool _disposed;
 
-    public Http3UpstreamConnectionPool(ProxyMetrics metrics)
+    public Http3UpstreamConnectionPool(
+        ProxyMetrics metrics,
+        TimeProvider timeProvider)
     {
         _metrics = metrics;
+        _timeProvider = timeProvider;
     }
 
     internal async ValueTask<Http3UpstreamConnection> BorrowAsync(
@@ -72,6 +76,7 @@ public sealed class Http3UpstreamConnectionPool : IDisposable
                 key,
                 transport,
                 _metrics,
+                _timeProvider,
                 DefaultMaxStreamsPerConnection);
             AddConnection(key, pooled);
             if (!pooled.TryReserveStream(timeouts.UpstreamIdleConnectionLifetime))

@@ -584,6 +584,7 @@ internal sealed class Http3UpstreamPooledConnection : IAsyncDisposable
 
     private readonly object _gate = new();
     private readonly ProxyMetrics _metrics;
+    private readonly TimeProvider _timeProvider;
     private readonly CancellationTokenSource _controlMonitorStop = new();
     private readonly Task _controlMonitor;
     private Http3UpstreamPooledConnectionState _state = Http3UpstreamPooledConnectionState.Active;
@@ -593,14 +594,16 @@ internal sealed class Http3UpstreamPooledConnection : IAsyncDisposable
         string key,
         Http3UpstreamTransport transport,
         ProxyMetrics metrics,
+        TimeProvider timeProvider,
         int maxConcurrentStreams)
     {
         Key = key;
         Connection = transport.Connection;
         ControlStream = transport.ControlStream;
         _metrics = metrics;
+        _timeProvider = timeProvider;
         MaxConcurrentStreams = Math.Clamp(maxConcurrentStreams, 1, 64);
-        LastUsedUtc = DateTimeOffset.UtcNow;
+        LastUsedUtc = _timeProvider.GetUtcNow();
         _controlMonitor = Task.Run(MonitorPeerStreamsAsync);
     }
 
@@ -635,7 +638,7 @@ internal sealed class Http3UpstreamPooledConnection : IAsyncDisposable
                 return false;
             }
 
-            if (_activeStreams == 0 && DateTimeOffset.UtcNow - LastUsedUtc > idleLifetime)
+            if (_activeStreams == 0 && _timeProvider.GetUtcNow() - LastUsedUtc > idleLifetime)
             {
                 _state = Http3UpstreamPooledConnectionState.IdleExpired;
                 return false;
@@ -668,7 +671,7 @@ internal sealed class Http3UpstreamPooledConnection : IAsyncDisposable
                 return true;
             }
 
-            if (DateTimeOffset.UtcNow - LastUsedUtc > idleLifetime)
+            if (_timeProvider.GetUtcNow() - LastUsedUtc > idleLifetime)
             {
                 _state = Http3UpstreamPooledConnectionState.IdleExpired;
                 return true;
@@ -694,7 +697,7 @@ internal sealed class Http3UpstreamPooledConnection : IAsyncDisposable
 
             if (_activeStreams == 0)
             {
-                LastUsedUtc = DateTimeOffset.UtcNow;
+                LastUsedUtc = _timeProvider.GetUtcNow();
             }
         }
     }
