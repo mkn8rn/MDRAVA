@@ -1,7 +1,8 @@
+using MDRAVA.BLL.ControlPlane;
 using MDRAVA.BLL.ControlPlane.Acme;
 using MDRAVA.BLL.ControlPlane.Caching;
 
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.Status;
 
 public static class ProxySubsystemSummaryBuilder
 {

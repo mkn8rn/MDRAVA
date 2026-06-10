@@ -1,3 +1,4 @@
+using MDRAVA.BLL.ControlPlane.Status;
 namespace MDRAVA.BLL.ControlPlane;
 
 public sealed class ProxyRuntimeState : IProxyStatusRuntimeStateSource

@@ -7,6 +7,7 @@ global using MDRAVA.BLL.ControlPlane.ConfigLint;
 global using MDRAVA.BLL.ControlPlane.Metrics;
 global using MDRAVA.BLL.ControlPlane.RequestDiagnostics;
 global using MDRAVA.BLL.ControlPlane.RouteDiagnostics;
+global using MDRAVA.BLL.ControlPlane.Status;
 global using MDRAVA.BLL.Configuration;
 global using MDRAVA.BLL.Infrastructure;
 global using MDRAVA.INF.Acme;

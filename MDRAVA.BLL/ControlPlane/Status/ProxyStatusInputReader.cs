@@ -1,9 +1,10 @@
+using MDRAVA.BLL.ControlPlane;
 using MDRAVA.BLL.ControlPlane.Acme;
 using MDRAVA.BLL.ControlPlane.Caching;
 using MDRAVA.BLL.ControlPlane.ConfigLint;
 using MDRAVA.BLL.Infrastructure;
 
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.Status;
 
 public sealed class ProxyStatusInputReader : IProxyStatusInputReader
 {

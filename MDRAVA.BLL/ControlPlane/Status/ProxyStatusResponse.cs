@@ -1,8 +1,9 @@
+using MDRAVA.BLL.ControlPlane;
 using MDRAVA.BLL.ControlPlane.ConfigLint;
 using MDRAVA.BLL.ControlPlane.RouteDiagnostics;
 using MDRAVA.BLL.ControlPlane.Metrics;
 
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.Status;
 
 public sealed record ProxyStatusResponse(
     bool ListenerLive,
