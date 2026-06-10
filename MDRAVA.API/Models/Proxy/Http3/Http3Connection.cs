@@ -4,7 +4,7 @@ using System.Net.Quic;
 using System.Text;
 using MDRAVA.API.Proxy.Forwarding;
 using MDRAVA.API.Proxy.Health;
-using MDRAVA.API.Proxy.Observability;
+using MDRAVA.INF.Observability;
 
 namespace MDRAVA.API.Proxy.Http3;
 

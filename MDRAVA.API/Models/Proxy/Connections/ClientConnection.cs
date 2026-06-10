@@ -6,7 +6,7 @@ using MDRAVA.API.Proxy.Forwarding;
 using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Http2;
 using MDRAVA.API.Proxy.Http3;
-using MDRAVA.API.Proxy.Observability;
+using MDRAVA.INF.Observability;
 using MDRAVA.INF.Proxy.Tls;
 using System.Net;
 

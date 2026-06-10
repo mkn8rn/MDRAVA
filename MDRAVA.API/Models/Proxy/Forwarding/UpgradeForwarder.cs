@@ -3,7 +3,7 @@ using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
 using MDRAVA.API.Proxy.Connections;
-using MDRAVA.API.Proxy.Observability;
+using MDRAVA.INF.Observability;
 
 namespace MDRAVA.API.Proxy.Forwarding;
 
