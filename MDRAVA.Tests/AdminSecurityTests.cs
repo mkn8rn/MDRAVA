@@ -259,23 +259,27 @@ internal static class AdminSecurityTests
     {
         var store = CreateStoreWithAdminAuthentication();
         var audit = new AdminAuditStore();
+        var auditTimestamp = new DateTimeOffset(2026, 6, 10, 7, 30, 0, TimeSpan.Zero);
         var context = CreateAdminContext("/admin/proxy/status");
         context.Request.QueryString = new QueryString("?token=query-secret");
         context.Request.Headers.Authorization = $"Bearer {AdminToken}";
-        var middleware = CreateMiddleware(
-            store,
-            audit,
+        var middleware = ProxyAdminAuthenticationTestFactory.CreateMiddleware(
+            next:
             httpContext =>
             {
                 httpContext.Response.StatusCode = StatusCodes.Status200OK;
                 return Task.CompletedTask;
-            });
+            },
+            store: store,
+            audit: audit,
+            timeProvider: new FixedTimeProvider(auditTimestamp));
 
         await middleware.InvokeAsync(context);
 
         var auditText = string.Join(Environment.NewLine, audit.Recent(10));
         AssertEx.False(auditText.Contains("query-secret", StringComparison.Ordinal));
         AssertEx.Equal("/admin/proxy/status", audit.Recent(1)[0].Path);
+        AssertEx.Equal(auditTimestamp, audit.Recent(1)[0].TimestampUtc);
     }
 
     public static void SensitiveProjectionRedactsConfiguredAdminSecrets()
@@ -373,6 +377,21 @@ internal static class AdminSecurityTests
         context.Response.Body = new MemoryStream();
         context.Connection.RemoteIpAddress = IPAddress.Parse("127.0.0.1");
         return context;
+    }
+
+    private sealed class FixedTimeProvider : TimeProvider
+    {
+        private readonly DateTimeOffset _utcNow;
+
+        public FixedTimeProvider(DateTimeOffset utcNow)
+        {
+            _utcNow = utcNow;
+        }
+
+        public override DateTimeOffset GetUtcNow()
+        {
+            return _utcNow;
+        }
     }
 
     private static IReadOnlyList<string> DiscoverAdminEndpointPaths()

@@ -11,7 +11,8 @@ internal static class ProxyAdminAuthenticationTestFactory
         RequestDelegate next,
         IProxyConfigurationStore store,
         AdminAuditStore audit,
-        ProxyMetrics? metrics = null)
+        ProxyMetrics? metrics = null,
+        TimeProvider? timeProvider = null)
     {
         return new AdminAuthenticationMiddleware(
             next,
@@ -19,7 +20,8 @@ internal static class ProxyAdminAuthenticationTestFactory
                 new ProxyAdminSecurityOptionsReader(store),
                 audit,
                 metrics ?? new ProxyMetrics(),
-                SilentProxyAdminAuthenticationEventSink.Instance));
+                SilentProxyAdminAuthenticationEventSink.Instance,
+                timeProvider ?? TimeProvider.System));
     }
 
     private sealed class SilentProxyAdminAuthenticationEventSink : IProxyAdminAuthenticationEventSink

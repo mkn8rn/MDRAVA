@@ -13,17 +13,20 @@ public sealed class ProxyAdminAuthenticationService
     private readonly IProxyAdminAuditRecorder _auditRecorder;
     private readonly IProxyAdminAuthenticationMetricsSink _metrics;
     private readonly IProxyAdminAuthenticationEventSink _events;
+    private readonly TimeProvider _timeProvider;
 
     public ProxyAdminAuthenticationService(
         IProxyAdminSecurityOptionsReader securityReader,
         IProxyAdminAuditRecorder auditRecorder,
         IProxyAdminAuthenticationMetricsSink metrics,
-        IProxyAdminAuthenticationEventSink events)
+        IProxyAdminAuthenticationEventSink events,
+        TimeProvider timeProvider)
     {
         _securityReader = securityReader;
         _auditRecorder = auditRecorder;
         _metrics = metrics;
         _events = events;
+        _timeProvider = timeProvider;
     }
 
     public ProxyAdminAuthenticationOutcome Authenticate(ProxyAdminRequestAuthenticationInput input)
@@ -100,7 +103,7 @@ public sealed class ProxyAdminAuthenticationService
     {
         _auditRecorder.Add(
             new ProxyAdminAuditEvent(
-                DateTimeOffset.UtcNow,
+                _timeProvider.GetUtcNow(),
                 input.Method,
                 string.IsNullOrEmpty(input.Path) ? "/" : input.Path,
                 input.RemoteClientAddress,
