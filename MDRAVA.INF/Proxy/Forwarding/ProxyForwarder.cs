@@ -264,7 +264,7 @@ public sealed class ProxyForwarder
         }
         catch (Http2UpstreamProtocolException exception)
         {
-            _metrics.UpstreamHttp2ProtocolError("malformed_response");
+            _metrics.UpstreamHttp2ProtocolError();
             _metrics.UpstreamMalformedResponse();
             _metrics.UpstreamFailed();
             if (ProxyGeneratedFailurePolicy.CanWriteFailureResponse(responseStarted, suppressGeneratedFailureResponse))

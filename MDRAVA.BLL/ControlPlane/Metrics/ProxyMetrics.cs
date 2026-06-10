@@ -505,11 +505,7 @@ public sealed class ProxyMetrics :
 
     public void UpstreamHttp2AlpnFailed() => Interlocked.Increment(ref _upstreamHttp2AlpnFailures);
 
-    public void UpstreamHttp2ProtocolError(string reason)
-    {
-        _ = reason;
-        Interlocked.Increment(ref _upstreamHttp2ProtocolErrors);
-    }
+    public void UpstreamHttp2ProtocolError() => Interlocked.Increment(ref _upstreamHttp2ProtocolErrors);
 
     public void UpstreamHttp3RequestAttempted() => Interlocked.Increment(ref _upstreamHttp3Requests);
 
