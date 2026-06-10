@@ -7,7 +7,6 @@ using MDRAVA.BLL.ControlPlane.Timeouts;
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.Metrics;
 using MDRAVA.BLL.ControlPlane.Caching;
-using MDRAVA.BLL.ControlPlane.Upstreams;
 using Microsoft.Extensions.Logging;
 using System.Buffers;
 using System.Globalization;
