@@ -2,7 +2,7 @@ using MDRAVA.BLL.ControlPlane.Status;
 using MDRAVA.BLL.ControlPlane.Backup;
 using MDRAVA.BLL.Infrastructure;
 
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.RuntimePreflight;
 
 public sealed class ProxyRuntimePreflightService : IProxyStatusRuntimePreflightSource
 {

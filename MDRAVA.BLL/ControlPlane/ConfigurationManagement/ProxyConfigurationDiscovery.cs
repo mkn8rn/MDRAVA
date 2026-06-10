@@ -1,4 +1,6 @@
 using MDRAVA.BLL.ControlPlane;
+using MDRAVA.BLL.ControlPlane.RuntimePreflight;
+
 namespace MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 
 public sealed record ProxyConfigurationDiscovery(
