@@ -1,6 +1,6 @@
 using MDRAVA.BLL.Configuration;
 
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.ConfigLint;
 
 public static class ProxyConfigLintConfigurationSnapshotMapper
 {
