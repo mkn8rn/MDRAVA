@@ -555,7 +555,6 @@ public sealed class ProxyForwarder
                 clientStream,
                 upstreamResponse.EndStream,
                 responseHead,
-                listener,
                 timeouts,
                 cancellationToken);
         }
@@ -676,7 +675,6 @@ public sealed class ProxyForwarder
                 upstreamHttp3,
                 clientStream,
                 responseHead,
-                listener,
                 timeouts,
                 cancellationToken);
         }
@@ -1003,11 +1001,9 @@ public sealed class ProxyForwarder
         Stream clientStream,
         bool endStream,
         Http1ResponseHead responseHead,
-        RuntimeListener listener,
         RuntimeTimeouts timeouts,
         CancellationToken cancellationToken)
     {
-        _ = listener;
         await RelayFramedUpstreamResponseBodyAsync(
             (readTimeouts, token) => ReadHttp2DataChunkAsync(upstreamHttp2, readTimeouts, token),
             clientStream,
@@ -1021,11 +1017,9 @@ public sealed class ProxyForwarder
         Http3UpstreamConnection upstreamHttp3,
         Stream clientStream,
         Http1ResponseHead responseHead,
-        RuntimeListener listener,
         RuntimeTimeouts timeouts,
         CancellationToken cancellationToken)
     {
-        _ = listener;
         await RelayFramedUpstreamResponseBodyAsync(
             (readTimeouts, token) => ReadHttp3DataChunkAsync(upstreamHttp3, readTimeouts, token),
             clientStream,
