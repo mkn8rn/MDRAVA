@@ -1,4 +1,4 @@
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.Http1;
 
 public sealed record Http1ResponseFraming(Http1BodyKind Kind, long? ContentLength)
 {

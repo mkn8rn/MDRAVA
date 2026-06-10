@@ -1,4 +1,4 @@
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.Http1;
 
 public static class Http1ManagedHeaderPolicy
 {

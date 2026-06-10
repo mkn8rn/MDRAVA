@@ -1,6 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.Http1;
 
 public sealed record FramedUpstreamResponseTranslationInput(
     int StatusCode,

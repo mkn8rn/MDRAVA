@@ -1,3 +1,4 @@
+using MDRAVA.BLL.ControlPlane.Http1;
 namespace MDRAVA.BLL.ControlPlane.Caching;
 
 public sealed class CachedProxyResponse
