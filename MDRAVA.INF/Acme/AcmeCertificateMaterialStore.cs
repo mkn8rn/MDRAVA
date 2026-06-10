@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane.Acme;
 using MDRAVA.INF.Configuration.Loading;
 
 namespace MDRAVA.INF.Acme;
@@ -61,55 +62,51 @@ public static class AcmeCertificateMaterialStore
         return certificates;
     }
 
-    public static RuntimeCertificate WriteAndLoad(
-        RuntimeAcmeOptions acmeOptions,
-        RuntimeAcmeCertificateOptions certificateOptions,
-        string dataDirectory,
-        byte[] pfxBytes)
+    public static RuntimeCertificate WriteAndLoad(AcmeCertificateMaterialWriteRequest request)
     {
-        if (pfxBytes.Length is 0 or > MaximumPfxBytes)
+        if (request.PfxBytes.Length is 0 or > MaximumPfxBytes)
         {
-            throw new InvalidOperationException($"ACME certificate '{certificateOptions.Id}' PFX payload was empty or too large.");
+            throw new InvalidOperationException($"ACME certificate '{request.CertificateId}' PFX payload was empty or too large.");
         }
 
-        var layout = EnsureLayout(dataDirectory, acmeOptions.StoragePath);
-        var pfxPath = GetPrivateKeyPfxPath(layout, certificateOptions.Id);
+        var layout = EnsureLayout(request.DataDirectory, request.StoragePath);
+        var pfxPath = GetPrivateKeyPfxPath(layout, request.CertificateId);
         var certificate = X509CertificateLoader.LoadPkcs12(
-            pfxBytes,
+            request.PfxBytes,
             ReadOnlySpan<char>.Empty,
             X509KeyStorageFlags.UserKeySet);
         if (!certificate.HasPrivateKey)
         {
             certificate.Dispose();
-            throw new InvalidOperationException($"ACME certificate '{certificateOptions.Id}' must contain a private key.");
+            throw new InvalidOperationException($"ACME certificate '{request.CertificateId}' must contain a private key.");
         }
 
         Directory.CreateDirectory(Path.GetDirectoryName(pfxPath)!);
-        File.WriteAllBytes(pfxPath, pfxBytes);
+        File.WriteAllBytes(pfxPath, request.PfxBytes);
 
-        var certificatePemPath = GetCertificatePemPath(layout, certificateOptions.Id);
+        var certificatePemPath = GetCertificatePemPath(layout, request.CertificateId);
         Directory.CreateDirectory(Path.GetDirectoryName(certificatePemPath)!);
         File.WriteAllText(certificatePemPath, certificate.ExportCertificatePem());
 
-        var metadataPath = GetMetadataPath(layout, certificateOptions.Id);
+        var metadataPath = GetMetadataPath(layout, request.CertificateId);
         Directory.CreateDirectory(Path.GetDirectoryName(metadataPath)!);
         var metadata = new AcmeCertificateMetadata(
-            certificateOptions.Id,
-            certificateOptions.Domains,
-            DateTimeOffset.UtcNow,
+            request.CertificateId,
+            request.Domains,
+            request.WrittenAtUtc,
             certificate.NotBefore,
             certificate.NotAfter,
             certificate.Thumbprint);
         File.WriteAllText(metadataPath, JsonSerializer.Serialize(metadata, SiteConfigurationParser.WriteJsonOptions));
 
         return new RuntimeCertificate(
-            certificateOptions.Id,
-            $"acme://{certificateOptions.Id}",
+            request.CertificateId,
+            $"acme://{request.CertificateId}",
             "pfx",
             false,
             certificate,
             "acme",
-            certificateOptions.Domains.ToArray());
+            request.Domains.ToArray());
     }
 
     public static AcmeCertificateStorageLayout EnsureLayout(string dataDirectory, string storagePath)

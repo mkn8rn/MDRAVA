@@ -1,3 +1,4 @@
+using System.Text.Json;
 using MDRAVA.API.Controllers;
 using MDRAVA.BLL.ControlPlane.Acme;
 using MDRAVA.INF.Configuration.Loading;
@@ -97,14 +98,25 @@ internal static class AcmeTests
         var issuer = new FakeIssuer(TestCertificates.CreateSelfSignedPfxBytes("home.example.test"));
         var store = CreateStore(temp.Path);
         var statusStore = new AcmeCertificateStatusStore();
-        var manager = CreateManager(temp.Path, store, issuer, statusStore);
+        var attemptStartedAtUtc = DateTimeOffset.UnixEpoch.AddHours(9);
+        var manager = CreateManager(
+            temp.Path,
+            store,
+            issuer,
+            statusStore,
+            new ManualTimeProvider(attemptStartedAtUtc));
 
         await manager.CheckRenewalsAsync(CancellationToken.None);
 
         var layout = AcmeCertificateMaterialStore.GetLayout(temp.Path, "acme");
         AssertEx.True(File.Exists(AcmeCertificateMaterialStore.GetPrivateKeyPfxPath(layout, "home-acme")));
         AssertEx.True(File.Exists(AcmeCertificateMaterialStore.GetCertificatePemPath(layout, "home-acme")));
-        AssertEx.True(File.Exists(AcmeCertificateMaterialStore.GetMetadataPath(layout, "home-acme")));
+        var metadataPath = AcmeCertificateMaterialStore.GetMetadataPath(layout, "home-acme");
+        AssertEx.True(File.Exists(metadataPath));
+        var metadata = AssertEx.NotNull(JsonSerializer.Deserialize<AcmeCertificateMetadata>(
+            File.ReadAllText(metadataPath),
+            SiteConfigurationParser.ReadJsonOptions));
+        AssertEx.Equal(attemptStartedAtUtc, metadata.WrittenAtUtc);
         AssertEx.Equal("acme", store.Snapshot.Certificates["home-acme"].Source);
         AssertEx.True(statusStore.Get("home-acme")?.Active == true);
     }
@@ -126,11 +138,14 @@ internal static class AcmeTests
             ]
         };
         var runtimeAcme = ProxyConfigurationRuntimeMapper.ToRuntimeAcmeOptions(acmeOptions);
-        AcmeCertificateMaterialStore.WriteAndLoad(
-            runtimeAcme,
-            runtimeAcme.Certificates[0],
+        var runtimeCertificateOptions = runtimeAcme.Certificates[0];
+        AcmeCertificateMaterialStore.WriteAndLoad(new AcmeCertificateMaterialWriteRequest(
+            runtimeAcme.StoragePath,
+            runtimeCertificateOptions.Id,
+            runtimeCertificateOptions.Domains,
             temp.Path,
-            TestCertificates.CreateSelfSignedPfxBytes("home.example.test"));
+            DateTimeOffset.UnixEpoch.AddHours(10),
+            TestCertificates.CreateSelfSignedPfxBytes("home.example.test")));
         var config = Directory.CreateDirectory(Path.Combine(temp.Path, "config")).FullName;
         File.WriteAllText(
             Path.Combine(config, "proxy.json"),
@@ -159,11 +174,14 @@ internal static class AcmeTests
     {
         using var temp = TemporaryDirectory.Create();
         var store = CreateStore(temp.Path);
-        var initial = AcmeCertificateMaterialStore.WriteAndLoad(
-            store.Snapshot.Acme,
-            store.Snapshot.Acme.Certificates[0],
+        var certificateOptions = store.Snapshot.Acme.Certificates[0];
+        var initial = AcmeCertificateMaterialStore.WriteAndLoad(new AcmeCertificateMaterialWriteRequest(
+            store.Snapshot.Acme.StoragePath,
+            certificateOptions.Id,
+            certificateOptions.Domains,
             temp.Path,
-            TestCertificates.CreateSelfSignedPfxBytes("home.example.test", validDays: 10));
+            DateTimeOffset.UnixEpoch.AddHours(11),
+            TestCertificates.CreateSelfSignedPfxBytes("home.example.test", validDays: 10)));
         store.Replace(store.Snapshot with
         {
             Certificates = new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase)

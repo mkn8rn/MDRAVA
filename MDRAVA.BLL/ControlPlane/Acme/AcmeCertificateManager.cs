@@ -128,11 +128,13 @@ public sealed class AcmeCertificateManager
         RuntimeCertificate renewedCertificate;
         try
         {
-            renewedCertificate = _materialWriter.WriteAndLoad(
-                snapshot.Acme,
-                certificateOptions,
+            renewedCertificate = _materialWriter.WriteAndLoad(new AcmeCertificateMaterialWriteRequest(
+                snapshot.Acme.StoragePath,
+                certificateOptions.Id,
+                certificateOptions.Domains,
                 _dataDirectoryProvider.GetDataDirectory(),
-                result.PfxBytes);
+                attemptStartedAtUtc,
+                result.PfxBytes));
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {

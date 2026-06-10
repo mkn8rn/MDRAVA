@@ -10,16 +10,8 @@ public sealed class AcmeCertificateMaterialWriter : IAcmeCertificateMaterialWrit
         AcmeCertificateMaterialStore.EnsureLayout(dataDirectory, storagePath);
     }
 
-    public RuntimeCertificate WriteAndLoad(
-        RuntimeAcmeOptions acmeOptions,
-        RuntimeAcmeCertificateOptions certificateOptions,
-        string dataDirectory,
-        byte[] pfxBytes)
+    public RuntimeCertificate WriteAndLoad(AcmeCertificateMaterialWriteRequest request)
     {
-        return AcmeCertificateMaterialStore.WriteAndLoad(
-            acmeOptions,
-            certificateOptions,
-            dataDirectory,
-            pfxBytes);
+        return AcmeCertificateMaterialStore.WriteAndLoad(request);
     }
 }
