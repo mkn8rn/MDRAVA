@@ -10,20 +10,6 @@ public static class ProxyOptionsValidationRules
     private const long MaximumCacheEntryBytes = 64L * 1024 * 1024;
     private const long MaximumCacheTotalBytes = 512L * 1024 * 1024;
     private static readonly HashSet<int> RedirectStatusCodes = [301, 302, 303, 307, 308];
-    private static readonly HashSet<string> RestrictedHeaderNames = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "Connection",
-        "Keep-Alive",
-        "Proxy-Authenticate",
-        "Proxy-Authorization",
-        "TE",
-        "Trailer",
-        "Transfer-Encoding",
-        "Upgrade",
-        "Content-Length",
-        "Host",
-        "X-Request-Id"
-    };
 
     public static IReadOnlyList<string> Validate(ProxyOptions options)
     {
@@ -216,7 +202,7 @@ public static class ProxyOptionsValidationRules
 
             ValidateRedirectPolicy(failures, routePrefix, route.HttpsRedirect, allowEmptyTarget: true);
             ValidateCanonicalHost(failures, routePrefix, route.CanonicalHost);
-            ValidateHeaderPolicy(failures, routePrefix, route.HeaderPolicy);
+            ProxyHeaderPolicyOptionsValidationRules.Validate(failures, routePrefix, route.HeaderPolicy);
             ValidatePathRewrite(failures, routePrefix, route.PathRewrite);
             ValidateMaintenance(failures, routePrefix, route.Maintenance);
             ValidateCachePolicy(failures, routePrefix, route.Cache, routeAction);
@@ -493,84 +479,6 @@ public static class ProxyOptionsValidationRules
         }
     }
 
-    private static void ValidateHeaderPolicy(
-        List<string> failures,
-        string routePrefix,
-        ProxyHeaderPolicyOptions policy)
-    {
-        ValidateHeaderSetRules(failures, $"{routePrefix}:HeaderPolicy:SetRequestHeaders", policy.SetRequestHeaders);
-        ValidateHeaderSetRules(failures, $"{routePrefix}:HeaderPolicy:SetResponseHeaders", policy.SetResponseHeaders);
-        ValidateHeaderRemoveRules(failures, $"{routePrefix}:HeaderPolicy:RemoveRequestHeaders", policy.RemoveRequestHeaders);
-        ValidateHeaderRemoveRules(failures, $"{routePrefix}:HeaderPolicy:RemoveResponseHeaders", policy.RemoveResponseHeaders);
-    }
-
-    private static void ValidateHeaderSetRules(
-        List<string> failures,
-        string prefix,
-        IReadOnlyList<ProxyHeaderSetOptions> rules)
-    {
-        for (var index = 0; index < rules.Count; index++)
-        {
-            var rule = rules[index];
-            var rulePrefix = $"{prefix}:{index}";
-            ValidateHeaderName(failures, $"{rulePrefix}:Name", rule.Name);
-            if (rule.Value.Any(static character => character is '\r' or '\n'))
-            {
-                failures.Add($"{rulePrefix}:Value must not contain CR or LF.");
-            }
-        }
-    }
-
-    private static void ValidateHeaderRemoveRules(
-        List<string> failures,
-        string prefix,
-        IReadOnlyList<string> headerNames)
-    {
-        for (var index = 0; index < headerNames.Count; index++)
-        {
-            ValidateHeaderName(failures, $"{prefix}:{index}", headerNames[index]);
-        }
-    }
-
-    private static void ValidateHeaderName(List<string> failures, string prefix, string headerName)
-    {
-        if (string.IsNullOrWhiteSpace(headerName))
-        {
-            failures.Add($"{prefix} is required.");
-            return;
-        }
-
-        if (RestrictedHeaderNames.Contains(headerName))
-        {
-            failures.Add($"{prefix} '{headerName}' is restricted and cannot be modified by header policy.");
-            return;
-        }
-
-        if (!IsValidHttpFieldName(headerName))
-        {
-            failures.Add($"{prefix} '{headerName}' is not a valid HTTP field name.");
-            return;
-        }
-    }
-
-    private static bool IsValidHttpFieldName(string headerName)
-    {
-        foreach (var character in headerName)
-        {
-            var valid = character is >= '!' and <= '~'
-                && character is not '(' and not ')' and not '<' and not '>' and not '@'
-                && character is not ',' and not ';' and not ':' and not '\\' and not '"'
-                && character is not '/' and not '[' and not ']' and not '?' and not '='
-                && character is not '{' and not '}';
-            if (!valid)
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
     private static void ValidatePathRewrite(
         List<string> failures,
         string routePrefix,
@@ -734,7 +642,8 @@ public static class ProxyOptionsValidationRules
         for (var index = 0; index < cache.VaryByHeaders.Count; index++)
         {
             var headerName = cache.VaryByHeaders[index];
-            if (string.IsNullOrWhiteSpace(headerName) || !IsValidHttpFieldName(headerName))
+            if (string.IsNullOrWhiteSpace(headerName)
+                || !ProxyHeaderPolicyOptionsValidationRules.IsValidHttpFieldName(headerName))
             {
                 failures.Add($"{routePrefix}:Cache:VaryByHeaders:{index} '{headerName}' is not a valid HTTP field name.");
             }
