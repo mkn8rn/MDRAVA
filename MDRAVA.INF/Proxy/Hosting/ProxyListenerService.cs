@@ -138,7 +138,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
         try
         {
             _metrics.ListenerReloadAttempted();
-            var attemptedAt = DateTimeOffset.UtcNow;
+            var attemptedAt = _timeProvider.GetUtcNow();
             var plan = CreateListenerReloadPlan(snapshot);
             var nextListeners = plan.DesiredTcpListeners;
             var nextQuicListeners = plan.DesiredQuicListeners;
@@ -153,7 +153,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
                 foreach (var key in diff.Added.Concat(diff.Changed))
                 {
                     var listener = nextListeners[key];
-                    var handle = ManagedListener.Bind(listener);
+                    var handle = ManagedListener.Bind(listener, _timeProvider);
                     pending.Add(key, handle);
                     _logger.LogInformation(
                         "Proxy listener {ListenerName} prepared on {Address}:{Port}",
@@ -195,6 +195,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
                         listener,
                         snapshot,
                         _quicListenerFactory,
+                        _timeProvider,
                         cancellationToken);
                     pendingQuic.Add(key, handle);
                     _metrics.QuicListenerStarted();
@@ -210,7 +211,10 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
                     _metrics.ListenerStartFailed();
                     var error = $"quic:{listener.Name}:{SafeError(exception)}";
                     listenerErrors.Add(error);
-                    pendingQuic.Add(key, ManagedQuicListener.Failed(listener, SafeError(exception)));
+                    pendingQuic.Add(key, ManagedQuicListener.Failed(
+                        listener,
+                        SafeError(exception),
+                        _timeProvider));
                     _logger.LogWarning(exception, "HTTP/3 QUIC listener {ListenerName} failed to start.", listener.Name);
                 }
             }
@@ -882,6 +886,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
     {
         private readonly ConcurrentDictionary<Task, byte> _connectionTasks = new();
         private readonly object _gate = new();
+        private readonly TimeProvider _timeProvider;
         private RuntimeListener _listener;
         private ProxyListenerState _state = ProxyListenerState.Starting;
         private DateTimeOffset? _startedAtUtc;
@@ -889,10 +894,14 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
         private string? _lastError;
         private Task? _acceptTask;
 
-        private ManagedListener(RuntimeListener listener, Socket socket)
+        private ManagedListener(
+            RuntimeListener listener,
+            Socket socket,
+            TimeProvider timeProvider)
         {
             _listener = listener;
             Socket = socket;
+            _timeProvider = timeProvider;
         }
 
         public RuntimeListener Listener
@@ -908,7 +917,9 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
 
         public Socket Socket { get; }
 
-        public static ManagedListener Bind(RuntimeListener listener)
+        public static ManagedListener Bind(
+            RuntimeListener listener,
+            TimeProvider timeProvider)
         {
             var listenAddress = IPAddress.Parse(listener.Address);
             var listenEndPoint = new IPEndPoint(listenAddress, listener.Port);
@@ -923,7 +934,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
                 socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
                 socket.Bind(listenEndPoint);
                 socket.Listen(listener.Backlog);
-                return new ManagedListener(listener, socket);
+                return new ManagedListener(listener, socket, timeProvider);
             }
             catch
             {
@@ -942,7 +953,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
                 }
 
                 _state = ProxyListenerState.Active;
-                _startedAtUtc = DateTimeOffset.UtcNow;
+                _startedAtUtc = _timeProvider.GetUtcNow();
                 _stoppedAtUtc = null;
                 _lastError = null;
                 _acceptTask = Task.Run(() => owner.AcceptLoopAsync(this, cancellationToken), CancellationToken.None);
@@ -1003,7 +1014,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
             lock (_gate)
             {
                 _state = ProxyListenerState.Stopped;
-                _stoppedAtUtc = DateTimeOffset.UtcNow;
+                _stoppedAtUtc = _timeProvider.GetUtcNow();
             }
         }
 
@@ -1013,7 +1024,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
             lock (_gate)
             {
                 _state = ProxyListenerState.Stopped;
-                _stoppedAtUtc = DateTimeOffset.UtcNow;
+                _stoppedAtUtc = _timeProvider.GetUtcNow();
             }
 
             return ValueTask.CompletedTask;
@@ -1024,7 +1035,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
             lock (_gate)
             {
                 _state = ProxyListenerState.Failed;
-                _stoppedAtUtc = DateTimeOffset.UtcNow;
+                _stoppedAtUtc = _timeProvider.GetUtcNow();
                 _lastError = error;
             }
         }
@@ -1061,6 +1072,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
     {
         private readonly ConcurrentDictionary<Task, byte> _connectionTasks = new();
         private readonly object _gate = new();
+        private readonly TimeProvider _timeProvider;
         private RuntimeListener _listener;
         private ProxyListenerState _state = ProxyListenerState.Starting;
         private DateTimeOffset? _startedAtUtc;
@@ -1068,10 +1080,14 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
         private string? _lastError;
         private Task? _acceptTask;
 
-        private ManagedQuicListener(RuntimeListener listener, QuicListener? listenerHandle)
+        private ManagedQuicListener(
+            RuntimeListener listener,
+            QuicListener? listenerHandle,
+            TimeProvider timeProvider)
         {
             _listener = listener;
             ListenerHandle = listenerHandle;
+            _timeProvider = timeProvider;
         }
 
         public RuntimeListener Listener
@@ -1102,20 +1118,21 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
             RuntimeListener listener,
             ProxyConfigurationSnapshot snapshot,
             IHttp3QuicListenerFactory factory,
+            TimeProvider timeProvider,
             CancellationToken cancellationToken)
         {
             var listenerHandle = await factory.ListenAsync(listener, snapshot, cancellationToken);
-            return new ManagedQuicListener(listener, listenerHandle);
+            return new ManagedQuicListener(listener, listenerHandle, timeProvider);
         }
 
-        public static ManagedQuicListener Failed(RuntimeListener listener, string error)
+        public static ManagedQuicListener Failed(
+            RuntimeListener listener,
+            string error,
+            TimeProvider timeProvider)
         {
-            return new ManagedQuicListener(listener, null)
-            {
-                _state = ProxyListenerState.Failed,
-                _stoppedAtUtc = DateTimeOffset.UtcNow,
-                _lastError = error
-            };
+            var failed = new ManagedQuicListener(listener, null, timeProvider);
+            failed.MarkFailed(error);
+            return failed;
         }
 
         public void Activate(ProxyListenerService owner, CancellationToken cancellationToken)
@@ -1128,7 +1145,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
                 }
 
                 _state = ProxyListenerState.Active;
-                _startedAtUtc = DateTimeOffset.UtcNow;
+                _startedAtUtc = _timeProvider.GetUtcNow();
                 _stoppedAtUtc = null;
                 _lastError = null;
                 _acceptTask = Task.Run(() => owner.AcceptQuicLoopAsync(this, cancellationToken), CancellationToken.None);
@@ -1193,7 +1210,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
             lock (_gate)
             {
                 _state = ProxyListenerState.Stopped;
-                _stoppedAtUtc = DateTimeOffset.UtcNow;
+                _stoppedAtUtc = _timeProvider.GetUtcNow();
             }
         }
 
@@ -1207,7 +1224,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
             lock (_gate)
             {
                 _state = ProxyListenerState.Stopped;
-                _stoppedAtUtc = DateTimeOffset.UtcNow;
+                _stoppedAtUtc = _timeProvider.GetUtcNow();
             }
         }
 
@@ -1216,7 +1233,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
             lock (_gate)
             {
                 _state = ProxyListenerState.Failed;
-                _stoppedAtUtc = DateTimeOffset.UtcNow;
+                _stoppedAtUtc = _timeProvider.GetUtcNow();
                 _lastError = error;
             }
         }
