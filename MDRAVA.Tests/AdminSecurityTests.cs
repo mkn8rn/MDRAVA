@@ -93,7 +93,7 @@ internal static class AdminSecurityTests
     public static async Task ProtectedEndpointRejectsMissingAuth()
     {
         var store = CreateStoreWithAdminAuthentication();
-        var audit = new AdminAuditStore();
+        var audit = new AdminAuditStore(SilentLogPersistenceStore.Instance);
         var context = CreateAdminContext();
         var middleware = CreateMiddleware(store, audit, _ => Task.CompletedTask);
 
@@ -106,7 +106,7 @@ internal static class AdminSecurityTests
     public static async Task ProtectedEndpointRejectsWrongAuth()
     {
         var store = CreateStoreWithAdminAuthentication();
-        var audit = new AdminAuditStore();
+        var audit = new AdminAuditStore(SilentLogPersistenceStore.Instance);
         var context = CreateAdminContext();
         context.Request.Headers.Authorization = "Bearer wrong-token";
         var middleware = CreateMiddleware(store, audit, _ => Task.CompletedTask);
@@ -120,7 +120,7 @@ internal static class AdminSecurityTests
     public static async Task ProtectedEndpointAcceptsValidBearerToken()
     {
         var store = CreateStoreWithAdminAuthentication();
-        var audit = new AdminAuditStore();
+        var audit = new AdminAuditStore(SilentLogPersistenceStore.Instance);
         var context = CreateAdminContext();
         var nextCalled = false;
         context.Request.Headers.Authorization = $"Bearer {AdminToken}";
@@ -146,7 +146,7 @@ internal static class AdminSecurityTests
         foreach (var path in KnownAdminEndpointPaths)
         {
             var store = CreateStoreWithAdminAuthentication();
-            var audit = new AdminAuditStore();
+            var audit = new AdminAuditStore(SilentLogPersistenceStore.Instance);
             var context = CreateAdminContext(path);
             var nextCalled = false;
             var middleware = CreateMiddleware(
@@ -182,7 +182,7 @@ internal static class AdminSecurityTests
             foreach (var useBearer in new[] { true, false })
             {
                 var store = CreateStoreWithAdminAuthentication();
-                var audit = new AdminAuditStore();
+                var audit = new AdminAuditStore(SilentLogPersistenceStore.Instance);
                 var context = CreateAdminContext(path);
                 if (useBearer)
                 {
@@ -218,7 +218,7 @@ internal static class AdminSecurityTests
         const string badBearer = "bad-bearer-secret";
         const string badApiKey = "bad-api-key-secret";
         var store = CreateStoreWithAdminAuthentication();
-        var audit = new AdminAuditStore();
+        var audit = new AdminAuditStore(SilentLogPersistenceStore.Instance);
         var context = CreateAdminContext("/admin/proxy/status");
         context.Request.QueryString = new QueryString("?token=query-secret");
         context.Request.Headers.Authorization = $"Bearer {badBearer}";
@@ -242,7 +242,7 @@ internal static class AdminSecurityTests
 
     public static void AdminAuditCapacityEvictsOldestEntries()
     {
-        var audit = new AdminAuditStore();
+        var audit = new AdminAuditStore(SilentLogPersistenceStore.Instance);
         audit.Add(Event("/admin/proxy/status", 200), capacity: 2);
         audit.Add(Event("/admin/proxy/config/effective", 200), capacity: 2);
         audit.Add(Event("/admin/proxy/metrics", 200), capacity: 2);
@@ -258,7 +258,7 @@ internal static class AdminSecurityTests
     public static async Task AdminAuditPathOmitsQuerySecrets()
     {
         var store = CreateStoreWithAdminAuthentication();
-        var audit = new AdminAuditStore();
+        var audit = new AdminAuditStore(SilentLogPersistenceStore.Instance);
         var auditTimestamp = new DateTimeOffset(2026, 6, 10, 7, 30, 0, TimeSpan.Zero);
         var context = CreateAdminContext("/admin/proxy/status");
         context.Request.QueryString = new QueryString("?token=query-secret");
@@ -338,7 +338,7 @@ internal static class AdminSecurityTests
     public static async Task AdminAuditDoesNotLogTokenValues()
     {
         var store = CreateStoreWithAdminAuthentication();
-        var audit = new AdminAuditStore();
+        var audit = new AdminAuditStore(SilentLogPersistenceStore.Instance);
         var context = CreateAdminContext();
         context.Request.Headers.Authorization = $"Bearer {AdminToken}";
         var middleware = CreateMiddleware(

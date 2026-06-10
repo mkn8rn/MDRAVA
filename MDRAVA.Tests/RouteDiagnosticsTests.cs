@@ -477,7 +477,7 @@ internal static class RouteDiagnosticsTests
     public static async Task DiagnosticEndpointsRequireAdminAuth()
     {
         var store = CreateStore(BaseOptions([ProxyRoute("active", "active.test", "/")]));
-        var audit = new AdminAuditStore();
+        var audit = new AdminAuditStore(SilentLogPersistenceStore.Instance);
         var metrics = new ProxyMetrics();
         var context = new DefaultHttpContext();
         context.Request.Method = HttpMethods.Post;

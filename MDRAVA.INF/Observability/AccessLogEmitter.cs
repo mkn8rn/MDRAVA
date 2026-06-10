@@ -12,13 +12,13 @@ public sealed class AccessLogEmitter
     private readonly RecentRequestDiagnosticsStore _diagnostics;
     private readonly IProxyAccessLogMetricsSink _metrics;
     private readonly ILogger<AccessLogEmitter> _logger;
-    private readonly IProxyLogPersistenceStore? _logPersistenceStore;
+    private readonly IProxyLogPersistenceStore _logPersistenceStore;
 
     public AccessLogEmitter(
         RecentRequestDiagnosticsStore diagnostics,
         IProxyAccessLogMetricsSink metrics,
         ILogger<AccessLogEmitter> logger,
-        IProxyLogPersistenceStore? logPersistenceStore = null)
+        IProxyLogPersistenceStore logPersistenceStore)
     {
         _diagnostics = diagnostics;
         _metrics = metrics;
@@ -72,7 +72,7 @@ public sealed class AccessLogEmitter
         }
 
         _metrics.AccessLogEmitted();
-        _logPersistenceStore?.WriteAccess(new ProxyAccessLogEntry(
+        _logPersistenceStore.WriteAccess(new ProxyAccessLogEntry(
             diagnostic.TimestampUtc,
             diagnostic.RequestId,
             diagnostic.ConfigVersion,

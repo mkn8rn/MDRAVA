@@ -7,11 +7,11 @@ public sealed class AdminAuditStore : IProxyAdminAuditReader, IProxyAdminAuditRe
 {
     public const int MaximumReadLimit = 500;
 
-    private readonly IProxyLogPersistenceStore? _logPersistenceStore;
+    private readonly IProxyLogPersistenceStore _logPersistenceStore;
     private readonly object _gate = new();
     private readonly LinkedList<ProxyAdminAuditEvent> _events = new();
 
-    public AdminAuditStore(IProxyLogPersistenceStore? logPersistenceStore = null)
+    public AdminAuditStore(IProxyLogPersistenceStore logPersistenceStore)
     {
         _logPersistenceStore = logPersistenceStore;
     }
@@ -29,7 +29,7 @@ public sealed class AdminAuditStore : IProxyAdminAuditReader, IProxyAdminAuditRe
             }
         }
 
-        _logPersistenceStore?.WriteAdminAudit(auditEvent);
+        _logPersistenceStore.WriteAdminAudit(auditEvent);
     }
 
     public IReadOnlyList<ProxyAdminAuditEvent> Recent(int limit)

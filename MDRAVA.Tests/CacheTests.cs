@@ -444,7 +444,7 @@ internal static class CacheTests
     public static async Task CacheClearEndpointIsProtected()
     {
         var store = CreateStoreWithAdminAuthentication();
-        var audit = new AdminAuditStore();
+        var audit = new AdminAuditStore(SilentLogPersistenceStore.Instance);
         var context = new DefaultHttpContext();
         context.Request.Method = HttpMethods.Post;
         context.Request.Path = "/admin/proxy/cache/clear";

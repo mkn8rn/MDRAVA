@@ -27,7 +27,7 @@ internal static class MetricsTests
     public static async Task MetricsEndpointIsProtectedByAdminAuth()
     {
         var store = CreateStoreWithAdminAuthentication();
-        var audit = new AdminAuditStore();
+        var audit = new AdminAuditStore(SilentLogPersistenceStore.Instance);
         var metrics = new ProxyMetrics();
         var context = new DefaultHttpContext();
         context.Request.Method = HttpMethods.Get;
