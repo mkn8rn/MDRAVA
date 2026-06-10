@@ -202,7 +202,7 @@ public static class ProxyOptionsValidationRules
                 ValidateHealthCheck(failures, routePrefix, route.HealthCheck);
             }
 
-            ValidateRedirectPolicy(failures, routePrefix, route.HttpsRedirect, allowEmptyTarget: true);
+            ValidateRedirectPolicy(failures, routePrefix, route.HttpsRedirect);
             ValidateCanonicalHost(failures, routePrefix, route.CanonicalHost);
             ProxyHeaderPolicyOptionsValidationRules.Validate(failures, routePrefix, route.HeaderPolicy);
             ValidatePathRewrite(failures, routePrefix, route.PathRewrite);
@@ -396,10 +396,8 @@ public static class ProxyOptionsValidationRules
     private static void ValidateRedirectPolicy(
         List<string> failures,
         string routePrefix,
-        ProxyHttpsRedirectOptions redirect,
-        bool allowEmptyTarget)
+        ProxyHttpsRedirectOptions redirect)
     {
-        _ = allowEmptyTarget;
         if (redirect.StatusCode.HasValue && !RedirectStatusCodes.Contains(redirect.StatusCode.Value))
         {
             failures.Add($"{routePrefix}:HttpsRedirect:StatusCode must be one of 301, 302, 303, 307, or 308.");
