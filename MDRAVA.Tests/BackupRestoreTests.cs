@@ -162,6 +162,7 @@ internal static class BackupRestoreTests
             provider,
             new ProxyDataDirectoryBootstrapper(provider),
             new SiteConfigurationParser(),
+            new MDRAVA.INF.Configuration.ProxyAdminUrlPolicy(),
             new ProxyRelativeStoragePathPolicy(),
             NullLogger<ProxyConfigurationLoader>.Instance);
     }

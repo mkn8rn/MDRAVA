@@ -82,6 +82,7 @@ internal static class AdminSecurityTests
                 }
             },
             static _ => null,
+            new ProxyAdminUrlPolicy(),
             new ProxyRelativeStoragePathPolicy());
 
         AssertEx.True(failures.Any(static failure => failure.Contains("non-local", StringComparison.OrdinalIgnoreCase)));

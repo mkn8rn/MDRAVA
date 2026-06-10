@@ -1941,6 +1941,7 @@ internal static class ClientHttp3Tests
             new ProxyConfigLintRuntimeStateSource(new ProxyRuntimeState()),
             new ProxyMetrics(),
             new ProxyConfigLintSourceNameFormatter(),
+            new ProxyAdminUrlPolicy(),
             TimeProvider.System);
         var result = service.LintSubmitted(new ConfigLintRequest(
             "json",

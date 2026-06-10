@@ -87,6 +87,7 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<IProxyConfigurationReadProjectionSource<ProxyConfigurationProjection>, ProxyConfigurationReadProjectionSource>();
         services.AddSingleton<IProxyConfigurationReadOperations<ProxyConfigurationProjection>, ProxyConfigurationReadOperations<ProxyConfigurationProjection>>();
         services.AddSingleton<ProxyConfigurationReadAdministrationService<ProxyConfigurationProjection>>();
+        services.AddSingleton<IProxyAdminUrlPolicy, ProxyAdminUrlPolicy>();
         services.AddSingleton<IProxyRelativeStoragePathPolicy, ProxyRelativeStoragePathPolicy>();
         services.AddSingleton<IProxyDataDirectoryPathSafety, ProxyDataDirectoryPathSafety>();
     }

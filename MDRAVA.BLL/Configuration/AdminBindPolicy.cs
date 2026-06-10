@@ -4,7 +4,9 @@ public static class AdminBindPolicy
 {
     public const string DefaultAdminUrl = "http://localhost:5041";
 
-    public static AdminBindResolution Resolve(AdminBindPolicyInput input)
+    public static AdminBindResolution Resolve(
+        AdminBindPolicyInput input,
+        IProxyAdminUrlPolicy adminUrlPolicy)
     {
         foreach (var candidate in input.Candidates)
         {
@@ -17,31 +19,24 @@ public static class AdminBindPolicy
                 candidate.Urls,
                 candidate.Source,
                 candidate.ApplyToWebHost,
-                input.StartupSecurity);
+                input.StartupSecurity,
+                adminUrlPolicy);
         }
 
         return Validate(
             [DefaultAdminUrl],
             "default",
             applyToWebHost: true,
-            input.StartupSecurity);
-    }
-
-    public static bool IsLocalAdminUrl(string url)
-    {
-        return ProxyAdminUrlPolicy.IsLocal(url);
-    }
-
-    public static bool IsValidAdminUrl(string url)
-    {
-        return ProxyAdminUrlPolicy.IsValid(url);
+            input.StartupSecurity,
+            adminUrlPolicy);
     }
 
     private static AdminBindResolution Validate(
         IReadOnlyList<string> urls,
         string source,
         bool applyToWebHost,
-        AdminStartupSecurityOptions startupSecurity)
+        AdminStartupSecurityOptions startupSecurity,
+        IProxyAdminUrlPolicy adminUrlPolicy)
     {
         var normalizedUrls = urls
             .Where(static url => !string.IsNullOrWhiteSpace(url))
@@ -55,13 +50,13 @@ public static class AdminBindPolicy
 
         foreach (var url in normalizedUrls)
         {
-            if (!IsValidAdminUrl(url))
+            if (!adminUrlPolicy.IsValid(url))
             {
                 throw new InvalidOperationException($"MDRAVA admin bind URL '{url}' is invalid. Use an absolute http or https URL.");
             }
         }
 
-        var isLocalOnly = normalizedUrls.All(IsLocalAdminUrl);
+        var isLocalOnly = normalizedUrls.All(adminUrlPolicy.IsLocal);
         if (!isLocalOnly && !startupSecurity.AuthenticationEnabled)
         {
             throw new InvalidOperationException(

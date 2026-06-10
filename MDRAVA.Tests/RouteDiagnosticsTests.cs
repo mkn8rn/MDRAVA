@@ -436,6 +436,7 @@ internal static class RouteDiagnosticsTests
             new FixedConfigLintRuntimeStateSource([]),
             metrics,
             new ProxyConfigLintSourceNameFormatter(),
+            new ProxyAdminUrlPolicy(),
             TimeProvider.System);
 
         var result = service.LintActive();
@@ -460,6 +461,7 @@ internal static class RouteDiagnosticsTests
             new FixedConfigLintRuntimeStateSource([]),
             new FixedConfigLintMetricsSink(),
             new ProxyConfigLintSourceNameFormatter(),
+            new ProxyAdminUrlPolicy(),
             TimeProvider.System);
 
         var result = service.LintSubmitted(new ConfigLintRequest("yml", "submitted"));
@@ -580,6 +582,7 @@ internal static class RouteDiagnosticsTests
             new ProxyConfigLintRuntimeStateSource(new ProxyRuntimeState()),
             metrics,
             new ProxyConfigLintSourceNameFormatter(),
+            new ProxyAdminUrlPolicy(),
             TimeProvider.System);
     }
 

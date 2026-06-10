@@ -14,6 +14,7 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
     private readonly IProxyConfigLintRuntimeStateSource _runtimeStateSource;
     private readonly IProxyConfigLintMetricsSink _metricsSink;
     private readonly IProxyConfigLintSourceNameFormatter _sourceNameFormatter;
+    private readonly IProxyAdminUrlPolicy _adminUrlPolicy;
     private readonly TimeProvider _timeProvider;
     private ConfigLintStatus _lastActiveStatus = ConfigLintStatus.Empty;
 
@@ -23,6 +24,7 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
         IProxyConfigLintRuntimeStateSource runtimeStateSource,
         IProxyConfigLintMetricsSink metricsSink,
         IProxyConfigLintSourceNameFormatter sourceNameFormatter,
+        IProxyAdminUrlPolicy adminUrlPolicy,
         TimeProvider timeProvider)
     {
         _activeConfigurationSource = activeConfigurationSource;
@@ -30,6 +32,7 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
         _runtimeStateSource = runtimeStateSource;
         _metricsSink = metricsSink;
         _sourceNameFormatter = sourceNameFormatter;
+        _adminUrlPolicy = adminUrlPolicy;
         _timeProvider = timeProvider;
     }
 
@@ -290,14 +293,14 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
         }
     }
 
-    private static void AddAdminFindings(
+    private void AddAdminFindings(
         ProxyConfigLintConfigurationSnapshot snapshot,
         string? sourceName,
         List<ConfigLintFinding> findings)
     {
         foreach (var url in snapshot.AdminSecurity.Urls)
         {
-            if (!IsNonLocalAdminUrl(url))
+            if (!_adminUrlPolicy.IsNonLocal(url))
             {
                 continue;
             }
@@ -384,26 +387,6 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
             || path.Contains("user", StringComparison.Ordinal)
             || route.CacheVaryByHeaders.Any(static header => string.Equals(header, "Authorization", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(header, "Cookie", StringComparison.OrdinalIgnoreCase));
-    }
-
-    private static bool IsNonLocalAdminUrl(string url)
-    {
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
-        {
-            return false;
-        }
-
-        if (string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        if (!System.Net.IPAddress.TryParse(uri.Host, out var address))
-        {
-            return true;
-        }
-
-        return !System.Net.IPAddress.IsLoopback(address);
     }
 
     private string ActiveSource(ProxyConfigLintConfigurationSnapshot snapshot)

@@ -1,10 +1,16 @@
 using System.Net;
+using MDRAVA.BLL.Configuration;
 
-namespace MDRAVA.BLL.Configuration;
+namespace MDRAVA.INF.Configuration;
 
-public static class ProxyAdminUrlPolicy
+public sealed class ProxyAdminUrlPolicy : IProxyAdminUrlPolicy
 {
-    public static bool IsLocal(string url)
+    public bool IsValid(string url)
+    {
+        return TryCreateAbsoluteUri(url, out _);
+    }
+
+    public bool IsLocal(string url)
     {
         if (!TryCreateAbsoluteUri(url, out var uri))
         {
@@ -26,9 +32,9 @@ public static class ProxyAdminUrlPolicy
             && IPAddress.IsLoopback(address);
     }
 
-    public static bool IsValid(string url)
+    public bool IsNonLocal(string url)
     {
-        return TryCreateAbsoluteUri(url, out _);
+        return IsValid(url) && !IsLocal(url);
     }
 
     private static bool TryCreateAbsoluteUri(string url, out Uri uri)

@@ -16,6 +16,7 @@ public static class ProxyOperationalOptionsValidationRules
     public static IReadOnlyList<string> Validate(
         ProxyOperationalOptions options,
         Func<string, string?> readEnvironmentVariable,
+        IProxyAdminUrlPolicy adminUrlPolicy,
         IProxyRelativeStoragePathPolicy relativeStoragePathPolicy)
     {
         List<string> failures = [];
@@ -34,7 +35,7 @@ public static class ProxyOperationalOptionsValidationRules
         ValidateLimits(failures, options.Limits);
         ValidateForwardedHeaders(failures, options.ForwardedHeaders);
         ValidateCertificates(failures, options.Certificates);
-        ValidateAdmin(failures, options.Admin, readEnvironmentVariable);
+        ValidateAdmin(failures, options.Admin, readEnvironmentVariable, adminUrlPolicy);
         ValidateAcme(failures, options.Acme, options.Certificates, relativeStoragePathPolicy);
         ValidateMetrics(failures, options.Metrics);
         return failures;
@@ -295,7 +296,8 @@ public static class ProxyOperationalOptionsValidationRules
     private static void ValidateAdmin(
         List<string> failures,
         ProxyAdminOptions options,
-        Func<string, string?> readEnvironmentVariable)
+        Func<string, string?> readEnvironmentVariable,
+        IProxyAdminUrlPolicy adminUrlPolicy)
     {
         if (options.RecentAuditCapacity is < MinimumAuditCapacity or > MaximumAuditCapacity)
         {
@@ -325,13 +327,13 @@ public static class ProxyOperationalOptionsValidationRules
         {
             var url = urls[index];
             var prefix = $"Proxy:Admin:Urls:{index}";
-            if (!ProxyAdminUrlPolicy.IsValid(url))
+            if (!adminUrlPolicy.IsValid(url))
             {
                 failures.Add($"{prefix} '{url}' must be an absolute http or https URL.");
             }
         }
 
-        if (urls.Any(static url => ProxyAdminUrlPolicy.IsValid(url) && !ProxyAdminUrlPolicy.IsLocal(url))
+        if (urls.Any(adminUrlPolicy.IsNonLocal)
             && !ProxyAdminSecurityTokenPolicy.IsAuthenticationEnabled(options, readEnvironmentVariable))
         {
             failures.Add("Proxy admin Urls includes a non-local bind address, so Admin:RequireAuthentication must be true with a configured token.");

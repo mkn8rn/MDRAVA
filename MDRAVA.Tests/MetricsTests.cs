@@ -200,6 +200,7 @@ internal static class MetricsTests
                 }
             },
             static _ => null,
+            new MDRAVA.INF.Configuration.ProxyAdminUrlPolicy(),
             new ProxyRelativeStoragePathPolicy());
 
         AssertEx.True(failures.Any(static failure => failure.Contains("PublicMetricsEnabled", StringComparison.Ordinal)), string.Join("; ", failures));
@@ -414,6 +415,7 @@ internal static class MetricsTests
             provider,
             new ProxyDataDirectoryBootstrapper(provider),
             new SiteConfigurationParser(),
+            new MDRAVA.INF.Configuration.ProxyAdminUrlPolicy(),
             new ProxyRelativeStoragePathPolicy(),
             NullLogger<ProxyConfigurationLoader>.Instance);
     }

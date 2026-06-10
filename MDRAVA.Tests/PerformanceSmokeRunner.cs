@@ -503,6 +503,7 @@ internal static class PerformanceSmokeRunner
             dataDirectoryProvider,
             new ProxyDataDirectoryBootstrapper(dataDirectoryProvider),
             new SiteConfigurationParser(),
+            new ProxyAdminUrlPolicy(),
             new ProxyRelativeStoragePathPolicy(),
             NullLogger<ProxyConfigurationLoader>.Instance);
     }

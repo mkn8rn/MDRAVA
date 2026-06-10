@@ -1,4 +1,5 @@
 using MDRAVA.BLL.Configuration;
+using MDRAVA.INF.Configuration;
 using MDRAVA.INF.Configuration.Loading;
 using MDRAVA.INF.Configuration.Paths;
 
@@ -45,7 +46,8 @@ public static class AdminBindWebHostConfigurator
                         AspNetCoreUrlsConfigurationKey,
                         ApplyToWebHost: false)
                 ],
-                startupSecurity));
+                startupSecurity),
+            new ProxyAdminUrlPolicy());
     }
 
     private static IReadOnlyList<string> ReadConfiguredUrls(IConfiguration configuration, string key)
