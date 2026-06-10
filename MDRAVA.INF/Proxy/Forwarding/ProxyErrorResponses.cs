@@ -42,9 +42,11 @@ public static class ProxyErrorResponses
         TimeSpan timeout,
         ProxyMetrics metrics,
         CancellationToken cancellationToken,
-        string? contentType = "text/plain",
-        IReadOnlyList<ProxyHeaderField>? headers = null)
+        string? contentType,
+        IReadOnlyList<ProxyHeaderField> headers)
     {
+        ArgumentNullException.ThrowIfNull(headers);
+
         var builder = new StringBuilder();
         var bodyBytes = Encoding.UTF8.GetBytes(body);
         builder.Append("HTTP/1.1 ")
@@ -62,12 +64,9 @@ public static class ProxyErrorResponses
             builder.Append("X-Request-Id: ").Append(requestId).Append("\r\n");
         }
 
-        if (headers is not null)
+        foreach (var header in headers)
         {
-            foreach (var header in headers)
-            {
-                builder.Append(header.Name).Append(": ").Append(header.Value).Append("\r\n");
-            }
+            builder.Append(header.Name).Append(": ").Append(header.Value).Append("\r\n");
         }
 
         builder.Append("Content-Length: ")

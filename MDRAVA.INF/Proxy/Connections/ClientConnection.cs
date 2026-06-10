@@ -936,7 +936,8 @@ public sealed class ClientConnection
             _configurationSnapshot.Timeouts.DownstreamWriteTimeout,
             _metrics,
             cancellationToken,
-            headers: WithAltSvc());
+            contentType: "text/plain",
+            headers: WithAltSvc([]));
 
         context.ResponseStarted = true;
         context.ResponseStatusCode = statusCode;
@@ -1018,19 +1019,21 @@ public sealed class ClientConnection
             _configurationSnapshot.Timeouts.DownstreamWriteTimeout,
             _metrics,
             cancellationToken,
-            response.ContentType,
-            WithAltSvc(response.Headers));
+            contentType: response.ContentType,
+            headers: WithAltSvc(response.Headers));
 
         context.ResponseStarted = true;
         context.ResponseStatusCode = response.StatusCode;
         context.KeepClientConnectionOpen = false;
     }
 
-    private IReadOnlyList<ProxyHeaderField> WithAltSvc(IReadOnlyList<ProxyHeaderField>? headers = null)
+    private IReadOnlyList<ProxyHeaderField> WithAltSvc(IReadOnlyList<ProxyHeaderField> headers)
     {
-        List<ProxyHeaderField> result = headers is null
-            ? []
-            : headers.Where(static header => !string.Equals(header.Name, "alt-svc", StringComparison.OrdinalIgnoreCase)).ToList();
+        ArgumentNullException.ThrowIfNull(headers);
+
+        var result = headers
+            .Where(static header => !string.Equals(header.Name, "alt-svc", StringComparison.OrdinalIgnoreCase))
+            .ToList();
         if (_altSvcPolicy.TryCreateHeader(_listener, out var altSvc))
         {
             result.Add(altSvc);

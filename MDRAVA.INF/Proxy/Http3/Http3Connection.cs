@@ -792,6 +792,25 @@ public sealed class Http3Connection
             response.Headers);
     }
 
+    private ValueTask WriteGeneratedResponseAsync(
+        QuicStream stream,
+        int statusCode,
+        string body,
+        ProxyRequestContext context,
+        string method,
+        CancellationToken cancellationToken)
+    {
+        return WriteGeneratedResponseAsync(
+            stream,
+            statusCode,
+            body,
+            context,
+            method,
+            cancellationToken,
+            "text/plain; charset=utf-8",
+            []);
+    }
+
     private async ValueTask WriteGeneratedResponseAsync(
         QuicStream stream,
         int statusCode,
@@ -799,9 +818,11 @@ public sealed class Http3Connection
         ProxyRequestContext context,
         string method,
         CancellationToken cancellationToken,
-        string? contentType = "text/plain; charset=utf-8",
-        IReadOnlyList<ProxyHeaderField>? extraHeaders = null)
+        string? contentType,
+        IReadOnlyList<ProxyHeaderField> extraHeaders)
     {
+        ArgumentNullException.ThrowIfNull(extraHeaders);
+
         var bodyBytes = Encoding.UTF8.GetBytes(body);
         List<ProxyHeaderField> headers =
         [
@@ -813,14 +834,11 @@ public sealed class Http3Connection
             headers.Add(new ProxyHeaderField("content-type", contentType));
         }
 
-        if (extraHeaders is not null)
+        foreach (var header in extraHeaders)
         {
-            foreach (var header in extraHeaders)
+            if (!HopByHopHeaderPolicy.IsHopByHopHeader(header.Name))
             {
-                if (!HopByHopHeaderPolicy.IsHopByHopHeader(header.Name))
-                {
-                    headers.Add(new ProxyHeaderField(header.Name.ToLowerInvariant(), header.Value));
-                }
+                headers.Add(new ProxyHeaderField(header.Name.ToLowerInvariant(), header.Value));
             }
         }
 
