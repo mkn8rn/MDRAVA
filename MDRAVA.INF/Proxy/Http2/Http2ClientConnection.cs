@@ -1489,7 +1489,7 @@ public sealed class Http2ClientConnection
 
                 if ((current & 0x20) != 0)
                 {
-                    _ = DecodeInteger(block, 5, ref offset);
+                    SkipInteger(block, 5, ref offset);
                     continue;
                 }
 
@@ -1729,6 +1729,11 @@ public sealed class Http2ClientConnection
             }
 
             return value;
+        }
+
+        private static void SkipInteger(byte[] block, int prefixBits, ref int offset)
+        {
+            DecodeInteger(block, prefixBits, ref offset);
         }
 
         private static void WriteInteger(Stream stream, byte prefix, int prefixBits, int value)
