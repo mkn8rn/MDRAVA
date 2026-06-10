@@ -2,8 +2,9 @@ using MDRAVA.BLL.ControlPlane.Resilience;
 using MDRAVA.BLL.ControlPlane.HealthChecks;
 using System.Collections.Concurrent;
 using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane;
 
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.UpstreamSelection;
 
 public sealed class RoundRobinUpstreamSelector : IUpstreamSelector
 {

@@ -1,7 +1,7 @@
 using MDRAVA.BLL.ControlPlane.Resilience;
 using MDRAVA.BLL.Configuration;
 
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.UpstreamSelection;
 
 public sealed record UpstreamSelection(
     RuntimeRoute Route,
