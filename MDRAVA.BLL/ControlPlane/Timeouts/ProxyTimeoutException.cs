@@ -1,4 +1,4 @@
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.Timeouts;
 
 public sealed class ProxyTimeoutException : TimeoutException
 {
