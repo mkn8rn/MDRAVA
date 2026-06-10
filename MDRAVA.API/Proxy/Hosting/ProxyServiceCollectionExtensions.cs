@@ -89,6 +89,8 @@ public static class ProxyServiceCollectionExtensions
             static services => services.GetRequiredService<ProxyMetrics>());
         services.AddSingleton<IProxyHttp3AltSvcMetricsSink>(
             static services => services.GetRequiredService<ProxyMetrics>());
+        services.AddSingleton<IProxyAccessLogMetricsSink>(
+            static services => services.GetRequiredService<ProxyMetrics>());
         services.AddSingleton<IProxyRequestDiagnosticsMetricsSink>(
             static services => services.GetRequiredService<ProxyMetrics>());
         services.AddSingleton<IProxyRequestIdMetricsSink>(

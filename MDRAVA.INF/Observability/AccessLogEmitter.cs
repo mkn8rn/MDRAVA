@@ -1,5 +1,4 @@
 using MDRAVA.BLL.ControlPlane;
-using MDRAVA.BLL.ControlPlane.Metrics;
 using MDRAVA.BLL.ControlPlane.RequestDiagnostics;
 using MDRAVA.BLL.Infrastructure;
 using Microsoft.Extensions.Logging;
@@ -11,13 +10,13 @@ public sealed class AccessLogEmitter
     private const int MaxDiagnosticTextLength = 512;
 
     private readonly RecentRequestDiagnosticsStore _diagnostics;
-    private readonly ProxyMetrics _metrics;
+    private readonly IProxyAccessLogMetricsSink _metrics;
     private readonly ILogger<AccessLogEmitter> _logger;
     private readonly IProxyLogPersistenceStore? _logPersistenceStore;
 
     public AccessLogEmitter(
         RecentRequestDiagnosticsStore diagnostics,
-        ProxyMetrics metrics,
+        IProxyAccessLogMetricsSink metrics,
         ILogger<AccessLogEmitter> logger,
         IProxyLogPersistenceStore? logPersistenceStore = null)
     {

@@ -4,6 +4,7 @@ using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.Acme;
 using MDRAVA.BLL.ControlPlane.AdminAuthentication;
 using MDRAVA.BLL.ControlPlane.ConfigLint;
+using MDRAVA.BLL.ControlPlane.RequestDiagnostics;
 using MDRAVA.BLL.ControlPlane.RouteDiagnostics;
 
 namespace MDRAVA.BLL.ControlPlane.Metrics;
@@ -14,6 +15,7 @@ public sealed class ProxyMetrics :
     IProxyCircuitBreakerMetricsSink,
     IProxyUpstreamHealthMetricsSink,
     IProxyHttp3AltSvcMetricsSink,
+    IProxyAccessLogMetricsSink,
     IProxyRequestDiagnosticsMetricsSink,
     IProxyRequestIdMetricsSink,
     IProxyRateLimitMetricsSink,
