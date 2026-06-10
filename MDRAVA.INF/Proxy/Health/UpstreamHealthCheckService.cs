@@ -1,5 +1,4 @@
 using MDRAVA.BLL.ControlPlane.HealthChecks;
-using MDRAVA.BLL.ControlPlane;
 using MDRAVA.BLL.Infrastructure;
 using Microsoft.Extensions.Hosting;
 

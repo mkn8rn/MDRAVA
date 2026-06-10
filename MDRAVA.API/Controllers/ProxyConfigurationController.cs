@@ -1,6 +1,5 @@
 using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 using MDRAVA.BLL.Configuration;
-using MDRAVA.BLL.ControlPlane;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MDRAVA.API.Controllers;

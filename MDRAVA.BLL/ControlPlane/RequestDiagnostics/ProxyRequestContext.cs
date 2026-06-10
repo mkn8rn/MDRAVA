@@ -2,7 +2,7 @@ using MDRAVA.BLL.Configuration;
 
 using MDRAVA.BLL.ControlPlane.Forwarding;
 
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.RequestDiagnostics;
 
 public sealed class ProxyRequestContext
 {

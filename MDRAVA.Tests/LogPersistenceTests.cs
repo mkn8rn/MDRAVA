@@ -6,7 +6,6 @@ using MDRAVA.INF.Proxy.Health;
 using MDRAVA.API.Proxy.Hosting;
 using MDRAVA.INF.Observability;
 using MDRAVA.API.Proxy.Security;
-using MDRAVA.BLL.ControlPlane;
 using MDRAVA.INF.Observability;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;

@@ -1,5 +1,4 @@
 using MDRAVA.BLL.Configuration;
-using MDRAVA.BLL.ControlPlane;
 using MDRAVA.BLL.ControlPlane.Forwarding;
 using MDRAVA.BLL.ControlPlane.Metrics;
 using Microsoft.Extensions.Logging;

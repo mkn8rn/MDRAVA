@@ -4,7 +4,6 @@ using MDRAVA.BLL.ControlPlane.Http1;
 using MDRAVA.BLL.ControlPlane.Timeouts;
 using MDRAVA.BLL.ControlPlane.Upgrades;
 using MDRAVA.BLL.Configuration;
-using MDRAVA.BLL.ControlPlane;
 using MDRAVA.BLL.ControlPlane.Metrics;
 using Microsoft.Extensions.Logging;
 using System.Buffers;

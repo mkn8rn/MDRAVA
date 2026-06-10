@@ -3,7 +3,6 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using MDRAVA.BLL.Configuration;
-using MDRAVA.BLL.ControlPlane;
 using MDRAVA.INF.Configuration.Loading;
 
 namespace MDRAVA.INF.Acme;

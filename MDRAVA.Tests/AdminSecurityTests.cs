@@ -5,7 +5,6 @@ using MDRAVA.INF.Configuration;
 using MDRAVA.INF.Configuration.Loading;
 using MDRAVA.INF.Configuration.Paths;
 using MDRAVA.API.Proxy.Security;
-using MDRAVA.BLL.ControlPlane;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;

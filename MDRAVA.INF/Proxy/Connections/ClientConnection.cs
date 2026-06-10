@@ -10,7 +10,6 @@ using MDRAVA.BLL.ControlPlane.Upgrades;
 using MDRAVA.BLL.ControlPlane.Resilience;
 using MDRAVA.BLL.ControlPlane.HealthChecks;
 using MDRAVA.BLL.Configuration;
-using MDRAVA.BLL.ControlPlane;
 using MDRAVA.BLL.ControlPlane.Metrics;
 using MDRAVA.BLL.ControlPlane.RequestDiagnostics;
 using MDRAVA.BLL.ControlPlane.Requests;
