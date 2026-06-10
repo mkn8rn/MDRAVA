@@ -657,7 +657,7 @@ public sealed class Http3Connection
                 _metrics.RetryAttempted();
                 if (route.Retry.RetryBackoff > TimeSpan.Zero)
                 {
-                    await Task.Delay(route.Retry.RetryBackoff, cancellationToken);
+                    await Task.Delay(route.Retry.RetryBackoff, _timeProvider, cancellationToken);
                 }
 
                 continue;
