@@ -1,4 +1,4 @@
-using MDRAVA.API.Proxy.Configuration;
+using MDRAVA.INF.Configuration;
 
 namespace MDRAVA.Tests;
 

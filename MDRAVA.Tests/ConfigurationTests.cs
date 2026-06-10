@@ -1,6 +1,6 @@
 using MDRAVA.API.Controllers;
-using MDRAVA.API.Proxy.Configuration;
-using MDRAVA.API.Proxy.Configuration.Loading;
+using MDRAVA.INF.Configuration;
+using MDRAVA.INF.Configuration.Loading;
 using MDRAVA.INF.Configuration.Paths;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;

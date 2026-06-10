@@ -1,8 +1,8 @@
 using System.Net;
 using System.Reflection;
 using MDRAVA.API.Controllers;
-using MDRAVA.API.Proxy.Configuration;
-using MDRAVA.API.Proxy.Configuration.Loading;
+using MDRAVA.INF.Configuration;
+using MDRAVA.INF.Configuration.Loading;
 using MDRAVA.INF.Configuration.Paths;
 using MDRAVA.API.Proxy.Security;
 using MDRAVA.BLL.ControlPlane;

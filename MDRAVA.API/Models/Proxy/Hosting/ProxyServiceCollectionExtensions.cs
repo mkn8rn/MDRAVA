@@ -1,5 +1,5 @@
-using MDRAVA.API.Proxy.Configuration;
-using MDRAVA.API.Proxy.Configuration.Loading;
+using MDRAVA.INF.Configuration;
+using MDRAVA.INF.Configuration.Loading;
 using MDRAVA.INF.Acme;
 using MDRAVA.INF.Proxy.Forwarding;
 using MDRAVA.INF.Proxy.Health;

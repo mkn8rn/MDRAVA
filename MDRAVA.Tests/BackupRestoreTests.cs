@@ -1,5 +1,5 @@
 using System.Text.Json;
-using MDRAVA.API.Proxy.Configuration.Loading;
+using MDRAVA.INF.Configuration.Loading;
 using MDRAVA.INF.Configuration.Paths;
 using MDRAVA.INF.DataDirectory;
 using Microsoft.Extensions.Logging.Abstractions;

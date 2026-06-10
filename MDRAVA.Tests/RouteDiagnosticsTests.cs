@@ -1,7 +1,7 @@
 using System.Net;
 using MDRAVA.API.Controllers;
-using MDRAVA.API.Proxy.Configuration;
-using MDRAVA.API.Proxy.Configuration.Loading;
+using MDRAVA.INF.Configuration;
+using MDRAVA.INF.Configuration.Loading;
 using MDRAVA.INF.Proxy.Forwarding;
 using MDRAVA.INF.Proxy.Health;
 using MDRAVA.API.Proxy.Hosting;
