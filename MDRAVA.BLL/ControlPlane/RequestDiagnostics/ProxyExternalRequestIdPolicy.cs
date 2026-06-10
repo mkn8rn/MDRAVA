@@ -1,4 +1,6 @@
-namespace MDRAVA.BLL.ControlPlane;
+using MDRAVA.BLL.ControlPlane;
+
+namespace MDRAVA.BLL.ControlPlane.RequestDiagnostics;
 
 public static class ProxyExternalRequestIdPolicy
 {

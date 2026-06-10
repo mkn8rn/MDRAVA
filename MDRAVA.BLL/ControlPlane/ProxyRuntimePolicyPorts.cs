@@ -36,11 +36,6 @@ public interface IProxyHttp3AltSvcMetricsSink
     void Http3AltSvcSuppressed();
 }
 
-public interface IProxyRequestIdMetricsSink
-{
-    void RequestIdGenerated();
-}
-
 public interface IProxyRateLimitMetricsSink
 {
     void RequestRateLimited();

@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.RequestDiagnostics;
 
 public sealed class RequestIdGenerator
 {
