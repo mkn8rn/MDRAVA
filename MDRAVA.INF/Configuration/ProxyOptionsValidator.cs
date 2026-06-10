@@ -1,7 +1,7 @@
 using MDRAVA.BLL.Configuration;
 using Microsoft.Extensions.Options;
 
-namespace MDRAVA.API.Proxy.Configuration;
+namespace MDRAVA.INF.Configuration;
 
 public sealed class ProxyOptionsValidator : IValidateOptions<ProxyOptions>
 {
