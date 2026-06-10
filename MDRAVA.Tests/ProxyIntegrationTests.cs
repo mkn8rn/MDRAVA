@@ -2957,7 +2957,7 @@ internal static class ProxyIntegrationTests
         string ClientResponse,
         string UpstreamRequest,
         ProxyMetricsSnapshot Metrics,
-        IReadOnlyList<ProxyRequestDiagnosticSourceEvent> Diagnostics);
+        IReadOnlyList<ProxyRecentRequestDiagnosticEvent> Diagnostics);
 
     private sealed record TlsProxyScenarioResult(
         string ClientResponse,
@@ -2984,12 +2984,12 @@ internal static class ProxyIntegrationTests
         string ClientObservation,
         UpgradeUpstreamResult UpstreamResult,
         ProxyMetricsSnapshot Metrics,
-        IReadOnlyList<ProxyRequestDiagnosticSourceEvent> Diagnostics);
+        IReadOnlyList<ProxyRecentRequestDiagnosticEvent> Diagnostics);
 
     private sealed record TwoUpstreamHttpResult(
         int FirstRequests,
         int SecondRequests,
         ProxyMetricsSnapshot Metrics,
         IReadOnlyList<ProxyUpstreamStatusResponse> Upstreams,
-        IReadOnlyList<ProxyRequestDiagnosticSourceEvent> Diagnostics);
+        IReadOnlyList<ProxyRecentRequestDiagnosticEvent> Diagnostics);
 }

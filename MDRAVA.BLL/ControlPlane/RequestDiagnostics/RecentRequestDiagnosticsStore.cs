@@ -6,14 +6,14 @@ public sealed class RecentRequestDiagnosticsStore : IProxyRequestDiagnosticsSour
 
     private readonly IProxyRequestDiagnosticsMetricsSink _metrics;
     private readonly object _gate = new();
-    private readonly LinkedList<ProxyRequestDiagnosticSourceEvent> _events = new();
+    private readonly LinkedList<ProxyRecentRequestDiagnosticEvent> _events = new();
 
     public RecentRequestDiagnosticsStore(IProxyRequestDiagnosticsMetricsSink metrics)
     {
         _metrics = metrics;
     }
 
-    public void Add(ProxyRequestDiagnosticSourceEvent diagnostic, int capacity)
+    public void Add(ProxyRecentRequestDiagnosticEvent diagnostic, int capacity)
     {
         lock (_gate)
         {
@@ -28,10 +28,10 @@ public sealed class RecentRequestDiagnosticsStore : IProxyRequestDiagnosticsSour
         }
     }
 
-    public IReadOnlyList<ProxyRequestDiagnosticSourceEvent> Recent(int limit)
+    public IReadOnlyList<ProxyRecentRequestDiagnosticEvent> Recent(int limit)
     {
         var boundedLimit = Math.Clamp(limit, 1, MaximumReadLimit);
-        List<ProxyRequestDiagnosticSourceEvent> results = [];
+        List<ProxyRecentRequestDiagnosticEvent> results = [];
 
         lock (_gate)
         {

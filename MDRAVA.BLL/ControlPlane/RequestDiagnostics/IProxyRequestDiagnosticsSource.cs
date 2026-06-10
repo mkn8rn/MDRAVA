@@ -2,5 +2,5 @@ namespace MDRAVA.BLL.ControlPlane.RequestDiagnostics;
 
 public interface IProxyRequestDiagnosticsSource
 {
-    IReadOnlyList<ProxyRequestDiagnosticSourceEvent> Recent(int limit);
+    IReadOnlyList<ProxyRecentRequestDiagnosticEvent> Recent(int limit);
 }

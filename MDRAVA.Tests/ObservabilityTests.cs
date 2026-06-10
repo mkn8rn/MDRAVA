@@ -39,7 +39,7 @@ internal static class ObservabilityTests
         AssertEx.Equal("request-9", recent[0].RequestId);
     }
 
-    public static void RequestDiagnosticsReaderProjectsSourceEvents()
+    public static void RequestDiagnosticsReaderReturnsRecentEventsFromSource()
     {
         var source = new FixedRequestDiagnosticsSource(
             [
@@ -131,9 +131,9 @@ internal static class ObservabilityTests
         AssertEx.Equal(2, metrics.GeneratedCount);
     }
 
-    private static ProxyRequestDiagnosticSourceEvent CreateEvent(string requestId, string target)
+    private static ProxyRecentRequestDiagnosticEvent CreateEvent(string requestId, string target)
     {
-        return new ProxyRequestDiagnosticSourceEvent(
+        return new ProxyRecentRequestDiagnosticEvent(
             DateTimeOffset.UtcNow,
             requestId,
             null,
@@ -165,9 +165,9 @@ internal static class ObservabilityTests
         return new ProxyRequestDiagnosticsReader(store);
     }
 
-    private static ProxyRequestDiagnosticSourceEvent CreateSourceEvent(string requestId, string target)
+    private static ProxyRecentRequestDiagnosticEvent CreateSourceEvent(string requestId, string target)
     {
-        return new ProxyRequestDiagnosticSourceEvent(
+        return new ProxyRecentRequestDiagnosticEvent(
             DateTimeOffset.UnixEpoch.AddSeconds(requestId == "new" ? 2 : 1),
             requestId,
             $"client-{requestId}",
@@ -195,16 +195,16 @@ internal static class ObservabilityTests
 
     private sealed class FixedRequestDiagnosticsSource : IProxyRequestDiagnosticsSource
     {
-        private readonly IReadOnlyList<ProxyRequestDiagnosticSourceEvent> _events;
+        private readonly IReadOnlyList<ProxyRecentRequestDiagnosticEvent> _events;
 
-        public FixedRequestDiagnosticsSource(IReadOnlyList<ProxyRequestDiagnosticSourceEvent> events)
+        public FixedRequestDiagnosticsSource(IReadOnlyList<ProxyRecentRequestDiagnosticEvent> events)
         {
             _events = events;
         }
 
         public int LastLimit { get; private set; }
 
-        public IReadOnlyList<ProxyRequestDiagnosticSourceEvent> Recent(int limit)
+        public IReadOnlyList<ProxyRecentRequestDiagnosticEvent> Recent(int limit)
         {
             LastLimit = limit;
             return _events;

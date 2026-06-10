@@ -6,7 +6,7 @@ internal static partial class TestRegistry
     [
     Test("Recent diagnostics store is bounded", Sync(ObservabilityTests.RecentDiagnosticsStoreIsBounded), TestTaxonomy.Limits, TestTaxonomy.Metrics),
     Test("Diagnostics controller honors safe limit", Sync(ObservabilityTests.DiagnosticsControllerHonorsSafeLimit), TestTaxonomy.Limits, TestTaxonomy.Metrics),
-    Test("Request diagnostics reader projects source events", Sync(ObservabilityTests.RequestDiagnosticsReaderProjectsSourceEvents), TestTaxonomy.Metrics),
+    Test("Request diagnostics reader returns recent events from source", Sync(ObservabilityTests.RequestDiagnosticsReaderReturnsRecentEventsFromSource), TestTaxonomy.Metrics),
     Test("Diagnostics event omits bodies and secrets", Sync(ObservabilityTests.DiagnosticsEventDoesNotCarryBodiesOrSecrets), TestTaxonomy.Metrics),
     Test("External request ID policy normalizes safe header values", Sync(ObservabilityTests.ExternalRequestIdPolicyNormalizesSafeHeaderValues), TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),
     Test("Request ID generator creates distinct IDs and records metric", Sync(ObservabilityTests.RequestIdGeneratorCreatesDistinctIdsAndRecordsMetric), TestTaxonomy.Metrics),
