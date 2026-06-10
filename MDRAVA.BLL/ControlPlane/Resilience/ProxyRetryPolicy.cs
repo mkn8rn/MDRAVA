@@ -1,6 +1,7 @@
 using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane;
 
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.Resilience;
 
 public static class ProxyRetryPolicy
 {
