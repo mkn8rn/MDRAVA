@@ -343,7 +343,6 @@ public sealed class ClientConnection
                 {
                     var shouldContinue = await HandleUpgradeAsync(
                         clientStream,
-                        requestHeadRead,
                         requestHead,
                         forwardedHeaders,
                         currentContext,
@@ -699,13 +698,11 @@ public sealed class ClientConnection
 
     private async ValueTask<bool> HandleUpgradeAsync(
         Stream clientStream,
-        Http1HeadReadResult requestHeadRead,
         Http1RequestHead requestHead,
         ForwardedHeadersContext forwardedHeaders,
         ProxyRequestContext context,
         CancellationToken cancellationToken)
     {
-        _ = requestHeadRead;
         context.IsUpgrade = true;
         _metrics.UpgradeRequestReceived();
         if (!_rateLimiter.TryAcquireUpgrade(
