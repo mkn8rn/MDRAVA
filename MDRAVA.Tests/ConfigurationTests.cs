@@ -75,12 +75,15 @@ internal static class ConfigurationTests
     {
         using var temp = TemporaryDirectory.Create();
         WriteSite(temp.Path, "home.json", port: 18080, upstreamPort: 15000);
-        var loader = CreateLoader(temp.Path);
+        var loadedAtUtc = new DateTimeOffset(2026, 6, 10, 11, 15, 0, TimeSpan.Zero);
+        var loader = CreateLoader(temp.Path, new FixedTimeProvider(loadedAtUtc));
 
         var result = await loader.LoadAsync(CancellationToken.None);
 
         AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
         var snapshot = AssertEx.NotNull(result.Snapshot);
+        AssertEx.Equal(loadedAtUtc, result.AttemptedAtUtc);
+        AssertEx.Equal(loadedAtUtc, snapshot.LoadedAtUtc);
         AssertEx.Equal(Path.Combine(temp.Path, "config", "sites"), result.SourceDirectory);
         AssertEx.Equal(1, snapshot.Listeners.Count);
         AssertEx.Equal(1, snapshot.Routes.Count);
@@ -116,11 +119,13 @@ internal static class ConfigurationTests
         var sites = Directory.CreateDirectory(Path.Combine(temp.Path, "config", "sites")).FullName;
         var yamlPath = Path.Combine(sites, "broken.yaml");
         File.WriteAllText(yamlPath, "name: broken\nlisteners:\n  - name: main\n    port: [not-closed\n");
-        var loader = CreateLoader(temp.Path);
+        var attemptedAtUtc = new DateTimeOffset(2026, 6, 10, 11, 20, 0, TimeSpan.Zero);
+        var loader = CreateLoader(temp.Path, new FixedTimeProvider(attemptedAtUtc));
 
         var result = await loader.LoadAsync(CancellationToken.None);
 
         AssertEx.False(result.Succeeded);
+        AssertEx.Equal(attemptedAtUtc, result.AttemptedAtUtc);
         AssertEx.True(result.FileErrors.Any(error => string.Equals(error.Path, yamlPath, StringComparison.OrdinalIgnoreCase)));
         AssertEx.True(result.Errors.Any(static error => error.Contains("YAML", StringComparison.OrdinalIgnoreCase)), string.Join("; ", result.Errors));
         AssertEx.True(result.Discovery.Files.Any(file =>
@@ -1168,7 +1173,9 @@ internal static class ConfigurationTests
             """);
     }
 
-    private static ProxyConfigurationLoader CreateLoader(string dataDirectory)
+    private static ProxyConfigurationLoader CreateLoader(
+        string dataDirectory,
+        TimeProvider? timeProvider = null)
     {
         return new ProxyConfigurationLoader(
             new MdravaDataDirectoryProvider(new MdravaDataDirectoryOptions
@@ -1185,7 +1192,8 @@ internal static class ConfigurationTests
             new ProxyRelativeStoragePathPolicy(),
             new ProxyUrlSyntaxPolicy(),
             new ProxyForwardedHeadersAddressPolicy(),
-            NullLogger<ProxyConfigurationLoader>.Instance);
+            NullLogger<ProxyConfigurationLoader>.Instance,
+            timeProvider ?? TimeProvider.System);
     }
 
     private static ProxyConfigurationReloadService CreateReloadService(
@@ -1283,6 +1291,21 @@ internal static class ConfigurationTests
           ]
         }
         """;
+    }
+
+    private sealed class FixedTimeProvider : TimeProvider
+    {
+        private readonly DateTimeOffset _utcNow;
+
+        public FixedTimeProvider(DateTimeOffset utcNow)
+        {
+            _utcNow = utcNow;
+        }
+
+        public override DateTimeOffset GetUtcNow()
+        {
+            return _utcNow;
+        }
     }
 
     private sealed class TemporaryDirectory : IDisposable

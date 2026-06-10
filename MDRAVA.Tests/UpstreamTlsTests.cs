@@ -362,7 +362,8 @@ internal static class UpstreamTlsTests
             new ProxyRelativeStoragePathPolicy(),
             new MDRAVA.INF.Configuration.ProxyUrlSyntaxPolicy(),
             new ProxyForwardedHeadersAddressPolicy(),
-            NullLogger<ProxyConfigurationLoader>.Instance);
+            NullLogger<ProxyConfigurationLoader>.Instance,
+            TimeProvider.System);
     }
 
     private static IHost BuildProxyHost(string dataDirectory)

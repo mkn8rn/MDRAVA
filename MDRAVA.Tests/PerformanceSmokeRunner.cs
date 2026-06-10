@@ -508,7 +508,8 @@ internal static class PerformanceSmokeRunner
             new ProxyRelativeStoragePathPolicy(),
             new ProxyUrlSyntaxPolicy(),
             new ProxyForwardedHeadersAddressPolicy(),
-            NullLogger<ProxyConfigurationLoader>.Instance);
+            NullLogger<ProxyConfigurationLoader>.Instance,
+            TimeProvider.System);
     }
 
     private static IHost BuildProxyHost(string dataDirectory)

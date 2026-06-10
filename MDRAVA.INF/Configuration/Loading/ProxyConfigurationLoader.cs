@@ -21,6 +21,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
     private readonly IProxyUrlSyntaxPolicy _urlSyntaxPolicy;
     private readonly IProxyTrustedProxyPolicy _trustedProxyPolicy;
     private readonly ILogger<ProxyConfigurationLoader> _logger;
+    private readonly TimeProvider _timeProvider;
     private int _nextVersion;
 
     public ProxyConfigurationLoader(
@@ -32,7 +33,8 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
         IProxyRelativeStoragePathPolicy relativeStoragePathPolicy,
         IProxyUrlSyntaxPolicy urlSyntaxPolicy,
         IProxyTrustedProxyPolicy trustedProxyPolicy,
-        ILogger<ProxyConfigurationLoader> logger)
+        ILogger<ProxyConfigurationLoader> logger,
+        TimeProvider timeProvider)
     {
         _dataDirectoryProvider = dataDirectoryProvider;
         _bootstrapper = bootstrapper;
@@ -43,6 +45,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
         _urlSyntaxPolicy = urlSyntaxPolicy;
         _trustedProxyPolicy = trustedProxyPolicy;
         _logger = logger;
+        _timeProvider = timeProvider;
     }
 
     public async ValueTask<ProxyConfigurationLoadResult> LoadAsync(CancellationToken cancellationToken)
@@ -78,7 +81,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
     {
         var sourceDirectory = _dataDirectoryProvider.GetSitesConfigDirectory();
         var operationalConfigPath = _dataDirectoryProvider.GetProxyOperationalConfigPath();
-        var attemptedAtUtc = DateTimeOffset.UtcNow;
+        var attemptedAtUtc = _timeProvider.GetUtcNow();
         var wouldBeVersion = Volatile.Read(ref _nextVersion) + 1;
         var bootstrapDiscovery = ensureLayout ? _bootstrapper.EnsureLayout() : _bootstrapper.InspectLayout();
         List<ProxyConfigurationFileDiscovery> discoveredFiles = [.. bootstrapDiscovery.Files];
@@ -227,7 +230,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
             ProxyAdminSecurityTokenPolicy.Resolve(operationalOptions.Admin, Environment.GetEnvironmentVariable),
             certificates,
             version,
-            DateTimeOffset.UtcNow,
+            _timeProvider.GetUtcNow(),
             sourceDirectory,
             siteFiles,
             BuildDiscovery());

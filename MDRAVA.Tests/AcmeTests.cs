@@ -405,7 +405,8 @@ internal static class AcmeTests
             new ProxyRelativeStoragePathPolicy(),
             new MDRAVA.INF.Configuration.ProxyUrlSyntaxPolicy(),
             new ProxyForwardedHeadersAddressPolicy(),
-            NullLogger<ProxyConfigurationLoader>.Instance);
+            NullLogger<ProxyConfigurationLoader>.Instance,
+            TimeProvider.System);
     }
 
     private sealed class FakeIssuer : IAcmeCertificateIssuer
