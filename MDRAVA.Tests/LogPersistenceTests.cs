@@ -1,5 +1,6 @@
 using System.Text.Json;
 using MDRAVA.API.Controllers;
+using MDRAVA.BLL.ControlPlane.Resilience;
 using MDRAVA.INF.Proxy.Connections;
 using MDRAVA.INF.Configuration.Paths;
 using MDRAVA.INF.Proxy.Health;
@@ -328,7 +329,8 @@ internal static class LogPersistenceTests
     {
         var metrics = new ProxyMetrics();
         var pool = new UpstreamConnectionPool(new UpstreamConnectionFactory(), metrics, TimeProvider.System);
-        var health = new UpstreamHealthStore(metrics, pool);
+        var circuit = new CircuitBreakerStore(metrics, TimeProvider.System);
+        var health = new UpstreamHealthStore(metrics, pool, circuit);
         var statusOperations = ProxyStatusOperationFactory.Create(
             new ProxyRuntimeState(TimeProvider.System),
             metrics,

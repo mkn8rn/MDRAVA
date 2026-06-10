@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Sockets;
+using MDRAVA.BLL.ControlPlane.Resilience;
 using MDRAVA.INF.Proxy.Connections;
 using MDRAVA.INF.Proxy.Health;
 
@@ -72,7 +73,8 @@ internal static class HealthCheckTests
             new UpstreamConnectionFactory(),
             metrics,
             TimeProvider.System);
-        var store = new UpstreamHealthStore(metrics, pool);
+        var circuit = new CircuitBreakerStore(metrics, TimeProvider.System);
+        var store = new UpstreamHealthStore(metrics, pool, circuit);
         var upstream = Upstream(5001);
         var route = Route([upstream], unhealthyThreshold: 2);
 
@@ -92,7 +94,8 @@ internal static class HealthCheckTests
             new UpstreamConnectionFactory(),
             metrics,
             TimeProvider.System);
-        var store = new UpstreamHealthStore(metrics, pool);
+        var circuit = new CircuitBreakerStore(metrics, TimeProvider.System);
+        var store = new UpstreamHealthStore(metrics, pool, circuit);
         var upstream = Upstream(5001);
         var route = Route([upstream], healthyThreshold: 2, unhealthyThreshold: 1);
 
@@ -113,7 +116,8 @@ internal static class HealthCheckTests
         var clock = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
         var metrics = new ProxyMetrics();
         using var pool = new UpstreamConnectionPool(new UpstreamConnectionFactory(), metrics, clock);
-        var store = new UpstreamHealthStore(metrics, pool);
+        var circuit = new CircuitBreakerStore(metrics, clock);
+        var store = new UpstreamHealthStore(metrics, pool, circuit);
         var upstream = Upstream(5001);
         var route = Route([upstream], healthyThreshold: 1);
         var client = new FixedHealthCheckClient(new HealthCheckSample(true, "ok"));
@@ -137,7 +141,8 @@ internal static class HealthCheckTests
         var clock = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
         var metrics = new ProxyMetrics();
         using var pool = new UpstreamConnectionPool(new UpstreamConnectionFactory(), metrics, clock);
-        var store = new UpstreamHealthStore(metrics, pool);
+        var circuit = new CircuitBreakerStore(metrics, clock);
+        var store = new UpstreamHealthStore(metrics, pool, circuit);
         var upstream = Upstream(5001);
         var route = Route([upstream]);
         var client = new FixedHealthCheckClient(new HealthCheckSample(false, "fail"));

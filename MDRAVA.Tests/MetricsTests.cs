@@ -3,6 +3,7 @@ using System.Net.Sockets;
 using System.Text;
 using MDRAVA.API.Controllers;
 using MDRAVA.BLL.ControlPlane.Acme;
+using MDRAVA.BLL.ControlPlane.Resilience;
 using MDRAVA.INF.Configuration.Loading;
 using MDRAVA.INF.Configuration.Paths;
 using MDRAVA.INF.Proxy.Connections;
@@ -616,7 +617,8 @@ internal static class MetricsTests
             var metrics = new ProxyMetrics();
             var cache = new ResponseCacheStore(TimeProvider.System);
             var pool = new UpstreamConnectionPool(new UpstreamConnectionFactory(), metrics, TimeProvider.System);
-            var health = new UpstreamHealthStore(metrics, pool);
+            var circuit = new CircuitBreakerStore(metrics, TimeProvider.System);
+            var health = new UpstreamHealthStore(metrics, pool, circuit);
             var acme = new AcmeCertificateStatusStore();
             return new MetricsFixture(
                 metrics,

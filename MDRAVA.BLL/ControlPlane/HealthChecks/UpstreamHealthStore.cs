@@ -10,23 +10,16 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
     private readonly ConcurrentDictionary<string, MutableUpstreamHealth> _states = new(StringComparer.OrdinalIgnoreCase);
     private readonly IProxyUpstreamHealthMetricsSink _metrics;
     private readonly IUpstreamConnectionPruner _connectionPruner;
-    private readonly CircuitBreakerStore? _circuitBreakerStore;
+    private readonly CircuitBreakerStore _circuitBreakerStore;
 
     public UpstreamHealthStore(
         IProxyUpstreamHealthMetricsSink metrics,
         IUpstreamConnectionPruner connectionPruner,
-        CircuitBreakerStore? circuitBreakerStore)
+        CircuitBreakerStore circuitBreakerStore)
     {
         _metrics = metrics;
         _connectionPruner = connectionPruner;
         _circuitBreakerStore = circuitBreakerStore;
-    }
-
-    public UpstreamHealthStore(
-        IProxyUpstreamHealthMetricsSink metrics,
-        IUpstreamConnectionPruner connectionPruner)
-        : this(metrics, connectionPruner, null)
-    {
     }
 
     public bool IsUsable(RuntimeUpstream upstream)
@@ -133,7 +126,7 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
                     {
                         Protocol = upstream.Protocol,
                         Weight = upstream.Weight,
-                        CircuitBreaker = _circuitBreakerStore?.Snapshot(upstream) ?? DisabledCircuitBreaker(upstream)
+                        CircuitBreaker = _circuitBreakerStore.Snapshot(upstream)
                     });
                 }
             }
@@ -145,20 +138,6 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
     public IReadOnlyList<ProxyUpstreamStatusResponse> ReadUpstreams(ProxyConfigurationSnapshot? configuration)
     {
         return Snapshot(configuration);
-    }
-
-    private static CircuitBreakerStatus DisabledCircuitBreaker(RuntimeUpstream upstream)
-    {
-        return new CircuitBreakerStatus(
-            upstream.CircuitBreaker.Enabled ? CircuitBreakerRuntimeState.Closed : CircuitBreakerRuntimeState.Disabled,
-            upstream.CircuitBreaker.Enabled,
-            upstream.CircuitBreaker.FailureThreshold,
-            upstream.CircuitBreaker.HalfOpenMaxAttempts,
-            null,
-            null,
-            0,
-            0,
-            null);
     }
 
     private MutableUpstreamHealth GetOrCreate(RuntimeUpstream upstream)
