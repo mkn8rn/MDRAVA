@@ -1,5 +1,6 @@
 using MDRAVA.BLL.ControlPlane.Status;
-namespace MDRAVA.BLL.ControlPlane;
+
+namespace MDRAVA.BLL.ControlPlane.Listeners;
 
 public sealed class ProxyRuntimeState : IProxyStatusRuntimeStateSource
 {
