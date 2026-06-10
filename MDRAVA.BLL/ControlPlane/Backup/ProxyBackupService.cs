@@ -18,22 +18,25 @@ public sealed class ProxyBackupService : IProxyBackupOperations
     private readonly IProxyBackupFileSystem _backupFileSystem;
     private readonly IProxyRestoreConfigurationValidator _restoreConfigurationValidator;
     private readonly IProxyActiveConfigurationVersionReader _activeConfigurationVersionReader;
+    private readonly TimeProvider _timeProvider;
 
     public ProxyBackupService(
         IMdravaDataDirectoryProvider dataDirectoryProvider,
         IProxyBackupFileSystem backupFileSystem,
         IProxyRestoreConfigurationValidator restoreConfigurationValidator,
-        IProxyActiveConfigurationVersionReader activeConfigurationVersionReader)
+        IProxyActiveConfigurationVersionReader activeConfigurationVersionReader,
+        TimeProvider timeProvider)
     {
         _dataDirectoryProvider = dataDirectoryProvider;
         _backupFileSystem = backupFileSystem;
         _restoreConfigurationValidator = restoreConfigurationValidator;
         _activeConfigurationVersionReader = activeConfigurationVersionReader;
+        _timeProvider = timeProvider;
     }
 
     public ProxyBackupManifestResponse CreateManifest()
     {
-        var generatedAtUtc = DateTimeOffset.UtcNow;
+        var generatedAtUtc = _timeProvider.GetUtcNow();
         var root = _dataDirectoryProvider.GetDataDirectory();
         var directories = ExpectedDirectories(root);
         List<ProxyBackupManifestEntry> entries = [];
@@ -110,7 +113,7 @@ public sealed class ProxyBackupService : IProxyBackupOperations
 
     public async ValueTask<ProxyRestoreValidationResponse> ValidateAsync(CancellationToken cancellationToken)
     {
-        var generatedAtUtc = DateTimeOffset.UtcNow;
+        var generatedAtUtc = _timeProvider.GetUtcNow();
         var root = _dataDirectoryProvider.GetDataDirectory();
         var manifest = CreateManifest();
         List<ProxyRestoreValidationFinding> errors = [];

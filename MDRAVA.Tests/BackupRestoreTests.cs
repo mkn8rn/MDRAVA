@@ -24,10 +24,12 @@ internal static class BackupRestoreTests
         File.WriteAllText(Path.Combine(temp.Path, "certs", "acme", "private-keys", "home", "current.pfx"), secret);
         File.WriteAllText(Path.Combine(temp.Path, "certs", "acme", "metadata", "home", "status.json"), "{ \"id\": \"home\" }");
         File.WriteAllText(Path.Combine(temp.Path, "state", "runtime.json"), secret);
+        var generatedAtUtc = new DateTimeOffset(2026, 6, 10, 8, 0, 0, TimeSpan.Zero);
 
-        var manifest = CreateService(temp.Path).CreateManifest();
+        var manifest = CreateService(temp.Path, timeProvider: new FixedTimeProvider(generatedAtUtc)).CreateManifest();
         var text = JsonSerializer.Serialize(manifest);
 
+        AssertEx.Equal(generatedAtUtc, manifest.GeneratedAtUtc);
         AssertEx.True(manifest.Entries.All(static entry => !Path.IsPathRooted(entry.RelativePath)));
         AssertEx.True(manifest.Entries.All(static entry => !entry.RelativePath.StartsWith("..", StringComparison.Ordinal)));
         AssertEx.True(manifest.Entries.Any(static entry =>
@@ -132,10 +134,13 @@ internal static class BackupRestoreTests
         var loader = CreateLoader(temp.Path);
         var load = await loader.LoadAsync(CancellationToken.None);
         AssertEx.True(load.Succeeded, string.Join(";", load.Errors));
+        var generatedAtUtc = new DateTimeOffset(2026, 6, 10, 8, 5, 0, TimeSpan.Zero);
 
-        var result = await CreateService(temp.Path, loader: loader).ValidateAsync(CancellationToken.None);
+        var result = await CreateService(temp.Path, loader: loader, timeProvider: new FixedTimeProvider(generatedAtUtc)).ValidateAsync(CancellationToken.None);
 
         AssertEx.True(result.Succeeded, string.Join(",", result.Errors.Select(static error => error.Code)));
+        AssertEx.Equal(generatedAtUtc, result.GeneratedAtUtc);
+        AssertEx.Equal(generatedAtUtc, result.Manifest.GeneratedAtUtc);
         AssertEx.True(result.Manifest.Directories
             .Where(static directory => directory.RelativePath != "certs/acme")
             .All(static directory => directory.Exists));
@@ -146,13 +151,15 @@ internal static class BackupRestoreTests
     private static ProxyBackupService CreateService(
         string dataDirectory,
         ProxyConfigurationStore? store = null,
-        ProxyConfigurationLoader? loader = null)
+        ProxyConfigurationLoader? loader = null,
+        TimeProvider? timeProvider = null)
     {
         return new ProxyBackupService(
             Provider(dataDirectory),
             new ProxyBackupFileSystem(new ProxyDataDirectoryPathSafety()),
             loader ?? CreateLoader(dataDirectory),
-            store ?? new ProxyConfigurationStore());
+            store ?? new ProxyConfigurationStore(),
+            timeProvider ?? TimeProvider.System);
     }
 
     private static ProxyConfigurationLoader CreateLoader(string dataDirectory)
@@ -206,6 +213,21 @@ internal static class BackupRestoreTests
             catch
             {
             }
+        }
+    }
+
+    private sealed class FixedTimeProvider : TimeProvider
+    {
+        private readonly DateTimeOffset _utcNow;
+
+        public FixedTimeProvider(DateTimeOffset utcNow)
+        {
+            _utcNow = utcNow;
+        }
+
+        public override DateTimeOffset GetUtcNow()
+        {
+            return _utcNow;
         }
     }
 }
