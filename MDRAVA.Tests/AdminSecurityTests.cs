@@ -81,7 +81,8 @@ internal static class AdminSecurityTests
                     Urls = ["http://0.0.0.0:5041"]
                 }
             },
-            static _ => null);
+            static _ => null,
+            new ProxyRelativeStoragePathPolicy());
 
         AssertEx.True(failures.Any(static failure => failure.Contains("non-local", StringComparison.OrdinalIgnoreCase)));
     }

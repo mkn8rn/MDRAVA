@@ -357,6 +357,7 @@ internal static class UpstreamTlsTests
             provider,
             new ProxyDataDirectoryBootstrapper(provider),
             new SiteConfigurationParser(),
+            new ProxyRelativeStoragePathPolicy(),
             NullLogger<ProxyConfigurationLoader>.Instance);
     }
 

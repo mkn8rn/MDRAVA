@@ -15,7 +15,8 @@ public static class ProxyOperationalOptionsValidationRules
 
     public static IReadOnlyList<string> Validate(
         ProxyOperationalOptions options,
-        Func<string, string?> readEnvironmentVariable)
+        Func<string, string?> readEnvironmentVariable,
+        IProxyRelativeStoragePathPolicy relativeStoragePathPolicy)
     {
         List<string> failures = [];
         ValidateTimeout(failures, nameof(options.Timeouts.ClientRequestHeadTimeoutMs), options.Timeouts.ClientRequestHeadTimeoutMs);
@@ -34,7 +35,7 @@ public static class ProxyOperationalOptionsValidationRules
         ValidateForwardedHeaders(failures, options.ForwardedHeaders);
         ValidateCertificates(failures, options.Certificates);
         ValidateAdmin(failures, options.Admin, readEnvironmentVariable);
-        ValidateAcme(failures, options.Acme, options.Certificates);
+        ValidateAcme(failures, options.Acme, options.Certificates, relativeStoragePathPolicy);
         ValidateMetrics(failures, options.Metrics);
         return failures;
     }
@@ -85,7 +86,8 @@ public static class ProxyOperationalOptionsValidationRules
     private static void ValidateAcme(
         List<string> failures,
         ProxyAcmeOptions options,
-        IReadOnlyList<CertificateOptions> manualCertificates)
+        IReadOnlyList<CertificateOptions> manualCertificates,
+        IProxyRelativeStoragePathPolicy relativeStoragePathPolicy)
     {
         if (options.RenewBeforeDays is < 1 or > 365)
         {
@@ -102,7 +104,7 @@ public static class ProxyOperationalOptionsValidationRules
             failures.Add("Proxy ACME setting RetryAfterMinutes must be between 5 and 1440.");
         }
 
-        if (!IsSafeRelativePath(options.StoragePath))
+        if (!relativeStoragePathPolicy.IsSafeRelativePath(options.StoragePath))
         {
             failures.Add("Proxy ACME setting StoragePath must be a relative path under the data-directory certs folder.");
         }
@@ -347,19 +349,6 @@ public static class ProxyOperationalOptionsValidationRules
     private static bool ContainsControlCharacter(string value)
     {
         return value.Any(char.IsControl);
-    }
-
-    private static bool IsSafeRelativePath(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value)
-            || Path.IsPathRooted(value)
-            || value.Contains("..", StringComparison.Ordinal)
-            || ContainsControlCharacter(value))
-        {
-            return false;
-        }
-
-        return value.IndexOfAny(Path.GetInvalidPathChars()) < 0;
     }
 
     private static bool IsSafeStorageSegment(string value)

@@ -52,7 +52,8 @@ internal static class AcmeTests
                     ]
                 }
             },
-            static _ => null);
+            static _ => null,
+            new ProxyRelativeStoragePathPolicy());
 
         AssertEx.True(failures.Any(static failure => failure.Contains("TermsAccepted", StringComparison.Ordinal)));
     }
@@ -396,6 +397,7 @@ internal static class AcmeTests
             provider,
             new ProxyDataDirectoryBootstrapper(provider),
             new SiteConfigurationParser(),
+            new ProxyRelativeStoragePathPolicy(),
             NullLogger<ProxyConfigurationLoader>.Instance);
     }
 

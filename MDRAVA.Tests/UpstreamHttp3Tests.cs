@@ -1183,6 +1183,7 @@ internal static class UpstreamHttp3Tests
             provider,
             new ProxyDataDirectoryBootstrapper(provider),
             new SiteConfigurationParser(),
+            new ProxyRelativeStoragePathPolicy(),
             NullLogger<ProxyConfigurationLoader>.Instance);
     }
 

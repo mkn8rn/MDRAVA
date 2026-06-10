@@ -199,7 +199,8 @@ internal static class MetricsTests
                     PublicMetricsEnabled = true
                 }
             },
-            static _ => null);
+            static _ => null,
+            new ProxyRelativeStoragePathPolicy());
 
         AssertEx.True(failures.Any(static failure => failure.Contains("PublicMetricsEnabled", StringComparison.Ordinal)), string.Join("; ", failures));
     }
@@ -413,6 +414,7 @@ internal static class MetricsTests
             provider,
             new ProxyDataDirectoryBootstrapper(provider),
             new SiteConfigurationParser(),
+            new ProxyRelativeStoragePathPolicy(),
             NullLogger<ProxyConfigurationLoader>.Instance);
     }
 

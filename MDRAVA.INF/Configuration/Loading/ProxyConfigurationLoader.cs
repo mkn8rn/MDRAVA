@@ -15,6 +15,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
     private readonly IMdravaDataDirectoryProvider _dataDirectoryProvider;
     private readonly ProxyDataDirectoryBootstrapper _bootstrapper;
     private readonly SiteConfigurationParser _siteParser;
+    private readonly IProxyRelativeStoragePathPolicy _relativeStoragePathPolicy;
     private readonly ILogger<ProxyConfigurationLoader> _logger;
     private int _nextVersion;
 
@@ -22,11 +23,13 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
         IMdravaDataDirectoryProvider dataDirectoryProvider,
         ProxyDataDirectoryBootstrapper bootstrapper,
         SiteConfigurationParser siteParser,
+        IProxyRelativeStoragePathPolicy relativeStoragePathPolicy,
         ILogger<ProxyConfigurationLoader> logger)
     {
         _dataDirectoryProvider = dataDirectoryProvider;
         _bootstrapper = bootstrapper;
         _siteParser = siteParser;
+        _relativeStoragePathPolicy = relativeStoragePathPolicy;
         _logger = logger;
     }
 
@@ -127,7 +130,8 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
 
         var operationalFailures = ProxyOperationalOptionsValidationRules.Validate(
             operationalOptions,
-            Environment.GetEnvironmentVariable);
+            Environment.GetEnvironmentVariable,
+            _relativeStoragePathPolicy);
         if (operationalFailures.Count > 0)
         {
             return ProxyConfigurationLoadResult.Failure(

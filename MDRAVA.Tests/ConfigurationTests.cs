@@ -1177,6 +1177,7 @@ internal static class ConfigurationTests
                 DataDirectory = dataDirectory
             })),
             new SiteConfigurationParser(),
+            new ProxyRelativeStoragePathPolicy(),
             NullLogger<ProxyConfigurationLoader>.Instance);
     }
 
