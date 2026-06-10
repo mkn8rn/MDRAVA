@@ -1,3 +1,5 @@
+using MDRAVA.BLL.ControlPlane.Headers;
+
 namespace MDRAVA.BLL.ControlPlane.Http1;
 
 public static class Http1ClientConnectionPolicy

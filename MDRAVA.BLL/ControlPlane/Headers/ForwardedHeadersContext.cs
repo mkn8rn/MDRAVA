@@ -1,7 +1,7 @@
 using MDRAVA.BLL.ControlPlane.Http1;
 using System.Net;
 
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.Headers;
 
 public sealed record ForwardedHeadersContext(
     IPAddress? ResolvedClientIp,

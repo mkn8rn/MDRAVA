@@ -1,5 +1,6 @@
 using MDRAVA.BLL.ControlPlane.Http1;
-namespace MDRAVA.BLL.ControlPlane;
+
+namespace MDRAVA.BLL.ControlPlane.Headers;
 
 public sealed class HopByHopHeaderPolicy
 {
