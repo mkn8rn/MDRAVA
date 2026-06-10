@@ -1,5 +1,3 @@
-using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
-
 namespace MDRAVA.BLL.Configuration;
 
 public sealed record ProxyConfigurationSnapshot(

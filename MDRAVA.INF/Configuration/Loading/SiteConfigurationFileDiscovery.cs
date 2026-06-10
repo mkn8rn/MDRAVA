@@ -1,4 +1,4 @@
-using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
+using MDRAVA.BLL.Configuration;
 
 namespace MDRAVA.INF.Configuration.Loading;
 

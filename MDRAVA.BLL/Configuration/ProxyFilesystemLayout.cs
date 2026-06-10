@@ -1,4 +1,4 @@
-namespace MDRAVA.BLL.ControlPlane.RuntimePreflight;
+namespace MDRAVA.BLL.Configuration;
 
 public sealed record ProxyFilesystemLayout(
     string DataDirectory,

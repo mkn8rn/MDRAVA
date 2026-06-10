@@ -1,4 +1,4 @@
-namespace MDRAVA.BLL.ControlPlane.ConfigurationManagement;
+namespace MDRAVA.BLL.Configuration;
 
 public sealed record ProxyConfigurationFileDiscovery(
     string Path,
