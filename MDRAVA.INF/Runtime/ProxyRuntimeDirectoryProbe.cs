@@ -38,7 +38,8 @@ public sealed class ProxyRuntimeDirectoryProbe : IProxyRuntimeDirectoryProbe
     {
         try
         {
-            _ = Directory.EnumerateFileSystemEntries(path).Take(1).ToArray();
+            using var entries = Directory.EnumerateFileSystemEntries(path).GetEnumerator();
+            entries.MoveNext();
             return true;
         }
         catch
