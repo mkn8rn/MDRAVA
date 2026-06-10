@@ -1,4 +1,3 @@
-namespace MDRAVA.BLL.ControlPlane.ConfigurationManagement;
+namespace MDRAVA.BLL.Configuration;
 
 public sealed record ProxyConfigurationFileError(string? Path, string Message);
-

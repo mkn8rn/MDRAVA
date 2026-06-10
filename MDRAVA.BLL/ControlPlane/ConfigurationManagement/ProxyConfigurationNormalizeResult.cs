@@ -1,3 +1,5 @@
+using MDRAVA.BLL.Configuration;
+
 namespace MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 
 public sealed record ProxyConfigurationNormalizeResult(

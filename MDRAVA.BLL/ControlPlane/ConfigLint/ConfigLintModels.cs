@@ -1,4 +1,5 @@
-using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
+using MDRAVA.BLL.Configuration;
+
 namespace MDRAVA.BLL.ControlPlane.ConfigLint;
 
 public sealed record ConfigLintRequest(
@@ -35,4 +36,3 @@ public sealed record ConfigLintStatus(
 {
     public static ConfigLintStatus Empty { get; } = new(true, null, null);
 }
-
