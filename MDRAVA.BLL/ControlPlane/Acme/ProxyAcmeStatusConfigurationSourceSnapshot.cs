@@ -1,4 +1,4 @@
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.Acme;
 
 public sealed record ProxyAcmeStatusConfigurationSourceSnapshot(
     bool Enabled,
