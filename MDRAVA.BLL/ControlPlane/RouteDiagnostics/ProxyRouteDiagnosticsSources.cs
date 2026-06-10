@@ -1,4 +1,5 @@
 using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.Http;
 
 namespace MDRAVA.BLL.ControlPlane.RouteDiagnostics;
 
@@ -99,8 +100,6 @@ public interface IProxyRouteDiagnosticsUpstream
     bool CircuitBreakerEnabled { get; }
 }
 
-public sealed record ProxyRouteDiagnosticsHeader(string Name, string Value);
-
 public sealed class ProxyRouteDiagnosticsRequestHead
 {
     public ProxyRouteDiagnosticsRequestHead(
@@ -110,7 +109,7 @@ public sealed class ProxyRouteDiagnosticsRequestHead
         string version,
         string host,
         ProxyRouteDiagnosticsRequestFraming framing,
-        IReadOnlyList<ProxyRouteDiagnosticsHeader> headers)
+        IReadOnlyList<ProxyHeaderField> headers)
     {
         Method = method;
         Target = target;
@@ -133,7 +132,7 @@ public sealed class ProxyRouteDiagnosticsRequestHead
 
     public ProxyRouteDiagnosticsRequestFraming Framing { get; }
 
-    public IReadOnlyList<ProxyRouteDiagnosticsHeader> Headers { get; }
+    public IReadOnlyList<ProxyHeaderField> Headers { get; }
 }
 
 public sealed record ProxyRouteDiagnosticsRequestFraming(

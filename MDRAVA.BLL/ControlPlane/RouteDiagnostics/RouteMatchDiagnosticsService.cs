@@ -1,5 +1,6 @@
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.RuntimeGuards;
+using MDRAVA.BLL.Http;
 
 namespace MDRAVA.BLL.ControlPlane.RouteDiagnostics;
 
@@ -301,11 +302,11 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
         return listeners.FirstOrDefault();
     }
 
-    private static IReadOnlyList<ProxyRouteDiagnosticsHeader> BuildHeaders(
+    private static IReadOnlyList<ProxyHeaderField> BuildHeaders(
         RouteMatchDryRunRequest request,
         List<RouteMatchDryRunFinding> findings)
     {
-        List<ProxyRouteDiagnosticsHeader> headers = [new("Host", request.Host.Trim())];
+        List<ProxyHeaderField> headers = [new("Host", request.Host.Trim())];
         if (request.Headers is null)
         {
             return headers;
@@ -333,13 +334,13 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
                 value = "redacted";
             }
 
-            headers.Add(new ProxyRouteDiagnosticsHeader(name, value));
+            headers.Add(new ProxyHeaderField(name, value));
         }
 
         return headers;
     }
 
-    private static ProxyRouteDiagnosticsRequestFraming ResolveFraming(IReadOnlyList<ProxyRouteDiagnosticsHeader> headers)
+    private static ProxyRouteDiagnosticsRequestFraming ResolveFraming(IReadOnlyList<ProxyHeaderField> headers)
     {
         foreach (var header in headers)
         {
@@ -449,12 +450,12 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
         return new RouteMatchDryRunPolicy(enabled, wouldProxy, wouldProxy ? "configured_for_one_or_more_upstreams" : "not_proxy_action");
     }
 
-    private static bool ContainsHeader(IReadOnlyList<ProxyRouteDiagnosticsHeader> headers, string name)
+    private static bool ContainsHeader(IReadOnlyList<ProxyHeaderField> headers, string name)
     {
         return headers.Any(header => string.Equals(header.Name, name, StringComparison.OrdinalIgnoreCase));
     }
 
-    private static bool IsUpgrade(IReadOnlyList<ProxyRouteDiagnosticsHeader> headers)
+    private static bool IsUpgrade(IReadOnlyList<ProxyHeaderField> headers)
     {
         return headers.Any(static header => string.Equals(header.Name, "Upgrade", StringComparison.OrdinalIgnoreCase));
     }
