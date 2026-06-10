@@ -1,7 +1,6 @@
 using MDRAVA.BLL.ControlPlane.Forwarding;
 using MDRAVA.BLL.ControlPlane.Observability;
 using MDRAVA.BLL.ControlPlane.RequestDiagnostics;
-using MDRAVA.BLL.Infrastructure;
 using Microsoft.Extensions.Logging;
 
 namespace MDRAVA.INF.Observability;
