@@ -69,23 +69,23 @@ internal static class HardeningTests
 
     public static void RateLimiterEnforcesRequestLimitAndRefills()
     {
-        var now = DateTimeOffset.UtcNow;
+        var clock = new ManualTimeProvider(new DateTimeOffset(2026, 6, 10, 10, 0, 0, TimeSpan.Zero));
         var metrics = new ProxyMetrics();
-        var limiter = new ClientRateLimiter(metrics, () => now);
+        var limiter = new ClientRateLimiter(metrics, clock);
         var ip = "127.0.0.1";
 
         AssertEx.True(limiter.TryAcquireRequest(ip, 1));
         AssertEx.False(limiter.TryAcquireRequest(ip, 1));
-        now = now.AddSeconds(61);
+        clock.Advance(TimeSpan.FromSeconds(61));
         AssertEx.True(limiter.TryAcquireRequest(ip, 1));
         AssertEx.Equal(1L, metrics.Snapshot().RateLimitedRequests);
     }
 
     public static void ConcurrentRateLimiterBoundaryAllowsOnlyConfiguredLimit()
     {
-        var now = DateTimeOffset.UtcNow;
+        var clock = new ManualTimeProvider(new DateTimeOffset(2026, 6, 10, 10, 5, 0, TimeSpan.Zero));
         var metrics = new ProxyMetrics();
-        var limiter = new ClientRateLimiter(metrics, () => now);
+        var limiter = new ClientRateLimiter(metrics, clock);
         var ip = "127.0.0.1";
         var allowed = 0;
 
@@ -106,9 +106,9 @@ internal static class HardeningTests
 
     public static void RateLimiterEnforcesUpgradeLimit()
     {
-        var now = DateTimeOffset.UtcNow;
+        var clock = new ManualTimeProvider(new DateTimeOffset(2026, 6, 10, 10, 10, 0, TimeSpan.Zero));
         var metrics = new ProxyMetrics();
-        var limiter = new ClientRateLimiter(metrics, () => now);
+        var limiter = new ClientRateLimiter(metrics, clock);
         var ip = "127.0.0.1";
 
         AssertEx.True(limiter.TryAcquireUpgrade(ip, 1));
@@ -118,9 +118,9 @@ internal static class HardeningTests
 
     public static void RateLimiterUsesNormalizedClientAddressKeys()
     {
-        var now = DateTimeOffset.UtcNow;
+        var clock = new ManualTimeProvider(new DateTimeOffset(2026, 6, 10, 10, 15, 0, TimeSpan.Zero));
         var metrics = new ProxyMetrics();
-        var limiter = new ClientRateLimiter(metrics, () => now);
+        var limiter = new ClientRateLimiter(metrics, clock);
 
         var firstKey = MDRAVA.INF.Proxy.RuntimeGuards.ProxyClientAddressPolicy.NormalizeRequiredClientIp(IPAddress.Parse("127.0.0.1"));
         var secondKey = MDRAVA.INF.Proxy.RuntimeGuards.ProxyClientAddressPolicy.NormalizeRequiredClientIp(IPAddress.Parse("::ffff:127.0.0.1"));
@@ -133,9 +133,9 @@ internal static class HardeningTests
 
     public static void RateLimiterCleansStaleEntries()
     {
-        var now = DateTimeOffset.UtcNow;
+        var clock = new ManualTimeProvider(new DateTimeOffset(2026, 6, 10, 10, 20, 0, TimeSpan.Zero));
         var metrics = new ProxyMetrics();
-        var limiter = new ClientRateLimiter(metrics, () => now);
+        var limiter = new ClientRateLimiter(metrics, clock);
 
         for (var index = 0; index < 300; index++)
         {
@@ -143,7 +143,7 @@ internal static class HardeningTests
         }
 
         AssertEx.True(limiter.EntryCount > 0);
-        now = now.AddMinutes(6);
+        clock.Advance(TimeSpan.FromMinutes(6));
         for (var index = 0; index < 256; index++)
         {
             limiter.TryAcquireRequest($"10.1.0.{index % 250}", 10);
@@ -178,5 +178,32 @@ internal static class HardeningTests
         AssertEx.Equal(firstToken, secondToken);
         AssertEx.Equal(firstStartedAtUtc, coordinator.StartedAtUtc);
         AssertEx.Equal(firstDeadlineUtc, coordinator.DeadlineUtc);
+    }
+
+    private sealed class ManualTimeProvider : TimeProvider
+    {
+        private readonly object _gate = new();
+        private DateTimeOffset _utcNow;
+
+        public ManualTimeProvider(DateTimeOffset utcNow)
+        {
+            _utcNow = utcNow;
+        }
+
+        public override DateTimeOffset GetUtcNow()
+        {
+            lock (_gate)
+            {
+                return _utcNow;
+            }
+        }
+
+        public void Advance(TimeSpan interval)
+        {
+            lock (_gate)
+            {
+                _utcNow = _utcNow.Add(interval);
+            }
+        }
     }
 }

@@ -5,20 +5,15 @@ public sealed class ClientRateLimiter
     private static readonly TimeSpan StaleEntryAge = TimeSpan.FromMinutes(5);
 
     private readonly IProxyRateLimitMetricsSink _metrics;
-    private readonly Func<DateTimeOffset> _getUtcNow;
+    private readonly TimeProvider _timeProvider;
     private readonly object _gate = new();
     private readonly Dictionary<string, BucketSet> _buckets = new(StringComparer.Ordinal);
     private long _operationCount;
 
-    public ClientRateLimiter(IProxyRateLimitMetricsSink metrics)
-        : this(metrics, static () => DateTimeOffset.UtcNow)
-    {
-    }
-
-    public ClientRateLimiter(IProxyRateLimitMetricsSink metrics, Func<DateTimeOffset> getUtcNow)
+    public ClientRateLimiter(IProxyRateLimitMetricsSink metrics, TimeProvider timeProvider)
     {
         _metrics = metrics;
-        _getUtcNow = getUtcNow;
+        _timeProvider = timeProvider;
     }
 
     public bool TryAcquireRequest(string? clientAddressKey, int perMinuteLimit)
@@ -66,7 +61,7 @@ public sealed class ClientRateLimiter
 
     private bool TryAcquire(string clientAddressKey, int perMinuteLimit, Func<BucketSet, TokenBucket> selectBucket)
     {
-        var now = _getUtcNow();
+        var now = _timeProvider.GetUtcNow();
 
         lock (_gate)
         {
