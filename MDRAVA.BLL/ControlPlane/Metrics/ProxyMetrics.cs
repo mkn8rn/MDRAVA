@@ -1,9 +1,10 @@
 using System.Collections.Concurrent;
+using MDRAVA.BLL.ControlPlane;
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.ConfigLint;
 using MDRAVA.BLL.ControlPlane.RouteDiagnostics;
 
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.Metrics;
 
 public sealed class ProxyMetrics :
     IProxyStatusMetricsSource,

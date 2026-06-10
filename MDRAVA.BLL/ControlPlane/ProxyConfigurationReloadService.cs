@@ -1,6 +1,7 @@
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.Caching;
 using MDRAVA.BLL.Infrastructure;
+using MDRAVA.BLL.ControlPlane.Metrics;
 
 namespace MDRAVA.BLL.ControlPlane;
 

@@ -4,6 +4,7 @@ global using MDRAVA.BLL.ControlPlane.AdminAuthentication;
 global using MDRAVA.BLL.ControlPlane.Backup;
 global using MDRAVA.BLL.ControlPlane.Caching;
 global using MDRAVA.BLL.ControlPlane.ConfigLint;
+global using MDRAVA.BLL.ControlPlane.Metrics;
 global using MDRAVA.BLL.ControlPlane.RequestDiagnostics;
 global using MDRAVA.BLL.ControlPlane.RouteDiagnostics;
 global using MDRAVA.BLL.Configuration;

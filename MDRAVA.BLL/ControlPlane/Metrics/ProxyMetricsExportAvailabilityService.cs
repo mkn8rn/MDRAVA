@@ -1,4 +1,4 @@
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.Metrics;
 
 public sealed class ProxyMetricsExportAvailabilityService
 {

@@ -1,5 +1,6 @@
 using System.Text;
 using MDRAVA.BLL.ControlPlane;
+using MDRAVA.BLL.ControlPlane.Metrics;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MDRAVA.API.Controllers;

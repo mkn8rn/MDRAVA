@@ -1,7 +1,7 @@
 using MDRAVA.BLL.ControlPlane.ConfigLint;
 using MDRAVA.BLL.ControlPlane.RouteDiagnostics;
 
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.Metrics;
 
 public sealed record ProxyMetricsSnapshot(
     long AcceptedConnections,

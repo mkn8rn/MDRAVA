@@ -3,6 +3,7 @@ using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane;
+using MDRAVA.BLL.ControlPlane.Metrics;
 using Microsoft.Extensions.Logging;
 
 namespace MDRAVA.INF.Proxy.Tls;
