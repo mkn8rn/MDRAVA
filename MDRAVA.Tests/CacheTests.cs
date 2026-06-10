@@ -255,6 +255,18 @@ internal static class CacheTests
         AssertEx.False(cache.TryGet(route, listener, request, "/ttl", out _));
     }
 
+    public static void CacheAgeUsesElapsedWholeSecondsAndClampsFutureStoredTime()
+    {
+        var storedAtUtc = DateTimeOffset.UnixEpoch.AddMinutes(1);
+
+        AssertEx.Equal(3L, ProxyCacheAgePolicy.CalculateAgeSeconds(
+            storedAtUtc,
+            storedAtUtc.AddSeconds(3.9)));
+        AssertEx.Equal(0L, ProxyCacheAgePolicy.CalculateAgeSeconds(
+            storedAtUtc,
+            storedAtUtc.AddSeconds(-1)));
+    }
+
     public static async Task OversizedResponseIsStreamedButNotCached()
     {
         var body = "0123456789";

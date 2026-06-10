@@ -957,9 +957,9 @@ public sealed class ClientConnection
         CancellationToken cancellationToken)
     {
         var includeBody = !string.Equals(requestHead.Method, "HEAD", StringComparison.OrdinalIgnoreCase);
-        var ageSeconds = Math.Max(
-            0,
-            (long)Math.Floor((DateTimeOffset.UtcNow - response.StoredAtUtc).TotalSeconds));
+        var ageSeconds = ProxyCacheAgePolicy.CalculateAgeSeconds(
+            response.StoredAtUtc,
+            _timeProvider.GetUtcNow());
         var builder = new StringBuilder();
         builder.Append("HTTP/1.1 ")
             .Append(response.StatusCode)

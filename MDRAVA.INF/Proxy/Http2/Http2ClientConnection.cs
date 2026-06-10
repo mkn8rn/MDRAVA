@@ -845,9 +845,9 @@ public sealed class Http2ClientConnection
         ProxyRequestContext context,
         CancellationToken cancellationToken)
     {
-        var ageSeconds = Math.Max(
-            0,
-            (long)Math.Floor((DateTimeOffset.UtcNow - response.StoredAtUtc).TotalSeconds));
+        var ageSeconds = ProxyCacheAgePolicy.CalculateAgeSeconds(
+            response.StoredAtUtc,
+            _timeProvider.GetUtcNow());
         var headers = response.Headers
             .Where(static header => !HopByHopHeaderPolicy.IsHopByHopHeader(header.Name))
             .Append(new ProxyHeaderField("age", ageSeconds.ToString(CultureInfo.InvariantCulture)))
