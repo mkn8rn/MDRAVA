@@ -140,6 +140,7 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<IProxyConfigLintSubmittedConfigurationSource, ProxyConfigLintSubmittedConfigurationSource>();
         services.AddSingleton<IProxyConfigLintRuntimeStateSource, ProxyConfigLintRuntimeStateSource>();
         services.AddSingleton<IProxyConfigLintMetricsSink>(static services => services.GetRequiredService<ProxyMetrics>());
+        services.AddSingleton<IProxyConfigLintSourceNameFormatter, ProxyConfigLintSourceNameFormatter>();
         services.AddSingleton<ConfigLintService>();
         services.AddSingleton<IProxyConfigLintOperations>(static services => services.GetRequiredService<ConfigLintService>());
         services.AddSingleton<ProxyConfigLintAdministrationService>();

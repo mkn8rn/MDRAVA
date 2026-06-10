@@ -13,6 +13,7 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
     private readonly IProxyConfigLintSubmittedConfigurationSource _submittedConfigurationSource;
     private readonly IProxyConfigLintRuntimeStateSource _runtimeStateSource;
     private readonly IProxyConfigLintMetricsSink _metricsSink;
+    private readonly IProxyConfigLintSourceNameFormatter _sourceNameFormatter;
     private readonly TimeProvider _timeProvider;
     private ConfigLintStatus _lastActiveStatus = ConfigLintStatus.Empty;
 
@@ -21,12 +22,14 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
         IProxyConfigLintSubmittedConfigurationSource submittedConfigurationSource,
         IProxyConfigLintRuntimeStateSource runtimeStateSource,
         IProxyConfigLintMetricsSink metricsSink,
+        IProxyConfigLintSourceNameFormatter sourceNameFormatter,
         TimeProvider timeProvider)
     {
         _activeConfigurationSource = activeConfigurationSource;
         _submittedConfigurationSource = submittedConfigurationSource;
         _runtimeStateSource = runtimeStateSource;
         _metricsSink = metricsSink;
+        _sourceNameFormatter = sourceNameFormatter;
         _timeProvider = timeProvider;
     }
 
@@ -403,16 +406,16 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
         return !System.Net.IPAddress.IsLoopback(address);
     }
 
-    private static string ActiveSource(ProxyConfigLintConfigurationSnapshot snapshot)
+    private string ActiveSource(ProxyConfigLintConfigurationSnapshot snapshot)
     {
         return snapshot.SourceFiles.Count == 1
             ? SourceName(snapshot.SourceFiles[0]) ?? "active-config"
             : "active-config";
     }
 
-    private static string? SourceName(string? path)
+    private string? SourceName(string? path)
     {
-        return string.IsNullOrWhiteSpace(path) ? null : Path.GetFileName(path);
+        return _sourceNameFormatter.FormatSourceName(path);
     }
 
     private static string RoutePath(ProxyConfigLintRoute route)

@@ -435,6 +435,7 @@ internal static class RouteDiagnosticsTests
             new FixedConfigLintSubmittedConfigurationSource(null),
             new FixedConfigLintRuntimeStateSource([]),
             metrics,
+            new ProxyConfigLintSourceNameFormatter(),
             TimeProvider.System);
 
         var result = service.LintActive();
@@ -458,6 +459,7 @@ internal static class RouteDiagnosticsTests
             source,
             new FixedConfigLintRuntimeStateSource([]),
             new FixedConfigLintMetricsSink(),
+            new ProxyConfigLintSourceNameFormatter(),
             TimeProvider.System);
 
         var result = service.LintSubmitted(new ConfigLintRequest("yml", "submitted"));
@@ -577,6 +579,7 @@ internal static class RouteDiagnosticsTests
                 TestHttp3PlatformSupport.SupportedSource),
             new ProxyConfigLintRuntimeStateSource(new ProxyRuntimeState()),
             metrics,
+            new ProxyConfigLintSourceNameFormatter(),
             TimeProvider.System);
     }
 
