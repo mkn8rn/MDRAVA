@@ -10,7 +10,6 @@ using MDRAVA.BLL.ControlPlane.HealthChecks;
 using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 using MDRAVA.BLL.ControlPlane.Status;
 using MDRAVA.BLL.Configuration;
-using MDRAVA.BLL.ControlPlane;
 using MDRAVA.BLL.ControlPlane.Metrics;
 using MDRAVA.BLL.ControlPlane.Observability;
 using MDRAVA.BLL.ControlPlane.Acme;

@@ -1,5 +1,5 @@
 using MDRAVA.BLL.Configuration;
-using MDRAVA.BLL.ControlPlane;
+using MDRAVA.BLL.ControlPlane.HealthChecks;
 using MDRAVA.BLL.ControlPlane.Metrics;
 
 namespace MDRAVA.INF.Proxy.Connections;
