@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using MDRAVA.BLL.Configuration;
 
 namespace MDRAVA.BLL.ControlPlane.Resilience;
@@ -56,9 +57,8 @@ public sealed class CircuitBreakerStore
         }
     }
 
-    public bool TryAcquire(RuntimeUpstream upstream, out CircuitBreakerLease? lease)
+    public bool TryAcquire(RuntimeUpstream upstream, [MaybeNullWhen(false)] out CircuitBreakerLease lease)
     {
-        lease = null;
         if (!upstream.CircuitBreaker.Enabled)
         {
             lease = new CircuitBreakerLease(upstream, enabled: false, halfOpenProbe: false, _ => { });
@@ -71,6 +71,7 @@ public sealed class CircuitBreakerStore
             RefreshOpenState(upstream, state, _timeProvider.GetUtcNow());
             if (state.State == CircuitBreakerRuntimeState.Open)
             {
+                lease = null;
                 state.RejectedRequests++;
                 _metrics.CircuitRejected(upstream);
                 return false;
@@ -81,6 +82,7 @@ public sealed class CircuitBreakerStore
             {
                 if (state.HalfOpenInFlight >= upstream.CircuitBreaker.HalfOpenMaxAttempts)
                 {
+                    lease = null;
                     state.RejectedRequests++;
                     _metrics.CircuitRejected(upstream);
                     return false;
@@ -94,9 +96,11 @@ public sealed class CircuitBreakerStore
         }
     }
 
-    public void RecordSuccess(CircuitBreakerLease? lease)
+    public void RecordSuccess(CircuitBreakerLease lease)
     {
-        if (lease is null || !lease.Enabled || !lease.TryComplete())
+        ArgumentNullException.ThrowIfNull(lease);
+
+        if (!lease.Enabled || !lease.TryComplete())
         {
             return;
         }
@@ -117,9 +121,11 @@ public sealed class CircuitBreakerStore
         }
     }
 
-    public void RecordFailure(CircuitBreakerLease? lease, string reason, int? statusCode = null)
+    public void RecordFailure(CircuitBreakerLease lease, string reason, int? statusCode = null)
     {
-        if (lease is null || !lease.Enabled || !lease.TryComplete())
+        ArgumentNullException.ThrowIfNull(lease);
+
+        if (!lease.Enabled || !lease.TryComplete())
         {
             return;
         }

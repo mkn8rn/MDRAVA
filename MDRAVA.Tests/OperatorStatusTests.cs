@@ -447,7 +447,7 @@ internal static class OperatorStatusTests
         fixture.Runtime.ReplaceListeners([ListenerStatus(listener, ProxyListenerState.Active)], null);
 
         AssertEx.True(fixture.Circuit.TryAcquire(upstream, out var lease));
-        fixture.Circuit.RecordFailure(lease, "connect_failure");
+        fixture.Circuit.RecordFailure(AssertEx.NotNull(lease), "connect_failure");
         var status = fixture.Controller().Get();
 
         AssertEx.Equal("degraded", status.Readiness.State);

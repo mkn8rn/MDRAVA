@@ -839,7 +839,7 @@ public sealed class ClientConnection
             }
             else
             {
-                selection.CircuitBreakerLease?.Dispose();
+                selection.CircuitBreakerLease.Dispose();
             }
 
             return;

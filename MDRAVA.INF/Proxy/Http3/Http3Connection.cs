@@ -741,7 +741,7 @@ public sealed class Http3Connection
             }
             else
             {
-                selection.CircuitBreakerLease?.Dispose();
+                selection.CircuitBreakerLease.Dispose();
             }
 
             return;

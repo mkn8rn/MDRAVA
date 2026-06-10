@@ -821,7 +821,7 @@ public sealed class Http2ClientConnection
             }
             else
             {
-                selection.CircuitBreakerLease?.Dispose();
+                selection.CircuitBreakerLease.Dispose();
             }
 
             return;

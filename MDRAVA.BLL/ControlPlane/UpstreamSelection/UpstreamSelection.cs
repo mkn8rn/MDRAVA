@@ -6,4 +6,4 @@ namespace MDRAVA.BLL.ControlPlane.UpstreamSelection;
 public sealed record UpstreamSelection(
     RuntimeRoute Route,
     RuntimeUpstream Upstream,
-    CircuitBreakerLease? CircuitBreakerLease = null);
+    CircuitBreakerLease CircuitBreakerLease);
