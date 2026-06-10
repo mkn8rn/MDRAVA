@@ -17,18 +17,6 @@ public static class ProxyConfigurationProjectionMapper
             snapshot.AdminSecurity.TokenEnvironmentVariable,
             snapshot.AdminSecurity.TokenSource,
             snapshot.AdminSecurity.RecentAuditCapacity);
-        var acme = new RuntimeAcmeProjection(
-            snapshot.Acme.Enabled,
-            snapshot.Acme.UseStaging,
-            snapshot.Acme.DirectoryUrl,
-            snapshot.Acme.ContactEmails,
-            snapshot.Acme.TermsAccepted,
-            snapshot.Acme.StoragePath,
-            snapshot.Acme.RenewBeforeDays,
-            snapshot.Acme.CheckIntervalMinutes,
-            snapshot.Acme.RetryAfterMinutes,
-            snapshot.Acme.Certificates);
-
         return new ProxyConfigurationProjection(
             snapshot.Version,
             snapshot.LoadedAtUtc,
@@ -36,7 +24,7 @@ public static class ProxyConfigurationProjectionMapper
             snapshot.SourceFiles,
             snapshot.Discovery,
             adminSecurity,
-            acme,
+            snapshot.Acme,
             snapshot.Timeouts,
             snapshot.ConnectionLimits,
             snapshot.Observability,
