@@ -1,4 +1,4 @@
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.RouteDiagnostics;
 
 public sealed record RouteDiagnosticsStatus(bool Available)
 {

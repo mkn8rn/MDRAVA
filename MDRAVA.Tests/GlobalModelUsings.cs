@@ -1,5 +1,6 @@
 global using MDRAVA.BLL.ControlPlane;
 global using MDRAVA.BLL.ControlPlane.Caching;
+global using MDRAVA.BLL.ControlPlane.RouteDiagnostics;
 global using MDRAVA.BLL.Configuration;
 global using MDRAVA.BLL.Infrastructure;
 global using MDRAVA.INF.Acme;

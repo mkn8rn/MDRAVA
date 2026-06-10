@@ -1,7 +1,7 @@
 using System.Net;
 using MDRAVA.BLL.Configuration;
 
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.RouteDiagnostics;
 
 public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperations
 {

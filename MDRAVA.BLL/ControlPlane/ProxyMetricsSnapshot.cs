@@ -1,3 +1,5 @@
+using MDRAVA.BLL.ControlPlane.RouteDiagnostics;
+
 namespace MDRAVA.BLL.ControlPlane;
 
 public sealed record ProxyMetricsSnapshot(
