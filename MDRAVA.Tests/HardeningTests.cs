@@ -154,13 +154,14 @@ internal static class HardeningTests
 
     public static void ShutdownCoordinatorExposesGraceDeadlineAndCancels()
     {
-        using var coordinator = new ProxyShutdownCoordinator();
+        var startedAtUtc = new DateTimeOffset(2026, 6, 10, 10, 25, 0, TimeSpan.Zero);
+        using var coordinator = new ProxyShutdownCoordinator(new ManualTimeProvider(startedAtUtc));
 
         var token = coordinator.BeginShutdown(TimeSpan.FromMilliseconds(100));
 
         AssertEx.True(coordinator.IsShuttingDown);
-        AssertEx.True(coordinator.StartedAtUtc is not null);
-        AssertEx.True(coordinator.DeadlineUtc is not null);
+        AssertEx.Equal(startedAtUtc, coordinator.StartedAtUtc);
+        AssertEx.Equal(startedAtUtc.AddMilliseconds(100), coordinator.DeadlineUtc);
         AssertEx.False(token.IsCancellationRequested);
         Thread.Sleep(250);
         AssertEx.True(token.IsCancellationRequested);
@@ -168,11 +169,13 @@ internal static class HardeningTests
 
     public static void ShutdownCoordinatorBeginShutdownIsIdempotent()
     {
-        using var coordinator = new ProxyShutdownCoordinator();
+        var clock = new ManualTimeProvider(new DateTimeOffset(2026, 6, 10, 10, 30, 0, TimeSpan.Zero));
+        using var coordinator = new ProxyShutdownCoordinator(clock);
 
         var firstToken = coordinator.BeginShutdown(TimeSpan.FromSeconds(5));
         var firstStartedAtUtc = coordinator.StartedAtUtc;
         var firstDeadlineUtc = coordinator.DeadlineUtc;
+        clock.Advance(TimeSpan.FromMinutes(1));
         var secondToken = coordinator.BeginShutdown(TimeSpan.FromMinutes(1));
 
         AssertEx.Equal(firstToken, secondToken);

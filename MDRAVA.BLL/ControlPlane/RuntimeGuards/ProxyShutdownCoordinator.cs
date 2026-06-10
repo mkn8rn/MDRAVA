@@ -3,10 +3,16 @@ namespace MDRAVA.BLL.ControlPlane.RuntimeGuards;
 public sealed class ProxyShutdownCoordinator : IDisposable
 {
     private readonly object _gate = new();
+    private readonly TimeProvider _timeProvider;
     private CancellationTokenSource? _shutdownCts;
     private int _isShuttingDown;
     private DateTimeOffset? _startedAtUtc;
     private DateTimeOffset? _deadlineUtc;
+
+    public ProxyShutdownCoordinator(TimeProvider timeProvider)
+    {
+        _timeProvider = timeProvider;
+    }
 
     public bool IsShuttingDown => Volatile.Read(ref _isShuttingDown) == 1;
 
@@ -34,7 +40,7 @@ public sealed class ProxyShutdownCoordinator : IDisposable
                 return _shutdownCts.Token;
             }
 
-            _startedAtUtc = DateTimeOffset.UtcNow;
+            _startedAtUtc = _timeProvider.GetUtcNow();
             _deadlineUtc = _startedAtUtc.Value.Add(gracePeriod);
             Volatile.Write(ref _isShuttingDown, 1);
             _shutdownCts = new CancellationTokenSource(gracePeriod);
