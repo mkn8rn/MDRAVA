@@ -8,6 +8,7 @@ global using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 global using MDRAVA.BLL.ControlPlane.HealthChecks;
 global using MDRAVA.BLL.ControlPlane.Headers;
 global using MDRAVA.BLL.ControlPlane.Http1;
+global using MDRAVA.BLL.ControlPlane.Http3;
 global using MDRAVA.BLL.ControlPlane.Metrics;
 global using MDRAVA.BLL.ControlPlane.RequestDiagnostics;
 global using MDRAVA.BLL.ControlPlane.Resilience;

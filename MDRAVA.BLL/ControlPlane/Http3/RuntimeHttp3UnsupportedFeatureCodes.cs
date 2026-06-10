@@ -1,4 +1,4 @@
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.Http3;
 
 public static class RuntimeHttp3UnsupportedFeatureCodes
 {

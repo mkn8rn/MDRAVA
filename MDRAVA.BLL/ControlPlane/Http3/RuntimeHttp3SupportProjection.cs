@@ -1,4 +1,4 @@
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.Http3;
 
 public sealed record RuntimeHttp3SupportProjection(
     string RuntimeSupport,

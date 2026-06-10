@@ -3,6 +3,7 @@ using MDRAVA.BLL.ControlPlane.HealthChecks;
 using MDRAVA.BLL.ControlPlane;
 using MDRAVA.BLL.ControlPlane.Acme;
 using MDRAVA.BLL.ControlPlane.Caching;
+using MDRAVA.BLL.ControlPlane.Http3;
 
 namespace MDRAVA.BLL.ControlPlane.Status;
 

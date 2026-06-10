@@ -1,6 +1,7 @@
+using MDRAVA.BLL.ControlPlane;
 using MDRAVA.BLL.Configuration;
 
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.Http3;
 
 public static class ProxyListenerHttp3StatusMapper
 {
