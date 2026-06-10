@@ -19,12 +19,12 @@ public sealed class UpstreamConnectionLease : IAsyncDisposable
 
     public void MarkReusable()
     {
-        Connection.CanReturnToPool = true;
+        Connection.MarkReusable();
     }
 
     public void MarkUnusable()
     {
-        Connection.CanReturnToPool = false;
+        Connection.MarkUnusable();
     }
 
     public ValueTask DisposeAsync()

@@ -3,19 +3,20 @@ using MDRAVA.BLL.Configuration;
 
 namespace MDRAVA.INF.Proxy.Connections;
 
-public sealed class PooledUpstreamConnection : IDisposable
+internal sealed class PooledUpstreamConnection : IDisposable
 {
     public PooledUpstreamConnection(
         string key,
         RuntimeUpstream upstream,
         Socket socket,
-        Stream stream)
+        Stream stream,
+        DateTimeOffset lastUsedUtc)
     {
         Key = key;
         Upstream = upstream;
         Socket = socket;
         Stream = stream;
-        LastUsedUtc = DateTimeOffset.UtcNow;
+        LastUsedUtc = lastUsedUtc;
     }
 
     public string Key { get; }
@@ -26,11 +27,33 @@ public sealed class PooledUpstreamConnection : IDisposable
 
     public Stream Stream { get; }
 
-    public DateTimeOffset LastUsedUtc { get; set; }
+    public DateTimeOffset LastUsedUtc { get; private set; }
 
-    public bool CanReturnToPool { get; set; }
+    public bool CanReturnToPool { get; private set; }
 
-    public int MaxIdleConnections { get; set; }
+    public int MaxIdleConnections { get; private set; }
+
+    public void MarkBorrowed(int maxIdleConnections)
+    {
+        CanReturnToPool = false;
+        MaxIdleConnections = maxIdleConnections;
+    }
+
+    public void MarkReusable()
+    {
+        CanReturnToPool = true;
+    }
+
+    public void MarkUnusable()
+    {
+        CanReturnToPool = false;
+    }
+
+    public void MarkReturnedIdle(DateTimeOffset returnedAtUtc)
+    {
+        LastUsedUtc = returnedAtUtc;
+        CanReturnToPool = false;
+    }
 
     public void Dispose()
     {

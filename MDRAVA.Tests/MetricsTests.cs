@@ -615,7 +615,7 @@ internal static class MetricsTests
         {
             var metrics = new ProxyMetrics();
             var cache = new ResponseCacheStore(TimeProvider.System);
-            var pool = new UpstreamConnectionPool(new UpstreamConnectionFactory(), metrics);
+            var pool = new UpstreamConnectionPool(new UpstreamConnectionFactory(), metrics, TimeProvider.System);
             var health = new UpstreamHealthStore(metrics, pool);
             var acme = new AcmeCertificateStatusStore();
             return new MetricsFixture(

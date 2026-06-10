@@ -68,7 +68,10 @@ internal static class HealthCheckTests
     public static void HealthStateTransitionsToUnhealthyAfterThreshold()
     {
         var metrics = new ProxyMetrics();
-        using var pool = new UpstreamConnectionPool(new UpstreamConnectionFactory(), metrics);
+        using var pool = new UpstreamConnectionPool(
+            new UpstreamConnectionFactory(),
+            metrics,
+            TimeProvider.System);
         var store = new UpstreamHealthStore(metrics, pool);
         var upstream = Upstream(5001);
         var route = Route([upstream], unhealthyThreshold: 2);
@@ -85,7 +88,10 @@ internal static class HealthCheckTests
     public static void HealthStateTransitionsToHealthyAfterRecoveryThreshold()
     {
         var metrics = new ProxyMetrics();
-        using var pool = new UpstreamConnectionPool(new UpstreamConnectionFactory(), metrics);
+        using var pool = new UpstreamConnectionPool(
+            new UpstreamConnectionFactory(),
+            metrics,
+            TimeProvider.System);
         var store = new UpstreamHealthStore(metrics, pool);
         var upstream = Upstream(5001);
         var route = Route([upstream], healthyThreshold: 2, unhealthyThreshold: 1);
@@ -106,7 +112,7 @@ internal static class HealthCheckTests
     {
         var clock = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
         var metrics = new ProxyMetrics();
-        using var pool = new UpstreamConnectionPool(new UpstreamConnectionFactory(), metrics);
+        using var pool = new UpstreamConnectionPool(new UpstreamConnectionFactory(), metrics, clock);
         var store = new UpstreamHealthStore(metrics, pool);
         var upstream = Upstream(5001);
         var route = Route([upstream], healthyThreshold: 1);
@@ -130,7 +136,7 @@ internal static class HealthCheckTests
     {
         var clock = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
         var metrics = new ProxyMetrics();
-        using var pool = new UpstreamConnectionPool(new UpstreamConnectionFactory(), metrics);
+        using var pool = new UpstreamConnectionPool(new UpstreamConnectionFactory(), metrics, clock);
         var store = new UpstreamHealthStore(metrics, pool);
         var upstream = Upstream(5001);
         var route = Route([upstream]);

@@ -978,7 +978,7 @@ internal static class ResilienceTests
             var metrics = new ProxyMetrics();
             var clock = new ManualTimeProvider(DateTimeOffset.UtcNow);
             var circuit = new CircuitBreakerStore(metrics, clock);
-            var pool = new UpstreamConnectionPool(new UpstreamConnectionFactory(), metrics);
+            var pool = new UpstreamConnectionPool(new UpstreamConnectionFactory(), metrics, clock);
             var health = new UpstreamHealthStore(metrics, pool, circuit);
             var selector = new RoundRobinUpstreamSelector(health, circuit, metrics);
             var cache = new ResponseCacheStore(clock);

@@ -8,16 +8,19 @@ public sealed class UpstreamConnectionPool : IUpstreamConnectionPruner, IDisposa
 {
     private readonly UpstreamConnectionFactory _connectionFactory;
     private readonly ProxyMetrics _metrics;
+    private readonly TimeProvider _timeProvider;
     private readonly object _gate = new();
     private readonly Dictionary<string, Queue<PooledUpstreamConnection>> _idleConnections = new(StringComparer.OrdinalIgnoreCase);
     private bool _disposed;
 
     public UpstreamConnectionPool(
         UpstreamConnectionFactory connectionFactory,
-        ProxyMetrics metrics)
+        ProxyMetrics metrics,
+        TimeProvider timeProvider)
     {
         _connectionFactory = connectionFactory;
         _metrics = metrics;
+        _timeProvider = timeProvider;
     }
 
     public async ValueTask<UpstreamConnectionLease> BorrowAsync(
@@ -27,6 +30,7 @@ public sealed class UpstreamConnectionPool : IUpstreamConnectionPruner, IDisposa
         CancellationToken cancellationToken)
     {
         var key = GetKey(upstream);
+        var nowUtc = _timeProvider.GetUtcNow();
         PooledUpstreamConnection? connection = null;
 
         lock (_gate)
@@ -38,7 +42,7 @@ public sealed class UpstreamConnectionPool : IUpstreamConnectionPruner, IDisposa
                 {
                     var candidate = queue.Dequeue();
                     _metrics.UpstreamPoolIdleConnectionDiscarded();
-                    if (IsExpired(candidate, timeouts.UpstreamIdleConnectionLifetime))
+                    if (IsExpired(candidate, timeouts.UpstreamIdleConnectionLifetime, nowUtc))
                     {
                         candidate.Dispose();
                         _metrics.UpstreamConnectionDiscarded();
@@ -53,8 +57,7 @@ public sealed class UpstreamConnectionPool : IUpstreamConnectionPruner, IDisposa
 
         if (connection is not null)
         {
-            connection.CanReturnToPool = false;
-            connection.MaxIdleConnections = limits.MaxIdleUpstreamConnectionsPerUpstream;
+            connection.MarkBorrowed(limits.MaxIdleUpstreamConnectionsPerUpstream);
             _metrics.UpstreamConnectionReused();
             _metrics.UpstreamPoolConnectionBorrowed();
             return new UpstreamConnectionLease(this, connection);
@@ -64,8 +67,13 @@ public sealed class UpstreamConnectionPool : IUpstreamConnectionPruner, IDisposa
             upstream,
             timeouts.UpstreamConnectTimeout,
             cancellationToken);
-        connection = new PooledUpstreamConnection(key, upstream, transport.Socket, transport.Stream);
-        connection.MaxIdleConnections = limits.MaxIdleUpstreamConnectionsPerUpstream;
+        connection = new PooledUpstreamConnection(
+            key,
+            upstream,
+            transport.Socket,
+            transport.Stream,
+            _timeProvider.GetUtcNow());
+        connection.MarkBorrowed(limits.MaxIdleUpstreamConnectionsPerUpstream);
         _metrics.UpstreamConnectionOpened();
         _metrics.UpstreamPoolConnectionBorrowed();
         return new UpstreamConnectionLease(this, connection);
@@ -100,8 +108,7 @@ public sealed class UpstreamConnectionPool : IUpstreamConnectionPruner, IDisposa
                 return;
             }
 
-            connection.LastUsedUtc = DateTimeOffset.UtcNow;
-            connection.CanReturnToPool = false;
+            connection.MarkReturnedIdle(_timeProvider.GetUtcNow());
             queue.Enqueue(connection);
             _metrics.UpstreamPoolConnectionReturnedIdle();
         }
@@ -165,9 +172,12 @@ public sealed class UpstreamConnectionPool : IUpstreamConnectionPruner, IDisposa
         return queue;
     }
 
-    private static bool IsExpired(PooledUpstreamConnection connection, TimeSpan idleLifetime)
+    private static bool IsExpired(
+        PooledUpstreamConnection connection,
+        TimeSpan idleLifetime,
+        DateTimeOffset nowUtc)
     {
-        return DateTimeOffset.UtcNow - connection.LastUsedUtc > idleLifetime;
+        return nowUtc - connection.LastUsedUtc > idleLifetime;
     }
 
     public static string GetKey(RuntimeUpstream upstream)

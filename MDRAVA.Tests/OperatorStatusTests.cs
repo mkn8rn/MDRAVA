@@ -698,7 +698,7 @@ internal static class OperatorStatusTests
             Metrics = new ProxyMetrics();
             Store = new ProxyConfigurationStore();
             Runtime = new ProxyRuntimeState(timeProvider);
-            Pool = new UpstreamConnectionPool(new UpstreamConnectionFactory(), Metrics);
+            Pool = new UpstreamConnectionPool(new UpstreamConnectionFactory(), Metrics, timeProvider);
             Circuit = new CircuitBreakerStore(Metrics, TimeProvider.System);
             Health = new UpstreamHealthStore(Metrics, Pool, Circuit);
             Cache = new ResponseCacheStore(TimeProvider.System);

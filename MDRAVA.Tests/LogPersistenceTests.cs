@@ -327,7 +327,7 @@ internal static class LogPersistenceTests
         ProxyPersistentLogWriter writer)
     {
         var metrics = new ProxyMetrics();
-        var pool = new UpstreamConnectionPool(new UpstreamConnectionFactory(), metrics);
+        var pool = new UpstreamConnectionPool(new UpstreamConnectionFactory(), metrics, TimeProvider.System);
         var health = new UpstreamHealthStore(metrics, pool);
         var statusOperations = ProxyStatusOperationFactory.Create(
             new ProxyRuntimeState(TimeProvider.System),
