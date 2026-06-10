@@ -1,6 +1,7 @@
 using System.Text;
+using MDRAVA.BLL.ControlPlane;
 
-namespace MDRAVA.API.Proxy.Forwarding;
+namespace MDRAVA.INF.Proxy.Forwarding;
 
 public static class ProxyErrorResponses
 {

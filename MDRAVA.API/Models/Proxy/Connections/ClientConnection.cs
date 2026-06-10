@@ -7,7 +7,7 @@ using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Http2;
 using MDRAVA.API.Proxy.Http3;
 using MDRAVA.API.Proxy.Observability;
-using MDRAVA.API.Proxy.Tls;
+using MDRAVA.INF.Proxy.Tls;
 using System.Net;
 
 namespace MDRAVA.API.Proxy.Connections;

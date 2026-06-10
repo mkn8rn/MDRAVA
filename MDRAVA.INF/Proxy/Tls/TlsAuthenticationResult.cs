@@ -1,6 +1,6 @@
 using System.Net.Security;
 
-namespace MDRAVA.API.Models.Tls;
+namespace MDRAVA.INF.Proxy.Tls;
 
 public sealed record TlsAuthenticationResult(
     SslStream Stream,

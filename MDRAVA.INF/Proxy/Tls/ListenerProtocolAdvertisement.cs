@@ -1,6 +1,8 @@
 using System.Net.Security;
+using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane;
 
-namespace MDRAVA.API.Proxy.Tls;
+namespace MDRAVA.INF.Proxy.Tls;
 
 public static class ListenerProtocolAdvertisement
 {

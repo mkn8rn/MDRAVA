@@ -4,7 +4,7 @@ using System.Net.Quic;
 using System.Net.Security;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
-using MDRAVA.API.Proxy.Tls;
+using MDRAVA.INF.Proxy.Tls;
 
 namespace MDRAVA.API.Proxy.Http3;
 

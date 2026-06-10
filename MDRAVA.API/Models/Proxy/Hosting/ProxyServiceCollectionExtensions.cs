@@ -7,7 +7,7 @@ using MDRAVA.API.Proxy.Health;
 using MDRAVA.API.Proxy.Http3;
 using MDRAVA.API.Proxy.Observability;
 using MDRAVA.API.Proxy.Security;
-using MDRAVA.API.Proxy.Tls;
+using MDRAVA.INF.Proxy.Tls;
 using MDRAVA.BLL.Infrastructure;
 using MDRAVA.INF.Configuration.Paths;
 using MDRAVA.INF.DataDirectory;

@@ -1,9 +1,11 @@
 using System.Net.Security;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
-using MDRAVA.API.Proxy.Forwarding;
+using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane;
+using Microsoft.Extensions.Logging;
 
-namespace MDRAVA.API.Proxy.Tls;
+namespace MDRAVA.INF.Proxy.Tls;
 
 public sealed class TlsConnectionAuthenticator
 {
