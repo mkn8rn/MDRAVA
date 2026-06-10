@@ -1,4 +1,4 @@
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.Requests;
 
 public static class ProxyRequestMethodPolicy
 {

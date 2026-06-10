@@ -12,6 +12,7 @@ global using MDRAVA.BLL.ControlPlane.Http1;
 global using MDRAVA.BLL.ControlPlane.Http3;
 global using MDRAVA.BLL.ControlPlane.Metrics;
 global using MDRAVA.BLL.ControlPlane.RequestDiagnostics;
+global using MDRAVA.BLL.ControlPlane.Requests;
 global using MDRAVA.BLL.ControlPlane.Resilience;
 global using MDRAVA.BLL.ControlPlane.RouteDiagnostics;
 global using MDRAVA.BLL.ControlPlane.Routing;
