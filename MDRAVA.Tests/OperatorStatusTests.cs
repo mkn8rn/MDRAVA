@@ -486,7 +486,8 @@ internal static class OperatorStatusTests
             new RuntimePreflightProbe(path =>
                 path.EndsWith("logs", StringComparison.OrdinalIgnoreCase)
                     ? new ProxyRuntimeDirectoryProbeResult(true, false, true, false, secret)
-                    : new ProxyRuntimeDirectoryProbeResult(true, false, true, true, null)));
+                    : new ProxyRuntimeDirectoryProbeResult(true, false, true, true, null)),
+            TimeProvider.System);
         preflight.RunStartupChecks();
 
         var status = fixture.Controller(preflight).Get();

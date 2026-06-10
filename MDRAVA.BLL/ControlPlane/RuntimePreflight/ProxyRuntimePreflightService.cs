@@ -9,17 +9,20 @@ public sealed class ProxyRuntimePreflightService : IProxyStatusRuntimePreflightS
     private readonly IMdravaDataDirectoryProvider _dataDirectoryProvider;
     private readonly IProxyDataDirectoryPathSafety _pathSafety;
     private readonly IProxyRuntimeDirectoryProbe _directoryProbe;
+    private readonly TimeProvider _timeProvider;
     private readonly object _gate = new();
     private ProxyRuntimePreflightStatus _lastStatus = ProxyRuntimePreflightStatus.Unknown;
 
     public ProxyRuntimePreflightService(
         IMdravaDataDirectoryProvider dataDirectoryProvider,
         IProxyDataDirectoryPathSafety pathSafety,
-        IProxyRuntimeDirectoryProbe directoryProbe)
+        IProxyRuntimeDirectoryProbe directoryProbe,
+        TimeProvider timeProvider)
     {
         _dataDirectoryProvider = dataDirectoryProvider;
         _pathSafety = pathSafety;
         _directoryProbe = directoryProbe;
+        _timeProvider = timeProvider;
     }
 
     public ProxyRuntimePreflightStatus LastStatus
@@ -56,7 +59,7 @@ public sealed class ProxyRuntimePreflightService : IProxyStatusRuntimePreflightS
 
     private ProxyRuntimePreflightStatus Build(bool createMissingOwnedDirectories)
     {
-        var generatedAtUtc = DateTimeOffset.UtcNow;
+        var generatedAtUtc = _timeProvider.GetUtcNow();
         var dataDirectory = _dataDirectoryProvider.GetDataDirectory();
         List<ProxyRuntimePreflightCheck> checks = [];
 

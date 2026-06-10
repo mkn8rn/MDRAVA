@@ -8,14 +8,17 @@ internal static class RuntimePreflightTests
     public static void RuntimePreflightCreatesOwnedDirectoriesSafely()
     {
         using var temp = TemporaryDirectory.Create();
+        var generatedAtUtc = new DateTimeOffset(2026, 6, 10, 7, 45, 0, TimeSpan.Zero);
         var service = new ProxyRuntimePreflightService(
             Provider(temp.Path),
             new ProxyDataDirectoryPathSafety(),
-            new ProxyRuntimeDirectoryProbe());
+            new ProxyRuntimeDirectoryProbe(),
+            new FixedTimeProvider(generatedAtUtc));
 
         var status = service.RunStartupChecks();
 
         AssertEx.Equal("healthy", status.State);
+        AssertEx.Equal(generatedAtUtc, status.GeneratedAtUtc);
         AssertEx.True(Directory.Exists(Path.Combine(temp.Path, "config")));
         AssertEx.True(Directory.Exists(Path.Combine(temp.Path, "config", "sites")));
         AssertEx.True(Directory.Exists(Path.Combine(temp.Path, "logs")));
@@ -36,7 +39,8 @@ internal static class RuntimePreflightTests
         var service = new ProxyRuntimePreflightService(
             Provider(temp.Path),
             new ProxyDataDirectoryPathSafety(),
-            probe);
+            probe,
+            TimeProvider.System);
 
         var status = service.RunStartupChecks();
         var text = JsonSerializer.Serialize(status);
@@ -60,7 +64,8 @@ internal static class RuntimePreflightTests
         var service = new ProxyRuntimePreflightService(
             provider,
             new ProxyDataDirectoryPathSafety(),
-            new DelegateProbe(_ => new ProxyRuntimeDirectoryProbeResult(true, false, true, true, null)));
+            new DelegateProbe(_ => new ProxyRuntimeDirectoryProbeResult(true, false, true, true, null)),
+            TimeProvider.System);
 
         var status = service.RunStartupChecks();
 
@@ -79,7 +84,8 @@ internal static class RuntimePreflightTests
         var service = new ProxyRuntimePreflightService(
             Provider(temp.Path),
             new ProxyDataDirectoryPathSafety(),
-            new ProxyRuntimeDirectoryProbe());
+            new ProxyRuntimeDirectoryProbe(),
+            TimeProvider.System);
 
         var status = service.Inspect();
 
@@ -109,6 +115,21 @@ internal static class RuntimePreflightTests
         public ProxyRuntimeDirectoryProbeResult Probe(string path, bool createIfMissing)
         {
             return _probe(path);
+        }
+    }
+
+    private sealed class FixedTimeProvider : TimeProvider
+    {
+        private readonly DateTimeOffset _utcNow;
+
+        public FixedTimeProvider(DateTimeOffset utcNow)
+        {
+            _utcNow = utcNow;
+        }
+
+        public override DateTimeOffset GetUtcNow()
+        {
+            return _utcNow;
         }
     }
 
