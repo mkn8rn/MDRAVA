@@ -47,6 +47,7 @@ public sealed class Http3Connection
     private readonly RequestIdGenerator _requestIdGenerator;
     private readonly AccessLogEmitter _accessLogEmitter;
     private readonly ClientRateLimiter _rateLimiter;
+    private readonly TimeProvider _timeProvider;
     private readonly ILogger _logger;
     private int _protocolErrors;
     private QuicStream? _localControlStream;
@@ -69,6 +70,7 @@ public sealed class Http3Connection
         RequestIdGenerator requestIdGenerator,
         AccessLogEmitter accessLogEmitter,
         ClientRateLimiter rateLimiter,
+        TimeProvider timeProvider,
         ILogger logger)
     {
         _connection = connection;
@@ -88,6 +90,7 @@ public sealed class Http3Connection
         _requestIdGenerator = requestIdGenerator;
         _accessLogEmitter = accessLogEmitter;
         _rateLimiter = rateLimiter;
+        _timeProvider = timeProvider;
         _logger = logger;
     }
 
@@ -925,6 +928,7 @@ public sealed class Http3Connection
             _listener.Transport,
             _connection.RemoteEndPoint?.ToString(),
             _configurationSnapshot.Version,
+            _timeProvider,
             "http3");
     }
 

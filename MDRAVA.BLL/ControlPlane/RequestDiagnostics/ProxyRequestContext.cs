@@ -6,7 +6,8 @@ namespace MDRAVA.BLL.ControlPlane.RequestDiagnostics;
 
 public sealed class ProxyRequestContext
 {
-    private readonly long _startedTimestamp = TimeProvider.System.GetTimestamp();
+    private readonly TimeProvider _timeProvider;
+    private readonly long _startedTimestamp;
 
     public ProxyRequestContext(
         string requestId,
@@ -14,15 +15,18 @@ public sealed class ProxyRequestContext
         RuntimeListenerTransport transport,
         string? clientEndpoint,
         int configVersion,
+        TimeProvider timeProvider,
         string protocol = "http1")
     {
+        _timeProvider = timeProvider;
+        _startedTimestamp = timeProvider.GetTimestamp();
         RequestId = requestId;
         ListenerName = listenerName;
         Transport = transport.ToString();
         ClientEndpoint = clientEndpoint;
         ConfigVersion = configVersion;
         Protocol = protocol;
-        StartedAtUtc = DateTimeOffset.UtcNow;
+        StartedAtUtc = timeProvider.GetUtcNow();
     }
 
     public string RequestId { get; }
@@ -77,7 +81,7 @@ public sealed class ProxyRequestContext
 
     public bool? AccessLogEnabled { get; set; }
 
-    public TimeSpan Elapsed => TimeProvider.System.GetElapsedTime(_startedTimestamp);
+    public TimeSpan Elapsed => _timeProvider.GetElapsedTime(_startedTimestamp);
 
     public void SetRequest(string method, string host, string target, string? externalRequestId)
     {

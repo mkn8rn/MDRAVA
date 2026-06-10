@@ -58,6 +58,7 @@ public sealed class ClientConnection
     private readonly RequestIdGenerator _requestIdGenerator;
     private readonly AccessLogEmitter _accessLogEmitter;
     private readonly ClientRateLimiter _rateLimiter;
+    private readonly TimeProvider _timeProvider;
     private readonly ILogger<ClientConnection> _logger;
 
     public ClientConnection(
@@ -82,6 +83,7 @@ public sealed class ClientConnection
         RequestIdGenerator requestIdGenerator,
         AccessLogEmitter accessLogEmitter,
         ClientRateLimiter rateLimiter,
+        TimeProvider timeProvider,
         ILogger<ClientConnection> logger)
     {
         _socket = socket;
@@ -105,6 +107,7 @@ public sealed class ClientConnection
         _requestIdGenerator = requestIdGenerator;
         _accessLogEmitter = accessLogEmitter;
         _rateLimiter = rateLimiter;
+        _timeProvider = timeProvider;
         _logger = logger;
     }
 
@@ -153,6 +156,7 @@ public sealed class ClientConnection
                 _requestIdGenerator,
                 _accessLogEmitter,
                 _rateLimiter,
+                _timeProvider,
                 _logger);
             await http2Connection.RunAsync(cancellationToken);
             return;
@@ -1045,7 +1049,8 @@ public sealed class ClientConnection
             _listener.Name,
             _listener.Transport,
             _socket.RemoteEndPoint?.ToString(),
-            _configurationSnapshot.Version);
+            _configurationSnapshot.Version,
+            _timeProvider);
     }
 
     private IPEndPoint? GetRemoteEndPoint()

@@ -51,6 +51,7 @@ public sealed class Http2ClientConnection
     private readonly RequestIdGenerator _requestIdGenerator;
     private readonly AccessLogEmitter _accessLogEmitter;
     private readonly ClientRateLimiter _rateLimiter;
+    private readonly TimeProvider _timeProvider;
     private readonly ILogger _logger;
     private readonly SemaphoreSlim _writeGate = new(1, 1);
     private readonly ConcurrentDictionary<int, StreamState> _streams = new();
@@ -75,6 +76,7 @@ public sealed class Http2ClientConnection
         RequestIdGenerator requestIdGenerator,
         AccessLogEmitter accessLogEmitter,
         ClientRateLimiter rateLimiter,
+        TimeProvider timeProvider,
         ILogger logger)
     {
         _stream = stream;
@@ -96,6 +98,7 @@ public sealed class Http2ClientConnection
         _requestIdGenerator = requestIdGenerator;
         _accessLogEmitter = accessLogEmitter;
         _rateLimiter = rateLimiter;
+        _timeProvider = timeProvider;
         _logger = logger;
     }
 
@@ -1083,6 +1086,7 @@ public sealed class Http2ClientConnection
             _listener.Transport,
             _remoteEndPoint?.ToString(),
             _configurationSnapshot.Version,
+            _timeProvider,
             "http2");
     }
 

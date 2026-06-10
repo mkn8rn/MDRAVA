@@ -27,11 +27,20 @@ internal static class LogPersistenceTests
             metrics,
             NullLogger<AccessLogEmitter>.Instance,
             writer);
-        var context = CreateAccessContext("/run?token=query-secret", "Bearer external-secret");
+        var startedAtUtc = new DateTimeOffset(2026, 6, 10, 10, 40, 0, TimeSpan.Zero);
+        var clock = new ManualTimeProvider(startedAtUtc);
+        var context = CreateAccessContext(
+            "/run?token=query-secret",
+            "Bearer external-secret",
+            clock);
 
+        clock.Advance(TimeSpan.FromMilliseconds(1234));
         emitter.Complete(context, accessLogEnabled: true, diagnosticsCapacity: 10);
 
         var text = ReadLog(temp.Path, "access");
+        using var document = JsonDocument.Parse(text);
+        AssertEx.Equal(startedAtUtc, document.RootElement.GetProperty("timestampUtc").GetDateTimeOffset());
+        AssertEx.Equal(1234L, document.RootElement.GetProperty("durationMs").GetInt64());
         AssertEx.True(text.Contains("\"kind\":\"access\"", StringComparison.Ordinal), text);
         AssertEx.True(text.Contains("\"targetPath\":\"/run\"", StringComparison.Ordinal), text);
         AssertEx.True(text.Contains("\"protocol\":\"http1\"", StringComparison.Ordinal), text);
@@ -247,7 +256,10 @@ internal static class LogPersistenceTests
         AssertEx.False(text.Contains("Cookie", StringComparison.OrdinalIgnoreCase), text);
     }
 
-    private static ProxyRequestContext CreateAccessContext(string target, string? externalRequestId = null)
+    private static ProxyRequestContext CreateAccessContext(
+        string target,
+        string? externalRequestId = null,
+        TimeProvider? timeProvider = null)
     {
         var context = new ProxyRequestContext(
             "request-1",
@@ -255,6 +267,7 @@ internal static class LogPersistenceTests
             RuntimeListenerTransport.Http,
             "127.0.0.1:12345",
             1,
+            timeProvider ?? TimeProvider.System,
             "http1");
         context.SetRequest("GET", "logs.test", target, externalRequestId);
         context.SiteName = "logs";
@@ -363,6 +376,45 @@ internal static class LogPersistenceTests
     private static string ReadLog(string dataDirectory, string logName)
     {
         return File.ReadAllText(Path.Combine(dataDirectory, "logs", $"{logName}.log"));
+    }
+
+    private sealed class ManualTimeProvider : TimeProvider
+    {
+        private readonly object _gate = new();
+        private DateTimeOffset _utcNow;
+        private long _timestamp;
+
+        public ManualTimeProvider(DateTimeOffset utcNow)
+        {
+            _utcNow = utcNow;
+        }
+
+        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+
+        public override DateTimeOffset GetUtcNow()
+        {
+            lock (_gate)
+            {
+                return _utcNow;
+            }
+        }
+
+        public override long GetTimestamp()
+        {
+            lock (_gate)
+            {
+                return _timestamp;
+            }
+        }
+
+        public void Advance(TimeSpan interval)
+        {
+            lock (_gate)
+            {
+                _utcNow = _utcNow.Add(interval);
+                _timestamp += interval.Ticks;
+            }
+        }
     }
 
     private sealed class TemporaryDirectory : IDisposable

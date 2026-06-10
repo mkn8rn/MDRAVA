@@ -59,6 +59,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
     private readonly ClientRateLimiter _rateLimiter;
     private readonly ProxyRuntimeState _runtimeState;
     private readonly ProxyListenerReloadPlanner _reloadPlanner;
+    private readonly TimeProvider _timeProvider;
     private readonly ILogger<ProxyListenerService> _logger;
     private readonly ILogger<ClientConnection> _connectionLogger;
     private readonly SemaphoreSlim _reloadGate = new(1, 1);
@@ -93,6 +94,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
         ClientRateLimiter rateLimiter,
         ProxyRuntimeState runtimeState,
         ProxyListenerReloadPlanner reloadPlanner,
+        TimeProvider timeProvider,
         ILogger<ProxyListenerService> logger,
         ILogger<ClientConnection> connectionLogger)
     {
@@ -122,6 +124,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
         _rateLimiter = rateLimiter;
         _runtimeState = runtimeState;
         _reloadPlanner = reloadPlanner;
+        _timeProvider = timeProvider;
         _logger = logger;
         _connectionLogger = connectionLogger;
     }
@@ -769,6 +772,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
                 _requestIdGenerator,
                 _accessLogEmitter,
                 _rateLimiter,
+                _timeProvider,
                 _connectionLogger);
 
             await connection.RunAsync(cancellationToken);
@@ -818,6 +822,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
                 _requestIdGenerator,
                 _accessLogEmitter,
                 _rateLimiter,
+                _timeProvider,
                 _connectionLogger);
 
             await http3Connection.RunAsync(cancellationToken);
