@@ -12,17 +12,8 @@ public static class ProxyStatusResponseBuilder
         var runtime = input.Runtime;
         var listenerCount = configuration?.Listeners.Count ?? 0;
         var routeCount = configuration?.Routes.Count ?? 0;
-        var (readiness, subsystems) = ProxyStatusReadinessBuilder.Build(
-            configuration,
-            runtime,
-            input.Metrics,
-            input.Upstreams,
-            input.Http3,
-            input.LogPersistence,
-            input.CacheStatus,
-            input.AcmeStatuses,
-            input.ObservedAtUtc,
-            input.RuntimePreflight);
+        var readinessInput = ProxyStatusReadinessInputMapper.FromStatusInput(input);
+        var (readiness, subsystems) = ProxyStatusReadinessBuilder.Build(readinessInput);
 
         return new ProxyStatusResponse(
             runtime.IsRunning,

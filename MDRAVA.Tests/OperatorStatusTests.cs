@@ -143,6 +143,83 @@ internal static class OperatorStatusTests
         AssertEx.Equal(77, readiness.ConfigGeneration);
     }
 
+    public static void StatusReadinessBuilderConsumesNamedFactsWithoutRuntimeSnapshots()
+    {
+        var observedAt = new DateTimeOffset(2026, 6, 10, 8, 0, 0, TimeSpan.Zero);
+        var input = new ProxyStatusReadinessInput(
+            HasActiveConfiguration: true,
+            ConfigGeneration: 88,
+            ConfigurationLoadedAtUtc: observedAt.AddMinutes(-5),
+            LastListenerReloadSucceeded: true,
+            LastListenerReloadFailed: false,
+            ConfiguredListeners:
+            [
+                new ProxyConfiguredListenerSummarySource(
+                    Enabled: true,
+                    Http1Enabled: true,
+                    Http2Enabled: false,
+                    Http3EnabledForTraffic: false)
+            ],
+            RuntimeListeners:
+            [
+                new ProxyRuntimeListenerSummarySource(IsQuic: false, ProxyListenerState.Active)
+            ],
+            Routes:
+            [
+                new ProxyRouteSummarySource(
+                    SiteName: "main",
+                    IsProxyRoute: true,
+                    CacheEnabled: true,
+                    HasHttp3Upstream: false)
+            ],
+            Certificates: null,
+            Acme: new ProxyAcmeSummaryConfigurationSource(Enabled: false, ConfiguredCertificates: 0),
+            Upstreams:
+            [
+                new ProxyUpstreamSummarySource(
+                    UpstreamHealthState.Healthy,
+                    HealthCheckEnabled: true,
+                    CircuitBreakerEnabled: false,
+                    CircuitBreakerRuntimeState.Disabled)
+            ],
+            LimitConfiguration: new ProxyLimitConfigurationSummarySource(
+                MaxActiveClientConnections: 4096,
+                MaxConcurrentTlsHandshakes: 16,
+                RequestsPerMinutePerIp: 30),
+            LimitRuntime: new ProxyLimitRuntimeSummarySource(
+                ActiveConnections: 1,
+                ActiveTlsHandshakes: 0,
+                ActiveHttp2Streams: 0,
+                ActiveHttp3Streams: 0,
+                ActiveUpstreamHttp3Streams: 0),
+            ClientHttp3Enabled: false,
+            ClientHttp3Ready: false,
+            Log: new ProxyLogSummarySource(
+                AccessLogPersistenceEnabled: true,
+                AdminAuditPersistenceEnabled: true,
+                State: ProxyStatusText.Healthy,
+                Reason: "ok"),
+            Shutdown: new ProxyShutdownSummarySource(
+                IsRunning: true,
+                IsShuttingDown: false,
+                ShutdownStartedAtUtc: null,
+                ShutdownDeadlineUtc: null),
+            CacheStatus: new ProxyCacheStatusResponse(1, 512, 0, 0, 0, 0, 0, null, null, [], []),
+            AcmeStatuses: [],
+            RuntimePreflight: ProxyRuntimePreflightStatus.Unknown,
+            ObservedAtUtc: observedAt);
+
+        var (readiness, subsystems) = ProxyStatusReadinessBuilder.Build(input);
+
+        AssertEx.Equal("healthy", readiness.State);
+        AssertEx.Equal(88, readiness.ConfigGeneration);
+        AssertEx.Equal(observedAt, readiness.GeneratedAtUtc);
+        AssertEx.Equal(1, subsystems.Listeners.Active);
+        AssertEx.Equal(1, subsystems.Routes.CacheEnabledRoutes);
+        AssertEx.Equal(1, subsystems.Cache.EntryCount);
+        AssertEx.Equal(1, subsystems.Limits.ActiveConnections);
+    }
+
     public static void SubsystemSummaryBuilderCountsNarrowListenerRouteAndUpstreamSources()
     {
         ProxyConfiguredListenerSummarySource[] configuredListeners =
