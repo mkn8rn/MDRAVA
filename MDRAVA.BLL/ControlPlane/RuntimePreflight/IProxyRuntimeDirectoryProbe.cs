@@ -1,4 +1,4 @@
-namespace MDRAVA.BLL.Infrastructure;
+namespace MDRAVA.BLL.ControlPlane.RuntimePreflight;
 
 public interface IProxyRuntimeDirectoryProbe
 {

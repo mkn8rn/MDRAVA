@@ -1,6 +1,6 @@
 using MDRAVA.BLL.Configuration;
 
-namespace MDRAVA.BLL.Infrastructure;
+namespace MDRAVA.BLL.ControlPlane.Observability;
 
 public interface IProxyLogPersistenceSettingsReader
 {
