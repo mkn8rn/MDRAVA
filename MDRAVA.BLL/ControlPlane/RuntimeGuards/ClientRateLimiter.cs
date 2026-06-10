@@ -1,6 +1,6 @@
 using System.Net;
 
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.RuntimeGuards;
 
 public sealed class ClientRateLimiter
 {

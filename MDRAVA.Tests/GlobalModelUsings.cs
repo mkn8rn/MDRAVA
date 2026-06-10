@@ -12,6 +12,7 @@ global using MDRAVA.BLL.ControlPlane.Metrics;
 global using MDRAVA.BLL.ControlPlane.RequestDiagnostics;
 global using MDRAVA.BLL.ControlPlane.Resilience;
 global using MDRAVA.BLL.ControlPlane.RouteDiagnostics;
+global using MDRAVA.BLL.ControlPlane.RuntimeGuards;
 global using MDRAVA.BLL.ControlPlane.Status;
 global using MDRAVA.BLL.ControlPlane.UpstreamSelection;
 global using MDRAVA.BLL.Configuration;
