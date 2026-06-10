@@ -1,3 +1,5 @@
+using MDRAVA.BLL.ControlPlane;
+
 namespace MDRAVA.API.Proxy.Security;
 
 public sealed class AdminAuthenticationMiddleware
