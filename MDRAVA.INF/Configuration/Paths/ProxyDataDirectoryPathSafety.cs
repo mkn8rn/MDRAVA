@@ -1,10 +1,12 @@
-namespace MDRAVA.BLL.ControlPlane.Backup;
+using MDRAVA.BLL.Configuration;
 
-public static class ProxyBackupPathSafety
+namespace MDRAVA.INF.Configuration.Paths;
+
+public sealed class ProxyDataDirectoryPathSafety : IProxyDataDirectoryPathSafety
 {
     private const int MaxRelativePathLength = 240;
 
-    public static bool TryGetSafeRelativePath(string root, string path, out string relativePath)
+    public bool TryGetSafeRelativePath(string root, string path, out string relativePath)
     {
         relativePath = "";
         var fullRoot = Path.GetFullPath(root);

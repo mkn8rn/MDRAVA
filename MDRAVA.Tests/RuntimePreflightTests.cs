@@ -8,7 +8,10 @@ internal static class RuntimePreflightTests
     public static void RuntimePreflightCreatesOwnedDirectoriesSafely()
     {
         using var temp = TemporaryDirectory.Create();
-        var service = new ProxyRuntimePreflightService(Provider(temp.Path), new ProxyRuntimeDirectoryProbe());
+        var service = new ProxyRuntimePreflightService(
+            Provider(temp.Path),
+            new ProxyDataDirectoryPathSafety(),
+            new ProxyRuntimeDirectoryProbe());
 
         var status = service.RunStartupChecks();
 
@@ -30,7 +33,10 @@ internal static class RuntimePreflightTests
             path.EndsWith("logs", StringComparison.OrdinalIgnoreCase)
                 ? new ProxyRuntimeDirectoryProbeResult(true, false, true, false, secret)
                 : new ProxyRuntimeDirectoryProbeResult(true, false, true, true, null));
-        var service = new ProxyRuntimePreflightService(Provider(temp.Path), probe);
+        var service = new ProxyRuntimePreflightService(
+            Provider(temp.Path),
+            new ProxyDataDirectoryPathSafety(),
+            probe);
 
         var status = service.RunStartupChecks();
         var text = JsonSerializer.Serialize(status);
@@ -53,6 +59,7 @@ internal static class RuntimePreflightTests
         var provider = new UnsafeLogsProvider(temp.Path, Path.Combine(Path.GetTempPath(), $"mdrava-outside-{Guid.NewGuid():N}"));
         var service = new ProxyRuntimePreflightService(
             provider,
+            new ProxyDataDirectoryPathSafety(),
             new DelegateProbe(_ => new ProxyRuntimeDirectoryProbeResult(true, false, true, true, null)));
 
         var status = service.RunStartupChecks();
@@ -69,7 +76,10 @@ internal static class RuntimePreflightTests
     public static void RuntimePreflightInspectDoesNotCreateMissingDirectories()
     {
         using var temp = TemporaryDirectory.Create();
-        var service = new ProxyRuntimePreflightService(Provider(temp.Path), new ProxyRuntimeDirectoryProbe());
+        var service = new ProxyRuntimePreflightService(
+            Provider(temp.Path),
+            new ProxyDataDirectoryPathSafety(),
+            new ProxyRuntimeDirectoryProbe());
 
         var status = service.Inspect();
 

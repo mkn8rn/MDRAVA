@@ -482,6 +482,7 @@ internal static class OperatorStatusTests
             {
                 DataDirectory = fixture.DataDirectory
             }),
+            new ProxyDataDirectoryPathSafety(),
             new RuntimePreflightProbe(path =>
                 path.EndsWith("logs", StringComparison.OrdinalIgnoreCase)
                     ? new ProxyRuntimeDirectoryProbeResult(true, false, true, false, secret)

@@ -1,9 +1,17 @@
+using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.Backup;
 
 namespace MDRAVA.INF.DataDirectory;
 
 public sealed class ProxyBackupFileSystem : IProxyBackupFileSystem
 {
+    private readonly IProxyDataDirectoryPathSafety _pathSafety;
+
+    public ProxyBackupFileSystem(IProxyDataDirectoryPathSafety pathSafety)
+    {
+        _pathSafety = pathSafety;
+    }
+
     public bool DirectoryExists(string root, string relativePath)
     {
         return Directory.Exists(ResolveRelativePath(root, relativePath));
@@ -24,10 +32,10 @@ public sealed class ProxyBackupFileSystem : IProxyBackupFileSystem
 
     public bool TryGetSafeRelativePath(string root, string path, out string relativePath)
     {
-        return ProxyBackupPathSafety.TryGetSafeRelativePath(root, path, out relativePath);
+        return _pathSafety.TryGetSafeRelativePath(root, path, out relativePath);
     }
 
-    private static void ScanDirectory(
+    private void ScanDirectory(
         string root,
         string directory,
         List<ProxyBackupFileSystemEntry> files,
@@ -77,7 +85,7 @@ public sealed class ProxyBackupFileSystem : IProxyBackupFileSystem
                 continue;
             }
 
-            if (!ProxyBackupPathSafety.TryGetSafeRelativePath(root, file.FullName, out var relativePath))
+            if (!_pathSafety.TryGetSafeRelativePath(root, file.FullName, out var relativePath))
             {
                 warnings.Add(new ProxyBackupFileSystemWarning(
                     "unsafe_path_skipped",
@@ -120,14 +128,14 @@ public sealed class ProxyBackupFileSystem : IProxyBackupFileSystem
         return Path.Combine(root, relativePath.Replace('/', Path.DirectorySeparatorChar));
     }
 
-    private static string? SafeRelativeOrNull(string root, string? path)
+    private string? SafeRelativeOrNull(string root, string? path)
     {
         if (string.IsNullOrWhiteSpace(path))
         {
             return null;
         }
 
-        return ProxyBackupPathSafety.TryGetSafeRelativePath(root, path, out var relativePath)
+        return _pathSafety.TryGetSafeRelativePath(root, path, out var relativePath)
             ? relativePath
             : null;
     }

@@ -73,10 +73,11 @@ internal static class BackupRestoreTests
         using var temp = TemporaryDirectory.Create();
         var inside = Path.Combine(temp.Path, "config", "proxy.json");
         var outside = Path.Combine(temp.Path, "..", "outside.json");
+        var pathSafety = new ProxyDataDirectoryPathSafety();
 
-        AssertEx.True(ProxyBackupPathSafety.TryGetSafeRelativePath(temp.Path, inside, out var relative));
+        AssertEx.True(pathSafety.TryGetSafeRelativePath(temp.Path, inside, out var relative));
         AssertEx.Equal("config/proxy.json", relative);
-        AssertEx.False(ProxyBackupPathSafety.TryGetSafeRelativePath(temp.Path, outside, out _));
+        AssertEx.False(pathSafety.TryGetSafeRelativePath(temp.Path, outside, out _));
     }
 
     public static async Task RestoreValidationCatchesInvalidConfigWithoutCreatingBootstrapFiles()
@@ -149,7 +150,7 @@ internal static class BackupRestoreTests
     {
         return new ProxyBackupService(
             Provider(dataDirectory),
-            new ProxyBackupFileSystem(),
+            new ProxyBackupFileSystem(new ProxyDataDirectoryPathSafety()),
             loader ?? CreateLoader(dataDirectory),
             store ?? new ProxyConfigurationStore());
     }

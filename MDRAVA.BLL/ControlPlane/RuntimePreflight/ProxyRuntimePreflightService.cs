@@ -1,5 +1,4 @@
 using MDRAVA.BLL.ControlPlane.Status;
-using MDRAVA.BLL.ControlPlane.Backup;
 using MDRAVA.BLL.Configuration;
 
 namespace MDRAVA.BLL.ControlPlane.RuntimePreflight;
@@ -8,15 +7,18 @@ public sealed class ProxyRuntimePreflightService : IProxyStatusRuntimePreflightS
 {
     private const int MaxReasons = 12;
     private readonly IMdravaDataDirectoryProvider _dataDirectoryProvider;
+    private readonly IProxyDataDirectoryPathSafety _pathSafety;
     private readonly IProxyRuntimeDirectoryProbe _directoryProbe;
     private readonly object _gate = new();
     private ProxyRuntimePreflightStatus _lastStatus = ProxyRuntimePreflightStatus.Unknown;
 
     public ProxyRuntimePreflightService(
         IMdravaDataDirectoryProvider dataDirectoryProvider,
+        IProxyDataDirectoryPathSafety pathSafety,
         IProxyRuntimeDirectoryProbe directoryProbe)
     {
         _dataDirectoryProvider = dataDirectoryProvider;
+        _pathSafety = pathSafety;
         _directoryProbe = directoryProbe;
     }
 
@@ -85,7 +87,7 @@ public sealed class ProxyRuntimePreflightService : IProxyStatusRuntimePreflightS
             bool createMissing)
         {
             if (name != "data_directory"
-                && !ProxyBackupPathSafety.TryGetSafeRelativePath(dataDirectory, path, out var safeRelativePath))
+                && !_pathSafety.TryGetSafeRelativePath(dataDirectory, path, out _))
             {
                 return new ProxyRuntimePreflightCheck(
                     name,
