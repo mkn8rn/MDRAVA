@@ -1,4 +1,7 @@
-namespace MDRAVA.API.Proxy.Configuration.Loading;
+using MDRAVA.BLL.ControlPlane;
+using Microsoft.Extensions.Logging;
+
+namespace MDRAVA.INF.Observability;
 
 public sealed class ProxyConfigurationReloadLogger : IProxyConfigurationReloadEventSink
 {
