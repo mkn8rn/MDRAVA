@@ -5,6 +5,7 @@ global using MDRAVA.BLL.ControlPlane.Backup;
 global using MDRAVA.BLL.ControlPlane.Caching;
 global using MDRAVA.BLL.ControlPlane.ConfigLint;
 global using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
+global using MDRAVA.BLL.ControlPlane.Forwarding;
 global using MDRAVA.BLL.ControlPlane.HealthChecks;
 global using MDRAVA.BLL.ControlPlane.Headers;
 global using MDRAVA.BLL.ControlPlane.Http1;

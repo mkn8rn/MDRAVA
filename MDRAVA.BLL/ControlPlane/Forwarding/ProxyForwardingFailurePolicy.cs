@@ -1,4 +1,4 @@
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.Forwarding;
 
 public static class ProxyForwardingFailurePolicy
 {

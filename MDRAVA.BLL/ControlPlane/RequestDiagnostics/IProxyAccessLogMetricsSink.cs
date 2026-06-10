@@ -1,5 +1,7 @@
 using MDRAVA.BLL.ControlPlane;
 
+using MDRAVA.BLL.ControlPlane.Forwarding;
+
 namespace MDRAVA.BLL.ControlPlane.RequestDiagnostics;
 
 public interface IProxyAccessLogMetricsSink
