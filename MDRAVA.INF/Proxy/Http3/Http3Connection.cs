@@ -155,7 +155,7 @@ public sealed class Http3Connection
             if (!headerRead.Success)
             {
                 var closeConnection = RecordProtocolError(rejectionReason);
-                await WriteGeneratedResponseAsync(stream, 400, "Bad Request", "Bad Request", context, "GET", cancellationToken);
+                await WriteGeneratedResponseAsync(stream, 400, "Bad Request", context, "GET", cancellationToken);
                 CompleteContext(ref context);
                 return !closeConnection;
             }
@@ -168,7 +168,7 @@ public sealed class Http3Connection
                     bodyMayFollow: true))
             {
                 var closeConnection = RecordProtocolError(rejectionReason);
-                await WriteGeneratedResponseAsync(stream, 400, "Bad Request", "Bad Request", context, "GET", cancellationToken);
+                await WriteGeneratedResponseAsync(stream, 400, "Bad Request", context, "GET", cancellationToken);
                 CompleteContext(ref context);
                 return !closeConnection;
             }
@@ -180,7 +180,7 @@ public sealed class Http3Connection
             if (!ProxyRequestMethodPolicy.IsSupportedApplicationMethod(requestHead.Method, out rejectionReason))
             {
                 _metrics.Http3RequestRejected(rejectionReason);
-                await WriteGeneratedResponseAsync(stream, 501, "Not Implemented", "Not Implemented", context, requestHead.Method, cancellationToken);
+                await WriteGeneratedResponseAsync(stream, 501, "Not Implemented", context, requestHead.Method, cancellationToken);
                 CompleteContext(ref context);
                 return true;
             }
@@ -191,7 +191,7 @@ public sealed class Http3Connection
             if (!noBodyFrames.Success)
             {
                 var closeConnection = RecordProtocolError(noBodyFrames.Reason);
-                await WriteGeneratedResponseAsync(stream, 400, "Bad Request", "Bad Request", context, requestHead.Method, cancellationToken);
+                await WriteGeneratedResponseAsync(stream, 400, "Bad Request", context, requestHead.Method, cancellationToken);
                 CompleteContext(ref context);
                 return !closeConnection;
             }
@@ -207,7 +207,7 @@ public sealed class Http3Connection
                 forwardedHeaders.ResolvedClientAddress,
                 _configurationSnapshot.Limits.RequestsPerMinutePerIp))
             {
-                await WriteGeneratedResponseAsync(stream, 429, "Too Many Requests", "Too Many Requests", context, requestHead.Method, cancellationToken);
+                await WriteGeneratedResponseAsync(stream, 429, "Too Many Requests", context, requestHead.Method, cancellationToken);
                 CompleteContext(ref context);
                 return true;
             }
@@ -223,7 +223,7 @@ public sealed class Http3Connection
             var routeMatch = _routeMatcher.Match(_configurationSnapshot, requestHead);
             if (routeMatch is null)
             {
-                await WriteGeneratedResponseAsync(stream, 404, "Not Found", "Not Found", context, requestHead.Method, cancellationToken);
+                await WriteGeneratedResponseAsync(stream, 404, "Not Found", context, requestHead.Method, cancellationToken);
                 CompleteContext(ref context);
                 return true;
             }
@@ -351,7 +351,6 @@ public sealed class Http3Connection
         await WriteGeneratedResponseAsync(
             stream,
             413,
-            "Payload Too Large",
             "Payload Too Large",
             context,
             requestHead.Method,
@@ -616,7 +615,6 @@ public sealed class Http3Connection
                     stream,
                     503,
                     "Service Unavailable",
-                    "Service Unavailable",
                     context,
                     requestHead.Method,
                     cancellationToken);
@@ -712,7 +710,6 @@ public sealed class Http3Connection
             stream,
             statusCode,
             reason,
-            reason,
             context,
             method,
             cancellationToken);
@@ -787,7 +784,6 @@ public sealed class Http3Connection
         await WriteGeneratedResponseAsync(
             stream,
             response.StatusCode,
-            response.ReasonPhrase,
             response.Body,
             context,
             method,
@@ -799,7 +795,6 @@ public sealed class Http3Connection
     private async ValueTask WriteGeneratedResponseAsync(
         QuicStream stream,
         int statusCode,
-        string reasonPhrase,
         string body,
         ProxyRequestContext context,
         string method,
@@ -807,7 +802,6 @@ public sealed class Http3Connection
         string? contentType = "text/plain; charset=utf-8",
         IReadOnlyList<ProxyHeaderField>? extraHeaders = null)
     {
-        _ = reasonPhrase;
         var bodyBytes = Encoding.UTF8.GetBytes(body);
         List<ProxyHeaderField> headers =
         [

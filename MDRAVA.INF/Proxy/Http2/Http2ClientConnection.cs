@@ -277,7 +277,6 @@ public sealed class Http2ClientConnection
                 frame.StreamId,
                 413,
                 "Payload Too Large",
-                "Payload Too Large",
                 CreateRequestContext(),
                 ProxyFailureKind.RequestPayloadTooLarge,
                 "GET",
@@ -329,7 +328,6 @@ public sealed class Http2ClientConnection
                     stream.Id,
                     400,
                     "Bad Request",
-                    "Bad Request",
                     context,
                     ProxyFailureKind.ClientMalformedRequest,
                     "GET",
@@ -361,7 +359,6 @@ public sealed class Http2ClientConnection
                     stream.Id,
                     429,
                     "Too Many Requests",
-                    "Too Many Requests",
                     context,
                     ProxyFailureKind.RateLimited,
                     requestHead.Method,
@@ -376,7 +373,6 @@ public sealed class Http2ClientConnection
                 await WriteGeneratedResponseAsync(
                     stream.Id,
                     501,
-                    "Not Implemented",
                     "Not Implemented",
                     context,
                     ProxyFailureKind.ClientMalformedRequest,
@@ -399,7 +395,6 @@ public sealed class Http2ClientConnection
                 await WriteGeneratedResponseAsync(
                     stream.Id,
                     404,
-                    "Not Found",
                     "Not Found",
                     context,
                     ProxyFailureKind.NoMatchingRoute,
@@ -513,7 +508,6 @@ public sealed class Http2ClientConnection
         await WriteGeneratedResponseAsync(
             streamId,
             413,
-            "Payload Too Large",
             "Payload Too Large",
             context,
             ProxyFailureKind.RequestPayloadTooLarge,
@@ -699,7 +693,6 @@ public sealed class Http2ClientConnection
                     streamId,
                     503,
                     "Service Unavailable",
-                    "Service Unavailable",
                     context,
                     ProxyFailureKind.NoHealthyUpstream,
                     requestHead.Method,
@@ -795,7 +788,6 @@ public sealed class Http2ClientConnection
         await WriteGeneratedResponseAsync(
             streamId,
             statusCode,
-            reason,
             reason,
             context,
             result.FailureKind,
@@ -895,14 +887,12 @@ public sealed class Http2ClientConnection
     private async ValueTask WriteGeneratedResponseAsync(
         int streamId,
         int statusCode,
-        string reasonPhrase,
         string body,
         ProxyRequestContext context,
         ProxyFailureKind failureKind,
         string method,
         CancellationToken cancellationToken)
     {
-        _ = reasonPhrase;
         var bodyBytes = Encoding.UTF8.GetBytes(body);
         List<ProxyHeaderField> headers =
         [
