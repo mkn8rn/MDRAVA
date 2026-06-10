@@ -3,7 +3,6 @@ using MDRAVA.BLL.ControlPlane.Forwarding;
 using MDRAVA.BLL.ControlPlane.Metrics;
 using Microsoft.Extensions.Logging;
 using System.Buffers;
-using System.Diagnostics;
 using System.Net.Sockets;
 
 namespace MDRAVA.INF.Proxy.Forwarding;
@@ -12,13 +11,16 @@ public sealed class TunnelRelay
 {
     private readonly ProxyMetrics _metrics;
     private readonly ILogger<TunnelRelay> _logger;
+    private readonly TimeProvider _timeProvider;
 
     public TunnelRelay(
         ProxyMetrics metrics,
-        ILogger<TunnelRelay> logger)
+        ILogger<TunnelRelay> logger,
+        TimeProvider timeProvider)
     {
         _metrics = metrics;
         _logger = logger;
+        _timeProvider = timeProvider;
     }
 
     public async ValueTask<TunnelRelayResult> RelayAsync(
@@ -30,12 +32,12 @@ public sealed class TunnelRelay
     {
         using var tunnelCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var token = tunnelCancellation.Token;
-        var lastActivity = Stopwatch.GetTimestamp();
+        var lastActivity = _timeProvider.GetTimestamp();
         var idleTimedOut = false;
         var relayFailed = false;
         var bytesClientToUpstream = 0L;
         var bytesUpstreamToClient = 0L;
-        var started = Stopwatch.GetTimestamp();
+        var started = _timeProvider.GetTimestamp();
 
         var clientToUpstream = RelayDirectionAsync(
             clientStream,
@@ -43,7 +45,7 @@ public sealed class TunnelRelay
             listener.ForwardingBufferBytes,
             bytes =>
             {
-                Volatile.Write(ref lastActivity, Stopwatch.GetTimestamp());
+                Volatile.Write(ref lastActivity, _timeProvider.GetTimestamp());
                 Interlocked.Add(ref bytesClientToUpstream, bytes);
                 _metrics.AddTunnelBytesClientToUpstream(bytes);
             },
@@ -55,7 +57,7 @@ public sealed class TunnelRelay
             listener.ForwardingBufferBytes,
             bytes =>
             {
-                Volatile.Write(ref lastActivity, Stopwatch.GetTimestamp());
+                Volatile.Write(ref lastActivity, _timeProvider.GetTimestamp());
                 Interlocked.Add(ref bytesUpstreamToClient, bytes);
                 _metrics.AddTunnelBytesUpstreamToClient(bytes);
             },
@@ -64,6 +66,7 @@ public sealed class TunnelRelay
         var idleMonitor = MonitorIdleAsync(
             timeouts.TunnelIdleTimeout,
             () => Volatile.Read(ref lastActivity),
+            _timeProvider,
             () =>
             {
                 idleTimedOut = true;
@@ -121,7 +124,7 @@ public sealed class TunnelRelay
             closeReason,
             Interlocked.Read(ref bytesClientToUpstream),
             Interlocked.Read(ref bytesUpstreamToClient),
-            Stopwatch.GetElapsedTime(started));
+            _timeProvider.GetElapsedTime(started));
     }
 
     private async ValueTask RelayDirectionAsync(
@@ -168,14 +171,15 @@ public sealed class TunnelRelay
     private static async Task MonitorIdleAsync(
         TimeSpan idleTimeout,
         Func<long> getLastActivityTimestamp,
+        TimeProvider timeProvider,
         Action onIdleTimeout,
         CancellationToken cancellationToken)
     {
         var pollInterval = TimeSpan.FromMilliseconds(Math.Min(250, Math.Max(25, idleTimeout.TotalMilliseconds / 4)));
         while (!cancellationToken.IsCancellationRequested)
         {
-            await Task.Delay(pollInterval, cancellationToken);
-            var elapsed = Stopwatch.GetElapsedTime(getLastActivityTimestamp());
+            await Task.Delay(pollInterval, timeProvider, cancellationToken);
+            var elapsed = timeProvider.GetElapsedTime(getLastActivityTimestamp());
             if (elapsed >= idleTimeout)
             {
                 onIdleTimeout();
