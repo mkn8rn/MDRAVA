@@ -18,6 +18,7 @@ public sealed class ProxyStatusInputReader : IProxyStatusInputReader
     private readonly IProxyAcmeCertificateLifecycleStatusSource _acmeStatusSource;
     private readonly IProxyStatusRuntimePreflightSource _preflightSource;
     private readonly IRuntimeHttp3PlatformSupportSource _http3PlatformSupportSource;
+    private readonly TimeProvider _timeProvider;
 
     public ProxyStatusInputReader(
         IProxyStatusRuntimeStateSource runtimeSource,
@@ -29,7 +30,8 @@ public sealed class ProxyStatusInputReader : IProxyStatusInputReader
         IProxyCacheStatusReader cacheStatusReader,
         IProxyAcmeCertificateLifecycleStatusSource acmeStatusSource,
         IProxyStatusRuntimePreflightSource preflightSource,
-        IRuntimeHttp3PlatformSupportSource http3PlatformSupportSource)
+        IRuntimeHttp3PlatformSupportSource http3PlatformSupportSource,
+        TimeProvider timeProvider)
     {
         _runtimeSource = runtimeSource;
         _metricsSource = metricsSource;
@@ -41,6 +43,7 @@ public sealed class ProxyStatusInputReader : IProxyStatusInputReader
         _acmeStatusSource = acmeStatusSource;
         _preflightSource = preflightSource;
         _http3PlatformSupportSource = http3PlatformSupportSource;
+        _timeProvider = timeProvider;
     }
 
     public ProxyStatusInput Read()
@@ -69,6 +72,7 @@ public sealed class ProxyStatusInputReader : IProxyStatusInputReader
             cacheStatus,
             acmeStatuses,
             runtimePreflight,
+            _timeProvider.GetUtcNow(),
             _lintOperations.LastActiveStatus);
     }
 }

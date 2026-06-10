@@ -18,6 +18,7 @@ public sealed record ProxyStatusInput(
     ProxyCacheStatusResponse? CacheStatus,
     IReadOnlyList<AcmeCertificateLifecycleStatus> AcmeStatuses,
     ProxyRuntimePreflightStatus RuntimePreflight,
+    DateTimeOffset ObservedAtUtc,
     ConfigLintStatus ConfigLint);
 
 public interface IProxyStatusInputReader

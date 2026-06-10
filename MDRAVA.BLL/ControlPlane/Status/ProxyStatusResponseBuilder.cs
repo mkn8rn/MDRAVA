@@ -21,6 +21,7 @@ public static class ProxyStatusResponseBuilder
             input.LogPersistence,
             input.CacheStatus,
             input.AcmeStatuses,
+            input.ObservedAtUtc,
             input.RuntimePreflight);
 
         return new ProxyStatusResponse(

@@ -47,8 +47,9 @@ internal static class OperatorStatusTests
             upstream,
             new HealthCheckSample(true, "status_200"),
             DateTimeOffset.UtcNow);
+        var observedAtUtc = new DateTimeOffset(2026, 6, 10, 9, 0, 0, TimeSpan.Zero);
 
-        var input = fixture.InputReader().Read();
+        var input = fixture.InputReader(timeProvider: new FixedTimeProvider(observedAtUtc)).Read();
 
         AssertEx.NotNull(input.Configuration);
         AssertEx.Equal(1, input.Configuration!.Version);
@@ -57,6 +58,7 @@ internal static class OperatorStatusTests
         AssertEx.Equal(UpstreamHealthState.Healthy, input.Upstreams[0].HealthState);
         AssertEx.Equal(ProxyStatusText.Healthy, input.LogPersistence.State);
         AssertEx.Equal(ProxyRuntimePreflightStatus.Unknown, input.RuntimePreflight);
+        AssertEx.Equal(observedAtUtc, input.ObservedAtUtc);
         AssertEx.True(input.ConfigLint.Available);
     }
 
@@ -76,6 +78,7 @@ internal static class OperatorStatusTests
             Listeners = [ListenerStatus(listener, ProxyListenerState.Active)]
         };
         var metrics = new ProxyMetrics().Snapshot();
+        var observedAtUtc = new DateTimeOffset(2026, 6, 10, 9, 5, 0, TimeSpan.Zero);
         var input = new ProxyStatusInput(
             runtime,
             snapshot,
@@ -99,6 +102,7 @@ internal static class OperatorStatusTests
             new ProxyCacheStatusResponse(3, 1024, 0, 0, 0, 0, 0, null, null, [], []),
             [],
             ProxyRuntimePreflightStatus.Unknown,
+            observedAtUtc,
             ConfigLintStatus.Empty);
 
         var status = ProxyStatusResponseBuilder.Build(input);
@@ -110,6 +114,7 @@ internal static class OperatorStatusTests
         AssertEx.Equal(3, status.Subsystems.Cache.EntryCount);
         AssertEx.Equal(1024, status.Subsystems.Cache.ApproximateBytes);
         AssertEx.Equal("healthy", status.Readiness.State);
+        AssertEx.Equal(observedAtUtc, status.Readiness.GeneratedAtUtc);
         AssertEx.Equal(ConfigLintStatus.Empty, status.ConfigLint);
     }
 
@@ -746,7 +751,9 @@ internal static class OperatorStatusTests
             return new ProxyStatusController(new ProxyStatusAdministrationService(statusOperations));
         }
 
-        public ProxyStatusInputReader InputReader(ProxyRuntimePreflightService? preflight = null)
+        public ProxyStatusInputReader InputReader(
+            ProxyRuntimePreflightService? preflight = null,
+            TimeProvider? timeProvider = null)
         {
             return new ProxyStatusInputReader(
                 Runtime,
@@ -760,7 +767,8 @@ internal static class OperatorStatusTests
                     new ProxyCacheRuntimeStatusSource(Cache)),
                 new ProxyAcmeCertificateLifecycleStatusSource(Acme),
                 preflight is null ? FixedRuntimePreflightSource.Instance : preflight,
-                TestHttp3PlatformSupport.SupportedSource);
+                TestHttp3PlatformSupport.SupportedSource,
+                timeProvider ?? TimeProvider.System);
         }
 
         public void Dispose()
@@ -813,6 +821,21 @@ internal static class OperatorStatusTests
         public ProxyRuntimePreflightStatus ReadRuntimePreflight()
         {
             return ProxyRuntimePreflightStatus.Unknown;
+        }
+    }
+
+    private sealed class FixedTimeProvider : TimeProvider
+    {
+        private readonly DateTimeOffset _utcNow;
+
+        public FixedTimeProvider(DateTimeOffset utcNow)
+        {
+            _utcNow = utcNow;
+        }
+
+        public override DateTimeOffset GetUtcNow()
+        {
+            return _utcNow;
         }
     }
 }

@@ -15,7 +15,8 @@ internal static class ProxyStatusOperationFactory
         ResponseCacheStore? cacheStore = null,
         AcmeCertificateStatusStore? acmeStatusStore = null,
         ProxyRuntimePreflightService? preflightService = null,
-        IProxyConfigLintOperations? lintOperations = null)
+        IProxyConfigLintOperations? lintOperations = null,
+        TimeProvider? timeProvider = null)
     {
         var cache = cacheStore ?? new ResponseCacheStore(TimeProvider.System);
         var acme = acmeStatusStore ?? new AcmeCertificateStatusStore();
@@ -35,7 +36,8 @@ internal static class ProxyStatusOperationFactory
                 new ProxyCacheRuntimeStatusSource(cache)),
             new ProxyAcmeCertificateLifecycleStatusSource(acme),
             preflightSource,
-            TestHttp3PlatformSupport.SupportedSource);
+            TestHttp3PlatformSupport.SupportedSource,
+            timeProvider ?? TimeProvider.System);
         return new ProxyStatusOperations(inputReader);
     }
 

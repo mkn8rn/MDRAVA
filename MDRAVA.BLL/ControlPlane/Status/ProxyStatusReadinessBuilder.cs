@@ -18,11 +18,20 @@ public static class ProxyStatusReadinessBuilder
         ProxyLogPersistenceStatus logPersistence,
         ProxyCacheStatusResponse? cacheStatus,
         IReadOnlyList<AcmeCertificateLifecycleStatus> acmeStatuses,
+        DateTimeOffset observedAtUtc,
         ProxyRuntimePreflightStatus? runtimePreflight = null)
     {
-        var now = DateTimeOffset.UtcNow;
         var runtimePreflightStatus = runtimePreflight ?? ProxyRuntimePreflightStatus.Unknown;
-        var subsystems = BuildSubsystems(snapshot, runtime, metrics, upstreams, http3, logPersistence, cacheStatus, acmeStatuses, now);
+        var subsystems = BuildSubsystems(
+            snapshot,
+            runtime,
+            metrics,
+            upstreams,
+            http3,
+            logPersistence,
+            cacheStatus,
+            acmeStatuses,
+            observedAtUtc);
         var readiness = ProxyReadinessEvaluator.Evaluate(new ProxyReadinessEvaluationInput(
             snapshot is not null,
             snapshot?.Version,
@@ -31,7 +40,7 @@ public static class ProxyStatusReadinessBuilder
             logPersistence.State,
             runtimePreflightStatus,
             subsystems,
-            now));
+            observedAtUtc));
         return (readiness, subsystems);
     }
 
