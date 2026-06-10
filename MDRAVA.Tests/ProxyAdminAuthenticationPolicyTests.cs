@@ -48,6 +48,13 @@ internal static class ProxyAdminAuthenticationPolicyTests
         AssertEx.True(validBearer.AuthenticationRequired);
         AssertEx.Equal(ProxyAdminAuthenticationPolicy.ValidResult, validBearer.Result);
 
+        var validBearerAfterNullRawHeader = Authenticate(
+            requireAuthentication: true,
+            expectedToken: "secret",
+            authorizationHeaders: [null, "Bearer secret"],
+            apiKeyHeaders: []);
+        AssertEx.True(validBearerAfterNullRawHeader.Allowed);
+
         var validApiKey = Authenticate(
             requireAuthentication: true,
             expectedToken: "secret",
@@ -74,7 +81,8 @@ internal static class ProxyAdminAuthenticationPolicyTests
             new ProxyAdminAuthenticationInput(
                 requireAuthentication,
                 expectedToken,
-                authorizationHeaders,
-                apiKeyHeaders));
+                ProxyAdminPresentedCredentials.FromRawHeaders(
+                    authorizationHeaders,
+                    apiKeyHeaders)));
     }
 }

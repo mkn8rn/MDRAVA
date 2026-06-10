@@ -41,8 +41,7 @@ public sealed class ProxyAdminAuthenticationService
         var decision = ProxyAdminAuthenticationPolicy.Authenticate(new ProxyAdminAuthenticationInput(
             security.RequireAuthentication,
             security.Token,
-            input.AuthorizationHeaders,
-            input.ApiKeyHeaders));
+            input.PresentedCredentials));
         if (decision.AuthenticationRequired && !decision.Allowed)
         {
             _metrics.AdminAuthFailed();
@@ -118,8 +117,7 @@ public sealed record ProxyAdminRequestAuthenticationInput(
     string Method,
     string Path,
     string? RemoteClientAddress,
-    IReadOnlyList<string?> AuthorizationHeaders,
-    IReadOnlyList<string?> ApiKeyHeaders);
+    ProxyAdminPresentedCredentials PresentedCredentials);
 
 public sealed record ProxyAdminAuthenticationOutcome(
     bool Allowed,

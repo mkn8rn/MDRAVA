@@ -7,8 +7,69 @@ namespace MDRAVA.BLL.ControlPlane.AdminAuthentication;
 public sealed record ProxyAdminAuthenticationInput(
     bool RequireAuthentication,
     string? ExpectedToken,
-    IReadOnlyList<string?> AuthorizationHeaders,
-    IReadOnlyList<string?> ApiKeyHeaders);
+    ProxyAdminPresentedCredentials PresentedCredentials);
+
+public sealed record ProxyAdminPresentedCredentials
+{
+    public ProxyAdminPresentedCredentials(
+        IReadOnlyList<string> authorizationHeaders,
+        IReadOnlyList<string> apiKeyHeaders)
+    {
+        AuthorizationHeaders = CopyValidated(authorizationHeaders, nameof(authorizationHeaders));
+        ApiKeyHeaders = CopyValidated(apiKeyHeaders, nameof(apiKeyHeaders));
+    }
+
+    public IReadOnlyList<string> AuthorizationHeaders { get; }
+
+    public IReadOnlyList<string> ApiKeyHeaders { get; }
+
+    public static ProxyAdminPresentedCredentials FromRawHeaders(
+        IEnumerable<string?> authorizationHeaders,
+        IEnumerable<string?> apiKeyHeaders)
+    {
+        return new ProxyAdminPresentedCredentials(
+            CopyNonNull(authorizationHeaders, nameof(authorizationHeaders)),
+            CopyNonNull(apiKeyHeaders, nameof(apiKeyHeaders)));
+    }
+
+    private static IReadOnlyList<string> CopyValidated(
+        IReadOnlyList<string> values,
+        string parameterName)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+
+        var copy = new List<string>(values.Count);
+        foreach (var value in values)
+        {
+            if (value is null)
+            {
+                throw new ArgumentException("Header values cannot contain null entries.", parameterName);
+            }
+
+            copy.Add(value);
+        }
+
+        return copy;
+    }
+
+    private static IReadOnlyList<string> CopyNonNull(
+        IEnumerable<string?> values,
+        string parameterName)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+
+        var copy = new List<string>();
+        foreach (var value in values)
+        {
+            if (value is not null)
+            {
+                copy.Add(value);
+            }
+        }
+
+        return copy;
+    }
+}
 
 public sealed record ProxyAdminAuthenticationDecision(
     bool Allowed,
@@ -43,8 +104,8 @@ public static class ProxyAdminAuthenticationPolicy
             return Deny(NotConfiguredResult, shouldChallenge: false);
         }
 
-        var presentedToken = ReadBearerToken(input.AuthorizationHeaders)
-            ?? ReadApiKey(input.ApiKeyHeaders);
+        var presentedToken = ReadBearerToken(input.PresentedCredentials.AuthorizationHeaders)
+            ?? ReadApiKey(input.PresentedCredentials.ApiKeyHeaders);
 
         if (presentedToken is null)
         {
@@ -72,15 +133,10 @@ public static class ProxyAdminAuthenticationPolicy
             shouldChallenge);
     }
 
-    private static string? ReadBearerToken(IReadOnlyList<string?> authorizationValues)
+    private static string? ReadBearerToken(IReadOnlyList<string> authorizationValues)
     {
         foreach (var value in authorizationValues)
         {
-            if (value is null)
-            {
-                continue;
-            }
-
             const string prefix = "Bearer ";
             if (value.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
             {
@@ -92,7 +148,7 @@ public static class ProxyAdminAuthenticationPolicy
         return null;
     }
 
-    private static string? ReadApiKey(IReadOnlyList<string?> values)
+    private static string? ReadApiKey(IReadOnlyList<string> values)
     {
         var value = values.FirstOrDefault();
         if (string.IsNullOrWhiteSpace(value))

@@ -28,8 +28,9 @@ public sealed class AdminAuthenticationMiddleware
             context.Request.Method,
             context.Request.Path.HasValue ? context.Request.Path.Value! : "/",
             ProxyClientAddressPolicy.NormalizeClientIp(context.Connection.RemoteIpAddress),
-            context.Request.Headers.Authorization.ToArray(),
-            context.Request.Headers[ProxyAdminAuthenticationPolicy.AdminApiKeyHeaderName].ToArray());
+            ProxyAdminPresentedCredentials.FromRawHeaders(
+                context.Request.Headers.Authorization.ToArray(),
+                context.Request.Headers[ProxyAdminAuthenticationPolicy.AdminApiKeyHeaderName].ToArray()));
         var outcome = _authentication.Authenticate(input);
         if (!outcome.Allowed)
         {
