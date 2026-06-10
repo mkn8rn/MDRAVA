@@ -1,7 +1,7 @@
 using System.Text;
 using MDRAVA.BLL.Configuration;
 
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.Caching;
 
 public sealed class ResponseCacheStore : IProxyCacheControl
 {

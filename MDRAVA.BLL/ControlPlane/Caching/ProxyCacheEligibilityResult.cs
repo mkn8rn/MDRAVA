@@ -1,4 +1,4 @@
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.Caching;
 
 public readonly record struct ProxyCacheEligibilityResult(bool CanCache, string? RejectionReason)
 {
