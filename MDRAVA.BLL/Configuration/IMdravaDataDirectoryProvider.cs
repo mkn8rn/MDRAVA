@@ -1,4 +1,4 @@
-namespace MDRAVA.BLL.Infrastructure;
+namespace MDRAVA.BLL.Configuration;
 
 public interface IMdravaDataDirectoryProvider
 {

@@ -25,7 +25,6 @@ global using MDRAVA.BLL.ControlPlane.UpstreamSelection;
 global using MDRAVA.BLL.ControlPlane.Upgrades;
 global using MDRAVA.BLL.Configuration;
 global using MDRAVA.BLL.Http;
-global using MDRAVA.BLL.Infrastructure;
 global using MDRAVA.INF.Acme;
 global using MDRAVA.INF.Configuration;
 global using MDRAVA.INF.Configuration.Paths;

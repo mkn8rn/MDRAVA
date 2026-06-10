@@ -1,4 +1,4 @@
-using MDRAVA.BLL.Infrastructure;
+using MDRAVA.BLL.Configuration;
 
 namespace MDRAVA.INF.Configuration.Paths;
 
