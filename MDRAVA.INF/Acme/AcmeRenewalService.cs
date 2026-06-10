@@ -1,5 +1,10 @@
 
-namespace MDRAVA.API.Proxy.Acme;
+using MDRAVA.BLL.ControlPlane;
+using MDRAVA.BLL.Infrastructure;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+
+namespace MDRAVA.INF.Acme;
 
 public sealed class AcmeRenewalService : BackgroundService
 {
