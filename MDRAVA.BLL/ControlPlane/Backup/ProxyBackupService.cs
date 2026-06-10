@@ -1,6 +1,6 @@
 using MDRAVA.BLL.Infrastructure;
 
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.Backup;
 
 public sealed class ProxyBackupService : IProxyBackupOperations
 {
