@@ -1,6 +1,6 @@
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.AdminAuthentication;
-using MDRAVA.BLL.Infrastructure;
+using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 
 namespace MDRAVA.INF.Runtime;
 

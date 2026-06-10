@@ -1,6 +1,6 @@
 
 using MDRAVA.BLL.ControlPlane.Acme;
-using MDRAVA.BLL.Infrastructure;
+using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 

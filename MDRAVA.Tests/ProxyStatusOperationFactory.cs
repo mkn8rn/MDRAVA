@@ -1,6 +1,5 @@
 using MDRAVA.API.Proxy.Hosting;
 using MDRAVA.BLL.ControlPlane.Acme;
-using MDRAVA.BLL.Infrastructure;
 using MDRAVA.INF.Proxy.Health;
 
 namespace MDRAVA.Tests;

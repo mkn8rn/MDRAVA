@@ -1,7 +1,6 @@
-
 using MDRAVA.BLL.Configuration;
 
-namespace MDRAVA.BLL.Infrastructure;
+namespace MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 
 public interface IProxyConfigurationStore
 {

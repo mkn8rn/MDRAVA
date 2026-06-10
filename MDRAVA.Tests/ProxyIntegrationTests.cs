@@ -2021,7 +2021,7 @@ internal static class ProxyIntegrationTests
             var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
             var diagnostics = host.Services.GetRequiredService<RecentRequestDiagnosticsStore>().Recent(50);
             var upstreams = host.Services.GetRequiredService<UpstreamHealthStore>()
-                .Snapshot(host.Services.GetRequiredService<MDRAVA.BLL.Infrastructure.IProxyConfigurationStore>().Snapshot)
+                .Snapshot(host.Services.GetRequiredService<MDRAVA.BLL.ControlPlane.ConfigurationManagement.IProxyConfigurationStore>().Snapshot)
                 .ToArray();
 
             return new TwoUpstreamHttpResult(firstRequests, secondRequests, metrics, upstreams, diagnostics);
@@ -2264,7 +2264,7 @@ internal static class ProxyIntegrationTests
         CancellationToken cancellationToken)
     {
         var healthStore = host.Services.GetRequiredService<UpstreamHealthStore>();
-        var configurationStore = host.Services.GetRequiredService<MDRAVA.BLL.Infrastructure.IProxyConfigurationStore>();
+        var configurationStore = host.Services.GetRequiredService<MDRAVA.BLL.ControlPlane.ConfigurationManagement.IProxyConfigurationStore>();
         while (true)
         {
             var records = healthStore.Snapshot(configurationStore.Snapshot);

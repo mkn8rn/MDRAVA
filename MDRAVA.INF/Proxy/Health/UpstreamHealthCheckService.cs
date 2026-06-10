@@ -1,5 +1,5 @@
 using MDRAVA.BLL.ControlPlane.HealthChecks;
-using MDRAVA.BLL.Infrastructure;
+using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 using Microsoft.Extensions.Hosting;
 
 namespace MDRAVA.INF.Proxy.Health;

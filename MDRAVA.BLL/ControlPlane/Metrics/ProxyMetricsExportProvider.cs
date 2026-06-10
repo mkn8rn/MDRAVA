@@ -1,5 +1,4 @@
-
-using MDRAVA.BLL.Infrastructure;
+using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 
 namespace MDRAVA.BLL.ControlPlane.Metrics;
 

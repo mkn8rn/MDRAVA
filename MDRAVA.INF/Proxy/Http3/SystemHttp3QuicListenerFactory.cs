@@ -1,8 +1,8 @@
 #pragma warning disable CA1416
 using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 using MDRAVA.BLL.ControlPlane.Metrics;
 using MDRAVA.BLL.ControlPlane.Tls;
-using MDRAVA.BLL.Infrastructure;
 using Microsoft.Extensions.Logging;
 using System.Net;
 using System.Net.Quic;
