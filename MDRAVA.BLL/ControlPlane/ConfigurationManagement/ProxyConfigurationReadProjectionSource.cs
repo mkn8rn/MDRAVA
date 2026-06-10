@@ -1,4 +1,3 @@
-using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.Infrastructure;
 
 namespace MDRAVA.BLL.ControlPlane.ConfigurationManagement;

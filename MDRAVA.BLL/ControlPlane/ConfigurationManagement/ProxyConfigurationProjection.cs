@@ -1,6 +1,7 @@
 using MDRAVA.BLL.ControlPlane.Http3;
+using MDRAVA.BLL.Configuration;
 
-namespace MDRAVA.BLL.Configuration;
+namespace MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 
 public sealed record ProxyConfigurationProjection(
     int Version,
