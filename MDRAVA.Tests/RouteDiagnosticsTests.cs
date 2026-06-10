@@ -583,7 +583,7 @@ internal static class RouteDiagnosticsTests
                 TestHttp3PlatformSupport.SupportedSource,
                 new ProxyEndpointAddressPolicy(),
                 new ProxyUrlSyntaxPolicy()),
-            new ProxyConfigLintRuntimeStateSource(new ProxyRuntimeState()),
+            new ProxyConfigLintRuntimeStateSource(new ProxyRuntimeState(TimeProvider.System)),
             metrics,
             new ProxyConfigLintSourceNameFormatter(),
             new ProxyAdminUrlPolicy(),

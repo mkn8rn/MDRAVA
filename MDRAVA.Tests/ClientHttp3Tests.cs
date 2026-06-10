@@ -1940,7 +1940,7 @@ internal static class ClientHttp3Tests
                 TestHttp3PlatformSupport.SupportedSource,
                 new ProxyEndpointAddressPolicy(),
                 new ProxyUrlSyntaxPolicy()),
-            new ProxyConfigLintRuntimeStateSource(new ProxyRuntimeState()),
+            new ProxyConfigLintRuntimeStateSource(new ProxyRuntimeState(TimeProvider.System)),
             new ProxyMetrics(),
             new ProxyConfigLintSourceNameFormatter(),
             new ProxyAdminUrlPolicy(),

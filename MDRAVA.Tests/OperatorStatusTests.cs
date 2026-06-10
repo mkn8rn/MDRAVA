@@ -284,7 +284,8 @@ internal static class OperatorStatusTests
 
     public static void StatusReadinessReportsNoActiveListenerAsNotReady()
     {
-        using var fixture = StatusFixture.Create();
+        var stoppedAtUtc = new DateTimeOffset(2026, 6, 10, 10, 35, 0, TimeSpan.Zero);
+        using var fixture = StatusFixture.Create(new FixedTimeProvider(stoppedAtUtc));
         var listener = Listener();
         fixture.Store.Replace(Snapshot([listener], [StaticRoute()]));
         fixture.Runtime.ReplaceListeners([ListenerStatus(listener, ProxyListenerState.Failed)], null);
@@ -295,6 +296,7 @@ internal static class OperatorStatusTests
         AssertEx.True(status.Readiness.Reasons.Contains("no_active_listeners"), string.Join(",", status.Readiness.Reasons));
         AssertEx.Equal(1, status.Subsystems.Listeners.Failed);
         AssertEx.Equal(0, status.Subsystems.Listeners.Active);
+        AssertEx.Equal(stoppedAtUtc, status.StoppedAt);
     }
 
     public static void StatusReadinessReportsFailedListenerReloadWithoutLosingActiveConfig()
@@ -690,12 +692,12 @@ internal static class OperatorStatusTests
 
     private sealed class StatusFixture : IDisposable
     {
-        private StatusFixture(string dataDirectory)
+        private StatusFixture(string dataDirectory, TimeProvider timeProvider)
         {
             DataDirectory = dataDirectory;
             Metrics = new ProxyMetrics();
             Store = new ProxyConfigurationStore();
-            Runtime = new ProxyRuntimeState();
+            Runtime = new ProxyRuntimeState(timeProvider);
             Pool = new UpstreamConnectionPool(new UpstreamConnectionFactory(), Metrics);
             Circuit = new CircuitBreakerStore(Metrics, TimeProvider.System);
             Health = new UpstreamHealthStore(Metrics, Pool, Circuit);
@@ -730,11 +732,11 @@ internal static class OperatorStatusTests
 
         public ProxyPersistentLogWriter Writer { get; }
 
-        public static StatusFixture Create()
+        public static StatusFixture Create(TimeProvider? timeProvider = null)
         {
             var path = Path.Combine(Path.GetTempPath(), $"mdrava-status-tests-{Guid.NewGuid():N}");
             Directory.CreateDirectory(path);
-            return new StatusFixture(path);
+            return new StatusFixture(path, timeProvider ?? TimeProvider.System);
         }
 
         public ProxyStatusController Controller(ProxyRuntimePreflightService? preflight = null)

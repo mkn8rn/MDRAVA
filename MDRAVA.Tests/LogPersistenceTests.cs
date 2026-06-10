@@ -308,7 +308,7 @@ internal static class LogPersistenceTests
         var pool = new UpstreamConnectionPool(new UpstreamConnectionFactory(), metrics);
         var health = new UpstreamHealthStore(metrics, pool);
         var statusOperations = ProxyStatusOperationFactory.Create(
-            new ProxyRuntimeState(),
+            new ProxyRuntimeState(TimeProvider.System),
             metrics,
             store,
             health,

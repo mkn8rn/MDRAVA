@@ -541,7 +541,7 @@ internal static class ResilienceTests
             fixture.Store.Snapshot,
             TestHttp3PlatformSupport.Supported);
         var statusOperations = ProxyStatusOperationFactory.Create(
-            new ProxyRuntimeState(),
+            new ProxyRuntimeState(TimeProvider.System),
             fixture.Metrics,
             fixture.Store,
             fixture.Health);

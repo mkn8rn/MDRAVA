@@ -5,6 +5,7 @@ namespace MDRAVA.BLL.ControlPlane.Listeners;
 public sealed class ProxyRuntimeState : IProxyStatusRuntimeStateSource
 {
     private readonly object _gate = new();
+    private readonly TimeProvider _timeProvider;
     private int _isRunning;
     private string? _listenerName;
     private string? _endpoint;
@@ -16,6 +17,11 @@ public sealed class ProxyRuntimeState : IProxyStatusRuntimeStateSource
     private DateTimeOffset? _shutdownDeadlineUtc;
     private IReadOnlyList<ProxyListenerStatus> _listeners = [];
     private ProxyListenerReloadResult? _lastListenerReload;
+
+    public ProxyRuntimeState(TimeProvider timeProvider)
+    {
+        _timeProvider = timeProvider;
+    }
 
     public ProxyRuntimeSnapshot Snapshot()
     {
@@ -80,7 +86,7 @@ public sealed class ProxyRuntimeState : IProxyStatusRuntimeStateSource
             _listenerName = null;
             _endpoint = null;
             _startedAt = null;
-            _stoppedAt = DateTimeOffset.UtcNow;
+            _stoppedAt = _timeProvider.GetUtcNow();
             _lastError = listeners.Count == 0
                 ? "No configured proxy listener."
                 : listeners.FirstOrDefault(static listener => listener.State == ProxyListenerState.Failed)?.LastError;
