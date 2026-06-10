@@ -7,6 +7,7 @@ using System.Text;
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane;
 using MDRAVA.BLL.ControlPlane.Timeouts;
+using MDRAVA.BLL.ControlPlane.Upstreams;
 
 namespace MDRAVA.INF.Proxy.Connections;
 

@@ -1,6 +1,8 @@
 using MDRAVA.BLL.ControlPlane.Resilience;
 using MDRAVA.BLL.ControlPlane.HealthChecks;
 using MDRAVA.BLL.ControlPlane;
+using MDRAVA.BLL.ControlPlane.Upstreams;
+
 namespace MDRAVA.BLL.ControlPlane.Status;
 
 public sealed record ProxyUpstreamStatusResponse(
