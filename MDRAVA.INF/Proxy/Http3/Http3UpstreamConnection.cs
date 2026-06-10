@@ -1,13 +1,15 @@
 #pragma warning disable CA1416
+using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane;
 using System.Globalization;
 using System.Net;
 using System.Net.Quic;
 using System.Net.Security;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
-using MDRAVA.API.Proxy.Forwarding;
+using MDRAVA.INF.Proxy.Forwarding;
 
-namespace MDRAVA.API.Proxy.Http3;
+namespace MDRAVA.INF.Proxy.Http3;
 
 internal sealed class Http3UpstreamConnection : IAsyncDisposable
 {

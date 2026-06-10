@@ -1,7 +1,9 @@
+using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane;
 using System.Buffers.Binary;
-using MDRAVA.API.Proxy.Forwarding;
+using MDRAVA.INF.Proxy.Forwarding;
 
-namespace MDRAVA.API.Proxy.Http2;
+namespace MDRAVA.INF.Proxy.Http2;
 
 internal sealed class Http2UpstreamConnection
 {

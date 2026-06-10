@@ -2,7 +2,7 @@ using System.Net.Security;
 using System.Net.Quic;
 using MDRAVA.API.Proxy.Configuration;
 using MDRAVA.API.Proxy.Configuration.Loading;
-using MDRAVA.API.Proxy.Http3;
+using MDRAVA.INF.Proxy.Http3;
 using MDRAVA.INF.Proxy.Tls;
 
 namespace MDRAVA.Tests;

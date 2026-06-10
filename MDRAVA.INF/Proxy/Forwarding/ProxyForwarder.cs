@@ -1,13 +1,16 @@
+using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane;
+using Microsoft.Extensions.Logging;
 using System.Buffers;
 using System.Globalization;
 using System.Net.Sockets;
 using System.Text;
 using MDRAVA.INF.Proxy.Connections;
-using MDRAVA.API.Proxy.Http3;
-using MDRAVA.API.Proxy.Http2;
+using MDRAVA.INF.Proxy.Http3;
+using MDRAVA.INF.Proxy.Http2;
 using MDRAVA.INF.Observability;
 
-namespace MDRAVA.API.Proxy.Forwarding;
+namespace MDRAVA.INF.Proxy.Forwarding;
 
 public sealed class ProxyForwarder
 {

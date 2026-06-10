@@ -1,5 +1,5 @@
 
-namespace MDRAVA.API.Proxy.Health;
+namespace MDRAVA.INF.Proxy.Health;
 
 public sealed class UpstreamHealthCheckService : BackgroundService
 {

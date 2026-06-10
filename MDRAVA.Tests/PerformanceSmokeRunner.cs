@@ -7,7 +7,7 @@ using MDRAVA.API.Controllers;
 using MDRAVA.API.Proxy.Configuration;
 using MDRAVA.API.Proxy.Configuration.Loading;
 using MDRAVA.INF.Configuration.Paths;
-using MDRAVA.API.Proxy.Forwarding;
+using MDRAVA.INF.Proxy.Forwarding;
 using MDRAVA.API.Proxy.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;

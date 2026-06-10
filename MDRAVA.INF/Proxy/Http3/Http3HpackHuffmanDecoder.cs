@@ -1,4 +1,4 @@
-namespace MDRAVA.API.Proxy.Http3;
+namespace MDRAVA.INF.Proxy.Http3;
 
 internal static class Http3HpackHuffmanDecoder
 {

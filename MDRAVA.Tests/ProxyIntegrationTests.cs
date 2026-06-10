@@ -6,7 +6,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using MDRAVA.API.Controllers;
 using MDRAVA.API.Proxy.Configuration.Loading;
-using MDRAVA.API.Proxy.Health;
+using MDRAVA.INF.Proxy.Health;
 using MDRAVA.API.Proxy.Hosting;
 using MDRAVA.INF.Observability;
 using Microsoft.Extensions.Configuration;

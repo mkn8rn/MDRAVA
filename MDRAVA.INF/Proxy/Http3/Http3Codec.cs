@@ -1,7 +1,8 @@
+using MDRAVA.BLL.ControlPlane;
 using System.Globalization;
 using System.Text;
 
-namespace MDRAVA.API.Proxy.Http3;
+namespace MDRAVA.INF.Proxy.Http3;
 
 public static class Http3Codec
 {

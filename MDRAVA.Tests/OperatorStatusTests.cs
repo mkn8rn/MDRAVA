@@ -2,7 +2,7 @@ using System.Text.Json;
 using MDRAVA.API.Controllers;
 using MDRAVA.INF.Configuration.Paths;
 using MDRAVA.INF.Proxy.Connections;
-using MDRAVA.API.Proxy.Health;
+using MDRAVA.INF.Proxy.Health;
 using MDRAVA.API.Proxy.Hosting;
 using MDRAVA.INF.Observability;
 using MDRAVA.BLL.ControlPlane;

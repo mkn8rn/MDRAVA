@@ -1,12 +1,14 @@
+using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane;
 using System.Buffers;
 using System.Net.Sockets;
 using System.Text;
 using MDRAVA.INF.Proxy.Connections;
-using MDRAVA.API.Proxy.Forwarding;
-using MDRAVA.API.Proxy.Http2;
-using MDRAVA.API.Proxy.Http3;
+using MDRAVA.INF.Proxy.Forwarding;
+using MDRAVA.INF.Proxy.Http2;
+using MDRAVA.INF.Proxy.Http3;
 
-namespace MDRAVA.API.Proxy.Health;
+namespace MDRAVA.INF.Proxy.Health;
 
 public sealed class UpstreamHealthCheckClient : IUpstreamHealthCheckClient
 {

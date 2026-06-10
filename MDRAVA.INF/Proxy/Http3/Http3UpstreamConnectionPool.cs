@@ -1,6 +1,8 @@
 #pragma warning disable CA1416
+using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane;
 
-namespace MDRAVA.API.Proxy.Http3;
+namespace MDRAVA.INF.Proxy.Http3;
 
 public sealed class Http3UpstreamConnectionPool : IDisposable
 {

@@ -6,7 +6,7 @@ using MDRAVA.API.Proxy.Configuration;
 using MDRAVA.API.Proxy.Configuration.Loading;
 using MDRAVA.INF.Configuration.Paths;
 using MDRAVA.INF.Proxy.Connections;
-using MDRAVA.API.Proxy.Health;
+using MDRAVA.INF.Proxy.Health;
 using MDRAVA.API.Proxy.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;

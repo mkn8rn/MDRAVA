@@ -1,15 +1,18 @@
+using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane;
+using Microsoft.Extensions.Logging;
 using System.Buffers.Binary;
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using MDRAVA.API.Proxy.Forwarding;
-using MDRAVA.API.Proxy.Health;
-using MDRAVA.API.Proxy.Http3;
+using MDRAVA.INF.Proxy.Forwarding;
+using MDRAVA.INF.Proxy.Health;
+using MDRAVA.INF.Proxy.Http3;
 using MDRAVA.INF.Observability;
 
-namespace MDRAVA.API.Proxy.Http2;
+namespace MDRAVA.INF.Proxy.Http2;
 
 public sealed class Http2ClientConnection
 {

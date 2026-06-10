@@ -1,4 +1,4 @@
-using MDRAVA.API.Proxy.Forwarding;
+using MDRAVA.INF.Proxy.Forwarding;
 
 namespace MDRAVA.Tests;
 

@@ -1,12 +1,15 @@
 #pragma warning disable CA1416
+using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane;
+using Microsoft.Extensions.Logging;
 using System.Net;
 using System.Net.Quic;
 using System.Text;
-using MDRAVA.API.Proxy.Forwarding;
-using MDRAVA.API.Proxy.Health;
+using MDRAVA.INF.Proxy.Forwarding;
+using MDRAVA.INF.Proxy.Health;
 using MDRAVA.INF.Observability;
 
-namespace MDRAVA.API.Proxy.Http3;
+namespace MDRAVA.INF.Proxy.Http3;
 
 public sealed class Http3Connection
 {
