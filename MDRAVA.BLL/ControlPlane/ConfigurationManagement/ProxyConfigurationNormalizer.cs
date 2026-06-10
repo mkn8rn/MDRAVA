@@ -1,6 +1,7 @@
+using MDRAVA.BLL.ControlPlane;
 using MDRAVA.BLL.Configuration;
 
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 
 public sealed class ProxyConfigurationNormalizer
     : IProxyConfigurationNormalizeOperations

@@ -1,3 +1,4 @@
+using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 namespace MDRAVA.BLL.ControlPlane.ConfigLint;
 
 public sealed record ProxyConfigLintSubmittedConfigurationResult(

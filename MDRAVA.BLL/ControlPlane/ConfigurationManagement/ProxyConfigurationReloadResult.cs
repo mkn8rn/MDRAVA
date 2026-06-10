@@ -1,4 +1,5 @@
-namespace MDRAVA.BLL.ControlPlane;
+using MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 
 public sealed record ProxyConfigurationReloadResult<TProjection>(
     bool Succeeded,

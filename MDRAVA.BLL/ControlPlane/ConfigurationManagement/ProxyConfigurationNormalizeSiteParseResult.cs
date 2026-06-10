@@ -1,6 +1,6 @@
 using MDRAVA.BLL.Configuration;
 
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 
 public sealed record ProxyConfigurationNormalizeSiteParseResult(
     SiteOptions? Site,
