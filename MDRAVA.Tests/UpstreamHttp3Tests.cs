@@ -28,7 +28,7 @@ internal static class UpstreamHttp3Tests
 
     public static void Http3UpstreamRequiresHttps()
     {
-        var validation = new ProxyOptionsValidator().Validate(
+        var validation = new ProxyOptionsValidator(new ProxyEndpointAddressPolicy()).Validate(
             null,
             OptionsWithUpstream("http", RuntimeUpstreamProtocol.Http3));
 
@@ -1184,6 +1184,7 @@ internal static class UpstreamHttp3Tests
             new ProxyDataDirectoryBootstrapper(provider),
             new SiteConfigurationParser(),
             new MDRAVA.INF.Configuration.ProxyAdminUrlPolicy(),
+            new ProxyEndpointAddressPolicy(),
             new ProxyRelativeStoragePathPolicy(),
             NullLogger<ProxyConfigurationLoader>.Instance);
     }

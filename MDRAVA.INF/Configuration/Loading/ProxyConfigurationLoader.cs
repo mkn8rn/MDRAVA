@@ -16,6 +16,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
     private readonly ProxyDataDirectoryBootstrapper _bootstrapper;
     private readonly SiteConfigurationParser _siteParser;
     private readonly IProxyAdminUrlPolicy _adminUrlPolicy;
+    private readonly IProxyEndpointAddressPolicy _endpointAddressPolicy;
     private readonly IProxyRelativeStoragePathPolicy _relativeStoragePathPolicy;
     private readonly ILogger<ProxyConfigurationLoader> _logger;
     private int _nextVersion;
@@ -25,6 +26,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
         ProxyDataDirectoryBootstrapper bootstrapper,
         SiteConfigurationParser siteParser,
         IProxyAdminUrlPolicy adminUrlPolicy,
+        IProxyEndpointAddressPolicy endpointAddressPolicy,
         IProxyRelativeStoragePathPolicy relativeStoragePathPolicy,
         ILogger<ProxyConfigurationLoader> logger)
     {
@@ -32,6 +34,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
         _bootstrapper = bootstrapper;
         _siteParser = siteParser;
         _adminUrlPolicy = adminUrlPolicy;
+        _endpointAddressPolicy = endpointAddressPolicy;
         _relativeStoragePathPolicy = relativeStoragePathPolicy;
         _logger = logger;
     }
@@ -162,7 +165,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
 
         if (siteFiles.Length > 0)
         {
-            var validationFailures = ProxyOptionsValidationRules.Validate(options);
+            var validationFailures = ProxyOptionsValidationRules.Validate(options, _endpointAddressPolicy);
             if (validationFailures.Count > 0)
             {
                 return ProxyConfigurationLoadResult.Failure(

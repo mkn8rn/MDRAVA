@@ -1,4 +1,3 @@
-using System.Net;
 using System.Text;
 using MDRAVA.BLL.Http;
 
@@ -11,7 +10,9 @@ public static class ProxyOptionsValidationRules
     private const long MaximumCacheTotalBytes = 512L * 1024 * 1024;
     private static readonly HashSet<int> RedirectStatusCodes = [301, 302, 303, 307, 308];
 
-    public static IReadOnlyList<string> Validate(ProxyOptions options)
+    public static IReadOnlyList<string> Validate(
+        ProxyOptions options,
+        IProxyEndpointAddressPolicy endpointAddressPolicy)
     {
         List<string> failures = [];
 
@@ -36,7 +37,7 @@ public static class ProxyOptionsValidationRules
                 failures.Add($"{prefix}:Name '{listener.Name}' is duplicated.");
             }
 
-            if (!IPAddress.TryParse(listener.Address, out _))
+            if (!endpointAddressPolicy.IsListenerAddress(listener.Address))
             {
                 failures.Add($"{prefix}:Address must be an IP address for Phase 1.");
             }
@@ -244,7 +245,7 @@ public static class ProxyOptionsValidationRules
                 {
                     failures.Add($"{upstreamPrefix}:Address is required.");
                 }
-                else if (IsAmbiguousUpstreamAddress(upstream.Address))
+                else if (endpointAddressPolicy.IsAmbiguousUpstreamAddress(upstream.Address))
                 {
                     failures.Add($"{upstreamPrefix}:Address must be a host name or IP literal without scheme, path, whitespace, or embedded port.");
                 }
@@ -281,7 +282,7 @@ public static class ProxyOptionsValidationRules
                     failures.Add($"{upstreamPrefix}:Weight must be between 1 and 100000.");
                 }
 
-                ValidateUpstreamTls(failures, upstreamPrefix, upstream.UpstreamTls);
+                ValidateUpstreamTls(failures, upstreamPrefix, upstream.UpstreamTls, endpointAddressPolicy);
                 ValidateCircuitBreaker(failures, upstreamPrefix, upstream.CircuitBreaker);
             }
         }
@@ -336,61 +337,21 @@ public static class ProxyOptionsValidationRules
             || string.Equals(protocol, RuntimeUpstreamProtocol.Http3, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool IsAmbiguousUpstreamAddress(string value)
-    {
-        var address = value.Trim();
-        if (address.Length == 0
-            || address.Contains("://", StringComparison.Ordinal)
-            || address.Contains('/', StringComparison.Ordinal)
-            || address.Contains('\\', StringComparison.Ordinal)
-            || address.Any(static character => char.IsWhiteSpace(character) || char.IsControl(character)))
-        {
-            return true;
-        }
-
-        if (IPAddress.TryParse(address, out _))
-        {
-            return false;
-        }
-
-        return address.Contains(':', StringComparison.Ordinal);
-    }
-
     private static void ValidateUpstreamTls(
         List<string> failures,
         string upstreamPrefix,
-        UpstreamTlsOptions tls)
+        UpstreamTlsOptions tls,
+        IProxyEndpointAddressPolicy endpointAddressPolicy)
     {
         if (string.IsNullOrWhiteSpace(tls.SniHost))
         {
             return;
         }
 
-        if (!IsValidSniHost(tls.SniHost))
+        if (!endpointAddressPolicy.IsValidSniHost(tls.SniHost))
         {
             failures.Add($"{upstreamPrefix}:UpstreamTls:SniHost must be a DNS host name or IP literal without scheme, path, port, whitespace, or wildcard.");
         }
-    }
-
-    private static bool IsValidSniHost(string value)
-    {
-        var host = value.Trim();
-        if (host.Length is 0 or > 253
-            || host.StartsWith("*.", StringComparison.Ordinal)
-            || host.Contains('/', StringComparison.Ordinal)
-            || host.Contains('\\', StringComparison.Ordinal)
-            || host.Any(static character => char.IsWhiteSpace(character) || char.IsControl(character)))
-        {
-            return false;
-        }
-
-        if (IPAddress.TryParse(host, out _))
-        {
-            return true;
-        }
-
-        return !host.Contains(':', StringComparison.Ordinal)
-            && Uri.CheckHostName(host) is UriHostNameType.Dns or UriHostNameType.IPv4;
     }
 
     private static void ValidateHealthCheck(

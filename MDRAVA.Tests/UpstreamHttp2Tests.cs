@@ -36,7 +36,7 @@ internal static class UpstreamHttp2Tests
 
     public static void Http2UpstreamRequiresHttps()
     {
-        var validation = new ProxyOptionsValidator().Validate(
+        var validation = new ProxyOptionsValidator(new ProxyEndpointAddressPolicy()).Validate(
             null,
             new ProxyOptions
             {
@@ -78,7 +78,7 @@ internal static class UpstreamHttp2Tests
 
     public static void UnsupportedUpstreamProtocolIsRejected()
     {
-        var validation = new ProxyOptionsValidator().Validate(
+        var validation = new ProxyOptionsValidator(new ProxyEndpointAddressPolicy()).Validate(
             null,
             new ProxyOptions
             {
@@ -642,6 +642,7 @@ internal static class UpstreamHttp2Tests
             new ProxyDataDirectoryBootstrapper(provider),
             new SiteConfigurationParser(),
             new MDRAVA.INF.Configuration.ProxyAdminUrlPolicy(),
+            new ProxyEndpointAddressPolicy(),
             new ProxyRelativeStoragePathPolicy(),
             NullLogger<ProxyConfigurationLoader>.Instance);
     }

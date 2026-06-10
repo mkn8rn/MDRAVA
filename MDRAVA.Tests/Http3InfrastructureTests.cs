@@ -11,7 +11,7 @@ internal static class Http3InfrastructureTests
 {
     public static void ExistingHttp1AndHttp2ProtocolsStillValidate()
     {
-        var http1 = new ProxyOptionsValidator().Validate(
+        var http1 = new ProxyOptionsValidator(new ProxyEndpointAddressPolicy()).Validate(
             null,
             ValidProxyOptions(
                 new ListenerOptions
@@ -22,7 +22,7 @@ internal static class Http3InfrastructureTests
                     Transport = "http",
                     Protocols = "http1"
                 }));
-        var http2 = new ProxyOptionsValidator().Validate(
+        var http2 = new ProxyOptionsValidator(new ProxyEndpointAddressPolicy()).Validate(
             null,
             ValidProxyOptions(
                 new ListenerOptions
@@ -33,7 +33,7 @@ internal static class Http3InfrastructureTests
                     Transport = "https",
                     Protocols = "http2"
                 }));
-        var both = new ProxyOptionsValidator().Validate(
+        var both = new ProxyOptionsValidator(new ProxyEndpointAddressPolicy()).Validate(
             null,
             ValidProxyOptions(
                 new ListenerOptions
@@ -106,7 +106,7 @@ internal static class Http3InfrastructureTests
     public static void CurrentHttp3ConfigValidatesMapsAndAggregatesConsistently()
     {
         var listener = Http3Listener("main", "http1AndHttp2AndHttp3");
-        var validation = new ProxyOptionsValidator().Validate(null, ValidProxyOptions(listener));
+        var validation = new ProxyOptionsValidator(new ProxyEndpointAddressPolicy()).Validate(null, ValidProxyOptions(listener));
         var operationalOptions = new ProxyOperationalOptions();
         var snapshot = ProxyConfigurationRuntimeMapper.ToRuntimeSnapshot(
             ValidProxyOptions(listener),
@@ -170,7 +170,7 @@ internal static class Http3InfrastructureTests
                         ]
                     })
             ]);
-        var aggregateValidation = new ProxyOptionsValidator().Validate(null, aggregated);
+        var aggregateValidation = new ProxyOptionsValidator(new ProxyEndpointAddressPolicy()).Validate(null, aggregated);
 
         AssertEx.False(validation.Failed, string.Join("; ", validation.Failures ?? []));
         AssertEx.Equal(RuntimeListenerProtocols.Http1AndHttp2AndHttp3, snapshot.Listeners[0].Protocols);
@@ -194,7 +194,7 @@ internal static class Http3InfrastructureTests
             DefaultCertificateId = "default"
         });
 
-        var validation = new ProxyOptionsValidator().Validate(null, options);
+        var validation = new ProxyOptionsValidator(new ProxyEndpointAddressPolicy()).Validate(null, options);
         var failures = AssertEx.NotNull(validation.Failures);
 
         AssertEx.True(validation.Failed);
@@ -295,7 +295,7 @@ internal static class Http3InfrastructureTests
 
     public static void Http3ProtocolUsesDefaultEnablement()
     {
-        var validation = new ProxyOptionsValidator().Validate(
+        var validation = new ProxyOptionsValidator(new ProxyEndpointAddressPolicy()).Validate(
             null,
             ValidProxyOptions(Http3Listener("current", "http1AndHttp2AndHttp3")));
         var runtime = RuntimeListenerFor("http1AndHttp2AndHttp3");
@@ -318,7 +318,7 @@ internal static class Http3InfrastructureTests
             DefaultCertificateId = null,
             SniCertificates = []
         };
-        var validation = new ProxyOptionsValidator().Validate(null, ValidProxyOptions(listener));
+        var validation = new ProxyOptionsValidator(new ProxyEndpointAddressPolicy()).Validate(null, ValidProxyOptions(listener));
 
         AssertEx.True(validation.Failed);
         var failures = AssertEx.NotNull(validation.Failures);
@@ -330,7 +330,7 @@ internal static class Http3InfrastructureTests
     public static void Http3ConfigEnablesTraffic()
     {
         var listener = Http3Listener("current", "http1AndHttp2AndHttp3");
-        var validation = new ProxyOptionsValidator().Validate(null, ValidProxyOptions(listener));
+        var validation = new ProxyOptionsValidator(new ProxyEndpointAddressPolicy()).Validate(null, ValidProxyOptions(listener));
         var runtime = RuntimeListenerFor("http1AndHttp2AndHttp3");
 
         AssertEx.False(validation.Failed, string.Join("; ", validation.Failures ?? []));
@@ -342,7 +342,7 @@ internal static class Http3InfrastructureTests
     public static void Http3OnlyDoesNotEnableTcpTraffic()
     {
         var listener = Http3Listener("current", "http3");
-        var validation = new ProxyOptionsValidator().Validate(null, ValidProxyOptions(listener));
+        var validation = new ProxyOptionsValidator(new ProxyEndpointAddressPolicy()).Validate(null, ValidProxyOptions(listener));
         var runtime = RuntimeListenerFor("http3");
 
         AssertEx.False(validation.Failed, string.Join("; ", validation.Failures ?? []));
@@ -494,7 +494,7 @@ internal static class Http3InfrastructureTests
             Port = 443
         };
 
-        var validation = new ProxyOptionsValidator().Validate(null, options);
+        var validation = new ProxyOptionsValidator(new ProxyEndpointAddressPolicy()).Validate(null, options);
 
         AssertEx.False(validation.Failed, string.Join("; ", validation.Failures ?? []));
     }

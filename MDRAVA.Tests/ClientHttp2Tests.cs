@@ -71,7 +71,7 @@ internal static class ClientHttp2Tests
 
     public static void PlaintextHttp2ListenerIsRejected()
     {
-        var validation = new ProxyOptionsValidator().Validate(
+        var validation = new ProxyOptionsValidator(new ProxyEndpointAddressPolicy()).Validate(
             null,
             new ProxyOptions
             {

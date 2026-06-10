@@ -399,6 +399,7 @@ internal static class AcmeTests
             new ProxyDataDirectoryBootstrapper(provider),
             new SiteConfigurationParser(),
             new MDRAVA.INF.Configuration.ProxyAdminUrlPolicy(),
+            new ProxyEndpointAddressPolicy(),
             new ProxyRelativeStoragePathPolicy(),
             NullLogger<ProxyConfigurationLoader>.Instance);
     }

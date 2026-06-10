@@ -297,7 +297,8 @@ internal static class AdminSecurityTests
         var reloadAdministration = new ProxyConfigurationReloadAdministrationService<ProxyConfigurationProjection>(
             reloadService);
         var normalizer = new ProxyConfigurationNormalizer(
-            new ProxyConfigurationNormalizeSiteParser(new SiteConfigurationParser()));
+            new ProxyConfigurationNormalizeSiteParser(new SiteConfigurationParser()),
+            new ProxyEndpointAddressPolicy());
         var controller = new ProxyConfigurationController(
             new ProxyConfigurationAdministrationService(normalizer, reloadService),
             CreateReadAdministration(store),
