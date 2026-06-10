@@ -1,3 +1,4 @@
+using MDRAVA.BLL.ControlPlane.Headers;
 using MDRAVA.BLL.ControlPlane.Http1;
 using System.Text;
 using MDRAVA.BLL.Configuration;
@@ -66,7 +67,7 @@ public sealed class ResponseCacheStore : IProxyCacheControl
         Http1RequestHead requestHead,
         string upstreamTarget,
         Http1ResponseHead responseHead,
-        IReadOnlyList<Http1HeaderField> responseHeaders,
+        IReadOnlyList<ProxyHeaderField> responseHeaders,
         byte[] body)
     {
         if (!TryCreateKey(route, listener, requestHead, upstreamTarget, out var key, out var rejectionReason))
@@ -203,11 +204,11 @@ public sealed class ResponseCacheStore : IProxyCacheControl
         return true;
     }
 
-    private static IReadOnlyList<Http1HeaderField> SanitizeStoredHeaders(IReadOnlyList<Http1HeaderField> headers)
+    private static IReadOnlyList<ProxyHeaderField> SanitizeStoredHeaders(IReadOnlyList<ProxyHeaderField> headers)
     {
         return headers
             .Where(static header => !Http1ManagedHeaderPolicy.IsManagedStoredResponseHeader(header.Name))
-            .Select(static header => new Http1HeaderField(header.Name, header.Value))
+            .Select(static header => new ProxyHeaderField(header.Name, header.Value))
             .ToArray();
     }
 
@@ -258,12 +259,12 @@ public sealed class ResponseCacheStore : IProxyCacheControl
         }
     }
 
-    private static long CalculateSize(IReadOnlyList<Http1HeaderField> headers, byte[] body)
+    private static long CalculateSize(IReadOnlyList<ProxyHeaderField> headers, byte[] body)
     {
         return body.LongLength + headers.Sum(static header => header.Name.Length + header.Value.Length + 4L);
     }
 
-    private static string JoinHeaderValues(IReadOnlyList<Http1HeaderField> headers, string name)
+    private static string JoinHeaderValues(IReadOnlyList<ProxyHeaderField> headers, string name)
     {
         return string.Join(
             "\u001f",
@@ -284,7 +285,7 @@ public sealed class ResponseCacheStore : IProxyCacheControl
             string routeName,
             int statusCode,
             string reasonPhrase,
-            IReadOnlyList<Http1HeaderField> headers,
+            IReadOnlyList<ProxyHeaderField> headers,
             byte[] body,
             DateTimeOffset storedAtUtc,
             DateTimeOffset expiresAtUtc,
@@ -311,7 +312,7 @@ public sealed class ResponseCacheStore : IProxyCacheControl
 
         public string ReasonPhrase { get; }
 
-        public IReadOnlyList<Http1HeaderField> Headers { get; }
+        public IReadOnlyList<ProxyHeaderField> Headers { get; }
 
         public byte[] Body { get; }
 

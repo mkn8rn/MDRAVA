@@ -549,10 +549,10 @@ internal static class MetricsTests
             "HTTP/1.1",
             host,
             Http1RequestFraming.None,
-            [new Http1HeaderField("Host", host)]);
+            [new ProxyHeaderField("Host", host)]);
     }
 
-    private static Http1ResponseHead Response(string status, IReadOnlyList<Http1HeaderField> headers)
+    private static Http1ResponseHead Response(string status, IReadOnlyList<ProxyHeaderField> headers)
     {
         var split = status.Split(' ', 2);
         return new Http1ResponseHead(

@@ -741,7 +741,7 @@ public sealed class ProxyForwarder
         }
     }
 
-    private IReadOnlyList<Http1HeaderField> BuildHttp2RequestHeaders(
+    private IReadOnlyList<ProxyHeaderField> BuildHttp2RequestHeaders(
         Http1RequestHead requestHead,
         RuntimeRoute route,
         RuntimeUpstream upstream,
@@ -760,7 +760,7 @@ public sealed class ProxyForwarder
             authority = requestHead.Host.Length == 0 ? upstream.Address : requestHead.Host;
         }
 
-        List<Http1HeaderField> headers =
+        List<ProxyHeaderField> headers =
         [
             new(":method", requestHead.Method),
             new(":scheme", upstream.Scheme),
@@ -775,12 +775,12 @@ public sealed class ProxyForwarder
                 continue;
             }
 
-            headers.Add(new Http1HeaderField(header.Name.ToLowerInvariant(), header.Value));
+            headers.Add(new ProxyHeaderField(header.Name.ToLowerInvariant(), header.Value));
         }
 
         if (requestHead.Framing.Kind == Http1BodyKind.ContentLength)
         {
-            headers.Add(new Http1HeaderField(
+            headers.Add(new ProxyHeaderField(
                 "content-length",
                 requestHead.Framing.ContentLength.GetValueOrDefault().ToString(CultureInfo.InvariantCulture)));
         }
@@ -1274,7 +1274,7 @@ public sealed class ProxyForwarder
     private async ValueTask WriteResponseHeadAsync(
         Stream clientStream,
         Http1ResponseHead responseHead,
-        IReadOnlyList<Http1HeaderField> responseHeaders,
+        IReadOnlyList<ProxyHeaderField> responseHeaders,
         RuntimeTimeouts timeouts,
         bool keepClientConnectionOpen,
         string requestId,
@@ -1321,7 +1321,7 @@ public sealed class ProxyForwarder
     private async ValueTask WriteBufferedResponseAsync(
         Stream clientStream,
         Http1ResponseHead responseHead,
-        IReadOnlyList<Http1HeaderField> responseHeaders,
+        IReadOnlyList<ProxyHeaderField> responseHeaders,
         byte[] body,
         bool keepClientConnectionOpen,
         string requestId,
@@ -1371,7 +1371,7 @@ public sealed class ProxyForwarder
         Http1RequestHead requestHead,
         string upstreamTarget,
         Http1ResponseHead responseHead,
-        IReadOnlyList<Http1HeaderField> responseHeaders,
+        IReadOnlyList<ProxyHeaderField> responseHeaders,
         byte[] body,
         bool keepClientConnectionOpen,
         string requestId,
@@ -1392,7 +1392,7 @@ public sealed class ProxyForwarder
         _cacheStore.Store(route, listener, requestHead, upstreamTarget, responseHead, responseHeaders, body);
     }
 
-    private IReadOnlyList<Http1HeaderField> BuildResponseHeaders(
+    private IReadOnlyList<ProxyHeaderField> BuildResponseHeaders(
         Http1ResponseHead responseHead,
         RuntimeRoute route)
     {

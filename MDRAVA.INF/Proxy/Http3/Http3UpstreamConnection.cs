@@ -1,5 +1,4 @@
 using MDRAVA.BLL.ControlPlane.Headers;
-using MDRAVA.BLL.ControlPlane.Http1;
 using MDRAVA.BLL.ControlPlane.Timeouts;
 #pragma warning disable CA1416
 using MDRAVA.BLL.Configuration;
@@ -156,7 +155,7 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
     }
 
     public async ValueTask SendHeadersAsync(
-        IReadOnlyList<Http1HeaderField> headers,
+        IReadOnlyList<ProxyHeaderField> headers,
         bool endStream,
         RuntimeTimeouts timeouts,
         CancellationToken cancellationToken)
@@ -473,7 +472,7 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
         }
 
         int? statusCode = null;
-        List<Http1HeaderField> regularHeaders = [];
+        List<ProxyHeaderField> regularHeaders = [];
         foreach (var header in headers)
         {
             if (string.Equals(header.Name, ":status", StringComparison.Ordinal))
@@ -499,7 +498,7 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
                 throw new Http3UpstreamProtocolException("Upstream sent a forbidden HTTP/3 hop-by-hop response header.");
             }
 
-            regularHeaders.Add(new Http1HeaderField(header.Name, header.Value));
+            regularHeaders.Add(new ProxyHeaderField(header.Name, header.Value));
         }
 
         if (!statusCode.HasValue)
@@ -959,7 +958,7 @@ internal enum Http3UpstreamPooledConnectionState
 
 internal sealed record Http3UpstreamResponseHead(
     int StatusCode,
-    IReadOnlyList<Http1HeaderField> Headers);
+    IReadOnlyList<ProxyHeaderField> Headers);
 
 internal sealed record Http3UpstreamDataChunk(byte[] Data, bool EndStream);
 

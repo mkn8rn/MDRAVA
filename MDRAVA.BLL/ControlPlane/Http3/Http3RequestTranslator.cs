@@ -1,3 +1,4 @@
+using MDRAVA.BLL.ControlPlane.Headers;
 using MDRAVA.BLL.ControlPlane.Http1;
 using MDRAVA.BLL.ControlPlane.Requests;
 using System.Globalization;
@@ -18,7 +19,7 @@ public static class Http3RequestTranslator
     };
 
     public static bool TryBuildRequest(
-        IReadOnlyList<Http1HeaderField> headers,
+        IReadOnlyList<ProxyHeaderField> headers,
         RuntimeListener listener,
         out Http1RequestHead requestHead,
         out string rejectionReason,
@@ -27,7 +28,7 @@ public static class Http3RequestTranslator
         requestHead = null!;
         rejectionReason = "invalid_headers";
         Dictionary<string, string> pseudo = new(StringComparer.Ordinal);
-        List<Http1HeaderField> regularHeaders = [];
+        List<ProxyHeaderField> regularHeaders = [];
         var regularHeaderSeen = false;
 
         foreach (var header in headers)
@@ -132,7 +133,7 @@ public static class Http3RequestTranslator
 
         regularHeaders.RemoveAll(static header => string.Equals(header.Name, "host", StringComparison.OrdinalIgnoreCase));
         var path = target.Split('?', 2)[0];
-        regularHeaders.Insert(0, new Http1HeaderField("Host", authority));
+        regularHeaders.Insert(0, new ProxyHeaderField("Host", authority));
         requestHead = new Http1RequestHead(
             method,
             target,
@@ -151,7 +152,7 @@ public static class Http3RequestTranslator
 
     private static bool TryBuildConnectRequest(
         IReadOnlyDictionary<string, string> pseudo,
-        List<Http1HeaderField> regularHeaders,
+        List<ProxyHeaderField> regularHeaders,
         RuntimeListener listener,
         string method,
         out Http1RequestHead requestHead,
@@ -197,7 +198,7 @@ public static class Http3RequestTranslator
         }
 
         regularHeaders.RemoveAll(static header => string.Equals(header.Name, "host", StringComparison.OrdinalIgnoreCase));
-        regularHeaders.Insert(0, new Http1HeaderField("Host", authority));
+        regularHeaders.Insert(0, new ProxyHeaderField("Host", authority));
         requestHead = new Http1RequestHead(
             method,
             authority,
@@ -264,7 +265,7 @@ public static class Http3RequestTranslator
     }
 
     private static bool TryGetRequestFraming(
-        IReadOnlyList<Http1HeaderField> headers,
+        IReadOnlyList<ProxyHeaderField> headers,
         string method,
         bool bodyMayFollow,
         out Http1RequestFraming framing,

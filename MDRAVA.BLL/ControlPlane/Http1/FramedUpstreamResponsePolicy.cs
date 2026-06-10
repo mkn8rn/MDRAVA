@@ -1,3 +1,4 @@
+using MDRAVA.BLL.ControlPlane.Headers;
 using System.Diagnostics.CodeAnalysis;
 using MDRAVA.BLL.ControlPlane.Routing;
 
@@ -5,7 +6,7 @@ namespace MDRAVA.BLL.ControlPlane.Http1;
 
 public sealed record FramedUpstreamResponseTranslationInput(
     int StatusCode,
-    IReadOnlyList<Http1HeaderField> Headers,
+    IReadOnlyList<ProxyHeaderField> Headers,
     bool ResponseEndedWithHead);
 
 public static class FramedUpstreamResponsePolicy

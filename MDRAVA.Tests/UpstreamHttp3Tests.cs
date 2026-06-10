@@ -949,12 +949,12 @@ internal static class UpstreamHttp3Tests
         bool malformedResponseHeaders,
         bool closeAfterHeaders = false)
     {
-        List<Http1HeaderField> headers = malformedResponseHeaders
+        List<ProxyHeaderField> headers = malformedResponseHeaders
             ? []
             : [new(":status", statusCode.ToString(System.Globalization.CultureInfo.InvariantCulture))];
         foreach (var header in responseHeaders)
         {
-            headers.Add(new Http1HeaderField(header.Name, header.Value));
+            headers.Add(new ProxyHeaderField(header.Name, header.Value));
         }
 
         var block = Http3Codec.EncodeHeaderBlock(headers);

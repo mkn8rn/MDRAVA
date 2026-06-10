@@ -553,7 +553,7 @@ public sealed class Http2ClientConnection
         }
 
         Dictionary<string, string> pseudo = new(StringComparer.Ordinal);
-        List<Http1HeaderField> regularHeaders = [];
+        List<ProxyHeaderField> regularHeaders = [];
         var regularHeaderSeen = false;
         foreach (var header in headers)
         {
@@ -590,7 +590,7 @@ public sealed class Http2ClientConnection
                 return false;
             }
 
-            regularHeaders.Add(new Http1HeaderField(header.Name, header.Value));
+            regularHeaders.Add(new ProxyHeaderField(header.Name, header.Value));
         }
 
         if (!pseudo.TryGetValue(":method", out var method)
@@ -636,14 +636,14 @@ public sealed class Http2ClientConnection
         }
 
         regularHeaders.RemoveAll(static header => string.Equals(header.Name, "host", StringComparison.OrdinalIgnoreCase));
-        regularHeaders.Insert(0, new Http1HeaderField("Host", authority));
+        regularHeaders.Insert(0, new ProxyHeaderField("Host", authority));
         var bodyLength = stream.Body.Length;
         var framing = bodyLength > 0
             ? Http1RequestFraming.FromContentLength(bodyLength)
             : Http1RequestFraming.None;
         if (bodyLength > 0)
         {
-            regularHeaders.Add(new Http1HeaderField("Content-Length", bodyLength.ToString(CultureInfo.InvariantCulture)));
+            regularHeaders.Add(new ProxyHeaderField("Content-Length", bodyLength.ToString(CultureInfo.InvariantCulture)));
         }
 
         requestHead = new Http1RequestHead(
@@ -844,9 +844,9 @@ public sealed class Http2ClientConnection
             (long)Math.Floor((DateTimeOffset.UtcNow - response.StoredAtUtc).TotalSeconds));
         var headers = response.Headers
             .Where(static header => !HopByHopHeaderPolicy.IsHopByHopHeader(header.Name))
-            .Append(new Http1HeaderField("age", ageSeconds.ToString(CultureInfo.InvariantCulture)))
-            .Append(new Http1HeaderField("x-request-id", context.RequestId))
-            .Append(new Http1HeaderField("content-length", response.Body.Length.ToString(CultureInfo.InvariantCulture)))
+            .Append(new ProxyHeaderField("age", ageSeconds.ToString(CultureInfo.InvariantCulture)))
+            .Append(new ProxyHeaderField("x-request-id", context.RequestId))
+            .Append(new ProxyHeaderField("content-length", response.Body.Length.ToString(CultureInfo.InvariantCulture)))
             .ToList();
         AddAltSvcHeader(headers);
         var includeBody = !string.Equals(requestHead.Method, "HEAD", StringComparison.OrdinalIgnoreCase);
@@ -864,16 +864,16 @@ public sealed class Http2ClientConnection
         string method,
         CancellationToken cancellationToken)
     {
-        List<Http1HeaderField> headers = [];
+        List<ProxyHeaderField> headers = [];
         if (!string.IsNullOrWhiteSpace(response.ContentType))
         {
-            headers.Add(new Http1HeaderField("content-type", response.ContentType));
+            headers.Add(new ProxyHeaderField("content-type", response.ContentType));
         }
 
-        headers.Add(new Http1HeaderField("x-request-id", context.RequestId));
+        headers.Add(new ProxyHeaderField("x-request-id", context.RequestId));
         headers.AddRange(response.Headers.Where(static header => !HopByHopHeaderPolicy.IsHopByHopHeader(header.Name)));
         var body = Encoding.UTF8.GetBytes(response.Body);
-        headers.Add(new Http1HeaderField("content-length", body.Length.ToString(CultureInfo.InvariantCulture)));
+        headers.Add(new ProxyHeaderField("content-length", body.Length.ToString(CultureInfo.InvariantCulture)));
         AddAltSvcHeader(headers);
         await WriteHeadersAndBodyAsync(
             streamId,
@@ -898,11 +898,11 @@ public sealed class Http2ClientConnection
     {
         _ = reasonPhrase;
         var bodyBytes = Encoding.UTF8.GetBytes(body);
-        List<Http1HeaderField> headers =
+        List<ProxyHeaderField> headers =
         [
-            new Http1HeaderField("content-type", "text/plain"),
-            new Http1HeaderField("x-request-id", context.RequestId),
-            new Http1HeaderField("content-length", bodyBytes.Length.ToString(CultureInfo.InvariantCulture))
+            new ProxyHeaderField("content-type", "text/plain"),
+            new ProxyHeaderField("x-request-id", context.RequestId),
+            new ProxyHeaderField("content-length", bodyBytes.Length.ToString(CultureInfo.InvariantCulture))
         ];
         AddAltSvcHeader(headers);
         await WriteHeadersAndBodyAsync(
@@ -920,7 +920,7 @@ public sealed class Http2ClientConnection
     private async ValueTask WriteHeadersAndBodyAsync(
         int streamId,
         int statusCode,
-        IReadOnlyList<Http1HeaderField> headers,
+        IReadOnlyList<ProxyHeaderField> headers,
         ReadOnlyMemory<byte> body,
         CancellationToken cancellationToken)
     {
@@ -937,7 +937,7 @@ public sealed class Http2ClientConnection
         }
     }
 
-    private void AddAltSvcHeader(List<Http1HeaderField> headers)
+    private void AddAltSvcHeader(List<ProxyHeaderField> headers)
     {
         if (_altSvcPolicy.TryCreateHeader(_listener, out var altSvc))
         {
@@ -1454,12 +1454,12 @@ public sealed class Http2ClientConnection
 
         public static bool TryDecodeRequestHeaders(
             byte[] block,
-            out IReadOnlyList<Http1HeaderField> headers,
+            out IReadOnlyList<ProxyHeaderField> headers,
             out string reason)
         {
             headers = [];
             reason = "invalid_hpack";
-            List<Http1HeaderField> decoded = [];
+            List<ProxyHeaderField> decoded = [];
             List<HeaderField> dynamicTable = [];
             var offset = 0;
             while (offset < block.Length)
@@ -1474,7 +1474,7 @@ public sealed class Http2ClientConnection
                         return false;
                     }
 
-                    decoded.Add(new Http1HeaderField(field.Name, field.Value));
+                    decoded.Add(new ProxyHeaderField(field.Name, field.Value));
                     continue;
                 }
 
@@ -1486,7 +1486,7 @@ public sealed class Http2ClientConnection
                     }
 
                     dynamicTable.Insert(0, literal);
-                    decoded.Add(new Http1HeaderField(literal.Name, literal.Value));
+                    decoded.Add(new ProxyHeaderField(literal.Name, literal.Value));
                     continue;
                 }
 
@@ -1502,14 +1502,14 @@ public sealed class Http2ClientConnection
                     return false;
                 }
 
-                decoded.Add(new Http1HeaderField(withoutIndex.Name, withoutIndex.Value));
+                decoded.Add(new ProxyHeaderField(withoutIndex.Name, withoutIndex.Value));
             }
 
             headers = decoded;
             return true;
         }
 
-        public static byte[] EncodeRequestHeaders(IReadOnlyList<Http1HeaderField> headers)
+        public static byte[] EncodeRequestHeaders(IReadOnlyList<ProxyHeaderField> headers)
         {
             using var memory = new MemoryStream();
             foreach (var header in headers)
@@ -1532,7 +1532,7 @@ public sealed class Http2ClientConnection
             return memory.ToArray();
         }
 
-        public static byte[] EncodeResponseHeaders(int statusCode, IReadOnlyList<Http1HeaderField> headers)
+        public static byte[] EncodeResponseHeaders(int statusCode, IReadOnlyList<ProxyHeaderField> headers)
         {
             using var memory = new MemoryStream();
             var indexedStatus = statusCode switch

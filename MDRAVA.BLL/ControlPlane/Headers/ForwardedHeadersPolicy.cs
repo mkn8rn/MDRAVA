@@ -64,7 +64,7 @@ public sealed class ForwardedHeadersPolicy
             ? FirstHeaderValue(requestHead.Headers, "X-Forwarded-Port") ?? listener.Port.ToString(CultureInfo.InvariantCulture)
             : listener.Port.ToString(CultureInfo.InvariantCulture);
 
-        var headers = new List<Http1HeaderField>
+        var headers = new List<ProxyHeaderField>
         {
             new("X-Forwarded-For", string.Join(", ", forwardedFor)),
             new("X-Forwarded-Host", forwardedHost),
@@ -73,7 +73,7 @@ public sealed class ForwardedHeadersPolicy
         };
 
         var standardFor = resolvedClientIp?.ToString() ?? "unknown";
-        headers.Add(new Http1HeaderField(
+        headers.Add(new ProxyHeaderField(
             "Forwarded",
             $"for={QuoteForwardedValue(FormatForwardedFor(standardFor))};proto={QuoteForwardedValue(forwardedProto)};host={QuoteForwardedValue(forwardedHost)}"));
 
@@ -119,7 +119,7 @@ public sealed class ForwardedHeadersPolicy
         return false;
     }
 
-    private static IReadOnlyList<string> SplitHeaderValues(IReadOnlyList<Http1HeaderField> headers, string name)
+    private static IReadOnlyList<string> SplitHeaderValues(IReadOnlyList<ProxyHeaderField> headers, string name)
     {
         List<string> values = [];
         foreach (var header in headers)
@@ -141,7 +141,7 @@ public sealed class ForwardedHeadersPolicy
         return values;
     }
 
-    private static string? FirstHeaderValue(IReadOnlyList<Http1HeaderField> headers, string name)
+    private static string? FirstHeaderValue(IReadOnlyList<ProxyHeaderField> headers, string name)
     {
         foreach (var header in headers)
         {

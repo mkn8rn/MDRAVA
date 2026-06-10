@@ -272,11 +272,11 @@ internal static class PerformanceSmokeRunner
             "HTTP/1.1",
             "perf.test",
             Http1RequestFraming.None,
-            [new Http1HeaderField("Accept", "text/plain")]);
+            [new ProxyHeaderField("Accept", "text/plain")]);
         var responseHeaders = new[]
         {
-            new Http1HeaderField("Content-Type", "text/plain"),
-            new Http1HeaderField("Cache-Control", "max-age=60")
+            new ProxyHeaderField("Content-Type", "text/plain"),
+            new ProxyHeaderField("Cache-Control", "max-age=60")
         };
         var response = new Http1ResponseHead(
             "HTTP/1.1",
@@ -319,16 +319,16 @@ internal static class PerformanceSmokeRunner
         var policy = new HopByHopHeaderPolicy();
         var headers = new[]
         {
-            new Http1HeaderField("Host", "perf.test"),
-            new Http1HeaderField("Connection", "x-private, keep-alive"),
-            new Http1HeaderField("X-Private", "secret"),
-            new Http1HeaderField("Keep-Alive", "timeout=5"),
-            new Http1HeaderField("Upgrade", "websocket"),
-            new Http1HeaderField("X-One", "1"),
-            new Http1HeaderField("X-Two", "2"),
-            new Http1HeaderField("X-Three", "3"),
-            new Http1HeaderField("Accept", "text/plain"),
-            new Http1HeaderField("User-Agent", "mdrava-perf-smoke")
+            new ProxyHeaderField("Host", "perf.test"),
+            new ProxyHeaderField("Connection", "x-private, keep-alive"),
+            new ProxyHeaderField("X-Private", "secret"),
+            new ProxyHeaderField("Keep-Alive", "timeout=5"),
+            new ProxyHeaderField("Upgrade", "websocket"),
+            new ProxyHeaderField("X-One", "1"),
+            new ProxyHeaderField("X-Two", "2"),
+            new ProxyHeaderField("X-Three", "3"),
+            new ProxyHeaderField("Accept", "text/plain"),
+            new ProxyHeaderField("User-Agent", "mdrava-perf-smoke")
         };
 
         for (var index = 0; index < warmup; index++)
@@ -337,7 +337,7 @@ internal static class PerformanceSmokeRunner
         }
 
         var stopwatch = Stopwatch.StartNew();
-        IReadOnlyList<Http1HeaderField> filtered = [];
+        IReadOnlyList<ProxyHeaderField> filtered = [];
         for (var index = 0; index < operations; index++)
         {
             filtered = policy.FilterForForwarding(headers, preserveTransferEncoding: false, preserveTrailer: false);

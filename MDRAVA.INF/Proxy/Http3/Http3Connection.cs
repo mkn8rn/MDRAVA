@@ -759,9 +759,9 @@ public sealed class Http3Connection
             (long)Math.Floor((DateTimeOffset.UtcNow - response.StoredAtUtc).TotalSeconds));
         var headers = response.Headers
             .Where(static header => !HopByHopHeaderPolicy.IsHopByHopHeader(header.Name))
-            .Append(new Http1HeaderField("age", ageSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture)))
-            .Append(new Http1HeaderField("x-request-id", context.RequestId))
-            .Append(new Http1HeaderField("content-length", response.Body.Length.ToString(System.Globalization.CultureInfo.InvariantCulture)))
+            .Append(new ProxyHeaderField("age", ageSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture)))
+            .Append(new ProxyHeaderField("x-request-id", context.RequestId))
+            .Append(new ProxyHeaderField("content-length", response.Body.Length.ToString(System.Globalization.CultureInfo.InvariantCulture)))
             .ToArray();
         var includeBody = !string.Equals(requestHead.Method, "HEAD", StringComparison.OrdinalIgnoreCase);
         await WriteHeadersAndBodyAsync(stream, response.StatusCode, headers, includeBody ? response.Body : [], cancellationToken);
@@ -799,18 +799,18 @@ public sealed class Http3Connection
         string method,
         CancellationToken cancellationToken,
         string? contentType = "text/plain; charset=utf-8",
-        IReadOnlyList<Http1HeaderField>? extraHeaders = null)
+        IReadOnlyList<ProxyHeaderField>? extraHeaders = null)
     {
         _ = reasonPhrase;
         var bodyBytes = Encoding.UTF8.GetBytes(body);
-        List<Http1HeaderField> headers =
+        List<ProxyHeaderField> headers =
         [
             new("x-request-id", context.RequestId),
             new("content-length", bodyBytes.Length.ToString(System.Globalization.CultureInfo.InvariantCulture))
         ];
         if (!string.IsNullOrWhiteSpace(contentType))
         {
-            headers.Add(new Http1HeaderField("content-type", contentType));
+            headers.Add(new ProxyHeaderField("content-type", contentType));
         }
 
         if (extraHeaders is not null)
@@ -819,7 +819,7 @@ public sealed class Http3Connection
             {
                 if (!HopByHopHeaderPolicy.IsHopByHopHeader(header.Name))
                 {
-                    headers.Add(new Http1HeaderField(header.Name.ToLowerInvariant(), header.Value));
+                    headers.Add(new ProxyHeaderField(header.Name.ToLowerInvariant(), header.Value));
                 }
             }
         }
@@ -838,7 +838,7 @@ public sealed class Http3Connection
     private async ValueTask WriteHeadersAndBodyAsync(
         QuicStream stream,
         int statusCode,
-        IReadOnlyList<Http1HeaderField> headers,
+        IReadOnlyList<ProxyHeaderField> headers,
         ReadOnlyMemory<byte> body,
         CancellationToken cancellationToken)
     {
@@ -857,16 +857,16 @@ public sealed class Http3Connection
     private async ValueTask WriteHeadersAsync(
         QuicStream stream,
         int statusCode,
-        IReadOnlyList<Http1HeaderField> headers,
+        IReadOnlyList<ProxyHeaderField> headers,
         bool completeWrites,
         CancellationToken cancellationToken)
     {
-        List<Http1HeaderField> encodedHeaders = [new(":status", Http3Codec.StatusText(statusCode))];
+        List<ProxyHeaderField> encodedHeaders = [new(":status", Http3Codec.StatusText(statusCode))];
         foreach (var header in headers)
         {
             if (!header.Name.StartsWith(':') && !HopByHopHeaderPolicy.IsHopByHopHeader(header.Name))
             {
-                encodedHeaders.Add(new Http1HeaderField(header.Name.ToLowerInvariant(), header.Value));
+                encodedHeaders.Add(new ProxyHeaderField(header.Name.ToLowerInvariant(), header.Value));
             }
         }
 
@@ -975,10 +975,10 @@ public sealed class Http3Connection
 
     private sealed record Http3HeaderReadResult(
         bool Success,
-        IReadOnlyList<Http1HeaderField> Headers,
+        IReadOnlyList<ProxyHeaderField> Headers,
         string Reason)
     {
-        public static Http3HeaderReadResult Successful(IReadOnlyList<Http1HeaderField> headers)
+        public static Http3HeaderReadResult Successful(IReadOnlyList<ProxyHeaderField> headers)
         {
             return new Http3HeaderReadResult(true, headers, "");
         }

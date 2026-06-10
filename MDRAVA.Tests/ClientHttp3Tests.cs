@@ -1083,8 +1083,8 @@ internal static class ClientHttp3Tests
 
         using var result = await RunHttp3GeneratedRouteRawHeadersScenarioAsync(
             [
-                new Http1HeaderField(":method", "CONNECT"),
-                new Http1HeaderField(":authority", "upstream.test:443")
+                new ProxyHeaderField(":method", "CONNECT"),
+                new ProxyHeaderField(":authority", "upstream.test:443")
             ]);
 
         AssertEx.Equal("501", HeaderValue(result.Headers, ":status"));
@@ -1101,8 +1101,8 @@ internal static class ClientHttp3Tests
 
         using var result = await RunHttp3GeneratedRouteRawHeadersScenarioAsync(
             [
-                new Http1HeaderField(":method", "CONNECT"),
-                new Http1HeaderField(":authority", "not/a/tunnel")
+                new ProxyHeaderField(":method", "CONNECT"),
+                new ProxyHeaderField(":authority", "not/a/tunnel")
             ]);
 
         AssertEx.Equal("400", HeaderValue(result.Headers, ":status"));
@@ -1120,11 +1120,11 @@ internal static class ClientHttp3Tests
         {
             using var result = await RunHttp3GeneratedRouteRawHeadersScenarioAsync(
                 [
-                    new Http1HeaderField(":method", "CONNECT"),
-                    new Http1HeaderField(":scheme", "https"),
-                    new Http1HeaderField(":authority", "localhost"),
-                    new Http1HeaderField(":path", "/chat"),
-                    new Http1HeaderField(":protocol", protocol)
+                    new ProxyHeaderField(":method", "CONNECT"),
+                    new ProxyHeaderField(":scheme", "https"),
+                    new ProxyHeaderField(":authority", "localhost"),
+                    new ProxyHeaderField(":path", "/chat"),
+                    new ProxyHeaderField(":protocol", protocol)
                 ]);
 
             AssertEx.Equal("400", HeaderValue(result.Headers, ":status"));
@@ -1571,11 +1571,11 @@ internal static class ClientHttp3Tests
     {
         var headerBlock = Http3Codec.EncodeHeaderBlock(
         [
-            new Http1HeaderField(":method", "GET"),
-            new Http1HeaderField(":scheme", "https"),
-            new Http1HeaderField(":authority", "localhost"),
-            new Http1HeaderField(":path", "/"),
-            new Http1HeaderField("x-large", new string('a', 256))
+            new ProxyHeaderField(":method", "GET"),
+            new ProxyHeaderField(":scheme", "https"),
+            new ProxyHeaderField(":authority", "localhost"),
+            new ProxyHeaderField(":path", "/"),
+            new ProxyHeaderField("x-large", new string('a', 256))
         ]);
 
         var ok = Http3Codec.TryDecodeHeaderBlock(
@@ -1592,11 +1592,11 @@ internal static class ClientHttp3Tests
     {
         var headerBlock = Http3Codec.EncodeHeaderBlock(
         [
-            new Http1HeaderField(":method", "GET"),
-            new Http1HeaderField(":scheme", "https"),
-            new Http1HeaderField(":authority", "localhost"),
-            new Http1HeaderField(":path", "/boundary"),
-            new Http1HeaderField("x-boundary", "ok")
+            new ProxyHeaderField(":method", "GET"),
+            new ProxyHeaderField(":scheme", "https"),
+            new ProxyHeaderField(":authority", "localhost"),
+            new ProxyHeaderField(":path", "/boundary"),
+            new ProxyHeaderField("x-boundary", "ok")
         ]);
 
         var ok = Http3Codec.TryDecodeHeaderBlock(
@@ -1674,11 +1674,11 @@ internal static class ClientHttp3Tests
     {
         var headers = new[]
         {
-            new Http1HeaderField(":method", "GET"),
-            new Http1HeaderField(":method", "HEAD"),
-            new Http1HeaderField(":scheme", "https"),
-            new Http1HeaderField(":authority", "localhost"),
-            new Http1HeaderField(":path", "/")
+            new ProxyHeaderField(":method", "GET"),
+            new ProxyHeaderField(":method", "HEAD"),
+            new ProxyHeaderField(":scheme", "https"),
+            new ProxyHeaderField(":authority", "localhost"),
+            new ProxyHeaderField(":path", "/")
         };
 
         var ok = Http3RequestTranslator.TryBuildRequest(
@@ -1695,11 +1695,11 @@ internal static class ClientHttp3Tests
     {
         var headers = new[]
         {
-            new Http1HeaderField(":method", "GET"),
-            new Http1HeaderField(":scheme", "https"),
-            new Http1HeaderField("x-before", "1"),
-            new Http1HeaderField(":authority", "localhost"),
-            new Http1HeaderField(":path", "/")
+            new ProxyHeaderField(":method", "GET"),
+            new ProxyHeaderField(":scheme", "https"),
+            new ProxyHeaderField("x-before", "1"),
+            new ProxyHeaderField(":authority", "localhost"),
+            new ProxyHeaderField(":path", "/")
         };
 
         var ok = Http3RequestTranslator.TryBuildRequest(
@@ -1716,11 +1716,11 @@ internal static class ClientHttp3Tests
     {
         var headers = new[]
         {
-            new Http1HeaderField(":method", "GET"),
-            new Http1HeaderField(":scheme", "https"),
-            new Http1HeaderField(":authority", "localhost"),
-            new Http1HeaderField(":path", "/"),
-            new Http1HeaderField(":status", "200")
+            new ProxyHeaderField(":method", "GET"),
+            new ProxyHeaderField(":scheme", "https"),
+            new ProxyHeaderField(":authority", "localhost"),
+            new ProxyHeaderField(":path", "/"),
+            new ProxyHeaderField(":status", "200")
         };
 
         var ok = Http3RequestTranslator.TryBuildRequest(
@@ -1737,9 +1737,9 @@ internal static class ClientHttp3Tests
     {
         var headers = new[]
         {
-            new Http1HeaderField(":method", "GET"),
-            new Http1HeaderField(":scheme", "https"),
-            new Http1HeaderField(":authority", "localhost")
+            new ProxyHeaderField(":method", "GET"),
+            new ProxyHeaderField(":scheme", "https"),
+            new ProxyHeaderField(":authority", "localhost")
         };
 
         var ok = Http3RequestTranslator.TryBuildRequest(
@@ -1756,11 +1756,11 @@ internal static class ClientHttp3Tests
     {
         var headers = new[]
         {
-            new Http1HeaderField(":method", "GET"),
-            new Http1HeaderField(":scheme", "https"),
-            new Http1HeaderField(":authority", "localhost"),
-            new Http1HeaderField(":path", "/"),
-            new Http1HeaderField("connection", "close")
+            new ProxyHeaderField(":method", "GET"),
+            new ProxyHeaderField(":scheme", "https"),
+            new ProxyHeaderField(":authority", "localhost"),
+            new ProxyHeaderField(":path", "/"),
+            new ProxyHeaderField("connection", "close")
         };
 
         var ok = Http3RequestTranslator.TryBuildRequest(
@@ -1777,11 +1777,11 @@ internal static class ClientHttp3Tests
     {
         var headers = new[]
         {
-            new Http1HeaderField(":method", "GET"),
-            new Http1HeaderField(":scheme", "https"),
-            new Http1HeaderField(":authority", "localhost"),
-            new Http1HeaderField(":path", "/"),
-            new Http1HeaderField("bad header", "value")
+            new ProxyHeaderField(":method", "GET"),
+            new ProxyHeaderField(":scheme", "https"),
+            new ProxyHeaderField(":authority", "localhost"),
+            new ProxyHeaderField(":path", "/"),
+            new ProxyHeaderField("bad header", "value")
         };
 
         var ok = Http3RequestTranslator.TryBuildRequest(
@@ -1798,10 +1798,10 @@ internal static class ClientHttp3Tests
     {
         var headers = new[]
         {
-            new Http1HeaderField(":method", "GE T"),
-            new Http1HeaderField(":scheme", "https"),
-            new Http1HeaderField(":authority", "local/host"),
-            new Http1HeaderField(":path", "/")
+            new ProxyHeaderField(":method", "GE T"),
+            new ProxyHeaderField(":scheme", "https"),
+            new ProxyHeaderField(":authority", "local/host"),
+            new ProxyHeaderField(":path", "/")
         };
 
         var ok = Http3RequestTranslator.TryBuildRequest(
@@ -1818,17 +1818,17 @@ internal static class ClientHttp3Tests
     {
         var badAuthority = new[]
         {
-            new Http1HeaderField(":method", "GET"),
-            new Http1HeaderField(":scheme", "https"),
-            new Http1HeaderField(":authority", "local?host"),
-            new Http1HeaderField(":path", "/")
+            new ProxyHeaderField(":method", "GET"),
+            new ProxyHeaderField(":scheme", "https"),
+            new ProxyHeaderField(":authority", "local?host"),
+            new ProxyHeaderField(":path", "/")
         };
         var badPath = new[]
         {
-            new Http1HeaderField(":method", "GET"),
-            new Http1HeaderField(":scheme", "https"),
-            new Http1HeaderField(":authority", "localhost"),
-            new Http1HeaderField(":path", "/fragment#bad")
+            new ProxyHeaderField(":method", "GET"),
+            new ProxyHeaderField(":scheme", "https"),
+            new ProxyHeaderField(":authority", "localhost"),
+            new ProxyHeaderField(":path", "/fragment#bad")
         };
 
         var authorityOk = Http3RequestTranslator.TryBuildRequest(
@@ -1852,15 +1852,15 @@ internal static class ClientHttp3Tests
     {
         var connectWithPath = new[]
         {
-            new Http1HeaderField(":method", "CONNECT"),
-            new Http1HeaderField(":authority", "upstream.test:443"),
-            new Http1HeaderField(":path", "/")
+            new ProxyHeaderField(":method", "CONNECT"),
+            new ProxyHeaderField(":authority", "upstream.test:443"),
+            new ProxyHeaderField(":path", "/")
         };
         var connectWithBody = new[]
         {
-            new Http1HeaderField(":method", "CONNECT"),
-            new Http1HeaderField(":authority", "upstream.test:443"),
-            new Http1HeaderField("content-length", "1")
+            new ProxyHeaderField(":method", "CONNECT"),
+            new ProxyHeaderField(":authority", "upstream.test:443"),
+            new ProxyHeaderField("content-length", "1")
         };
 
         var pathOk = Http3RequestTranslator.TryBuildRequest(
@@ -2036,7 +2036,7 @@ internal static class ClientHttp3Tests
     }
 
     private static async Task<Http3ScenarioResult> RunHttp3GeneratedRouteRawHeadersScenarioAsync(
-        IReadOnlyList<Http1HeaderField> headers)
+        IReadOnlyList<ProxyHeaderField> headers)
     {
         var temp = TemporaryDirectory.Create();
         var port = GetFreeTcpUdpPort();
@@ -2124,7 +2124,7 @@ internal static class ClientHttp3Tests
 
     private static async Task<Http3Response> SendHttp3RequestAsync(
         int port,
-        IReadOnlyList<Http1HeaderField> headers,
+        IReadOnlyList<ProxyHeaderField> headers,
         CancellationToken cancellationToken)
     {
         await using var connection = await ConnectHttp3Async(port, cancellationToken);
@@ -2167,16 +2167,16 @@ internal static class ClientHttp3Tests
         bool unknownFrameBeforeHeaders = false,
         bool maxPushAfterHeaders = false)
     {
-        List<Http1HeaderField> requestHeaders =
+        List<ProxyHeaderField> requestHeaders =
         [
-            new Http1HeaderField(":method", method),
-            new Http1HeaderField(":scheme", "https"),
-            new Http1HeaderField(":authority", "localhost"),
-            new Http1HeaderField(":path", target)
+            new ProxyHeaderField(":method", method),
+            new ProxyHeaderField(":scheme", "https"),
+            new ProxyHeaderField(":authority", "localhost"),
+            new ProxyHeaderField(":path", target)
         ];
         if (body is not null)
         {
-            requestHeaders.Add(new Http1HeaderField("content-length", Encoding.UTF8.GetByteCount(body).ToString(System.Globalization.CultureInfo.InvariantCulture)));
+            requestHeaders.Add(new ProxyHeaderField("content-length", Encoding.UTF8.GetByteCount(body).ToString(System.Globalization.CultureInfo.InvariantCulture)));
         }
 
         await WriteHttp3RequestAsync(
@@ -2194,7 +2194,7 @@ internal static class ClientHttp3Tests
 
     private static async ValueTask WriteHttp3RequestAsync(
         QuicStream stream,
-        IReadOnlyList<Http1HeaderField> requestHeaders,
+        IReadOnlyList<ProxyHeaderField> requestHeaders,
         string? body,
         CancellationToken cancellationToken,
         bool dataBeforeHeaders = false,
@@ -2251,7 +2251,7 @@ internal static class ClientHttp3Tests
     private static Http3Response DecodeHttp3Response(byte[] responseBytes)
     {
         var offset = 0;
-        IReadOnlyList<Http1HeaderField> headers = [];
+        IReadOnlyList<ProxyHeaderField> headers = [];
         var responseBody = "";
         while (offset < responseBytes.Length)
         {
@@ -2758,12 +2758,12 @@ internal static class ClientHttp3Tests
 
     private static int GetFreeTcpPort() => TestPortAllocator.GetFreeTcpPort();
 
-    private static string HeaderValue(IReadOnlyList<Http1HeaderField> headers, string name)
+    private static string HeaderValue(IReadOnlyList<ProxyHeaderField> headers, string name)
     {
         return headers.First(header => string.Equals(header.Name, name, StringComparison.OrdinalIgnoreCase)).Value;
     }
 
-    private static bool HeaderExists(IReadOnlyList<Http1HeaderField> headers, string name)
+    private static bool HeaderExists(IReadOnlyList<ProxyHeaderField> headers, string name)
     {
         return headers.Any(header => string.Equals(header.Name, name, StringComparison.OrdinalIgnoreCase));
     }
@@ -2785,7 +2785,7 @@ internal static class ClientHttp3Tests
     }
 
     private sealed record Http3Response(
-        IReadOnlyList<Http1HeaderField> Headers,
+        IReadOnlyList<ProxyHeaderField> Headers,
         string Body);
 
     private sealed class Http3ScenarioResult : IDisposable
@@ -2796,7 +2796,7 @@ internal static class ClientHttp3Tests
         public Http3ScenarioResult(
             TemporaryDirectory directory,
             IHost host,
-            IReadOnlyList<Http1HeaderField> headers,
+            IReadOnlyList<ProxyHeaderField> headers,
             string body,
             ProxyMetricsSnapshot metrics,
             string upstreamRequest)
@@ -2809,7 +2809,7 @@ internal static class ClientHttp3Tests
             UpstreamRequest = upstreamRequest;
         }
 
-        public IReadOnlyList<Http1HeaderField> Headers { get; }
+        public IReadOnlyList<ProxyHeaderField> Headers { get; }
 
         public string Body { get; }
 

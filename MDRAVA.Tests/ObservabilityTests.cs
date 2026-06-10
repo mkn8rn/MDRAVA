@@ -94,7 +94,7 @@ internal static class ObservabilityTests
             "HTTP/1.1",
             "example.test",
             Http1RequestFraming.None,
-            [new Http1HeaderField("X-Request-Id", "  client-123  ")]);
+            [new ProxyHeaderField("X-Request-Id", "  client-123  ")]);
         var controlHead = new Http1RequestHead(
             "GET",
             "/",
@@ -102,7 +102,7 @@ internal static class ObservabilityTests
             "HTTP/1.1",
             "example.test",
             Http1RequestFraming.None,
-            [new Http1HeaderField("X-Request-Id", "client\r123")]);
+            [new ProxyHeaderField("X-Request-Id", "client\r123")]);
         var tooLongHead = new Http1RequestHead(
             "GET",
             "/",
@@ -110,7 +110,7 @@ internal static class ObservabilityTests
             "HTTP/1.1",
             "example.test",
             Http1RequestFraming.None,
-            [new Http1HeaderField("X-Request-Id", new string('a', 129))]);
+            [new ProxyHeaderField("X-Request-Id", new string('a', 129))]);
 
         AssertEx.Equal("client-123", ProxyExternalRequestIdPolicy.Extract(validHead));
         AssertEx.True(ProxyExternalRequestIdPolicy.Extract(controlHead) is null);

@@ -1,4 +1,4 @@
-using MDRAVA.BLL.ControlPlane.Http1;
+using MDRAVA.BLL.ControlPlane.Headers;
 using MDRAVA.BLL.ControlPlane.Status;
 using MDRAVA.BLL.Configuration;
 
@@ -17,7 +17,7 @@ public sealed class Http3AltSvcPolicy
         _metrics = metrics;
     }
 
-    public bool TryCreateHeader(RuntimeListener listener, out Http1HeaderField header)
+    public bool TryCreateHeader(RuntimeListener listener, out ProxyHeaderField header)
     {
         header = null!;
         if (!RuntimeHttp3AltSvcPolicy.IsEnabled(listener))
@@ -33,7 +33,7 @@ public sealed class Http3AltSvcPolicy
             return false;
         }
 
-        header = new Http1HeaderField(
+        header = new ProxyHeaderField(
             "Alt-Svc",
             $"h3=\":{listener.Port}\"; ma={listener.Http3AltSvc.MaxAgeSeconds}");
         _metrics.Http3AltSvcEmitted();

@@ -9,10 +9,10 @@ internal static class HeaderPolicyTests
         var policy = new HopByHopHeaderPolicy();
         var filtered = policy.FilterForForwarding(
             [
-                new Http1HeaderField("Host", "example.test"),
-                new Http1HeaderField("Connection", "close"),
-                new Http1HeaderField("Keep-Alive", "timeout=5"),
-                new Http1HeaderField("Upgrade", "websocket")
+                new ProxyHeaderField("Host", "example.test"),
+                new ProxyHeaderField("Connection", "close"),
+                new ProxyHeaderField("Keep-Alive", "timeout=5"),
+                new ProxyHeaderField("Upgrade", "websocket")
             ],
             preserveTransferEncoding: false,
             preserveTrailer: false);
@@ -26,9 +26,9 @@ internal static class HeaderPolicyTests
         var policy = new HopByHopHeaderPolicy();
         var filtered = policy.FilterForForwarding(
             [
-                new Http1HeaderField("Host", "example.test"),
-                new Http1HeaderField("Connection", "x-private"),
-                new Http1HeaderField("X-Private", "do-not-forward")
+                new ProxyHeaderField("Host", "example.test"),
+                new ProxyHeaderField("Connection", "x-private"),
+                new ProxyHeaderField("X-Private", "do-not-forward")
             ],
             preserveTransferEncoding: false,
             preserveTrailer: false);
@@ -42,10 +42,10 @@ internal static class HeaderPolicyTests
         var policy = new HopByHopHeaderPolicy();
         var filtered = policy.FilterForForwarding(
             [
-                new Http1HeaderField("Host", "example.test"),
-                new Http1HeaderField("Proxy-Connection", "keep-alive"),
-                new Http1HeaderField("TE", "trailers"),
-                new Http1HeaderField("Trailer", "expires")
+                new ProxyHeaderField("Host", "example.test"),
+                new ProxyHeaderField("Proxy-Connection", "keep-alive"),
+                new ProxyHeaderField("TE", "trailers"),
+                new ProxyHeaderField("Trailer", "expires")
             ],
             preserveTransferEncoding: false,
             preserveTrailer: false);
@@ -55,10 +55,10 @@ internal static class HeaderPolicyTests
         AssertEx.True(HopByHopHeaderPolicy.IsHopByHopHeader("proxy-connection"));
         AssertEx.True(HopByHopHeaderPolicy.IsHopByHopHeader("TE"));
         AssertEx.True(HopByHopHeaderPolicy.HasConnectionToken(
-            [new Http1HeaderField("Connection", "keep-alive, Upgrade")],
+            [new ProxyHeaderField("Connection", "keep-alive, Upgrade")],
             "upgrade"));
         AssertEx.False(HopByHopHeaderPolicy.HasConnectionToken(
-            [new Http1HeaderField("Connection", "keep-alive")],
+            [new ProxyHeaderField("Connection", "keep-alive")],
             "upgrade"));
     }
 
@@ -84,7 +84,7 @@ internal static class HeaderPolicyTests
     public static void AppliesRequestHeaderMutationPolicy()
     {
         var policy = new RuntimeHeaderPolicy(
-            [new Http1HeaderField("X-Set", "new")],
+            [new ProxyHeaderField("X-Set", "new")],
             ["X-Remove"],
             [],
             []);
@@ -92,17 +92,17 @@ internal static class HeaderPolicyTests
             System.Net.IPAddress.Parse("203.0.113.10"),
             "203.0.113.10:443",
             [
-                new Http1HeaderField("Forwarded", "for=203.0.113.10;proto=https"),
-                new Http1HeaderField("X-Forwarded-For", "203.0.113.10")
+                new ProxyHeaderField("Forwarded", "for=203.0.113.10;proto=https"),
+                new ProxyHeaderField("X-Forwarded-For", "203.0.113.10")
             ]);
 
         var result = ProxyHeaderMutationPolicy.ApplyRequestHeaders(
             [
-                new Http1HeaderField("Host", "example.test"),
-                new Http1HeaderField("X-Remove", "old"),
-                new Http1HeaderField("X-Set", "old"),
-                new Http1HeaderField("Forwarded", "for=10.0.0.1"),
-                new Http1HeaderField("X-Keep", "yes")
+                new ProxyHeaderField("Host", "example.test"),
+                new ProxyHeaderField("X-Remove", "old"),
+                new ProxyHeaderField("X-Set", "old"),
+                new ProxyHeaderField("Forwarded", "for=10.0.0.1"),
+                new ProxyHeaderField("X-Keep", "yes")
             ],
             policy,
             forwardedHeaders);
@@ -122,14 +122,14 @@ internal static class HeaderPolicyTests
         var policy = new RuntimeHeaderPolicy(
             [],
             [],
-            [new Http1HeaderField("X-Set", "new")],
+            [new ProxyHeaderField("X-Set", "new")],
             ["X-Remove"]);
 
         var result = ProxyHeaderMutationPolicy.ApplyResponseHeaders(
             [
-                new Http1HeaderField("Content-Type", "text/plain"),
-                new Http1HeaderField("X-Remove", "old"),
-                new Http1HeaderField("X-Set", "old")
+                new ProxyHeaderField("Content-Type", "text/plain"),
+                new ProxyHeaderField("X-Remove", "old"),
+                new ProxyHeaderField("X-Set", "old")
             ],
             policy);
 

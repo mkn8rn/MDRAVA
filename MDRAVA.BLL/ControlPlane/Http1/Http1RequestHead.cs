@@ -1,3 +1,4 @@
+using MDRAVA.BLL.ControlPlane.Headers;
 namespace MDRAVA.BLL.ControlPlane.Http1;
 
 public sealed class Http1RequestHead
@@ -9,7 +10,7 @@ public sealed class Http1RequestHead
         string version,
         string host,
         Http1RequestFraming framing,
-        IReadOnlyList<Http1HeaderField> headers)
+        IReadOnlyList<ProxyHeaderField> headers)
     {
         Method = method;
         Target = target;
@@ -32,7 +33,7 @@ public sealed class Http1RequestHead
 
     public Http1RequestFraming Framing { get; }
 
-    public IReadOnlyList<Http1HeaderField> Headers { get; }
+    public IReadOnlyList<ProxyHeaderField> Headers { get; }
 
     public long? ContentLength => Framing.ContentLength;
 

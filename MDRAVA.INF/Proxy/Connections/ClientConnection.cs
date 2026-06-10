@@ -1020,9 +1020,9 @@ public sealed class ClientConnection
         context.KeepClientConnectionOpen = false;
     }
 
-    private IReadOnlyList<Http1HeaderField> WithAltSvc(IReadOnlyList<Http1HeaderField>? headers = null)
+    private IReadOnlyList<ProxyHeaderField> WithAltSvc(IReadOnlyList<ProxyHeaderField>? headers = null)
     {
-        List<Http1HeaderField> result = headers is null
+        List<ProxyHeaderField> result = headers is null
             ? []
             : headers.Where(static header => !string.Equals(header.Name, "alt-svc", StringComparison.OrdinalIgnoreCase)).ToList();
         if (_altSvcPolicy.TryCreateHeader(_listener, out var altSvc))

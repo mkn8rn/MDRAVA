@@ -1,3 +1,4 @@
+using MDRAVA.BLL.ControlPlane.Headers;
 using MDRAVA.BLL.ControlPlane.Http1;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
@@ -20,10 +21,10 @@ public sealed class ProxyRouteActionPolicy
 
         if (route.Maintenance.Enabled)
         {
-            List<Http1HeaderField> headers = [];
+            List<ProxyHeaderField> headers = [];
             if (route.Maintenance.RetryAfterSeconds.HasValue)
             {
-                headers.Add(new Http1HeaderField("Retry-After", route.Maintenance.RetryAfterSeconds.Value.ToString(CultureInfo.InvariantCulture)));
+                headers.Add(new ProxyHeaderField("Retry-After", route.Maintenance.RetryAfterSeconds.Value.ToString(CultureInfo.InvariantCulture)));
             }
 
             return new RouteActionDecision(new GeneratedRouteResponse(
@@ -115,7 +116,7 @@ public sealed class ProxyRouteActionPolicy
             ReasonPhrase(statusCode),
             null,
             "",
-            [new Http1HeaderField("Location", location)]);
+            [new ProxyHeaderField("Location", location)]);
     }
 
     private static bool HostEquals(string requestHost, string targetHost)

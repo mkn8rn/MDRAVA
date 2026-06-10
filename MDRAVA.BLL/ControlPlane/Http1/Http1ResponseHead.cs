@@ -1,3 +1,4 @@
+using MDRAVA.BLL.ControlPlane.Headers;
 namespace MDRAVA.BLL.ControlPlane.Http1;
 
 public sealed class Http1ResponseHead
@@ -7,7 +8,7 @@ public sealed class Http1ResponseHead
         int statusCode,
         string reasonPhrase,
         Http1ResponseFraming framing,
-        IReadOnlyList<Http1HeaderField> headers)
+        IReadOnlyList<ProxyHeaderField> headers)
     {
         Version = version;
         StatusCode = statusCode;
@@ -24,5 +25,5 @@ public sealed class Http1ResponseHead
 
     public Http1ResponseFraming Framing { get; }
 
-    public IReadOnlyList<Http1HeaderField> Headers { get; }
+    public IReadOnlyList<ProxyHeaderField> Headers { get; }
 }

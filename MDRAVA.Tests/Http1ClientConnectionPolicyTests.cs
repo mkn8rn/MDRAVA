@@ -13,7 +13,7 @@ internal static class Http1ClientConnectionPolicyTests
     {
         var requestHead = Request(
             "HTTP/1.1",
-            new Http1HeaderField("Connection", "keep-alive, close"));
+            new ProxyHeaderField("Connection", "keep-alive, close"));
 
         AssertEx.False(Http1ClientConnectionPolicy.ShouldKeepOpen(requestHead));
     }
@@ -22,14 +22,14 @@ internal static class Http1ClientConnectionPolicyTests
     {
         var requestHead = Request(
             "HTTP/1.0",
-            new Http1HeaderField("Connection", "keep-alive"));
+            new ProxyHeaderField("Connection", "keep-alive"));
 
         AssertEx.False(Http1ClientConnectionPolicy.ShouldKeepOpen(requestHead));
     }
 
     private static Http1RequestHead Request(
         string version,
-        params Http1HeaderField[] headers)
+        params ProxyHeaderField[] headers)
     {
         return new Http1RequestHead(
             "GET",

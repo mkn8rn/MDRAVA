@@ -1,4 +1,4 @@
-using MDRAVA.BLL.ControlPlane.Http1;
+using MDRAVA.BLL.ControlPlane.Headers;
 using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 using MDRAVA.BLL.ControlPlane.Upstreams;
 
@@ -212,11 +212,11 @@ public static class ProxyConfigurationRuntimeMapper
                 route.CanonicalHost.StatusCode ?? 308),
             new RuntimeHeaderPolicy(
                 route.HeaderPolicy.SetRequestHeaders
-                    .Select(static header => new Http1HeaderField(header.Name, header.Value))
+                    .Select(static header => new ProxyHeaderField(header.Name, header.Value))
                     .ToArray(),
                 route.HeaderPolicy.RemoveRequestHeaders.ToArray(),
                 route.HeaderPolicy.SetResponseHeaders
-                    .Select(static header => new Http1HeaderField(header.Name, header.Value))
+                    .Select(static header => new ProxyHeaderField(header.Name, header.Value))
                     .ToArray(),
                 route.HeaderPolicy.RemoveResponseHeaders.ToArray()),
             new RuntimePathRewritePolicy(

@@ -1,4 +1,3 @@
-using MDRAVA.BLL.ControlPlane.Http1;
 
 namespace MDRAVA.BLL.ControlPlane.Headers;
 
@@ -22,7 +21,7 @@ public sealed class HopByHopHeaderPolicy
         return StandardHopByHopHeaders.Contains(name);
     }
 
-    public static bool HasConnectionToken(IReadOnlyList<Http1HeaderField> headers, string token)
+    public static bool HasConnectionToken(IReadOnlyList<ProxyHeaderField> headers, string token)
     {
         foreach (var header in headers)
         {
@@ -43,8 +42,8 @@ public sealed class HopByHopHeaderPolicy
         return false;
     }
 
-    public IReadOnlyList<Http1HeaderField> FilterForForwarding(
-        IReadOnlyList<Http1HeaderField> headers,
+    public IReadOnlyList<ProxyHeaderField> FilterForForwarding(
+        IReadOnlyList<ProxyHeaderField> headers,
         bool preserveTransferEncoding,
         bool preserveTrailer)
     {
@@ -63,7 +62,7 @@ public sealed class HopByHopHeaderPolicy
             }
         }
 
-        List<Http1HeaderField> filtered = [];
+        List<ProxyHeaderField> filtered = [];
         foreach (var header in headers)
         {
             if (nominated.Contains(header.Name))

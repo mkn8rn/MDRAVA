@@ -1,3 +1,4 @@
+using MDRAVA.BLL.ControlPlane.Headers;
 using MDRAVA.BLL.ControlPlane.Http1;
 using MDRAVA.BLL.ControlPlane.HealthChecks;
 using MDRAVA.BLL.ControlPlane.Timeouts;
@@ -106,10 +107,10 @@ public sealed class UpstreamHealthCheckClient : IUpstreamHealthCheckClient
                 cancellationToken);
             await http3.SendHeadersAsync(
                 [
-                    new Http1HeaderField(":method", "GET"),
-                    new Http1HeaderField(":scheme", upstream.Scheme),
-                    new Http1HeaderField(":authority", upstream.Address),
-                    new Http1HeaderField(":path", route.HealthCheck.Path)
+                    new ProxyHeaderField(":method", "GET"),
+                    new ProxyHeaderField(":scheme", upstream.Scheme),
+                    new ProxyHeaderField(":authority", upstream.Address),
+                    new ProxyHeaderField(":path", route.HealthCheck.Path)
                 ],
                 endStream: true,
                 timeouts,
@@ -143,10 +144,10 @@ public sealed class UpstreamHealthCheckClient : IUpstreamHealthCheckClient
         await http2.InitializeAsync(timeouts, cancellationToken);
         await http2.SendHeadersAsync(
             [
-                new Http1HeaderField(":method", "GET"),
-                new Http1HeaderField(":scheme", upstream.Scheme),
-                new Http1HeaderField(":authority", upstream.Address),
-                new Http1HeaderField(":path", route.HealthCheck.Path)
+                new ProxyHeaderField(":method", "GET"),
+                new ProxyHeaderField(":scheme", upstream.Scheme),
+                new ProxyHeaderField(":authority", upstream.Address),
+                new ProxyHeaderField(":path", route.HealthCheck.Path)
             ],
             endStream: true,
             timeouts,

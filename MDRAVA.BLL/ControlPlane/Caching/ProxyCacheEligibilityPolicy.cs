@@ -1,3 +1,4 @@
+using MDRAVA.BLL.ControlPlane.Headers;
 using MDRAVA.BLL.ControlPlane.Http1;
 using MDRAVA.BLL.Configuration;
 
@@ -149,7 +150,7 @@ public static class ProxyCacheEligibilityPolicy
 
     private static bool TryResolveTtl(
         RuntimeCachePolicy policy,
-        IReadOnlyList<Http1HeaderField> headers,
+        IReadOnlyList<ProxyHeaderField> headers,
         out TimeSpan ttl,
         out string? rejectionReason)
     {
@@ -200,7 +201,7 @@ public static class ProxyCacheEligibilityPolicy
         return true;
     }
 
-    private static Dictionary<string, string?> CacheControlDirectives(IReadOnlyList<Http1HeaderField> headers)
+    private static Dictionary<string, string?> CacheControlDirectives(IReadOnlyList<ProxyHeaderField> headers)
     {
         Dictionary<string, string?> directives = new(StringComparer.OrdinalIgnoreCase);
         foreach (var header in headers)
@@ -226,7 +227,7 @@ public static class ProxyCacheEligibilityPolicy
         return directives;
     }
 
-    private static bool ContainsHeader(IReadOnlyList<Http1HeaderField> headers, string name)
+    private static bool ContainsHeader(IReadOnlyList<ProxyHeaderField> headers, string name)
     {
         return headers.Any(header => string.Equals(header.Name, name, StringComparison.OrdinalIgnoreCase));
     }

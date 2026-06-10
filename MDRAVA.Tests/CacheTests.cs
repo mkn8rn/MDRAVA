@@ -117,7 +117,7 @@ internal static class CacheTests
         var cache = new ResponseCacheStore(new ManualTimeProvider());
         var route = Route(CachePolicy());
         var listener = Listener();
-        var response = Response("200 OK", [new Http1HeaderField("Content-Type", "text/plain")]);
+        var response = Response("200 OK", [new ProxyHeaderField("Content-Type", "text/plain")]);
         cache.Store(route, listener, Request("GET", "/item?id=1", "cache.test"), "/item?id=1", response, response.Headers, Encoding.ASCII.GetBytes("one"));
 
         AssertEx.False(cache.TryGet(route, listener, Request("GET", "/item?id=2", "cache.test"), "/item?id=2", out _));
@@ -149,15 +149,15 @@ internal static class CacheTests
         cache.Store(
             route,
             listener,
-            Request("GET", "/resource", "a.test", [new Http1HeaderField("X-Tenant", "one")]),
+            Request("GET", "/resource", "a.test", [new ProxyHeaderField("X-Tenant", "one")]),
             "/resource",
             response,
             response.Headers,
             Encoding.ASCII.GetBytes("tenant-one"));
 
-        AssertEx.False(cache.TryGet(route, listener, Request("GET", "/resource", "b.test", [new Http1HeaderField("X-Tenant", "one")]), "/resource", out _));
-        AssertEx.False(cache.TryGet(route, listener, Request("GET", "/resource", "a.test", [new Http1HeaderField("X-Tenant", "two")]), "/resource", out _));
-        AssertEx.True(cache.TryGet(route, listener, Request("GET", "/resource", "a.test", [new Http1HeaderField("x-tenant", "one")]), "/resource", out var cached));
+        AssertEx.False(cache.TryGet(route, listener, Request("GET", "/resource", "b.test", [new ProxyHeaderField("X-Tenant", "one")]), "/resource", out _));
+        AssertEx.False(cache.TryGet(route, listener, Request("GET", "/resource", "a.test", [new ProxyHeaderField("X-Tenant", "two")]), "/resource", out _));
+        AssertEx.True(cache.TryGet(route, listener, Request("GET", "/resource", "a.test", [new ProxyHeaderField("x-tenant", "one")]), "/resource", out var cached));
         AssertEx.Equal("tenant-one", Encoding.ASCII.GetString(AssertEx.NotNull(cached).Body));
     }
 
@@ -166,7 +166,7 @@ internal static class CacheTests
         var cache = new ResponseCacheStore(new ManualTimeProvider());
         var route = Route(CachePolicy());
         var listener = Listener();
-        var request = Request("GET", "/private", "cache.test", [new Http1HeaderField("Authorization", "Bearer secret")]);
+        var request = Request("GET", "/private", "cache.test", [new ProxyHeaderField("Authorization", "Bearer secret")]);
         var response = Response("200 OK", []);
 
         cache.Store(route, listener, request, "/private", response, response.Headers, Encoding.ASCII.GetBytes("private"));
@@ -180,7 +180,7 @@ internal static class CacheTests
         var cache = new ResponseCacheStore(new ManualTimeProvider());
         var route = Route(CachePolicy());
         var listener = Listener();
-        var request = Request("GET", "/private", "cache.test", [new Http1HeaderField("Cookie", "sid=secret")]);
+        var request = Request("GET", "/private", "cache.test", [new ProxyHeaderField("Cookie", "sid=secret")]);
         var response = Response("200 OK", []);
 
         cache.Store(route, listener, request, "/private", response, response.Headers, Encoding.ASCII.GetBytes("private"));
@@ -193,7 +193,7 @@ internal static class CacheTests
     public static void CacheEligibilityRejectsCookieBeforeBuffering()
     {
         var route = Route(CachePolicy());
-        var request = Request("GET", "/private", "cache.test", [new Http1HeaderField("Cookie", "sid=secret")]);
+        var request = Request("GET", "/private", "cache.test", [new ProxyHeaderField("Cookie", "sid=secret")]);
         var response = Response("200 OK", []);
 
         var result = ProxyCacheEligibilityPolicy.EvaluateResponseForBuffering(route, request, response);
@@ -204,19 +204,19 @@ internal static class CacheTests
 
     public static void SetCookieResponseIsNotCachedByDefault()
     {
-        AssertRejectedResponse([new Http1HeaderField("Set-Cookie", "id=1")]);
+        AssertRejectedResponse([new ProxyHeaderField("Set-Cookie", "id=1")]);
     }
 
     public static void NoStoreResponseIsNotCached()
     {
-        AssertRejectedResponse([new Http1HeaderField("Cache-Control", "no-store")]);
+        AssertRejectedResponse([new ProxyHeaderField("Cache-Control", "no-store")]);
     }
 
     public static void CacheEligibilityRejectsNoStoreBeforeBuffering()
     {
         var route = Route(CachePolicy());
         var request = Request("GET", "/no-store", "cache.test");
-        var response = Response("200 OK", [new Http1HeaderField("Cache-Control", "no-store")]);
+        var response = Response("200 OK", [new ProxyHeaderField("Cache-Control", "no-store")]);
 
         var result = ProxyCacheEligibilityPolicy.EvaluateResponseForBuffering(route, request, response);
 
@@ -226,17 +226,17 @@ internal static class CacheTests
 
     public static void NoCacheResponseIsNotCached()
     {
-        AssertRejectedResponse([new Http1HeaderField("Cache-Control", "no-cache")]);
+        AssertRejectedResponse([new ProxyHeaderField("Cache-Control", "no-cache")]);
     }
 
     public static void MustRevalidateResponseIsNotCached()
     {
-        AssertRejectedResponse([new Http1HeaderField("Cache-Control", "must-revalidate")]);
+        AssertRejectedResponse([new ProxyHeaderField("Cache-Control", "must-revalidate")]);
     }
 
     public static void PrivateResponseIsNotCachedByDefault()
     {
-        AssertRejectedResponse([new Http1HeaderField("Cache-Control", "private")]);
+        AssertRejectedResponse([new ProxyHeaderField("Cache-Control", "private")]);
     }
 
     public static void MaxAgeControlsTtlAndExpiredEntryIsNotServed()
@@ -245,7 +245,7 @@ internal static class CacheTests
         var cache = new ResponseCacheStore(clock);
         var route = Route(CachePolicy(defaultTtlSeconds: 120));
         var listener = Listener();
-        var response = Response("200 OK", [new Http1HeaderField("Cache-Control", "max-age=1")]);
+        var response = Response("200 OK", [new ProxyHeaderField("Cache-Control", "max-age=1")]);
         var request = Request("GET", "/ttl", "cache.test");
 
         cache.Store(route, listener, request, "/ttl", response, response.Headers, Encoding.ASCII.GetBytes("fresh"));
@@ -280,7 +280,7 @@ internal static class CacheTests
             200,
             "OK",
             Http1ResponseFraming.Chunked,
-            [new Http1HeaderField("Transfer-Encoding", "chunked")]);
+            [new ProxyHeaderField("Transfer-Encoding", "chunked")]);
 
         var result = ProxyCacheEligibilityPolicy.EvaluateResponseForBuffering(route, request, response);
 
@@ -297,7 +297,7 @@ internal static class CacheTests
             200,
             "OK",
             Http1ResponseFraming.FromContentLength(10),
-            [new Http1HeaderField("Content-Length", "10")]);
+            [new ProxyHeaderField("Content-Length", "10")]);
 
         var result = ProxyCacheEligibilityPolicy.EvaluateResponseForBuffering(route, request, response);
 
@@ -314,9 +314,9 @@ internal static class CacheTests
         var response = Response(
             "200 OK",
             [
-                new Http1HeaderField("Connection", "close"),
-                new Http1HeaderField("Transfer-Encoding", "chunked"),
-                new Http1HeaderField("X-Stored", "yes")
+                new ProxyHeaderField("Connection", "close"),
+                new ProxyHeaderField("Transfer-Encoding", "chunked"),
+                new ProxyHeaderField("X-Stored", "yes")
             ]);
 
         cache.Store(route, listener, request, "/headers", response, response.Headers, Encoding.ASCII.GetBytes("headers"));
@@ -342,8 +342,8 @@ internal static class CacheTests
                 "/resource",
                 "cache.test",
                 [
-                    new Http1HeaderField("X-Tenant", "one"),
-                    new Http1HeaderField("x-tenant", "two")
+                    new ProxyHeaderField("X-Tenant", "one"),
+                    new ProxyHeaderField("x-tenant", "two")
                 ]),
             "/resource",
             response,
@@ -358,8 +358,8 @@ internal static class CacheTests
                 "/resource",
                 "cache.test",
                 [
-                    new Http1HeaderField("x-tenant", "one"),
-                    new Http1HeaderField("X-Tenant", "two")
+                    new ProxyHeaderField("x-tenant", "one"),
+                    new ProxyHeaderField("X-Tenant", "two")
                 ]),
             "/resource",
             out var cached));
@@ -367,7 +367,7 @@ internal static class CacheTests
         AssertEx.False(cache.TryGet(
             route,
             listener,
-            Request("GET", "/resource", "cache.test", [new Http1HeaderField("X-Tenant", "one")]),
+            Request("GET", "/resource", "cache.test", [new ProxyHeaderField("X-Tenant", "one")]),
             "/resource",
             out _));
     }
@@ -616,7 +616,7 @@ internal static class CacheTests
         AssertEx.Equal(0L, status.Routes[0].CurrentBytes);
     }
 
-    private static void AssertRejectedResponse(IReadOnlyList<Http1HeaderField> responseHeaders)
+    private static void AssertRejectedResponse(IReadOnlyList<ProxyHeaderField> responseHeaders)
     {
         var cache = new ResponseCacheStore(new ManualTimeProvider());
         var route = Route(CachePolicy());
@@ -963,9 +963,9 @@ internal static class CacheTests
         string method,
         string target,
         string host,
-        IReadOnlyList<Http1HeaderField>? headers = null)
+        IReadOnlyList<ProxyHeaderField>? headers = null)
     {
-        var requestHeaders = new List<Http1HeaderField>
+        var requestHeaders = new List<ProxyHeaderField>
         {
             new("Host", host)
         };
@@ -987,7 +987,7 @@ internal static class CacheTests
 
     private static Http1ResponseHead Response(
         string status,
-        IReadOnlyList<Http1HeaderField> headers)
+        IReadOnlyList<ProxyHeaderField> headers)
     {
         var split = status.Split(' ', 2);
         return new Http1ResponseHead(

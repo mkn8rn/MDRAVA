@@ -1,3 +1,4 @@
+using MDRAVA.BLL.ControlPlane.Headers;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
@@ -86,7 +87,7 @@ public static class Http1RequestParser
         }
 
         string? host = null;
-        List<Http1HeaderField> headers = [];
+        List<ProxyHeaderField> headers = [];
         List<string> contentLengthValues = [];
         List<string> transferEncodingValues = [];
         var nextLineStart = requestLineLength + 2;
@@ -132,7 +133,7 @@ public static class Http1RequestParser
 
             var headerName = Encoding.ASCII.GetString(header.Name);
             var headerValue = Encoding.ASCII.GetString(header.Value);
-            headers.Add(new Http1HeaderField(headerName, headerValue));
+            headers.Add(new ProxyHeaderField(headerName, headerValue));
 
             if (AsciiEqualsIgnoreCase(header.Name, "Host"))
             {

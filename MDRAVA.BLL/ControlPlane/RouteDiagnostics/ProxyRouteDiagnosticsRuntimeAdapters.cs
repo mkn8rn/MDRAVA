@@ -1,3 +1,4 @@
+using MDRAVA.BLL.ControlPlane.Headers;
 using MDRAVA.BLL.ControlPlane.Http1;
 using MDRAVA.BLL.ControlPlane.Routing;
 using MDRAVA.BLL.Configuration;
@@ -251,7 +252,7 @@ internal static class ProxyRouteDiagnosticsRequestHeadMapper
             requestHead.Host,
             ToHttp1RequestFraming(requestHead.Framing),
             requestHead.Headers
-                .Select(static header => new Http1HeaderField(header.Name, header.Value))
+                .Select(static header => new ProxyHeaderField(header.Name, header.Value))
                 .ToArray());
     }
 

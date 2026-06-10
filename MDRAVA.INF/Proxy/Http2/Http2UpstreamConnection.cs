@@ -1,5 +1,4 @@
 using MDRAVA.BLL.ControlPlane.Headers;
-using MDRAVA.BLL.ControlPlane.Http1;
 using MDRAVA.BLL.ControlPlane.Timeouts;
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.Metrics;
@@ -70,7 +69,7 @@ internal sealed class Http2UpstreamConnection
     }
 
     public ValueTask SendHeadersAsync(
-        IReadOnlyList<Http1HeaderField> headers,
+        IReadOnlyList<ProxyHeaderField> headers,
         bool endStream,
         RuntimeTimeouts timeouts,
         CancellationToken cancellationToken)
@@ -418,7 +417,7 @@ internal sealed class Http2UpstreamConnection
         }
 
         int? statusCode = null;
-        List<Http1HeaderField> regularHeaders = [];
+        List<ProxyHeaderField> regularHeaders = [];
         foreach (var header in headers)
         {
             if (string.Equals(header.Name, ":status", StringComparison.Ordinal))
@@ -442,7 +441,7 @@ internal sealed class Http2UpstreamConnection
                 throw new Http2UpstreamProtocolException("Upstream sent a forbidden HTTP/2 hop-by-hop response header.");
             }
 
-            regularHeaders.Add(new Http1HeaderField(header.Name, header.Value));
+            regularHeaders.Add(new ProxyHeaderField(header.Name, header.Value));
         }
 
         if (!statusCode.HasValue)
@@ -547,7 +546,7 @@ internal sealed class Http2UpstreamConnection
 
 internal sealed record Http2UpstreamResponseHead(
     int StatusCode,
-    IReadOnlyList<Http1HeaderField> Headers,
+    IReadOnlyList<ProxyHeaderField> Headers,
     bool EndStream);
 
 internal sealed record Http2UpstreamDataChunk(byte[] Data, bool EndStream);

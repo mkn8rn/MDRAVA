@@ -1,12 +1,11 @@
-using MDRAVA.BLL.ControlPlane.Http1;
 using MDRAVA.BLL.Configuration;
 
 namespace MDRAVA.BLL.ControlPlane.Headers;
 
 public static class ProxyHeaderMutationPolicy
 {
-    public static IReadOnlyList<Http1HeaderField> ApplyRequestHeaders(
-        IReadOnlyList<Http1HeaderField> headers,
+    public static IReadOnlyList<ProxyHeaderField> ApplyRequestHeaders(
+        IReadOnlyList<ProxyHeaderField> headers,
         RuntimeHeaderPolicy policy,
         ForwardedHeadersContext forwardedHeaders)
     {
@@ -26,8 +25,8 @@ public static class ProxyHeaderMutationPolicy
         return result;
     }
 
-    public static IReadOnlyList<Http1HeaderField> ApplyResponseHeaders(
-        IReadOnlyList<Http1HeaderField> headers,
+    public static IReadOnlyList<ProxyHeaderField> ApplyResponseHeaders(
+        IReadOnlyList<ProxyHeaderField> headers,
         RuntimeHeaderPolicy policy)
     {
         var result = headers

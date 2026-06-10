@@ -1,4 +1,4 @@
-using MDRAVA.BLL.ControlPlane.Http1;
+using MDRAVA.BLL.ControlPlane.Headers;
 using System.Globalization;
 using System.Text;
 
@@ -117,7 +117,7 @@ public static class Http3Codec
         new("x-frame-options", "sameorigin")
     ];
 
-    public static byte[] EncodeHeaderBlock(IReadOnlyList<Http1HeaderField> headers)
+    public static byte[] EncodeHeaderBlock(IReadOnlyList<ProxyHeaderField> headers)
     {
         using var memory = new MemoryStream();
         memory.WriteByte(0);
@@ -133,7 +133,7 @@ public static class Http3Codec
     public static bool TryDecodeHeaderBlock(
         ReadOnlySpan<byte> block,
         int maxHeaderBytes,
-        out IReadOnlyList<Http1HeaderField> headers,
+        out IReadOnlyList<ProxyHeaderField> headers,
         out string reason)
     {
         headers = [];
@@ -162,7 +162,7 @@ public static class Http3Codec
             return false;
         }
 
-        List<Http1HeaderField> decoded = [];
+        List<ProxyHeaderField> decoded = [];
         var decodedHeaderBytes = 0;
         while (offset < block.Length)
         {
@@ -180,7 +180,7 @@ public static class Http3Codec
 
                 if (!TryAddDecodedHeader(
                         decoded,
-                        new Http1HeaderField(field.Name, field.Value),
+                        new ProxyHeaderField(field.Name, field.Value),
                         maxHeaderBytes,
                         ref decodedHeaderBytes,
                         out reason))
@@ -205,7 +205,7 @@ public static class Http3Codec
 
                 if (!TryAddDecodedHeader(
                         decoded,
-                        new Http1HeaderField(namedField.Name, value),
+                        new ProxyHeaderField(namedField.Name, value),
                         maxHeaderBytes,
                         ref decodedHeaderBytes,
                         out reason))
@@ -240,8 +240,8 @@ public static class Http3Codec
     }
 
     private static bool TryAddDecodedHeader(
-        List<Http1HeaderField> headers,
-        Http1HeaderField header,
+        List<ProxyHeaderField> headers,
+        ProxyHeaderField header,
         int maxHeaderBytes,
         ref int decodedHeaderBytes,
         out string reason)
@@ -353,7 +353,7 @@ public static class Http3Codec
     private static bool TryReadLiteralHeader(
         ReadOnlySpan<byte> block,
         ref int offset,
-        out Http1HeaderField header,
+        out ProxyHeaderField header,
         out string reason)
     {
         header = null!;
@@ -378,7 +378,7 @@ public static class Http3Codec
             return false;
         }
 
-        header = new Http1HeaderField(name, value);
+        header = new ProxyHeaderField(name, value);
         return true;
     }
 

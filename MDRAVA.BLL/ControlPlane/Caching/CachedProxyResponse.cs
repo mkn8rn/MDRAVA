@@ -1,4 +1,4 @@
-using MDRAVA.BLL.ControlPlane.Http1;
+using MDRAVA.BLL.ControlPlane.Headers;
 namespace MDRAVA.BLL.ControlPlane.Caching;
 
 public sealed class CachedProxyResponse
@@ -6,7 +6,7 @@ public sealed class CachedProxyResponse
     public CachedProxyResponse(
         int statusCode,
         string reasonPhrase,
-        IReadOnlyList<Http1HeaderField> headers,
+        IReadOnlyList<ProxyHeaderField> headers,
         byte[] body,
         DateTimeOffset storedAtUtc,
         DateTimeOffset expiresAtUtc)
@@ -23,7 +23,7 @@ public sealed class CachedProxyResponse
 
     public string ReasonPhrase { get; }
 
-    public IReadOnlyList<Http1HeaderField> Headers { get; }
+    public IReadOnlyList<ProxyHeaderField> Headers { get; }
 
     public byte[] Body { get; }
 

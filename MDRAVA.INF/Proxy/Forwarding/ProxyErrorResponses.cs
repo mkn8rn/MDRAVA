@@ -1,4 +1,4 @@
-using MDRAVA.BLL.ControlPlane.Http1;
+using MDRAVA.BLL.ControlPlane.Headers;
 using MDRAVA.BLL.ControlPlane.Timeouts;
 using System.Text;
 using MDRAVA.BLL.ControlPlane.Metrics;
@@ -42,7 +42,7 @@ public static class ProxyErrorResponses
         ProxyMetrics metrics,
         CancellationToken cancellationToken,
         string? contentType = "text/plain",
-        IReadOnlyList<Http1HeaderField>? headers = null)
+        IReadOnlyList<ProxyHeaderField>? headers = null)
     {
         var builder = new StringBuilder();
         var bodyBytes = Encoding.UTF8.GetBytes(body);

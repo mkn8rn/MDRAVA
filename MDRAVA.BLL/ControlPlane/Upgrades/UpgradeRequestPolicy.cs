@@ -72,7 +72,7 @@ public sealed class UpgradeRequestPolicy
         return true;
     }
 
-    public static string? GetHeaderValue(IReadOnlyList<Http1HeaderField> headers, string name)
+    public static string? GetHeaderValue(IReadOnlyList<ProxyHeaderField> headers, string name)
     {
         foreach (var header in headers)
         {
@@ -101,7 +101,7 @@ public sealed class UpgradeRequestPolicy
             || string.Equals(headerName, "Transfer-Encoding", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool HasHeader(IReadOnlyList<Http1HeaderField> headers, string name)
+    private static bool HasHeader(IReadOnlyList<ProxyHeaderField> headers, string name)
     {
         return headers.Any(header => string.Equals(header.Name, name, StringComparison.OrdinalIgnoreCase));
     }

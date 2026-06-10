@@ -1,4 +1,4 @@
-using MDRAVA.BLL.ControlPlane.Http1;
+using MDRAVA.BLL.ControlPlane.Headers;
 
 namespace MDRAVA.BLL.ControlPlane.Routing;
 
@@ -7,4 +7,4 @@ public sealed record GeneratedRouteResponse(
     string ReasonPhrase,
     string? ContentType,
     string Body,
-    IReadOnlyList<Http1HeaderField> Headers);
+    IReadOnlyList<ProxyHeaderField> Headers);
