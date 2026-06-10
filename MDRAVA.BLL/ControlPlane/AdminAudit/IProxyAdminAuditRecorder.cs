@@ -1,4 +1,4 @@
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.AdminAudit;
 
 public interface IProxyAdminAuditRecorder
 {

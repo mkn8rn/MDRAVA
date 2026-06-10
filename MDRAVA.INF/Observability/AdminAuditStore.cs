@@ -1,4 +1,5 @@
 using MDRAVA.BLL.ControlPlane;
+using MDRAVA.BLL.ControlPlane.AdminAudit;
 using MDRAVA.BLL.Infrastructure;
 
 namespace MDRAVA.INF.Observability;
