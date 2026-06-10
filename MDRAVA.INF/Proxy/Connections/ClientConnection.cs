@@ -290,11 +290,11 @@ public sealed class ClientConnection
                     requestHead,
                     _listener,
                     _configurationSnapshot.ForwardedHeaders,
-                    GetRemoteEndPoint());
+                    ProxyClientAddressPolicy.ToForwardedHeadersPeer(GetRemoteEndPoint()));
                 currentContext.SetClientEndpoint(forwardedHeaders.ResolvedClientEndpoint);
 
                 if (!_rateLimiter.TryAcquireRequest(
-                    ProxyClientAddressPolicy.NormalizeClientIp(forwardedHeaders.ResolvedClientIp),
+                    forwardedHeaders.ResolvedClientAddress,
                     _configurationSnapshot.Limits.RequestsPerMinutePerIp))
                 {
                     await WriteGeneratedResponseAsync(
@@ -705,7 +705,7 @@ public sealed class ClientConnection
         context.IsUpgrade = true;
         _metrics.UpgradeRequestReceived();
         if (!_rateLimiter.TryAcquireUpgrade(
-            ProxyClientAddressPolicy.NormalizeClientIp(forwardedHeaders.ResolvedClientIp),
+            forwardedHeaders.ResolvedClientAddress,
             _configurationSnapshot.Limits.UpgradeRequestsPerMinutePerIp))
         {
             _metrics.UpgradeRequestRejected();

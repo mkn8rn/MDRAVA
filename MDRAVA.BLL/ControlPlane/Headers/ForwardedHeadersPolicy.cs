@@ -1,8 +1,6 @@
 using MDRAVA.BLL.Http;
 using MDRAVA.BLL.ControlPlane.Http1;
-using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
-using System.Net;
 using MDRAVA.BLL.Configuration;
 
 namespace MDRAVA.BLL.ControlPlane.Headers;
@@ -18,31 +16,37 @@ public sealed class ForwardedHeadersPolicy
         "Forwarded"
     ];
 
+    private readonly IForwardedHeadersAddressPolicy _addressPolicy;
+
+    public ForwardedHeadersPolicy(IForwardedHeadersAddressPolicy addressPolicy)
+    {
+        _addressPolicy = addressPolicy;
+    }
+
     public ForwardedHeadersContext Build(
         Http1RequestHead requestHead,
         RuntimeListener listener,
         RuntimeForwardedHeadersOptions options,
-        IPEndPoint? remoteEndPoint)
+        ForwardedHeadersPeer remotePeer)
     {
-        var remoteAddress = remoteEndPoint?.Address;
-        var normalizedRemoteAddress = NormalizeAddress(remoteAddress);
+        var remoteAddress = remotePeer.Address;
         if (!options.Enabled)
         {
             return new ForwardedHeadersContext(
-                normalizedRemoteAddress,
-                normalizedRemoteAddress?.ToString() ?? remoteEndPoint?.ToString(),
+                remoteAddress,
+                remoteAddress ?? remotePeer.Endpoint,
                 []);
         }
 
-        var immediatePeerTrusted = normalizedRemoteAddress is not null
-            && options.TrustedProxies.Any(proxy => proxy.Contains(normalizedRemoteAddress));
+        var immediatePeerTrusted = remoteAddress is not null
+            && _addressPolicy.IsTrustedPeer(remoteAddress, options.TrustedProxies);
 
         var incomingFor = immediatePeerTrusted
             ? SplitHeaderValues(requestHead.Headers, "X-Forwarded-For")
             : [];
-        var resolvedClientIp = TryParseForwardedFor(incomingFor, out var parsedForwardedFor)
+        var resolvedClientAddress = _addressPolicy.TryNormalizeForwardedFor(incomingFor, out var parsedForwardedFor)
             ? parsedForwardedFor
-            : normalizedRemoteAddress;
+            : remoteAddress;
 
         List<string> forwardedFor = [];
         if (immediatePeerTrusted)
@@ -50,9 +54,9 @@ public sealed class ForwardedHeadersPolicy
             forwardedFor.AddRange(incomingFor);
         }
 
-        if (normalizedRemoteAddress is not null)
+        if (remoteAddress is not null)
         {
-            forwardedFor.Add(normalizedRemoteAddress.ToString());
+            forwardedFor.Add(remoteAddress);
         }
 
         var forwardedHost = immediatePeerTrusted
@@ -73,51 +77,20 @@ public sealed class ForwardedHeadersPolicy
             new("X-Forwarded-Port", forwardedPort)
         };
 
-        var standardFor = resolvedClientIp?.ToString() ?? "unknown";
+        var standardFor = resolvedClientAddress ?? "unknown";
         headers.Add(new ProxyHeaderField(
             "Forwarded",
             $"for={QuoteForwardedValue(FormatForwardedFor(standardFor))};proto={QuoteForwardedValue(forwardedProto)};host={QuoteForwardedValue(forwardedHost)}"));
 
         return new ForwardedHeadersContext(
-            resolvedClientIp,
-            resolvedClientIp?.ToString() ?? remoteEndPoint?.ToString(),
+            resolvedClientAddress,
+            resolvedClientAddress ?? remotePeer.Endpoint,
             headers);
     }
 
     public static bool IsForwardedHeader(string headerName)
     {
         return ForwardedHeaderNames.Any(name => string.Equals(name, headerName, StringComparison.OrdinalIgnoreCase));
-    }
-
-    private static IPAddress? NormalizeAddress(IPAddress? address)
-    {
-        return address?.IsIPv4MappedToIPv6 == true ? address.MapToIPv4() : address;
-    }
-
-    private static bool TryParseForwardedFor(IReadOnlyList<string> forwardedFor, [NotNullWhen(true)] out IPAddress? address)
-    {
-        address = null;
-        foreach (var entry in forwardedFor)
-        {
-            var value = entry.Trim().Trim('"');
-            if (value.Length == 0)
-            {
-                continue;
-            }
-
-            if (value.StartsWith("[", StringComparison.Ordinal) && value.EndsWith("]", StringComparison.Ordinal))
-            {
-                value = value[1..^1];
-            }
-
-            if (IPAddress.TryParse(value, out var parsed))
-            {
-                address = NormalizeAddress(parsed)!;
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private static IReadOnlyList<string> SplitHeaderValues(IReadOnlyList<ProxyHeaderField> headers, string name)

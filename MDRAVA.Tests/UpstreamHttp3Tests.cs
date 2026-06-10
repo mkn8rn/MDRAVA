@@ -1187,6 +1187,7 @@ internal static class UpstreamHttp3Tests
             new ProxyEndpointAddressPolicy(),
             new ProxyRelativeStoragePathPolicy(),
             new MDRAVA.INF.Configuration.ProxyUrlSyntaxPolicy(),
+            new ProxyForwardedHeadersAddressPolicy(),
             NullLogger<ProxyConfigurationLoader>.Instance);
     }
 

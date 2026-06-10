@@ -507,6 +507,7 @@ internal static class PerformanceSmokeRunner
             new ProxyEndpointAddressPolicy(),
             new ProxyRelativeStoragePathPolicy(),
             new ProxyUrlSyntaxPolicy(),
+            new ProxyForwardedHeadersAddressPolicy(),
             NullLogger<ProxyConfigurationLoader>.Instance);
     }
 

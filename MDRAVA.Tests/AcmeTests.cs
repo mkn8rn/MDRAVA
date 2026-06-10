@@ -55,7 +55,8 @@ internal static class AcmeTests
             static _ => null,
             new MDRAVA.INF.Configuration.ProxyAdminUrlPolicy(),
             new ProxyRelativeStoragePathPolicy(),
-            new MDRAVA.INF.Configuration.ProxyUrlSyntaxPolicy());
+            new MDRAVA.INF.Configuration.ProxyUrlSyntaxPolicy(),
+            new ProxyForwardedHeadersAddressPolicy());
 
         AssertEx.True(failures.Any(static failure => failure.Contains("TermsAccepted", StringComparison.Ordinal)));
     }
@@ -403,6 +404,7 @@ internal static class AcmeTests
             new ProxyEndpointAddressPolicy(),
             new ProxyRelativeStoragePathPolicy(),
             new MDRAVA.INF.Configuration.ProxyUrlSyntaxPolicy(),
+            new ProxyForwardedHeadersAddressPolicy(),
             NullLogger<ProxyConfigurationLoader>.Instance);
     }
 

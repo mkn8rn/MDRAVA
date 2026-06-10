@@ -18,7 +18,8 @@ public static class ProxyOperationalOptionsValidationRules
         Func<string, string?> readEnvironmentVariable,
         IProxyAdminUrlPolicy adminUrlPolicy,
         IProxyRelativeStoragePathPolicy relativeStoragePathPolicy,
-        IProxyUrlSyntaxPolicy urlSyntaxPolicy)
+        IProxyUrlSyntaxPolicy urlSyntaxPolicy,
+        IProxyTrustedProxyPolicy trustedProxyPolicy)
     {
         List<string> failures = [];
         ValidateTimeout(failures, nameof(options.Timeouts.ClientRequestHeadTimeoutMs), options.Timeouts.ClientRequestHeadTimeoutMs);
@@ -34,7 +35,7 @@ public static class ProxyOperationalOptionsValidationRules
         ValidateConnectionLimits(failures, options.Connections);
         ValidateObservability(failures, options.Observability);
         ValidateLimits(failures, options.Limits);
-        ValidateForwardedHeaders(failures, options.ForwardedHeaders);
+        ValidateForwardedHeaders(failures, options.ForwardedHeaders, trustedProxyPolicy);
         ValidateCertificates(failures, options.Certificates);
         ValidateAdmin(failures, options.Admin, readEnvironmentVariable, adminUrlPolicy);
         ValidateAcme(failures, options.Acme, options.Certificates, relativeStoragePathPolicy, urlSyntaxPolicy);
@@ -268,7 +269,10 @@ public static class ProxyOperationalOptionsValidationRules
         }
     }
 
-    private static void ValidateForwardedHeaders(List<string> failures, ProxyForwardedHeadersOptions options)
+    private static void ValidateForwardedHeaders(
+        List<string> failures,
+        ProxyForwardedHeadersOptions options,
+        IProxyTrustedProxyPolicy trustedProxyPolicy)
     {
         HashSet<string> entries = new(StringComparer.OrdinalIgnoreCase);
         for (var index = 0; index < options.TrustedProxies.Count; index++)
@@ -287,7 +291,7 @@ public static class ProxyOperationalOptionsValidationRules
                 continue;
             }
 
-            if (!RuntimeTrustedProxy.TryParse(entry, out _))
+            if (!trustedProxyPolicy.IsValidEntry(entry))
             {
                 failures.Add($"{prefix} '{entry}' must be an exact IPv4/IPv6 address or CIDR range.");
             }

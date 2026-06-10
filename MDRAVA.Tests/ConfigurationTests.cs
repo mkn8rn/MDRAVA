@@ -1184,6 +1184,7 @@ internal static class ConfigurationTests
             new ProxyEndpointAddressPolicy(),
             new ProxyRelativeStoragePathPolicy(),
             new ProxyUrlSyntaxPolicy(),
+            new ProxyForwardedHeadersAddressPolicy(),
             NullLogger<ProxyConfigurationLoader>.Instance);
     }
 

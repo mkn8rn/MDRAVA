@@ -95,9 +95,8 @@ public static class ProxyConfigurationRuntimeMapper
         var forwardedHeaders = new RuntimeForwardedHeadersOptions(
             operationalOptions.ForwardedHeaders.Enabled,
             operationalOptions.ForwardedHeaders.TrustedProxies
-                .Select(static entry => RuntimeTrustedProxy.TryParse(entry, out var trustedProxy) ? trustedProxy : null)
-                .Where(static trustedProxy => trustedProxy is not null)
-                .Select(static trustedProxy => trustedProxy!)
+                .Where(static entry => !string.IsNullOrWhiteSpace(entry))
+                .Select(static entry => entry.Trim())
                 .ToArray());
 
         var adminSecurity = ToRuntimeAdminSecurityOptions(operationalOptions.Admin, adminTokenResolution);

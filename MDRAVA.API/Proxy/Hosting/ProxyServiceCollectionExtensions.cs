@@ -92,6 +92,9 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<IProxyEndpointAddressPolicy, ProxyEndpointAddressPolicy>();
         services.AddSingleton<IProxyRelativeStoragePathPolicy, ProxyRelativeStoragePathPolicy>();
         services.AddSingleton<IProxyUrlSyntaxPolicy, ProxyUrlSyntaxPolicy>();
+        services.AddSingleton<ProxyForwardedHeadersAddressPolicy>();
+        services.AddSingleton<IProxyTrustedProxyPolicy>(static services => services.GetRequiredService<ProxyForwardedHeadersAddressPolicy>());
+        services.AddSingleton<IForwardedHeadersAddressPolicy>(static services => services.GetRequiredService<ProxyForwardedHeadersAddressPolicy>());
         services.AddSingleton<IProxyDataDirectoryPathSafety, ProxyDataDirectoryPathSafety>();
     }
 

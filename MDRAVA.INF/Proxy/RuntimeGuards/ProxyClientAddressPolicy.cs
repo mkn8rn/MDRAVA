@@ -1,4 +1,5 @@
 using System.Net;
+using MDRAVA.BLL.ControlPlane.Headers;
 
 namespace MDRAVA.INF.Proxy.RuntimeGuards;
 
@@ -16,5 +17,13 @@ public static class ProxyClientAddressPolicy
         return address.IsIPv4MappedToIPv6
             ? address.MapToIPv4().ToString()
             : address.ToString();
+    }
+
+    public static ForwardedHeadersPeer ToForwardedHeadersPeer(IPEndPoint? remoteEndPoint)
+    {
+        var address = NormalizeClientIp(remoteEndPoint?.Address);
+        return new ForwardedHeadersPeer(
+            address,
+            address ?? remoteEndPoint?.ToString());
     }
 }

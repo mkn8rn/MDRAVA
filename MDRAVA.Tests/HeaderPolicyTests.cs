@@ -89,7 +89,7 @@ internal static class HeaderPolicyTests
             [],
             []);
         var forwardedHeaders = new ForwardedHeadersContext(
-            System.Net.IPAddress.Parse("203.0.113.10"),
+            "203.0.113.10",
             "203.0.113.10:443",
             [
                 new ProxyHeaderField("Forwarded", "for=203.0.113.10;proto=https"),

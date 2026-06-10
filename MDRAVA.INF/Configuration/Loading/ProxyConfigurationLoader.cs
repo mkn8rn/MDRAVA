@@ -19,6 +19,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
     private readonly IProxyEndpointAddressPolicy _endpointAddressPolicy;
     private readonly IProxyRelativeStoragePathPolicy _relativeStoragePathPolicy;
     private readonly IProxyUrlSyntaxPolicy _urlSyntaxPolicy;
+    private readonly IProxyTrustedProxyPolicy _trustedProxyPolicy;
     private readonly ILogger<ProxyConfigurationLoader> _logger;
     private int _nextVersion;
 
@@ -30,6 +31,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
         IProxyEndpointAddressPolicy endpointAddressPolicy,
         IProxyRelativeStoragePathPolicy relativeStoragePathPolicy,
         IProxyUrlSyntaxPolicy urlSyntaxPolicy,
+        IProxyTrustedProxyPolicy trustedProxyPolicy,
         ILogger<ProxyConfigurationLoader> logger)
     {
         _dataDirectoryProvider = dataDirectoryProvider;
@@ -39,6 +41,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
         _endpointAddressPolicy = endpointAddressPolicy;
         _relativeStoragePathPolicy = relativeStoragePathPolicy;
         _urlSyntaxPolicy = urlSyntaxPolicy;
+        _trustedProxyPolicy = trustedProxyPolicy;
         _logger = logger;
     }
 
@@ -142,7 +145,8 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
             Environment.GetEnvironmentVariable,
             _adminUrlPolicy,
             _relativeStoragePathPolicy,
-            _urlSyntaxPolicy);
+            _urlSyntaxPolicy,
+            _trustedProxyPolicy);
         if (operationalFailures.Count > 0)
         {
             return ProxyConfigurationLoadResult.Failure(

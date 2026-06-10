@@ -197,11 +197,11 @@ public sealed class Http3Connection
                 requestHead,
                 _listener,
                 _configurationSnapshot.ForwardedHeaders,
-                _connection.RemoteEndPoint);
+                ProxyClientAddressPolicy.ToForwardedHeadersPeer(_connection.RemoteEndPoint));
             context.SetClientEndpoint(forwardedHeaders.ResolvedClientEndpoint);
 
             if (!_rateLimiter.TryAcquireRequest(
-                ProxyClientAddressPolicy.NormalizeClientIp(forwardedHeaders.ResolvedClientIp),
+                forwardedHeaders.ResolvedClientAddress,
                 _configurationSnapshot.Limits.RequestsPerMinutePerIp))
             {
                 await WriteGeneratedResponseAsync(stream, 429, "Too Many Requests", "Too Many Requests", context, requestHead.Method, cancellationToken);

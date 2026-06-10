@@ -347,11 +347,11 @@ public sealed class Http2ClientConnection
                 requestHead,
                 _listener,
                 _configurationSnapshot.ForwardedHeaders,
-                _remoteEndPoint);
+                ProxyClientAddressPolicy.ToForwardedHeadersPeer(_remoteEndPoint));
             context.SetClientEndpoint(forwardedHeaders.ResolvedClientEndpoint);
 
             if (!_rateLimiter.TryAcquireRequest(
-                ProxyClientAddressPolicy.NormalizeClientIp(forwardedHeaders.ResolvedClientIp),
+                forwardedHeaders.ResolvedClientAddress,
                 _configurationSnapshot.Limits.RequestsPerMinutePerIp))
             {
                 await WriteGeneratedResponseAsync(
