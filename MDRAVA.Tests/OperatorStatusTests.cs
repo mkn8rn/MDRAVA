@@ -84,7 +84,7 @@ internal static class OperatorStatusTests
             snapshot,
             metrics,
             [],
-            Http3RuntimeSupport.Project(
+            Http3RuntimeSupport.ProjectRuntime(
                 snapshot.Listeners,
                 TestHttp3PlatformSupport.Supported,
                 runtime.Listeners,

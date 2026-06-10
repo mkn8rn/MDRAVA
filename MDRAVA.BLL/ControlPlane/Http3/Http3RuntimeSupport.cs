@@ -5,20 +5,38 @@ namespace MDRAVA.BLL.ControlPlane.Http3;
 
 public static class Http3RuntimeSupport
 {
-    public static RuntimeHttp3SupportProjection Project(
+    public static RuntimeHttp3SupportProjection ProjectConfiguration(
         IReadOnlyList<RuntimeListener> listeners,
         RuntimeHttp3PlatformSupport platformSupport,
-        IReadOnlyList<ProxyListenerStatus>? runtimeListeners = null,
-        IReadOnlyList<RuntimeRoute>? routes = null)
+        IReadOnlyList<RuntimeRoute> routes)
+    {
+        return ProjectCore(listeners, platformSupport, [], hasRuntimeState: false, routes);
+    }
+
+    public static RuntimeHttp3SupportProjection ProjectRuntime(
+        IReadOnlyList<RuntimeListener> listeners,
+        RuntimeHttp3PlatformSupport platformSupport,
+        IReadOnlyList<ProxyListenerStatus> runtimeListeners,
+        IReadOnlyList<RuntimeRoute> routes)
+    {
+        return ProjectCore(listeners, platformSupport, runtimeListeners, hasRuntimeState: true, routes);
+    }
+
+    private static RuntimeHttp3SupportProjection ProjectCore(
+        IReadOnlyList<RuntimeListener> listeners,
+        RuntimeHttp3PlatformSupport platformSupport,
+        IReadOnlyList<ProxyListenerStatus> runtimeListeners,
+        bool hasRuntimeState,
+        IReadOnlyList<RuntimeRoute> routes)
     {
         var http3Configured = listeners.Any(static listener => listener.Http3.Configured);
         var http3Enabled = listeners.Any(static listener => listener.Http3.EnabledForTraffic);
-        var quicReady = runtimeListeners?.Any(static listener =>
+        var quicReady = runtimeListeners.Any(static listener =>
             string.Equals(listener.Kind, "quic", StringComparison.OrdinalIgnoreCase)
-            && listener.State == ProxyListenerState.Active) ?? false;
+            && listener.State == ProxyListenerState.Active);
         var altSvcConfigured = listeners.Any(static listener => RuntimeHttp3AltSvcPolicy.IsEnabled(listener));
         var altSvcActive = altSvcConfigured
-            && runtimeListeners is not null
+            && hasRuntimeState
             && listeners.Any(listener => RuntimeHttp3AltSvcPolicy.IsEnabled(listener) && RuntimeHttp3AltSvcPolicy.HasActiveQuicListener(listener, runtimeListeners));
         var maxAge = listeners
             .Where(static listener => RuntimeHttp3AltSvcPolicy.IsEnabled(listener))
@@ -35,8 +53,8 @@ public static class Http3RuntimeSupport
             : defaultState == "disabled"
                 ? "disabled"
                 : "explicit_only";
-        var upstreamHttp3Configured = routes?.Any(static route => route.Upstreams.Any(static upstream =>
-            RuntimeUpstreamProtocol.IsHttp3(upstream.Protocol))) ?? false;
+        var upstreamHttp3Configured = routes.Any(static route => route.Upstreams.Any(static upstream =>
+            RuntimeUpstreamProtocol.IsHttp3(upstream.Protocol)));
         return new RuntimeHttp3SupportProjection(
             platformSupport.RuntimeSupport,
             platformSupport.QuicListenerSupported,
@@ -48,13 +66,13 @@ public static class Http3RuntimeSupport
             altSvcConfigured,
             altSvcActive,
             maxAge,
-            DisabledReason(listeners, http3Configured, http3Enabled, quicReady, runtimeListeners is not null),
+            DisabledReason(listeners, http3Configured, http3Enabled, quicReady, hasRuntimeState),
             UdpQuicListenerIdentityModeled: true,
             readinessConclusion)
         {
             DefaultEnablementState = defaultState,
             DefaultReadinessBlockers = blockers,
-            AltSvcStateReason = AltSvcReason(altSvcConfigured, altSvcActive, http3Enabled, quicReady, runtimeListeners is not null),
+            AltSvcStateReason = AltSvcReason(altSvcConfigured, altSvcActive, http3Enabled, quicReady, hasRuntimeState),
             UpstreamHttp3SupportLevel = upstreamHttp3Configured
                 ? "opt_in_https_quic_reused_multiplexed"
                 : "opt_in_https_quic_available",

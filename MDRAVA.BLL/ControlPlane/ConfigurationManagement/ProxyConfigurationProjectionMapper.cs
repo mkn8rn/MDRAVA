@@ -60,7 +60,7 @@ public static class ProxyConfigurationProjectionMapper
             snapshot.Routes)
         {
             Metrics = snapshot.Metrics,
-            Http3 = Http3RuntimeSupport.Project(snapshot.Listeners, platformSupport, routes: snapshot.Routes)
+            Http3 = Http3RuntimeSupport.ProjectConfiguration(snapshot.Listeners, platformSupport, snapshot.Routes)
         };
     }
 }
