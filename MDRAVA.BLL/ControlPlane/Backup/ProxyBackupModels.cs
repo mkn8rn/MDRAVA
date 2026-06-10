@@ -1,4 +1,17 @@
+using MDRAVA.BLL.Configuration;
+
 namespace MDRAVA.BLL.ControlPlane.Backup;
+
+public interface IProxyRestoreConfigurationValidator
+{
+    ValueTask<ProxyRestoreConfigurationValidationResult> ValidateExistingLayoutAsync(CancellationToken cancellationToken);
+}
+
+public sealed record ProxyRestoreConfigurationValidationResult(
+    bool Succeeded,
+    IReadOnlyList<string> Errors,
+    IReadOnlyList<ProxyConfigurationFileError> FileErrors,
+    int? WouldBeVersion);
 
 public interface IProxyBackupFileSystem
 {

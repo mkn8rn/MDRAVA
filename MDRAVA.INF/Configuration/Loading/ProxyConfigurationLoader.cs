@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane.Backup;
 using MDRAVA.BLL.Infrastructure;
 using MDRAVA.INF.Acme;
 using Microsoft.Extensions.Logging;
@@ -40,7 +41,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
         return await LoadCoreAsync(allocateVersion: false, ensureLayout: true, cancellationToken);
     }
 
-    public async ValueTask<ProxyConfigurationLoadResult> ValidateExistingLayoutAsync(CancellationToken cancellationToken)
+    private async ValueTask<ProxyConfigurationLoadResult> ValidateExistingLayoutAsync(CancellationToken cancellationToken)
     {
         return await LoadCoreAsync(allocateVersion: false, ensureLayout: false, cancellationToken);
     }
