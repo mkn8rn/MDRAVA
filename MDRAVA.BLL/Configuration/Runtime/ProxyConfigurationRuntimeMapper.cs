@@ -1,4 +1,4 @@
-using MDRAVA.BLL.ControlPlane.Headers;
+using MDRAVA.BLL.Http;
 
 namespace MDRAVA.BLL.Configuration;
 
