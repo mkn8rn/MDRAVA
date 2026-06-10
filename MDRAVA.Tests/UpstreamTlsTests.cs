@@ -182,7 +182,7 @@ internal static class UpstreamTlsTests
             "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n",
             timeout.Token);
 
-        var sample = await new UpstreamHealthCheckClient(new UpstreamConnectionFactory())
+        var sample = await new UpstreamHealthCheckClient(new UpstreamConnectionFactory(), new ProxyMetrics())
             .CheckAsync(route, upstream, timeout.Token);
         var observation = await upstreamTask.WaitAsync(timeout.Token);
 

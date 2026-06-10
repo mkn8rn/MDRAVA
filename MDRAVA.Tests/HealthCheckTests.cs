@@ -53,7 +53,7 @@ internal static class HealthCheckTests
                 await Task.Delay(TimeSpan.FromMilliseconds(1500), timeout.Token);
             }, timeout.Token);
 
-            var sample = await new UpstreamHealthCheckClient(new UpstreamConnectionFactory())
+            var sample = await new UpstreamHealthCheckClient(new UpstreamConnectionFactory(), new ProxyMetrics())
                 .CheckAsync(route, upstream, timeout.Token);
 
             AssertEx.False(sample.Healthy, sample.Result);
@@ -184,7 +184,7 @@ internal static class HealthCheckTests
                 await stream.WriteAsync(System.Text.Encoding.ASCII.GetBytes(response), timeout.Token);
             }, timeout.Token);
 
-            var sample = await new UpstreamHealthCheckClient(new UpstreamConnectionFactory())
+            var sample = await new UpstreamHealthCheckClient(new UpstreamConnectionFactory(), new ProxyMetrics())
                 .CheckAsync(route, upstream, timeout.Token);
             await serverTask;
             return sample;

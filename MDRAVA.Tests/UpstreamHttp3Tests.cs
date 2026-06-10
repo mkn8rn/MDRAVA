@@ -288,7 +288,7 @@ internal static class UpstreamHttp3Tests
             CancellationToken.None,
             applicationProtocols: [new SslApplicationProtocol("not-h3")]);
         var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        var client = new UpstreamHealthCheckClient(new UpstreamConnectionFactory());
+        var client = new UpstreamHealthCheckClient(new UpstreamConnectionFactory(), new ProxyMetrics());
 
         var result = await client.CheckAsync(
             Route([Upstream(port, RuntimeUpstreamProtocol.Http3)]),
@@ -352,7 +352,7 @@ internal static class UpstreamHttp3Tests
             [],
             [],
             timeout.Token);
-        var client = new UpstreamHealthCheckClient(new UpstreamConnectionFactory());
+        var client = new UpstreamHealthCheckClient(new UpstreamConnectionFactory(), new ProxyMetrics());
 
         var healthy = await client.CheckAsync(Route([Upstream(port, RuntimeUpstreamProtocol.Http3)]), Upstream(port, RuntimeUpstreamProtocol.Http3), timeout.Token);
         var observation = await server.WaitAsync(timeout.Token);

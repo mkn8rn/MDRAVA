@@ -266,7 +266,7 @@ internal static class UpstreamHttp2Tests
             timeout.Token,
             applicationProtocols: [SslApplicationProtocol.Http11],
             readRequest: false);
-        var client = new UpstreamHealthCheckClient(new UpstreamConnectionFactory());
+        var client = new UpstreamHealthCheckClient(new UpstreamConnectionFactory(), new ProxyMetrics());
 
         var healthy = await client.CheckAsync(Route([Upstream(healthyPort, RuntimeUpstreamProtocol.Http2)]), Upstream(healthyPort, RuntimeUpstreamProtocol.Http2), timeout.Token);
         var unhealthy = await client.CheckAsync(Route([Upstream(wrongAlpnPort, RuntimeUpstreamProtocol.Http2)]), Upstream(wrongAlpnPort, RuntimeUpstreamProtocol.Http2), timeout.Token);

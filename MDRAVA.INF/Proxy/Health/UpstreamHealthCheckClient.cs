@@ -24,10 +24,10 @@ public sealed class UpstreamHealthCheckClient : IUpstreamHealthCheckClient
 
     public UpstreamHealthCheckClient(
         UpstreamConnectionFactory connectionFactory,
-        ProxyMetrics? metrics = null)
+        ProxyMetrics metrics)
     {
         _connectionFactory = connectionFactory;
-        _metrics = metrics ?? new ProxyMetrics();
+        _metrics = metrics;
     }
 
     public async ValueTask<HealthCheckSample> CheckAsync(
