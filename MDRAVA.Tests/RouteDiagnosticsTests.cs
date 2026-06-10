@@ -526,6 +526,7 @@ internal static class RouteDiagnosticsTests
             new ProxyRouteDiagnosticsActionPolicyAdapter(new ProxyRouteActionPolicy()),
             new ProxyRouteDiagnosticsPathRewritePolicyAdapter(new PathRewritePolicy()),
             metrics,
+            new MDRAVA.INF.Proxy.RuntimeGuards.ProxyClientAddressSyntaxPolicy(),
             TimeProvider.System);
     }
 
@@ -551,6 +552,7 @@ internal static class RouteDiagnosticsTests
             actionPolicy ?? new FixedRouteDiagnosticsActionPolicy(new ProxyRouteDiagnosticsActionDecision(true, null)),
             pathRewritePolicy ?? new FixedRouteDiagnosticsPathRewritePolicy(),
             metricsSink ?? new FixedRouteDiagnosticsMetricsSink(),
+            new MDRAVA.INF.Proxy.RuntimeGuards.ProxyClientAddressSyntaxPolicy(),
             TimeProvider.System);
     }
 

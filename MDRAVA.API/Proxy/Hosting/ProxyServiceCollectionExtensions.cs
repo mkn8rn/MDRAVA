@@ -33,6 +33,7 @@ using MDRAVA.INF.Proxy.Forwarding;
 using MDRAVA.INF.Proxy.Health;
 using MDRAVA.INF.Proxy.Hosting;
 using MDRAVA.INF.Proxy.Http3;
+using MDRAVA.INF.Proxy.RuntimeGuards;
 using MDRAVA.INF.Proxy.Tls;
 using MDRAVA.INF.Runtime;
 using Microsoft.Extensions.Options;
@@ -153,6 +154,7 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<IProxyRouteDiagnosticsActionPolicy, ProxyRouteDiagnosticsActionPolicyAdapter>();
         services.AddSingleton<IProxyRouteDiagnosticsPathRewritePolicy, ProxyRouteDiagnosticsPathRewritePolicyAdapter>();
         services.AddSingleton<IProxyRouteDiagnosticsMetricsSink>(static services => services.GetRequiredService<ProxyMetrics>());
+        services.AddSingleton<IProxyClientAddressSyntaxPolicy, ProxyClientAddressSyntaxPolicy>();
         services.AddSingleton<RouteMatchDiagnosticsService>();
         services.AddSingleton<IProxyRouteDiagnosticsOperations>(static services => services.GetRequiredService<RouteMatchDiagnosticsService>());
         services.AddSingleton<ProxyRouteDiagnosticsAdministrationService>();

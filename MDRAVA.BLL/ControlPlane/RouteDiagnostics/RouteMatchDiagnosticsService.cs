@@ -1,5 +1,5 @@
-using System.Net;
 using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane.RuntimeGuards;
 
 namespace MDRAVA.BLL.ControlPlane.RouteDiagnostics;
 
@@ -20,6 +20,7 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
     private readonly IProxyRouteDiagnosticsActionPolicy _routeActionPolicy;
     private readonly IProxyRouteDiagnosticsPathRewritePolicy _pathRewritePolicy;
     private readonly IProxyRouteDiagnosticsMetricsSink _metricsSink;
+    private readonly IProxyClientAddressSyntaxPolicy _clientAddressSyntaxPolicy;
     private readonly TimeProvider _timeProvider;
 
     public RouteMatchDiagnosticsService(
@@ -28,6 +29,7 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
         IProxyRouteDiagnosticsActionPolicy routeActionPolicy,
         IProxyRouteDiagnosticsPathRewritePolicy pathRewritePolicy,
         IProxyRouteDiagnosticsMetricsSink metricsSink,
+        IProxyClientAddressSyntaxPolicy clientAddressSyntaxPolicy,
         TimeProvider timeProvider)
     {
         _configurationSource = configurationSource;
@@ -35,6 +37,7 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
         _routeActionPolicy = routeActionPolicy;
         _pathRewritePolicy = pathRewritePolicy;
         _metricsSink = metricsSink;
+        _clientAddressSyntaxPolicy = clientAddressSyntaxPolicy;
         _timeProvider = timeProvider;
     }
 
@@ -46,7 +49,7 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
             return Complete(Failure(evaluatedAtUtc, "no_active_config", "No active proxy configuration is loaded."));
         }
 
-        if (!TryValidateRequest(request, evaluatedAtUtc, out var invalidResult))
+        if (!TryValidateRequest(request, evaluatedAtUtc, _clientAddressSyntaxPolicy, out var invalidResult))
         {
             return Complete(invalidResult);
         }
@@ -189,6 +192,7 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
     private static bool TryValidateRequest(
         RouteMatchDryRunRequest? request,
         DateTimeOffset evaluatedAtUtc,
+        IProxyClientAddressSyntaxPolicy clientAddressSyntaxPolicy,
         out RouteMatchDryRunResult result)
     {
         result = Failure(evaluatedAtUtc, "invalid_input", "The dry-run request is invalid.");
@@ -257,7 +261,7 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
             return false;
         }
 
-        if (!string.IsNullOrWhiteSpace(request.ClientIp) && !IPAddress.TryParse(request.ClientIp, out _))
+        if (!string.IsNullOrWhiteSpace(request.ClientIp) && !clientAddressSyntaxPolicy.IsIpLiteral(request.ClientIp))
         {
             result = Failure(evaluatedAtUtc, "invalid_client_ip", "ClientIp must be an IPv4 or IPv6 literal when supplied.");
             return false;
