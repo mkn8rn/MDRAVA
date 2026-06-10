@@ -12,7 +12,7 @@ using MDRAVA.BLL.ControlPlane.HealthChecks;
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.Metrics;
 using MDRAVA.BLL.ControlPlane.RequestDiagnostics;
-using MDRAVA.BLL.ControlPlane.Requests;
+using MDRAVA.BLL.Http;
 using MDRAVA.BLL.ControlPlane.Acme;
 using MDRAVA.BLL.ControlPlane.Caching;
 using Microsoft.Extensions.Logging;

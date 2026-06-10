@@ -1,6 +1,6 @@
 using MDRAVA.BLL.ControlPlane.Headers;
 using MDRAVA.BLL.ControlPlane.Http1;
-using MDRAVA.BLL.ControlPlane.Requests;
+using MDRAVA.BLL.Http;
 using System.Globalization;
 using MDRAVA.BLL.Configuration;
 
