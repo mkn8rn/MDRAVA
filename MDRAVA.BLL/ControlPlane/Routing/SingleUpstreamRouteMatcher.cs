@@ -1,7 +1,7 @@
 using MDRAVA.BLL.ControlPlane.Http1;
 using MDRAVA.BLL.Configuration;
 
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.Routing;
 
 public sealed class SingleUpstreamRouteMatcher : IRouteMatcher
 {

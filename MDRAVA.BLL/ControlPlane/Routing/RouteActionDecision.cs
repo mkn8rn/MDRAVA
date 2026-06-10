@@ -1,4 +1,4 @@
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.Routing;
 
 public sealed record RouteActionDecision(GeneratedRouteResponse? Response)
 {
