@@ -21,13 +21,6 @@ public sealed class ProxyAcmeStatusSnapshotReader : IProxyAcmeStatusSnapshotRead
             return false;
         }
 
-        var certificates = sourceSnapshot.Certificates
-            .Select(static certificate => new ProxyAcmeConfiguredCertificateStatus(
-                certificate.Id,
-                certificate.Enabled,
-                certificate.Domains,
-                certificate.RenewBeforeDays))
-            .ToArray();
         var runtimeCertificates = sourceSnapshot.RuntimeCertificates
             .ToDictionary(
                 static certificate => certificate.Key,
@@ -42,7 +35,7 @@ public sealed class ProxyAcmeStatusSnapshotReader : IProxyAcmeStatusSnapshotRead
             sourceSnapshot.Enabled,
             sourceSnapshot.DirectoryUrl,
             sourceSnapshot.UseStaging,
-            certificates,
+            sourceSnapshot.Certificates,
             runtimeCertificates);
         return true;
     }

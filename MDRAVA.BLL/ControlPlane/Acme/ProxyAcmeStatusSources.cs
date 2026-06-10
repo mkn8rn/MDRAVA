@@ -41,7 +41,7 @@ public sealed class ProxyAcmeStatusConfigurationSource : IProxyAcmeStatusConfigu
             runtimeSnapshot.Acme.DirectoryUrl,
             runtimeSnapshot.Acme.UseStaging,
             runtimeSnapshot.Acme.Certificates
-                .Select(static certificate => new ProxyAcmeConfiguredCertificateSource(
+                .Select(static certificate => new ProxyAcmeConfiguredCertificateStatus(
                     certificate.Id,
                     certificate.Enabled,
                     certificate.Domains,

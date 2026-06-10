@@ -248,7 +248,7 @@ internal static class AcmeTests
                 true,
                 "https://acme.example.test/directory",
                 true,
-                [new ProxyAcmeConfiguredCertificateSource("home-acme", true, ["home.example.test"], 30)],
+                [new ProxyAcmeConfiguredCertificateStatus("home-acme", true, ["home.example.test"], 30)],
                 [new ProxyAcmeRuntimeCertificateSource("home-acme", "home-acme", "acme", notBefore, notAfter)])),
             new FixedAcmeCertificateLifecycleStatusSource([lifecycle]));
 
