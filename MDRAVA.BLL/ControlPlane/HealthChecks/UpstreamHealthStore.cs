@@ -1,8 +1,9 @@
+using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane;
 using MDRAVA.BLL.ControlPlane.Status;
 using System.Collections.Concurrent;
-using MDRAVA.BLL.Configuration;
 
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.HealthChecks;
 
 public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
 {
