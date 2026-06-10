@@ -1,4 +1,6 @@
-namespace MDRAVA.API.Proxy.Acme;
+using MDRAVA.BLL.ControlPlane;
+
+namespace MDRAVA.INF.Acme;
 
 public sealed class DisabledAcmeCertificateIssuer : IAcmeCertificateIssuer
 {
