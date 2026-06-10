@@ -783,7 +783,10 @@ internal static class ConfigurationTests
                 },
                 "{}",
                 null));
-        var normalizer = new ProxyConfigurationNormalizer(parser, new ProxyEndpointAddressPolicy());
+        var normalizer = new ProxyConfigurationNormalizer(
+            parser,
+            new ProxyEndpointAddressPolicy(),
+            new ProxyUrlSyntaxPolicy());
 
         var result = normalizer.Normalize(new ProxyConfigurationNormalizeRequest("yml", "ignored"));
 
@@ -1180,6 +1183,7 @@ internal static class ConfigurationTests
             new ProxyAdminUrlPolicy(),
             new ProxyEndpointAddressPolicy(),
             new ProxyRelativeStoragePathPolicy(),
+            new ProxyUrlSyntaxPolicy(),
             NullLogger<ProxyConfigurationLoader>.Instance);
     }
 
@@ -1211,7 +1215,8 @@ internal static class ConfigurationTests
     {
         return new ProxyConfigurationNormalizer(
             new ProxyConfigurationNormalizeSiteParser(new SiteConfigurationParser()),
-            new ProxyEndpointAddressPolicy());
+            new ProxyEndpointAddressPolicy(),
+            new ProxyUrlSyntaxPolicy());
     }
 
     private sealed record TestConfigurationProjection(string Name);

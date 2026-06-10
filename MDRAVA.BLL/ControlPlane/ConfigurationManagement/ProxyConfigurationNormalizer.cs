@@ -7,13 +7,16 @@ public sealed class ProxyConfigurationNormalizer
 {
     private readonly IProxyConfigurationNormalizeSiteParser _siteParser;
     private readonly IProxyEndpointAddressPolicy _endpointAddressPolicy;
+    private readonly IProxyUrlSyntaxPolicy _urlSyntaxPolicy;
 
     public ProxyConfigurationNormalizer(
         IProxyConfigurationNormalizeSiteParser siteParser,
-        IProxyEndpointAddressPolicy endpointAddressPolicy)
+        IProxyEndpointAddressPolicy endpointAddressPolicy,
+        IProxyUrlSyntaxPolicy urlSyntaxPolicy)
     {
         _siteParser = siteParser;
         _endpointAddressPolicy = endpointAddressPolicy;
+        _urlSyntaxPolicy = urlSyntaxPolicy;
     }
 
     public ProxyConfigurationNormalizeResult Normalize(ProxyConfigurationNormalizeRequest request)
@@ -38,7 +41,7 @@ public sealed class ProxyConfigurationNormalizer
 
         var options = SiteOptionsAggregator.ToProxyOptions(
             [new SiteConfigurationSource("normalize-input", parsed.Site)]);
-        var validationFailures = ProxyOptionsValidationRules.Validate(options, _endpointAddressPolicy);
+        var validationFailures = ProxyOptionsValidationRules.Validate(options, _endpointAddressPolicy, _urlSyntaxPolicy);
         if (validationFailures.Count > 0)
         {
             return Failure(

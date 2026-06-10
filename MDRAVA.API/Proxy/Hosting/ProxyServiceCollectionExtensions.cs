@@ -90,6 +90,7 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<IProxyAdminUrlPolicy, ProxyAdminUrlPolicy>();
         services.AddSingleton<IProxyEndpointAddressPolicy, ProxyEndpointAddressPolicy>();
         services.AddSingleton<IProxyRelativeStoragePathPolicy, ProxyRelativeStoragePathPolicy>();
+        services.AddSingleton<IProxyUrlSyntaxPolicy, ProxyUrlSyntaxPolicy>();
         services.AddSingleton<IProxyDataDirectoryPathSafety, ProxyDataDirectoryPathSafety>();
     }
 

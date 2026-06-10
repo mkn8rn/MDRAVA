@@ -83,7 +83,8 @@ internal static class AdminSecurityTests
             },
             static _ => null,
             new ProxyAdminUrlPolicy(),
-            new ProxyRelativeStoragePathPolicy());
+            new ProxyRelativeStoragePathPolicy(),
+            new ProxyUrlSyntaxPolicy());
 
         AssertEx.True(failures.Any(static failure => failure.Contains("non-local", StringComparison.OrdinalIgnoreCase)));
     }
@@ -298,7 +299,8 @@ internal static class AdminSecurityTests
             reloadService);
         var normalizer = new ProxyConfigurationNormalizer(
             new ProxyConfigurationNormalizeSiteParser(new SiteConfigurationParser()),
-            new ProxyEndpointAddressPolicy());
+            new ProxyEndpointAddressPolicy(),
+            new ProxyUrlSyntaxPolicy());
         var controller = new ProxyConfigurationController(
             new ProxyConfigurationAdministrationService(normalizer, reloadService),
             CreateReadAdministration(store),

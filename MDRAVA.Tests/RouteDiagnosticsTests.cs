@@ -579,7 +579,8 @@ internal static class RouteDiagnosticsTests
             new ProxyConfigLintSubmittedConfigurationSource(
                 new SiteConfigurationParser(),
                 TestHttp3PlatformSupport.SupportedSource,
-                new ProxyEndpointAddressPolicy()),
+                new ProxyEndpointAddressPolicy(),
+                new ProxyUrlSyntaxPolicy()),
             new ProxyConfigLintRuntimeStateSource(new ProxyRuntimeState()),
             metrics,
             new ProxyConfigLintSourceNameFormatter(),

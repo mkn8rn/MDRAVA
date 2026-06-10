@@ -17,7 +17,8 @@ public static class ProxyOperationalOptionsValidationRules
         ProxyOperationalOptions options,
         Func<string, string?> readEnvironmentVariable,
         IProxyAdminUrlPolicy adminUrlPolicy,
-        IProxyRelativeStoragePathPolicy relativeStoragePathPolicy)
+        IProxyRelativeStoragePathPolicy relativeStoragePathPolicy,
+        IProxyUrlSyntaxPolicy urlSyntaxPolicy)
     {
         List<string> failures = [];
         ValidateTimeout(failures, nameof(options.Timeouts.ClientRequestHeadTimeoutMs), options.Timeouts.ClientRequestHeadTimeoutMs);
@@ -36,7 +37,7 @@ public static class ProxyOperationalOptionsValidationRules
         ValidateForwardedHeaders(failures, options.ForwardedHeaders);
         ValidateCertificates(failures, options.Certificates);
         ValidateAdmin(failures, options.Admin, readEnvironmentVariable, adminUrlPolicy);
-        ValidateAcme(failures, options.Acme, options.Certificates, relativeStoragePathPolicy);
+        ValidateAcme(failures, options.Acme, options.Certificates, relativeStoragePathPolicy, urlSyntaxPolicy);
         ValidateMetrics(failures, options.Metrics);
         return failures;
     }
@@ -88,7 +89,8 @@ public static class ProxyOperationalOptionsValidationRules
         List<string> failures,
         ProxyAcmeOptions options,
         IReadOnlyList<CertificateOptions> manualCertificates,
-        IProxyRelativeStoragePathPolicy relativeStoragePathPolicy)
+        IProxyRelativeStoragePathPolicy relativeStoragePathPolicy,
+        IProxyUrlSyntaxPolicy urlSyntaxPolicy)
     {
         if (options.RenewBeforeDays is < 1 or > 365)
         {
@@ -111,8 +113,7 @@ public static class ProxyOperationalOptionsValidationRules
         }
 
         var directoryUrl = ProxyAcmeDirectoryPolicy.ResolveDirectoryUrl(options);
-        if (!Uri.TryCreate(directoryUrl, UriKind.Absolute, out var directoryUri)
-            || !string.Equals(directoryUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+        if (!urlSyntaxPolicy.IsAbsoluteHttpsUrl(directoryUrl))
         {
             failures.Add("Proxy ACME DirectoryUrl must be an absolute https URL.");
         }

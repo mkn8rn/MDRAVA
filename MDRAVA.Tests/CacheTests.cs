@@ -45,7 +45,7 @@ internal static class CacheTests
 
     public static void InvalidCachePolicyIsRejected()
     {
-        var validation = new ProxyOptionsValidator(new ProxyEndpointAddressPolicy()).Validate(
+        var validation = new ProxyOptionsValidator(new ProxyEndpointAddressPolicy(), new MDRAVA.INF.Configuration.ProxyUrlSyntaxPolicy()).Validate(
             null,
             new ProxyOptions
             {
@@ -835,6 +835,7 @@ internal static class CacheTests
             new MDRAVA.INF.Configuration.ProxyAdminUrlPolicy(),
             new ProxyEndpointAddressPolicy(),
             new ProxyRelativeStoragePathPolicy(),
+            new MDRAVA.INF.Configuration.ProxyUrlSyntaxPolicy(),
             NullLogger<ProxyConfigurationLoader>.Instance);
     }
 

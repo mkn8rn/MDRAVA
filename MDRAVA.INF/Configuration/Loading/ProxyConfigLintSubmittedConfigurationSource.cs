@@ -13,15 +13,18 @@ public sealed class ProxyConfigLintSubmittedConfigurationSource
     private readonly SiteConfigurationParser _siteParser;
     private readonly IRuntimeHttp3PlatformSupportSource _http3PlatformSupportSource;
     private readonly IProxyEndpointAddressPolicy _endpointAddressPolicy;
+    private readonly IProxyUrlSyntaxPolicy _urlSyntaxPolicy;
 
     public ProxyConfigLintSubmittedConfigurationSource(
         SiteConfigurationParser siteParser,
         IRuntimeHttp3PlatformSupportSource http3PlatformSupportSource,
-        IProxyEndpointAddressPolicy endpointAddressPolicy)
+        IProxyEndpointAddressPolicy endpointAddressPolicy,
+        IProxyUrlSyntaxPolicy urlSyntaxPolicy)
     {
         _siteParser = siteParser;
         _http3PlatformSupportSource = http3PlatformSupportSource;
         _endpointAddressPolicy = endpointAddressPolicy;
+        _urlSyntaxPolicy = urlSyntaxPolicy;
     }
 
     public ProxyConfigLintSubmittedConfigurationResult Read(
@@ -53,7 +56,7 @@ public sealed class ProxyConfigLintSubmittedConfigurationSource
         }
 
         var options = SiteOptionsAggregator.ToProxyOptions([new SiteConfigurationSource("lint-input", site)]);
-        var validationErrors = ProxyOptionsValidationRules.Validate(options, _endpointAddressPolicy)
+        var validationErrors = ProxyOptionsValidationRules.Validate(options, _endpointAddressPolicy, _urlSyntaxPolicy)
             .Select(static failure => new ProxyConfigurationFileError("lint-input", failure))
             .ToArray();
 

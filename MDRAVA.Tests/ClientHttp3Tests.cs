@@ -49,7 +49,7 @@ internal static class ClientHttp3Tests
 
     public static void ExplicitHttp3DisablePreventsTraffic()
     {
-        var validation = new ProxyOptionsValidator(new ProxyEndpointAddressPolicy()).Validate(
+        var validation = new ProxyOptionsValidator(new ProxyEndpointAddressPolicy(), new MDRAVA.INF.Configuration.ProxyUrlSyntaxPolicy()).Validate(
             null,
             new ProxyOptions
             {
@@ -440,7 +440,7 @@ internal static class ClientHttp3Tests
 
     public static void Http3LegacyEnablementValuesAreRejected()
     {
-        var validation = new ProxyOptionsValidator(new ProxyEndpointAddressPolicy()).Validate(
+        var validation = new ProxyOptionsValidator(new ProxyEndpointAddressPolicy(), new MDRAVA.INF.Configuration.ProxyUrlSyntaxPolicy()).Validate(
             null,
             new ProxyOptions
             {
@@ -1938,7 +1938,8 @@ internal static class ClientHttp3Tests
             new ProxyConfigLintSubmittedConfigurationSource(
                 new SiteConfigurationParser(),
                 TestHttp3PlatformSupport.SupportedSource,
-                new ProxyEndpointAddressPolicy()),
+                new ProxyEndpointAddressPolicy(),
+                new ProxyUrlSyntaxPolicy()),
             new ProxyConfigLintRuntimeStateSource(new ProxyRuntimeState()),
             new ProxyMetrics(),
             new ProxyConfigLintSourceNameFormatter(),

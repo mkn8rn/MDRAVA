@@ -18,6 +18,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
     private readonly IProxyAdminUrlPolicy _adminUrlPolicy;
     private readonly IProxyEndpointAddressPolicy _endpointAddressPolicy;
     private readonly IProxyRelativeStoragePathPolicy _relativeStoragePathPolicy;
+    private readonly IProxyUrlSyntaxPolicy _urlSyntaxPolicy;
     private readonly ILogger<ProxyConfigurationLoader> _logger;
     private int _nextVersion;
 
@@ -28,6 +29,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
         IProxyAdminUrlPolicy adminUrlPolicy,
         IProxyEndpointAddressPolicy endpointAddressPolicy,
         IProxyRelativeStoragePathPolicy relativeStoragePathPolicy,
+        IProxyUrlSyntaxPolicy urlSyntaxPolicy,
         ILogger<ProxyConfigurationLoader> logger)
     {
         _dataDirectoryProvider = dataDirectoryProvider;
@@ -36,6 +38,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
         _adminUrlPolicy = adminUrlPolicy;
         _endpointAddressPolicy = endpointAddressPolicy;
         _relativeStoragePathPolicy = relativeStoragePathPolicy;
+        _urlSyntaxPolicy = urlSyntaxPolicy;
         _logger = logger;
     }
 
@@ -138,7 +141,8 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
             operationalOptions,
             Environment.GetEnvironmentVariable,
             _adminUrlPolicy,
-            _relativeStoragePathPolicy);
+            _relativeStoragePathPolicy,
+            _urlSyntaxPolicy);
         if (operationalFailures.Count > 0)
         {
             return ProxyConfigurationLoadResult.Failure(
@@ -165,7 +169,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
 
         if (siteFiles.Length > 0)
         {
-            var validationFailures = ProxyOptionsValidationRules.Validate(options, _endpointAddressPolicy);
+            var validationFailures = ProxyOptionsValidationRules.Validate(options, _endpointAddressPolicy, _urlSyntaxPolicy);
             if (validationFailures.Count > 0)
             {
                 return ProxyConfigurationLoadResult.Failure(

@@ -12,7 +12,8 @@ public static class ProxyOptionsValidationRules
 
     public static IReadOnlyList<string> Validate(
         ProxyOptions options,
-        IProxyEndpointAddressPolicy endpointAddressPolicy)
+        IProxyEndpointAddressPolicy endpointAddressPolicy,
+        IProxyUrlSyntaxPolicy urlSyntaxPolicy)
     {
         List<string> failures = [];
 
@@ -217,7 +218,7 @@ public static class ProxyOptionsValidationRules
 
             if (IsRedirectAction(routeAction))
             {
-                ValidateRedirectRoute(failures, routePrefix, route.Redirect);
+                ValidateRedirectRoute(failures, routePrefix, route.Redirect, urlSyntaxPolicy);
             }
 
             if (IsStaticResponseAction(routeAction))
@@ -476,7 +477,8 @@ public static class ProxyOptionsValidationRules
     private static void ValidateRedirectRoute(
         List<string> failures,
         string routePrefix,
-        ProxyRedirectOptions redirect)
+        ProxyRedirectOptions redirect,
+        IProxyUrlSyntaxPolicy urlSyntaxPolicy)
     {
         var statusCode = redirect.StatusCode ?? 308;
         if (!RedirectStatusCodes.Contains(statusCode))
@@ -492,7 +494,7 @@ public static class ProxyOptionsValidationRules
             return;
         }
 
-        if (hasTargetUrl && !Uri.TryCreate(redirect.TargetUrl, UriKind.Absolute, out _))
+        if (hasTargetUrl && !urlSyntaxPolicy.IsAbsoluteUrl(redirect.TargetUrl))
         {
             failures.Add($"{routePrefix}:Redirect:TargetUrl must be an absolute URL.");
         }
