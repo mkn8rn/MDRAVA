@@ -2,7 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.AdminAuthentication;
 
 public sealed record ProxyAdminAuthenticationInput(
     bool RequireAuthentication,

@@ -1,4 +1,5 @@
 using MDRAVA.BLL.ControlPlane;
+using MDRAVA.BLL.ControlPlane.AdminAuthentication;
 using Microsoft.Extensions.Logging;
 
 namespace MDRAVA.INF.Observability;

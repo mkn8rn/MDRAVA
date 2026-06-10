@@ -1,7 +1,7 @@
 using System.Net;
 using MDRAVA.BLL.ControlPlane.AdminAudit;
 
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.AdminAuthentication;
 
 public sealed class ProxyAdminAuthenticationService
 {
