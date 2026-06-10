@@ -1,7 +1,7 @@
 using System.Security.Cryptography.X509Certificates;
 using MDRAVA.BLL.Configuration;
 
-namespace MDRAVA.BLL.ControlPlane;
+namespace MDRAVA.BLL.ControlPlane.Tls;
 
 public static class TlsCertificateSelector
 {

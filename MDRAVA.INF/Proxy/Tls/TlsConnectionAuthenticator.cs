@@ -6,6 +6,7 @@ using MDRAVA.BLL.ControlPlane;
 using MDRAVA.BLL.ControlPlane.Metrics;
 using MDRAVA.BLL.ControlPlane.RuntimeGuards;
 using MDRAVA.BLL.ControlPlane.Timeouts;
+using MDRAVA.BLL.ControlPlane.Tls;
 using Microsoft.Extensions.Logging;
 
 namespace MDRAVA.INF.Proxy.Tls;

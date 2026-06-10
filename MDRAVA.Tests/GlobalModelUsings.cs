@@ -19,6 +19,7 @@ global using MDRAVA.BLL.ControlPlane.Routing;
 global using MDRAVA.BLL.ControlPlane.RuntimeGuards;
 global using MDRAVA.BLL.ControlPlane.Status;
 global using MDRAVA.BLL.ControlPlane.Timeouts;
+global using MDRAVA.BLL.ControlPlane.Tls;
 global using MDRAVA.BLL.ControlPlane.UpstreamSelection;
 global using MDRAVA.BLL.ControlPlane.Upgrades;
 global using MDRAVA.BLL.Configuration;
