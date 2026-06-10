@@ -120,13 +120,13 @@ internal static class ObservabilityTests
     public static void RequestIdGeneratorCreatesDistinctIdsAndRecordsMetric()
     {
         var metrics = new RequestIdMetricsSink();
-        var generator = new RequestIdGenerator(metrics);
+        var generator = new RequestIdGenerator(metrics, new FixedRequestIdRuntimeIdentitySource());
 
         var first = generator.Create();
         var second = generator.Create();
 
-        AssertEx.True(first.StartsWith("mdr-", StringComparison.Ordinal), first);
-        AssertEx.True(second.StartsWith("mdr-", StringComparison.Ordinal), second);
+        AssertEx.True(first.StartsWith("mdr-test-runtime-", StringComparison.Ordinal), first);
+        AssertEx.True(second.StartsWith("mdr-test-runtime-", StringComparison.Ordinal), second);
         AssertEx.False(string.Equals(first, second, StringComparison.Ordinal));
         AssertEx.Equal(2, metrics.GeneratedCount);
     }
@@ -219,5 +219,10 @@ internal static class ObservabilityTests
         {
             GeneratedCount++;
         }
+    }
+
+    private sealed class FixedRequestIdRuntimeIdentitySource : IProxyRequestIdRuntimeIdentitySource
+    {
+        public string RuntimeIdentity => "test-runtime";
     }
 }

@@ -5,11 +5,15 @@ namespace MDRAVA.BLL.ControlPlane.RequestDiagnostics;
 public sealed class RequestIdGenerator
 {
     private readonly IProxyRequestIdMetricsSink _metrics;
+    private readonly IProxyRequestIdRuntimeIdentitySource _runtimeIdentitySource;
     private long _nextId;
 
-    public RequestIdGenerator(IProxyRequestIdMetricsSink metrics)
+    public RequestIdGenerator(
+        IProxyRequestIdMetricsSink metrics,
+        IProxyRequestIdRuntimeIdentitySource runtimeIdentitySource)
     {
         _metrics = metrics;
+        _runtimeIdentitySource = runtimeIdentitySource;
     }
 
     public string Create()
@@ -18,6 +22,6 @@ public sealed class RequestIdGenerator
         _metrics.RequestIdGenerated();
         return string.Create(
             CultureInfo.InvariantCulture,
-            $"mdr-{Environment.ProcessId:x}-{value:x}");
+            $"mdr-{_runtimeIdentitySource.RuntimeIdentity}-{value:x}");
     }
 }

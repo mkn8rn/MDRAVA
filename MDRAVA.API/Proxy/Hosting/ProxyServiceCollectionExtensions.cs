@@ -165,6 +165,7 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<IProxyRequestDiagnosticsSource>(
             static services => services.GetRequiredService<RecentRequestDiagnosticsStore>());
         services.AddSingleton<IProxyRequestDiagnosticsReader, ProxyRequestDiagnosticsReader>();
+        services.AddSingleton<IProxyRequestIdRuntimeIdentitySource, SystemRequestIdRuntimeIdentitySource>();
         services.AddSingleton<ProxyDiagnosticsAdministrationService>();
         services.AddSingleton<AdminAuditStore>();
         services.AddSingleton<IProxyAdminAuditReader>(static services => services.GetRequiredService<AdminAuditStore>());
