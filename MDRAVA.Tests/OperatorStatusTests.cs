@@ -709,7 +709,8 @@ internal static class OperatorStatusTests
                     DataDirectory = dataDirectory
                 }),
                 new ProxyLogPersistenceSettingsReader(Store),
-                NullLogger<ProxyPersistentLogWriter>.Instance);
+                NullLogger<ProxyPersistentLogWriter>.Instance,
+                timeProvider);
         }
 
         public string DataDirectory { get; }

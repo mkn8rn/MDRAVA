@@ -108,12 +108,15 @@ internal static class LogPersistenceTests
         using var temp = TemporaryDirectory.Create();
         var logsDirectory = Path.Combine(temp.Path, "logs");
         AssertEx.False(Directory.Exists(logsDirectory));
-        var writer = CreateWriter(temp.Path, CreateStore(temp.Path));
+        var succeededAtUtc = new DateTimeOffset(2026, 6, 10, 11, 0, 0, TimeSpan.Zero);
+        var writer = CreateWriter(temp.Path, CreateStore(temp.Path), new ManualTimeProvider(succeededAtUtc));
 
         writer.WriteAdminAudit(AdminAudit("/admin/proxy/status", 200));
+        var status = writer.GetStatus();
 
         AssertEx.True(Directory.Exists(logsDirectory));
         AssertEx.True(File.Exists(Path.Combine(logsDirectory, "audit.log")));
+        AssertEx.Equal(succeededAtUtc, status.LastSuccessfulWriteAtUtc);
     }
 
     public static void LogPersistenceRotatesAndBoundsFiles()
@@ -218,7 +221,8 @@ internal static class LogPersistenceTests
         using var temp = TemporaryDirectory.Create();
         File.WriteAllText(Path.Combine(temp.Path, "logs"), "not a directory");
         var store = CreateStore(temp.Path, requireAdminAuth: true);
-        var writer = CreateWriter(temp.Path, store);
+        var failedAtUtc = new DateTimeOffset(2026, 6, 10, 11, 5, 0, TimeSpan.Zero);
+        var writer = CreateWriter(temp.Path, store, new ManualTimeProvider(failedAtUtc));
 
         writer.WriteAdminAudit(AdminAudit($"/admin/proxy/status?token={querySecret}", 403));
 
@@ -228,6 +232,7 @@ internal static class LogPersistenceTests
         AssertEx.Equal("last_write_failed", status.Reason);
         AssertEx.Equal("admin_audit", status.LastWriteFailure?.Category);
         AssertEx.Equal("io_error", status.LastWriteFailure?.Reason);
+        AssertEx.Equal(failedAtUtc, status.LastWriteFailure?.TimestampUtc);
         AssertEx.False(text.Contains(AdminToken, StringComparison.Ordinal), text);
         AssertEx.False(text.Contains(querySecret, StringComparison.Ordinal), text);
         AssertEx.False(text.Contains("Authorization", StringComparison.OrdinalIgnoreCase), text);
@@ -302,7 +307,10 @@ internal static class LogPersistenceTests
         return context;
     }
 
-    private static ProxyPersistentLogWriter CreateWriter(string dataDirectory, IProxyConfigurationStore store)
+    private static ProxyPersistentLogWriter CreateWriter(
+        string dataDirectory,
+        IProxyConfigurationStore store,
+        TimeProvider? timeProvider = null)
     {
         return new ProxyPersistentLogWriter(
             new MdravaDataDirectoryProvider(new MdravaDataDirectoryOptions
@@ -310,7 +318,8 @@ internal static class LogPersistenceTests
                 DataDirectory = dataDirectory
             }),
             new ProxyLogPersistenceSettingsReader(store),
-            NullLogger<ProxyPersistentLogWriter>.Instance);
+            NullLogger<ProxyPersistentLogWriter>.Instance,
+            timeProvider ?? TimeProvider.System);
     }
 
     private static ProxyStatusController CreateStatusController(

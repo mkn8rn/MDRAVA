@@ -21,6 +21,7 @@ public sealed class ProxyPersistentLogWriter : IProxyLogPersistenceStore
     private readonly IMdravaDataDirectoryProvider _dataDirectoryProvider;
     private readonly IProxyLogPersistenceSettingsReader _settingsReader;
     private readonly ILogger<ProxyPersistentLogWriter> _logger;
+    private readonly TimeProvider _timeProvider;
     private readonly object _accessGate = new();
     private readonly object _auditGate = new();
     private readonly object _statusGate = new();
@@ -30,11 +31,13 @@ public sealed class ProxyPersistentLogWriter : IProxyLogPersistenceStore
     public ProxyPersistentLogWriter(
         IMdravaDataDirectoryProvider dataDirectoryProvider,
         IProxyLogPersistenceSettingsReader settingsReader,
-        ILogger<ProxyPersistentLogWriter> logger)
+        ILogger<ProxyPersistentLogWriter> logger,
+        TimeProvider timeProvider)
     {
         _dataDirectoryProvider = dataDirectoryProvider;
         _settingsReader = settingsReader;
         _logger = logger;
+        _timeProvider = timeProvider;
     }
 
     public void WriteAccess(ProxyAccessLogEntry accessEntry)
@@ -172,7 +175,7 @@ public sealed class ProxyPersistentLogWriter : IProxyLogPersistenceStore
     {
         lock (_statusGate)
         {
-            _lastSuccessfulWriteAtUtc = DateTimeOffset.UtcNow;
+            _lastSuccessfulWriteAtUtc = _timeProvider.GetUtcNow();
         }
     }
 
@@ -180,7 +183,7 @@ public sealed class ProxyPersistentLogWriter : IProxyLogPersistenceStore
     {
         var reason = exception is UnauthorizedAccessException ? "access_denied" : "io_error";
         var category = string.Equals(logName, "audit", StringComparison.OrdinalIgnoreCase) ? "admin_audit" : "access";
-        var failure = new ProxyLogPersistenceFailureStatus(DateTimeOffset.UtcNow, category, reason);
+        var failure = new ProxyLogPersistenceFailureStatus(_timeProvider.GetUtcNow(), category, reason);
         lock (_statusGate)
         {
             _lastWriteFailure = failure;
