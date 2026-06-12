@@ -148,6 +148,18 @@ internal static class ConfigurationTests
         AssertEx.Equal("sites/broken.json", invalid.FileErrors[0].Path);
     }
 
+    public static void ConfigurationReadResultNamesAvailableAndMissingOutcomes()
+    {
+        var projection = new TestConfigurationProjection("current");
+        var available = ProxyConfigurationReadResult<TestConfigurationProjection>.Available(projection);
+        var missing = ProxyConfigurationReadResult<TestConfigurationProjection>.Missing();
+
+        AssertEx.True(available.Found);
+        AssertEx.Equal(projection, AssertEx.NotNull(available.Configuration));
+        AssertEx.False(missing.Found);
+        AssertEx.Equal<TestConfigurationProjection?>(null, missing.Configuration);
+    }
+
     public static void DataDirectoryUsesConfiguredOverride()
     {
         var expected = Path.Combine(Path.GetTempPath(), $"mdrava-test-{Guid.NewGuid():N}");

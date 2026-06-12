@@ -25,8 +25,8 @@ public sealed class ProxyConfigurationReadOperations<TConfiguration>
     private ProxyConfigurationReadResult<TConfiguration> ReadCurrent()
     {
         var projection = _projectionSource.ReadCurrent();
-        return new ProxyConfigurationReadResult<TConfiguration>(
-            projection is not null,
-            projection);
+        return projection is null
+            ? ProxyConfigurationReadResult<TConfiguration>.Missing()
+            : ProxyConfigurationReadResult<TConfiguration>.Available(projection);
     }
 }
