@@ -163,11 +163,14 @@ public static class Http1RequestParser
         var version = Encoding.ASCII.GetString(versionBytes);
         var path = ExtractPath(target);
 
-        if (!TryAnalyzeRequestFraming(contentLengthValues, transferEncodingValues, out var framing, out error))
+        var framingAnalysis = AnalyzeRequestFraming(contentLengthValues, transferEncodingValues);
+        if (framingAnalysis is Http1RequestFramingAnalysisResult.Rejected rejectedFraming)
         {
+            error = rejectedFraming.Error;
             return false;
         }
 
+        var framing = ((Http1RequestFramingAnalysisResult.Accepted)framingAnalysis).Framing;
         requestHead = new Http1RequestHead(
             method,
             target,
@@ -180,19 +183,13 @@ public static class Http1RequestParser
         return true;
     }
 
-    private static bool TryAnalyzeRequestFraming(
+    private static Http1RequestFramingAnalysisResult AnalyzeRequestFraming(
         IReadOnlyList<string> contentLengthValues,
-        IReadOnlyList<string> transferEncodingValues,
-        out Http1RequestFraming framing,
-        out Http1ParseError error)
+        IReadOnlyList<string> transferEncodingValues)
     {
-        framing = Http1RequestFraming.None;
-        error = Http1ParseError.None;
-
         if (transferEncodingValues.Count > 0 && contentLengthValues.Count > 0)
         {
-            error = Http1ParseError.ContentLengthWithTransferEncoding;
-            return false;
+            return Http1RequestFramingAnalysisResult.Reject(Http1ParseError.ContentLengthWithTransferEncoding);
         }
 
         if (transferEncodingValues.Count > 0)
@@ -200,29 +197,25 @@ public static class Http1RequestParser
             var transferEncodingAnalysis = AnalyzeTransferEncoding(transferEncodingValues);
             if (transferEncodingAnalysis is Http1TransferEncodingAnalysisResult.Rejected rejectedTransferEncoding)
             {
-                error = rejectedTransferEncoding.Error;
-                return false;
+                return Http1RequestFramingAnalysisResult.Reject(rejectedTransferEncoding.Error);
             }
 
-            framing = Http1RequestFraming.Chunked;
-            return true;
+            return Http1RequestFramingAnalysisResult.Accept(Http1RequestFraming.Chunked);
         }
 
         if (contentLengthValues.Count == 0)
         {
-            return true;
+            return Http1RequestFramingAnalysisResult.Accept(Http1RequestFraming.None);
         }
 
         var contentLengthAnalysis = AnalyzeContentLength(contentLengthValues);
         if (contentLengthAnalysis is Http1ContentLengthAnalysisResult.Rejected rejectedContentLength)
         {
-            error = rejectedContentLength.Error;
-            return false;
+            return Http1RequestFramingAnalysisResult.Reject(rejectedContentLength.Error);
         }
 
         var contentLength = ((Http1ContentLengthAnalysisResult.Accepted)contentLengthAnalysis).ContentLength;
-        framing = Http1RequestFraming.FromContentLength(contentLength);
-        return true;
+        return Http1RequestFramingAnalysisResult.Accept(Http1RequestFraming.FromContentLength(contentLength));
     }
 
     public static Http1ContentLengthAnalysisResult AnalyzeContentLength(
@@ -391,6 +384,33 @@ public static class Http1RequestParser
         return value is >= (byte)'A' and <= (byte)'Z'
             ? (byte)(value + 32)
             : value;
+    }
+
+    private abstract record Http1RequestFramingAnalysisResult
+    {
+        private Http1RequestFramingAnalysisResult()
+        {
+        }
+
+        public static Http1RequestFramingAnalysisResult Accept(Http1RequestFraming framing)
+        {
+            ArgumentNullException.ThrowIfNull(framing);
+            return new Accepted(framing);
+        }
+
+        public static Http1RequestFramingAnalysisResult Reject(Http1ParseError error)
+        {
+            if (error == Http1ParseError.None)
+            {
+                throw new ArgumentException("Request framing rejection requires a parse error.", nameof(error));
+            }
+
+            return new Rejected(error);
+        }
+
+        public sealed record Accepted(Http1RequestFraming Framing) : Http1RequestFramingAnalysisResult;
+
+        public sealed record Rejected(Http1ParseError Error) : Http1RequestFramingAnalysisResult;
     }
 }
 
