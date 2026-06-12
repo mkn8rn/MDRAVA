@@ -152,6 +152,52 @@ internal static class RuntimePreflightTests
             && !directory.Critical));
     }
 
+    public static void RuntimePreflightStatusBuilderBuildsStateAndBoundedReasons()
+    {
+        var generatedAtUtc = new DateTimeOffset(2026, 6, 12, 13, 0, 0, TimeSpan.Zero);
+        ProxyRuntimePreflightCheck[] checks =
+        [
+            new ProxyRuntimePreflightCheck(
+                "config_directory",
+                "config",
+                Exists: false,
+                Created: false,
+                CanRead: false,
+                CanWrite: false,
+                ProxyStatusText.Error,
+                "missing_directory"),
+            new ProxyRuntimePreflightCheck(
+                "logs_directory",
+                "logs",
+                Exists: true,
+                Created: false,
+                CanRead: true,
+                CanWrite: false,
+                ProxyStatusText.Warning,
+                "directory_not_writable"),
+            new ProxyRuntimePreflightCheck(
+                "state_directory",
+                "state",
+                Exists: false,
+                Created: false,
+                CanRead: false,
+                CanWrite: false,
+                ProxyStatusText.Warning,
+                "missing_directory")
+        ];
+
+        var status = ProxyRuntimePreflightStatusBuilder.Build(
+            generatedAtUtc,
+            checks,
+            maxReasons: 1);
+
+        AssertEx.Equal(ProxyStatusText.Failed, status.State);
+        AssertEx.Equal(generatedAtUtc, status.GeneratedAtUtc);
+        AssertEx.Equal(1, status.Reasons.Count);
+        AssertEx.Equal("missing_directory", status.Reasons[0]);
+        AssertEx.Equal(3, status.Checks.Count);
+    }
+
     private static MdravaDataDirectoryProvider Provider(string dataDirectory)
     {
         return new MdravaDataDirectoryProvider(new MdravaDataDirectoryOptions
