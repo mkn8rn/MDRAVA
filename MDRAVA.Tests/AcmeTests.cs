@@ -70,11 +70,11 @@ internal static class AcmeTests
         AssertEx.True(store.TryRegister("abc_123-token", "abc_123-token.thumbprint", time.GetUtcNow().AddMinutes(5)));
         var responder = new AcmeHttp01ChallengeResponder(store, time);
 
-        var handled = responder.TryCreateResponse(
-            Request("GET", "/.well-known/acme-challenge/abc_123-token"),
-            out var response);
+        var result = responder.CreateResponse(
+            Request("GET", "/.well-known/acme-challenge/abc_123-token"));
 
-        AssertEx.True(handled);
+        AssertEx.True(result is AcmeHttp01ChallengeResponseResult.HandledResult);
+        var response = ((AcmeHttp01ChallengeResponseResult.HandledResult)result).Response;
         AssertEx.Equal(200, response.StatusCode);
         AssertEx.Equal("abc_123-token.thumbprint", response.Body);
     }
@@ -85,12 +85,23 @@ internal static class AcmeTests
             new AcmeChallengeStore(),
             new ManualTimeProvider(DateTimeOffset.UtcNow));
 
-        var handled = responder.TryCreateResponse(
-            Request("GET", "/.well-known/acme-challenge/missing"),
-            out var response);
+        var result = responder.CreateResponse(
+            Request("GET", "/.well-known/acme-challenge/missing"));
 
-        AssertEx.True(handled);
+        AssertEx.True(result is AcmeHttp01ChallengeResponseResult.HandledResult);
+        var response = ((AcmeHttp01ChallengeResponseResult.HandledResult)result).Response;
         AssertEx.Equal(404, response.StatusCode);
+    }
+
+    public static void NonAcmeRequestDoesNotCreateHttp01ChallengeResponse()
+    {
+        var responder = new AcmeHttp01ChallengeResponder(
+            new AcmeChallengeStore(),
+            new ManualTimeProvider(DateTimeOffset.UtcNow));
+
+        var result = responder.CreateResponse(Request("GET", "/regular"));
+
+        AssertEx.True(result is AcmeHttp01ChallengeResponseResult.NoMatchResult);
     }
 
     public static void AcmeCertificateIssueResultNamesSuccessAndFailure()

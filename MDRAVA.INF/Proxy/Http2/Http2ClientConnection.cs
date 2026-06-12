@@ -386,9 +386,10 @@ public sealed class Http2ClientConnection
                 return;
             }
 
-            if (_acmeChallengeResponder.TryCreateResponse(requestHead, out var acmeChallengeResponse))
+            if (_acmeChallengeResponder.CreateResponse(requestHead)
+                is AcmeHttp01ChallengeResponseResult.HandledResult acmeChallengeResponse)
             {
-                await WriteGeneratedRouteResponseAsync(stream.Id, acmeChallengeResponse, context, requestHead.Method, cancellationToken);
+                await WriteGeneratedRouteResponseAsync(stream.Id, acmeChallengeResponse.Response, context, requestHead.Method, cancellationToken);
                 CompleteContext(ref context);
                 return;
             }

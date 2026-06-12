@@ -216,10 +216,11 @@ public sealed class Http3Connection
                 return true;
             }
 
-            if (_acmeChallengeResponder.TryCreateResponse(requestHead, out var acmeChallengeResponse))
+            if (_acmeChallengeResponder.CreateResponse(requestHead)
+                is AcmeHttp01ChallengeResponseResult.HandledResult acmeChallengeResponse)
             {
                 _metrics.Http3GeneratedResponse();
-                await WriteGeneratedRouteResponseAsync(stream, acmeChallengeResponse, context, requestHead.Method, cancellationToken);
+                await WriteGeneratedRouteResponseAsync(stream, acmeChallengeResponse.Response, context, requestHead.Method, cancellationToken);
                 CompleteContext(ref context);
                 return true;
             }

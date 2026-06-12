@@ -327,11 +327,12 @@ public sealed class ClientConnection
                     return;
                 }
 
-                if (_acmeChallengeResponder.TryCreateResponse(requestHead, out var acmeChallengeResponse))
+                if (_acmeChallengeResponder.CreateResponse(requestHead)
+                    is AcmeHttp01ChallengeResponseResult.HandledResult acmeChallengeResponse)
                 {
                     await WriteGeneratedRouteResponseAsync(
                         clientStream,
-                        acmeChallengeResponse,
+                        acmeChallengeResponse.Response,
                         currentContext,
                         cancellationToken);
                     CompleteContext(ref currentContext);

@@ -18,35 +18,32 @@ public sealed class AcmeHttp01ChallengeResponder
         _timeProvider = timeProvider;
     }
 
-    public bool TryCreateResponse(Http1RequestHead requestHead, out GeneratedRouteResponse response)
+    public AcmeHttp01ChallengeResponseResult CreateResponse(Http1RequestHead requestHead)
     {
         if (!requestHead.Path.StartsWith(ChallengePathPrefix, StringComparison.Ordinal))
         {
-            response = null!;
-            return false;
+            return AcmeHttp01ChallengeResponseResult.NoMatch;
         }
 
         var token = requestHead.Path[ChallengePathPrefix.Length..];
         if (!string.Equals(requestHead.Method, "GET", StringComparison.Ordinal)
             || !AcmeChallengeStore.IsValidToken(token))
         {
-            response = NotFound();
-            return true;
+            return AcmeHttp01ChallengeResponseResult.Handled(NotFound());
         }
 
         if (!_challengeStore.TryGetResponse(token, _timeProvider.GetUtcNow(), out var body))
         {
-            response = NotFound();
-            return true;
+            return AcmeHttp01ChallengeResponseResult.Handled(NotFound());
         }
 
-        response = new GeneratedRouteResponse(
-            200,
-            "OK",
-            "text/plain",
-            body,
-            []);
-        return true;
+        return AcmeHttp01ChallengeResponseResult.Handled(
+            new GeneratedRouteResponse(
+                200,
+                "OK",
+                "text/plain",
+                body,
+                []));
     }
 
     private static GeneratedRouteResponse NotFound()
