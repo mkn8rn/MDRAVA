@@ -159,6 +159,19 @@ internal static class MetricsTests
         AssertEx.Equal(StatusCodes.Status404NotFound, result.StatusCode);
     }
 
+    public static void MetricsExportResultNamesAvailableAndUnavailableStates()
+    {
+        var notAvailable = ProxyMetricsExportResult.NotAvailable;
+        var available = ProxyMetricsExportResult.Create("metrics text", PrometheusMetricsExporter.ContentType);
+
+        AssertEx.False(notAvailable.Available);
+        AssertEx.Equal(string.Empty, notAvailable.Content);
+        AssertEx.Equal(string.Empty, notAvailable.ContentType);
+        AssertEx.True(available.Available);
+        AssertEx.Equal("metrics text", available.Content);
+        AssertEx.Equal(PrometheusMetricsExporter.ContentType, available.ContentType);
+    }
+
     public static void MetricsExportAvailabilityRequiresActiveEnabledConfig()
     {
         var missing = new ProxyMetricsExportAvailabilityService(

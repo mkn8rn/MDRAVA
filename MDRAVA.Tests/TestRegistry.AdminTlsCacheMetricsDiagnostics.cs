@@ -95,6 +95,7 @@ internal static partial class TestRegistry
     Test("Metrics export configuration mappers read narrow runtime facts", Sync(MetricsTests.MetricsExportConfigurationMappersReadNarrowRuntimeFacts), TestTaxonomy.Metrics, TestTaxonomy.Config, TestTaxonomy.Http3),
     Test("Metrics export configuration mapper consumes named facts without runtime configuration", Sync(MetricsTests.MetricsExportConfigurationMapperConsumesNamedFactsWithoutRuntimeConfiguration), TestTaxonomy.Metrics, TestTaxonomy.Config),
     Test("Metrics endpoint returns 404 when metrics disabled", Sync(MetricsTests.MetricsEndpointReturnsNotFoundWhenMetricsDisabled), TestTaxonomy.Metrics),
+    Test("Metrics export result names available and unavailable states", Sync(MetricsTests.MetricsExportResultNamesAvailableAndUnavailableStates), TestTaxonomy.Metrics),
     Test("Metrics export availability requires active enabled config", Sync(MetricsTests.MetricsExportAvailabilityRequiresActiveEnabledConfig), TestTaxonomy.Metrics),
     Test("Metrics export availability reader names missing configuration", Sync(MetricsTests.MetricsExportAvailabilityReaderNamesMissingConfiguration), TestTaxonomy.Metrics, TestTaxonomy.Config),
     Test("Metrics export availability state maps configuration", Sync(MetricsTests.MetricsExportAvailabilityStateMapsConfiguration), TestTaxonomy.Metrics, TestTaxonomy.Config),
