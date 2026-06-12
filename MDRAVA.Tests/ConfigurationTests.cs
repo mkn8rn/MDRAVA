@@ -179,6 +179,42 @@ internal static class ConfigurationTests
         AssertEx.Equal<TestConfigurationProjection?>(null, missing.Configuration);
     }
 
+    public static async Task ConfigurationLoadResultNamesLoadedValidatedAndFailedOutcomes()
+    {
+        using var temp = TemporaryDirectory.Create();
+        WriteSite(temp.Path, "home.json", port: 18080, upstreamPort: 15000);
+        var load = await CreateLoader(temp.Path).LoadAsync(CancellationToken.None);
+        var snapshot = AssertEx.NotNull(load.Snapshot);
+        var loaded = ProxyConfigurationLoadResult.Loaded(load.SourceDirectory, snapshot, load.Discovery);
+        var validated = ProxyConfigurationLoadResult.Validated(
+            load.SourceDirectory,
+            DateTimeOffset.UnixEpoch,
+            load.SourceFiles,
+            load.Discovery,
+            wouldBeVersion: snapshot.Version + 1);
+        var failed = ProxyConfigurationLoadResult.Failed(
+            load.SourceDirectory,
+            DateTimeOffset.UnixEpoch,
+            load.SourceFiles,
+            load.Discovery,
+            [ProxyConfigurationFileError.ForPath("sites/broken.json", "parse failed")],
+            wouldBeVersion: null);
+
+        AssertEx.True(loaded.Succeeded);
+        AssertEx.Equal(snapshot, AssertEx.NotNull(loaded.Snapshot));
+        AssertEx.Equal(snapshot.Version, loaded.WouldBeVersion!.Value);
+        AssertEx.Equal(0, loaded.Errors.Count);
+        AssertEx.True(validated.Succeeded);
+        AssertEx.Equal<ProxyConfigurationSnapshot?>(null, validated.Snapshot);
+        AssertEx.Equal(snapshot.Version + 1, validated.WouldBeVersion!.Value);
+        AssertEx.Equal(0, validated.Errors.Count);
+        AssertEx.False(failed.Succeeded);
+        AssertEx.Equal<ProxyConfigurationSnapshot?>(null, failed.Snapshot);
+        AssertEx.Equal<int?>(null, failed.WouldBeVersion);
+        AssertEx.Equal("sites/broken.json: parse failed", failed.Errors[0]);
+        AssertEx.Equal("sites/broken.json", failed.FileErrors[0].Path);
+    }
+
     public static void DataDirectoryUsesConfiguredOverride()
     {
         var expected = Path.Combine(Path.GetTempPath(), $"mdrava-test-{Guid.NewGuid():N}");

@@ -110,7 +110,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
 
         if (errors.Count > 0)
         {
-            return ProxyConfigurationLoadResult.Failure(
+            return ProxyConfigurationLoadResult.Failed(
                 sourceDirectory,
                 attemptedAtUtc,
                 siteFiles,
@@ -122,7 +122,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
         var listenerMergeFailures = ProxyConfigurationValidationRules.ValidateListenerMergeCompatibility(sites);
         if (listenerMergeFailures.Count > 0)
         {
-            return ProxyConfigurationLoadResult.Failure(
+            return ProxyConfigurationLoadResult.Failed(
                 sourceDirectory,
                 attemptedAtUtc,
                 siteFiles,
@@ -134,7 +134,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
         var operationalOptions = await ReadOperationalOptionsAsync(operationalConfigPath, discoveredFiles, errors, cancellationToken);
         if (errors.Count > 0)
         {
-            return ProxyConfigurationLoadResult.Failure(
+            return ProxyConfigurationLoadResult.Failed(
                 sourceDirectory,
                 attemptedAtUtc,
                 siteFiles,
@@ -152,7 +152,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
             _trustedProxyPolicy);
         if (operationalFailures.Count > 0)
         {
-            return ProxyConfigurationLoadResult.Failure(
+            return ProxyConfigurationLoadResult.Failed(
                 sourceDirectory,
                 attemptedAtUtc,
                 siteFiles,
@@ -165,7 +165,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
         var certificateValidationFailures = ProxyConfigurationValidationRules.ValidateTlsReferences(options, operationalOptions);
         if (certificateValidationFailures.Count > 0)
         {
-            return ProxyConfigurationLoadResult.Failure(
+            return ProxyConfigurationLoadResult.Failed(
                 sourceDirectory,
                 attemptedAtUtc,
                 siteFiles,
@@ -179,7 +179,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
             var validationFailures = ProxyOptionsValidationRules.Validate(options, _endpointAddressPolicy, _urlSyntaxPolicy);
             if (validationFailures.Count > 0)
             {
-                return ProxyConfigurationLoadResult.Failure(
+                return ProxyConfigurationLoadResult.Failed(
                     sourceDirectory,
                     attemptedAtUtc,
                     siteFiles,
@@ -199,7 +199,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
         if (errors.Count > 0)
         {
             DisposeCertificates(certificates);
-            return ProxyConfigurationLoadResult.Failure(
+            return ProxyConfigurationLoadResult.Failed(
                 sourceDirectory,
                 attemptedAtUtc,
                 siteFiles,
@@ -211,15 +211,11 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
         if (!allocateVersion)
         {
             DisposeCertificates(certificates);
-            return new ProxyConfigurationLoadResult(
-                true,
+            return ProxyConfigurationLoadResult.Validated(
                 sourceDirectory,
                 attemptedAtUtc,
                 siteFiles,
                 BuildDiscovery(),
-                null,
-                [],
-                [],
                 wouldBeVersion);
         }
 
@@ -235,7 +231,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
             siteFiles,
             BuildDiscovery());
 
-        return ProxyConfigurationLoadResult.Success(sourceDirectory, snapshot, BuildDiscovery());
+        return ProxyConfigurationLoadResult.Loaded(sourceDirectory, snapshot, BuildDiscovery());
     }
 
     private static IReadOnlyDictionary<string, RuntimeCertificate> LoadCertificates(

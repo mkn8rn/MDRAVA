@@ -2,18 +2,49 @@ using MDRAVA.BLL.Configuration;
 
 namespace MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 
-public sealed record ProxyConfigurationLoadResult(
-    bool Succeeded,
-    string SourceDirectory,
-    DateTimeOffset AttemptedAtUtc,
-    IReadOnlyList<string> SourceFiles,
-    ProxyConfigurationDiscovery Discovery,
-    ProxyConfigurationSnapshot? Snapshot,
-    IReadOnlyList<string> Errors,
-    IReadOnlyList<ProxyConfigurationFileError> FileErrors,
-    int? WouldBeVersion)
+public sealed record ProxyConfigurationLoadResult
 {
-    public static ProxyConfigurationLoadResult Success(
+    private ProxyConfigurationLoadResult(
+        bool succeeded,
+        string sourceDirectory,
+        DateTimeOffset attemptedAtUtc,
+        IReadOnlyList<string> sourceFiles,
+        ProxyConfigurationDiscovery discovery,
+        ProxyConfigurationSnapshot? snapshot,
+        IReadOnlyList<string> errors,
+        IReadOnlyList<ProxyConfigurationFileError> fileErrors,
+        int? wouldBeVersion)
+    {
+        Succeeded = succeeded;
+        SourceDirectory = sourceDirectory;
+        AttemptedAtUtc = attemptedAtUtc;
+        SourceFiles = sourceFiles;
+        Discovery = discovery;
+        Snapshot = snapshot;
+        Errors = errors;
+        FileErrors = fileErrors;
+        WouldBeVersion = wouldBeVersion;
+    }
+
+    public bool Succeeded { get; }
+
+    public string SourceDirectory { get; }
+
+    public DateTimeOffset AttemptedAtUtc { get; }
+
+    public IReadOnlyList<string> SourceFiles { get; }
+
+    public ProxyConfigurationDiscovery Discovery { get; }
+
+    public ProxyConfigurationSnapshot? Snapshot { get; }
+
+    public IReadOnlyList<string> Errors { get; }
+
+    public IReadOnlyList<ProxyConfigurationFileError> FileErrors { get; }
+
+    public int? WouldBeVersion { get; }
+
+    public static ProxyConfigurationLoadResult Loaded(
         string sourceDirectory,
         ProxyConfigurationSnapshot snapshot,
         ProxyConfigurationDiscovery discovery)
@@ -30,7 +61,26 @@ public sealed record ProxyConfigurationLoadResult(
             snapshot.Version);
     }
 
-    public static ProxyConfigurationLoadResult Failure(
+    public static ProxyConfigurationLoadResult Validated(
+        string sourceDirectory,
+        DateTimeOffset attemptedAtUtc,
+        IReadOnlyList<string> sourceFiles,
+        ProxyConfigurationDiscovery discovery,
+        int? wouldBeVersion)
+    {
+        return new ProxyConfigurationLoadResult(
+            true,
+            sourceDirectory,
+            attemptedAtUtc,
+            sourceFiles,
+            discovery,
+            null,
+            [],
+            [],
+            wouldBeVersion);
+    }
+
+    public static ProxyConfigurationLoadResult Failed(
         string sourceDirectory,
         DateTimeOffset attemptedAtUtc,
         IReadOnlyList<string> sourceFiles,
