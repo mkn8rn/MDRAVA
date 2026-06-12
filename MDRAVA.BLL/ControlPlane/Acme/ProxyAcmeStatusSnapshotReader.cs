@@ -21,27 +21,33 @@ public sealed class ProxyAcmeStatusSnapshotReader : IProxyAcmeStatusSnapshotRead
             return false;
         }
 
-        var runtimeCertificates = sourceSnapshot.RuntimeCertificates
-            .ToDictionary(
-                static certificate => certificate.Key,
-                static certificate => new ProxyAcmeRuntimeCertificateStatus(
-                    certificate.Id,
-                    certificate.Source,
-                    certificate.NotBeforeUtc,
-                    certificate.NotAfterUtc),
-                StringComparer.OrdinalIgnoreCase);
-
         snapshot = new ProxyAcmeStatusSnapshot(
             sourceSnapshot.Enabled,
             sourceSnapshot.DirectoryUrl,
             sourceSnapshot.UseStaging,
             sourceSnapshot.Certificates,
-            runtimeCertificates);
+            ProxyAcmeRuntimeCertificateStatusMapper.FromSources(sourceSnapshot.RuntimeCertificates));
         return true;
     }
 
     public IReadOnlyList<AcmeCertificateLifecycleStatus> GetLifecycleStatuses()
     {
         return _lifecycleStatusSource.GetLifecycleStatuses();
+    }
+}
+
+public static class ProxyAcmeRuntimeCertificateStatusMapper
+{
+    public static IReadOnlyDictionary<string, ProxyAcmeRuntimeCertificateStatus> FromSources(
+        IReadOnlyList<ProxyAcmeRuntimeCertificateSource> runtimeCertificates)
+    {
+        return runtimeCertificates.ToDictionary(
+            static certificate => certificate.Key,
+            static certificate => new ProxyAcmeRuntimeCertificateStatus(
+                certificate.Id,
+                certificate.Source,
+                certificate.NotBeforeUtc,
+                certificate.NotAfterUtc),
+            StringComparer.OrdinalIgnoreCase);
     }
 }

@@ -279,6 +279,29 @@ internal static class AcmeTests
         AssertEx.Equal(null, missingSnapshot);
     }
 
+    public static void AcmeRuntimeCertificateStatusMapperReadsSourcesWithoutConfigurationSnapshot()
+    {
+        var notBefore = DateTimeOffset.UnixEpoch.AddDays(1);
+        var notAfter = DateTimeOffset.UnixEpoch.AddDays(91);
+
+        var certificates = ProxyAcmeRuntimeCertificateStatusMapper.FromSources(
+            [
+                new ProxyAcmeRuntimeCertificateSource(
+                    "HOME-ACME",
+                    "home-acme",
+                    "acme",
+                    notBefore,
+                    notAfter)
+            ]);
+
+        AssertEx.True(certificates.ContainsKey("home-acme"));
+        var certificate = certificates["home-acme"];
+        AssertEx.Equal("home-acme", certificate.Id);
+        AssertEx.Equal("acme", certificate.Source);
+        AssertEx.Equal(notBefore, certificate.NotBeforeUtc);
+        AssertEx.Equal(notAfter, certificate.NotAfterUtc);
+    }
+
     public static async Task AcmeRenewalAvoidsTightRetryLoopAfterFailure()
     {
         using var temp = TemporaryDirectory.Create();
