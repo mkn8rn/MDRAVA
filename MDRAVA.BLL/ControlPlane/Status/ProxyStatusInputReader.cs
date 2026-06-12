@@ -79,7 +79,13 @@ public sealed class ProxyStatusInputReader : IProxyStatusInputReader
 
         return new ProxyStatusInput(
             runtimeSummary,
-            ProxyStatusConfigurationSummaryMapper.FromSnapshot(configuration),
+            configuration is null
+                ? null
+                : ProxyStatusConfigurationSummaryMapper.FromRuntimeConfiguration(
+                    configuration.Version,
+                    configuration.LoadedAtUtc,
+                    configuration.Listeners,
+                    configuration.Routes),
             metrics,
             upstreams,
             http3,

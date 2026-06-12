@@ -62,15 +62,17 @@ public sealed record ProxyStatusConfigurationSummary(
 
 public static class ProxyStatusConfigurationSummaryMapper
 {
-    public static ProxyStatusConfigurationSummary? FromSnapshot(ProxyConfigurationSnapshot? snapshot)
+    public static ProxyStatusConfigurationSummary FromRuntimeConfiguration(
+        int version,
+        DateTimeOffset loadedAtUtc,
+        IReadOnlyList<RuntimeListener> listeners,
+        IReadOnlyList<RuntimeRoute> routes)
     {
-        return snapshot is null
-            ? null
-            : new ProxyStatusConfigurationSummary(
-                snapshot.Version,
-                snapshot.LoadedAtUtc,
-                snapshot.Listeners.Count,
-                snapshot.Routes.Count);
+        return new ProxyStatusConfigurationSummary(
+            version,
+            loadedAtUtc,
+            listeners.Count,
+            routes.Count);
     }
 }
 

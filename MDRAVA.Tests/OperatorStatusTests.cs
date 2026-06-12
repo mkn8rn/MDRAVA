@@ -108,6 +108,24 @@ internal static class OperatorStatusTests
         AssertEx.Equal(reload, summary.LastListenerReload);
     }
 
+    public static void StatusConfigurationSummaryMapperReadsRuntimeConfigurationFactsWithoutSnapshot()
+    {
+        var loadedAtUtc = new DateTimeOffset(2026, 6, 12, 8, 0, 0, TimeSpan.Zero);
+        var listener = Listener();
+        var route = StaticRoute();
+
+        var summary = ProxyStatusConfigurationSummaryMapper.FromRuntimeConfiguration(
+            version: 17,
+            loadedAtUtc,
+            listeners: [listener],
+            routes: [route]);
+
+        AssertEx.Equal(17, summary.Version);
+        AssertEx.Equal(loadedAtUtc, summary.LoadedAtUtc);
+        AssertEx.Equal(1, summary.ListenerCount);
+        AssertEx.Equal(1, summary.RouteCount);
+    }
+
     public static void StatusResponseBuilderBuildsResponseFromNamedInput()
     {
         var listener = Listener();
@@ -156,7 +174,11 @@ internal static class OperatorStatusTests
             observedAtUtc);
         var input = new ProxyStatusInput(
             runtimeSummary,
-            ProxyStatusConfigurationSummaryMapper.FromSnapshot(snapshot),
+            ProxyStatusConfigurationSummaryMapper.FromRuntimeConfiguration(
+                snapshot.Version,
+                snapshot.LoadedAtUtc,
+                snapshot.Listeners,
+                snapshot.Routes),
             metrics,
             [],
             http3,
