@@ -27,7 +27,7 @@ internal static class RouteDiagnosticsTests
         var requestHead = Request("GET", "/api/users?id=1", "/api/users", "diag.test");
 
         var direct = matcher.Match(Snapshot(options), requestHead);
-        var dryRun = service.Explain(new RouteMatchDryRunRequest("http", "diag.test", 8080, "GET", "/api/users", "?id=1", null, null, null));
+        var dryRun = service.Explain(new RouteMatchDryRunRequest("http", "diag.test", 8080, "GET", "/api/users", "?id=1", NoHeaders(), null, null));
 
         AssertEx.NotNull(direct);
         AssertEx.Equal(direct!.Route.Name, AssertEx.NotNull(dryRun.Route).Name);
@@ -51,7 +51,7 @@ internal static class RouteDiagnosticsTests
         var beforeMetrics = metrics.Snapshot();
         var beforeCache = CacheStatus(cache, store.Snapshot);
 
-        var result = service.Explain(new RouteMatchDryRunRequest("http", "diag.test", 8080, "GET", "/api/users", "", null, null, null));
+        var result = service.Explain(new RouteMatchDryRunRequest("http", "diag.test", 8080, "GET", "/api/users", "", NoHeaders(), null, null));
 
         var afterMetrics = metrics.Snapshot();
         var afterCache = CacheStatus(cache, store.Snapshot);
@@ -67,7 +67,7 @@ internal static class RouteDiagnosticsTests
     {
         var service = CreateRouteService(BaseOptions([ProxyRoute("api", "diag.test", "/api")]), out _, out _);
 
-        var result = service.Explain(new RouteMatchDryRunRequest("http", "other.test", 8080, "GET", "/api", "", null, null, null));
+        var result = service.Explain(new RouteMatchDryRunRequest("http", "other.test", 8080, "GET", "/api", "", NoHeaders(), null, null));
 
         AssertEx.True(result.Succeeded);
         AssertEx.Equal("no_matching_route", result.NoMatchReason);
@@ -86,7 +86,7 @@ internal static class RouteDiagnosticsTests
             });
         var service = CreateRouteService(BaseOptions([route]), out _, out _);
 
-        var result = service.Explain(new RouteMatchDryRunRequest("http", "diag.test", 8080, "GET", "/public/api/users", "id=1", null, null, null));
+        var result = service.Explain(new RouteMatchDryRunRequest("http", "diag.test", 8080, "GET", "/public/api/users", "id=1", NoHeaders(), null, null));
 
         AssertEx.Equal("/api/users?id=1", result.RewrittenTarget!);
     }
@@ -119,7 +119,7 @@ internal static class RouteDiagnosticsTests
             "GET",
             "/api",
             "",
-            null,
+            NoHeaders(),
             null,
             "web",
             "http3"));
@@ -163,9 +163,9 @@ internal static class RouteDiagnosticsTests
         };
         var service = CreateRouteService(BaseOptions([redirect, disabled, staticRoute]), out _, out _);
 
-        var redirectResult = service.Explain(new RouteMatchDryRunRequest("http", "diag.test", 8080, "GET", "/old", "", null, null, null));
-        var maintenanceResult = service.Explain(new RouteMatchDryRunRequest("http", "diag.test", 8080, "GET", "/disabled", "", null, null, null));
-        var staticResult = service.Explain(new RouteMatchDryRunRequest("http", "diag.test", 8080, "GET", "/static", "", null, null, null));
+        var redirectResult = service.Explain(new RouteMatchDryRunRequest("http", "diag.test", 8080, "GET", "/old", "", NoHeaders(), null, null));
+        var maintenanceResult = service.Explain(new RouteMatchDryRunRequest("http", "diag.test", 8080, "GET", "/disabled", "", NoHeaders(), null, null));
+        var staticResult = service.Explain(new RouteMatchDryRunRequest("http", "diag.test", 8080, "GET", "/static", "", NoHeaders(), null, null));
 
         AssertEx.Equal("redirect", redirectResult.EffectiveAction!);
         AssertEx.Equal(308, redirectResult.GeneratedStatusCode!.Value);
@@ -186,7 +186,7 @@ internal static class RouteDiagnosticsTests
             "GET",
             "/private",
             "",
-            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
             {
                 ["Authorization"] = "Bearer secret-token"
             },
@@ -207,7 +207,7 @@ internal static class RouteDiagnosticsTests
                 [RouteDiagnosticsRoute("api", "diag.test", "/api")]),
             metricsSink: metrics);
 
-        var result = service.Explain(new RouteMatchDryRunRequest("http", "diag.test", 8080, "GET", "/api", "", null, null, null));
+        var result = service.Explain(new RouteMatchDryRunRequest("http", "diag.test", 8080, "GET", "/api", "", NoHeaders(), null, null));
 
         AssertEx.True(result.Succeeded);
         AssertEx.Equal("no_matching_listener", result.NoMatchReason);
@@ -238,7 +238,7 @@ internal static class RouteDiagnosticsTests
             "GET",
             "/api/users",
             "",
-            null,
+            NoHeaders(),
             null,
             "secure",
             "http3"));
@@ -266,7 +266,7 @@ internal static class RouteDiagnosticsTests
             "GET",
             "/private",
             "",
-            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
             {
                 ["Authorization"] = "Bearer secret-token"
             },
@@ -501,6 +501,29 @@ internal static class RouteDiagnosticsTests
             finding.Code == "missing_request" && finding.Severity == "error"));
     }
 
+    public static void RouteDiagnosticsControllerMapsMissingHeadersToEmptyInput()
+    {
+        var service = CreateRouteService(BaseOptions([ProxyRoute("active", "active.test", "/")]), out _, out _);
+        var controller = new ProxyRouteDiagnosticsController(
+            new ProxyRouteDiagnosticsAdministrationService(service));
+
+        var actionResult = controller.Match(new ProxyRouteMatchDryRunRequest(
+            "http",
+            "active.test",
+            8080,
+            "GET",
+            "/",
+            "",
+            null,
+            null,
+            null));
+
+        var ok = (OkObjectResult)AssertEx.NotNull(actionResult.Result);
+        var result = (RouteMatchDryRunResult)AssertEx.NotNull(ok.Value);
+        AssertEx.True(result.Succeeded);
+        AssertEx.Equal("active", AssertEx.NotNull(result.Route).Name);
+    }
+
     public static async Task DiagnosticEndpointsRequireAdminAuth()
     {
         var store = CreateStore(BaseOptions([ProxyRoute("active", "active.test", "/")]));
@@ -531,7 +554,7 @@ internal static class RouteDiagnosticsTests
         var routeService = CreateRouteService(options, out var store, out var metrics);
         var lintService = CreateLintService(options, store, metrics);
 
-        _ = routeService.Explain(new RouteMatchDryRunRequest("http", "diag.test", 8080, "GET", "/api", "", null, null, null));
+        _ = routeService.Explain(new RouteMatchDryRunRequest("http", "diag.test", 8080, "GET", "/api", "", NoHeaders(), null, null));
         _ = lintService.LintActive();
         var snapshot = metrics.Snapshot();
 
@@ -648,6 +671,11 @@ internal static class RouteDiagnosticsTests
                 [],
                 [],
                 []));
+    }
+
+    private static IReadOnlyDictionary<string, string?> NoHeaders()
+    {
+        return new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
     }
 
     private static ProxyOptions BaseOptions(IReadOnlyList<ProxyRouteOptions> routes)

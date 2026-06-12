@@ -307,11 +307,6 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
         List<RouteMatchDryRunFinding> findings)
     {
         List<ProxyHeaderField> headers = [new("Host", request.Host.Trim())];
-        if (request.Headers is null)
-        {
-            return headers;
-        }
-
         foreach (var header in request.Headers.OrderBy(static pair => pair.Key, StringComparer.OrdinalIgnoreCase))
         {
             var name = header.Key?.Trim() ?? "";

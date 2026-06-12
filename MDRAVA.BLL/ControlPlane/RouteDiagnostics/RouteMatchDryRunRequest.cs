@@ -7,7 +7,7 @@ public sealed record RouteMatchDryRunRequest(
     string Method,
     string Path,
     string Query,
-    IReadOnlyDictionary<string, string>? Headers,
+    IReadOnlyDictionary<string, string?> Headers,
     string? ClientIp,
     string? ListenerName,
     string? Protocol = null);

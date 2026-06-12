@@ -15,9 +15,9 @@ public sealed class ProxyRouteDiagnosticsController : ControllerBase
     }
 
     [HttpPost("match")]
-    public ActionResult<RouteMatchDryRunResult> Match([FromBody] RouteMatchDryRunRequest? request)
+    public ActionResult<RouteMatchDryRunResult> Match([FromBody] ProxyRouteMatchDryRunRequest? request)
     {
-        var result = _routeDiagnosticsAdministration.Match(request);
+        var result = _routeDiagnosticsAdministration.Match(request?.ToRouteMatchDryRunRequest());
         return ProxyAdminHttpResultMapper.OkOrBadRequest(this, result, result.Succeeded);
     }
 }
