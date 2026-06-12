@@ -91,11 +91,7 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
         IReadOnlyList<ConfigLintFinding> findings,
         IReadOnlyList<ProxyConfigurationFileError> validationErrors)
     {
-        var summary = new ConfigLintSummary(
-            findings.Count(static finding => string.Equals(finding.Severity, "info", StringComparison.OrdinalIgnoreCase)),
-            findings.Count(static finding => string.Equals(finding.Severity, "warning", StringComparison.OrdinalIgnoreCase)),
-            findings.Count(static finding => string.Equals(finding.Severity, "error", StringComparison.OrdinalIgnoreCase)));
-        var result = new ConfigLintResult(summary.Error == 0, lintedAtUtc, summary, findings, validationErrors);
+        var result = ConfigLintResultBuilder.Build(lintedAtUtc, findings, validationErrors);
         _metricsSink.ConfigLintRun(findings);
         return result;
     }
