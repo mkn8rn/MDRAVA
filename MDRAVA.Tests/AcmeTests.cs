@@ -67,7 +67,9 @@ internal static class AcmeTests
     {
         var time = new ManualTimeProvider(DateTimeOffset.UtcNow);
         var store = new AcmeChallengeStore();
-        AssertEx.True(store.TryRegister("abc_123-token", "abc_123-token.thumbprint", time.GetUtcNow().AddMinutes(5)));
+        AssertEx.True(
+            store.Register("abc_123-token", "abc_123-token.thumbprint", time.GetUtcNow().AddMinutes(5))
+                is not AcmeChallengeRegistrationResult.RejectedResult);
         var responder = new AcmeHttp01ChallengeResponder(store, time);
 
         var result = responder.CreateResponse(
@@ -77,6 +79,37 @@ internal static class AcmeTests
         var response = ((AcmeHttp01ChallengeResponseResult.HandledResult)result).Response;
         AssertEx.Equal(200, response.StatusCode);
         AssertEx.Equal("abc_123-token.thumbprint", response.Body);
+    }
+
+    public static void AcmeChallengeStoreNamesRegistrationAndLookupOutcomes()
+    {
+        var time = new ManualTimeProvider(DateTimeOffset.UtcNow);
+        var store = new AcmeChallengeStore();
+        var registered = store.Register("token", "token.thumbprint", time.GetUtcNow().AddMinutes(5));
+        var invalidToken = store.Register("bad/token", "token.thumbprint", time.GetUtcNow().AddMinutes(5));
+        var invalidBody = store.Register("token2", "", time.GetUtcNow().AddMinutes(5));
+        var found = store.FindResponse("token", time.GetUtcNow());
+        var missing = store.FindResponse("missing", time.GetUtcNow());
+        var expiredToken = "expired";
+
+        store.Register(expiredToken, "expired.thumbprint", time.GetUtcNow().AddSeconds(-1));
+        var expired = store.FindResponse(expiredToken, time.GetUtcNow());
+
+        AssertEx.True(registered is not AcmeChallengeRegistrationResult.RejectedResult);
+        AssertEx.True(invalidToken is AcmeChallengeRegistrationResult.RejectedResult);
+        AssertEx.Equal(
+            "invalid-token",
+            ((AcmeChallengeRegistrationResult.RejectedResult)invalidToken).Reason);
+        AssertEx.True(invalidBody is AcmeChallengeRegistrationResult.RejectedResult);
+        AssertEx.Equal(
+            "invalid-response-body",
+            ((AcmeChallengeRegistrationResult.RejectedResult)invalidBody).Reason);
+        AssertEx.True(found is AcmeChallengeResponseLookupResult.FoundResult);
+        AssertEx.Equal(
+            "token.thumbprint",
+            ((AcmeChallengeResponseLookupResult.FoundResult)found).ResponseBody);
+        AssertEx.True(missing is not AcmeChallengeResponseLookupResult.FoundResult);
+        AssertEx.True(expired is not AcmeChallengeResponseLookupResult.FoundResult);
     }
 
     public static void UnknownHttp01ChallengeReturnsSafe404()

@@ -32,7 +32,8 @@ public sealed class AcmeHttp01ChallengeResponder
             return AcmeHttp01ChallengeResponseResult.Handled(NotFound());
         }
 
-        if (!_challengeStore.TryGetResponse(token, _timeProvider.GetUtcNow(), out var body))
+        var lookup = _challengeStore.FindResponse(token, _timeProvider.GetUtcNow());
+        if (lookup is not AcmeChallengeResponseLookupResult.FoundResult found)
         {
             return AcmeHttp01ChallengeResponseResult.Handled(NotFound());
         }
@@ -42,7 +43,7 @@ public sealed class AcmeHttp01ChallengeResponder
                 200,
                 "OK",
                 "text/plain",
-                body,
+                found.ResponseBody,
                 []));
     }
 

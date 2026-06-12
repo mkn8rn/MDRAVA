@@ -8,21 +8,29 @@ public sealed class AcmeChallengeStore
     private readonly object _gate = new();
     private readonly Dictionary<string, AcmeChallengeRegistration> _challenges = new(StringComparer.Ordinal);
 
-    public bool TryRegister(string token, string responseBody, DateTimeOffset expiresAtUtc)
+    public AcmeChallengeRegistrationResult Register(
+        string token,
+        string responseBody,
+        DateTimeOffset expiresAtUtc)
     {
-        if (!IsValidToken(token) || string.IsNullOrEmpty(responseBody) || responseBody.Length > MaximumResponseBodyLength)
+        if (!IsValidToken(token))
         {
-            return false;
+            return AcmeChallengeRegistrationResult.Rejected("invalid-token");
+        }
+
+        if (string.IsNullOrEmpty(responseBody) || responseBody.Length > MaximumResponseBodyLength)
+        {
+            return AcmeChallengeRegistrationResult.Rejected("invalid-response-body");
         }
 
         lock (_gate)
         {
             _challenges[token] = new AcmeChallengeRegistration(token, responseBody, expiresAtUtc);
-            return true;
+            return AcmeChallengeRegistrationResult.Registered;
         }
     }
 
-    public bool TryGetResponse(string token, DateTimeOffset nowUtc, out string responseBody)
+    public AcmeChallengeResponseLookupResult FindResponse(string token, DateTimeOffset nowUtc)
     {
         lock (_gate)
         {
@@ -30,16 +38,14 @@ public sealed class AcmeChallengeStore
             {
                 if (challenge.ExpiresAtUtc > nowUtc)
                 {
-                    responseBody = challenge.ResponseBody;
-                    return true;
+                    return AcmeChallengeResponseLookupResult.Found(challenge.ResponseBody);
                 }
 
                 _challenges.Remove(token);
             }
         }
 
-        responseBody = "";
-        return false;
+        return AcmeChallengeResponseLookupResult.Missing;
     }
 
     public bool Remove(string token)
@@ -68,4 +74,66 @@ public sealed class AcmeChallengeStore
 
         return true;
     }
+}
+
+public abstract record AcmeChallengeRegistrationResult
+{
+    private AcmeChallengeRegistrationResult()
+    {
+    }
+
+    public static AcmeChallengeRegistrationResult Registered { get; } = new RegisteredResult();
+
+    public static AcmeChallengeRegistrationResult Rejected(string reason)
+    {
+        return new RejectedResult(reason);
+    }
+
+    private sealed record RegisteredResult : AcmeChallengeRegistrationResult;
+
+    public sealed record RejectedResult : AcmeChallengeRegistrationResult
+    {
+        public RejectedResult(string reason)
+        {
+            if (string.IsNullOrWhiteSpace(reason))
+            {
+                throw new ArgumentException("ACME challenge registration rejection reason is required.", nameof(reason));
+            }
+
+            Reason = reason;
+        }
+
+        public string Reason { get; }
+    }
+}
+
+public abstract record AcmeChallengeResponseLookupResult
+{
+    private AcmeChallengeResponseLookupResult()
+    {
+    }
+
+    public static AcmeChallengeResponseLookupResult Missing { get; } = new MissingResult();
+
+    public static AcmeChallengeResponseLookupResult Found(string responseBody)
+    {
+        return new FoundResult(responseBody);
+    }
+
+    public sealed record FoundResult : AcmeChallengeResponseLookupResult
+    {
+        public FoundResult(string responseBody)
+        {
+            if (string.IsNullOrEmpty(responseBody))
+            {
+                throw new ArgumentException("ACME challenge response body is required.", nameof(responseBody));
+            }
+
+            ResponseBody = responseBody;
+        }
+
+        public string ResponseBody { get; }
+    }
+
+    private sealed record MissingResult : AcmeChallengeResponseLookupResult;
 }
