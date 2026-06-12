@@ -229,6 +229,7 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<ClientRateLimiter>();
         services.AddSingleton<ProxyRuntimeState>();
         services.AddSingleton<IProxyStatusRuntimeStateSource>(static services => services.GetRequiredService<ProxyRuntimeState>());
+        services.AddSingleton<IHttp3AltSvcRuntimeListenerSource>(static services => services.GetRequiredService<ProxyRuntimeState>());
         services.AddSingleton<UpstreamHealthStore>();
         services.AddSingleton<IProxyStatusUpstreamHealthSource>(static services => services.GetRequiredService<UpstreamHealthStore>());
         services.AddSingleton<IProxyStatusUpstreamHealthReader, ProxyStatusUpstreamHealthReader>();

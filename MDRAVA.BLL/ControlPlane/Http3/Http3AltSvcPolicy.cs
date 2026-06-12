@@ -1,20 +1,19 @@
 using MDRAVA.BLL.Http;
 using MDRAVA.BLL.ControlPlane.Headers;
-using MDRAVA.BLL.ControlPlane.Status;
 using MDRAVA.BLL.Configuration;
 
 namespace MDRAVA.BLL.ControlPlane.Http3;
 
 public sealed class Http3AltSvcPolicy
 {
-    private readonly IProxyStatusRuntimeStateSource _runtimeState;
+    private readonly IHttp3AltSvcRuntimeListenerSource _runtimeListeners;
     private readonly IProxyHttp3AltSvcMetricsSink _metrics;
 
     public Http3AltSvcPolicy(
-        IProxyStatusRuntimeStateSource runtimeState,
+        IHttp3AltSvcRuntimeListenerSource runtimeListeners,
         IProxyHttp3AltSvcMetricsSink metrics)
     {
-        _runtimeState = runtimeState;
+        _runtimeListeners = runtimeListeners;
         _metrics = metrics;
     }
 
@@ -27,8 +26,9 @@ public sealed class Http3AltSvcPolicy
             return false;
         }
 
-        var runtime = _runtimeState.ReadRuntime();
-        if (!RuntimeHttp3AltSvcPolicy.HasActiveQuicListener(listener, runtime.Listeners))
+        if (!RuntimeHttp3AltSvcPolicy.HasActiveQuicListener(
+            listener,
+            _runtimeListeners.ReadRuntimeListeners()))
         {
             _metrics.Http3AltSvcSuppressed();
             return false;

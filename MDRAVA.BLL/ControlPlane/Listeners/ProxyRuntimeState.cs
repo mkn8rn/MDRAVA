@@ -1,8 +1,9 @@
+using MDRAVA.BLL.ControlPlane.Http3;
 using MDRAVA.BLL.ControlPlane.Status;
 
 namespace MDRAVA.BLL.ControlPlane.Listeners;
 
-public sealed class ProxyRuntimeState : IProxyStatusRuntimeStateSource
+public sealed class ProxyRuntimeState : IProxyStatusRuntimeStateSource, IHttp3AltSvcRuntimeListenerSource
 {
     private readonly object _gate = new();
     private readonly TimeProvider _timeProvider;
@@ -47,6 +48,14 @@ public sealed class ProxyRuntimeState : IProxyStatusRuntimeStateSource
     public ProxyRuntimeSnapshot ReadRuntime()
     {
         return Snapshot();
+    }
+
+    public IReadOnlyList<ProxyListenerStatus> ReadRuntimeListeners()
+    {
+        lock (_gate)
+        {
+            return _listeners;
+        }
     }
 
     public void MarkShuttingDown(DateTimeOffset startedAtUtc, DateTimeOffset deadlineUtc)

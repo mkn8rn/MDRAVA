@@ -474,6 +474,27 @@ internal static class ClientHttp3Tests
         AssertEx.True(failures.Any(static failure => failure.Contains("Http3Enablement must be", StringComparison.Ordinal)), string.Join("; ", failures));
     }
 
+    public static void AltSvcPolicyReadsNarrowRuntimeListenerSource()
+    {
+        var listener = TestHttp3Listener("http1AndHttp3") with
+        {
+            Http3AltSvc = new RuntimeHttp3AltSvcOptions(Enabled: true, MaxAgeSeconds: 60)
+        };
+        var source = new FixedHttp3AltSvcRuntimeListenerSource([ActiveQuicListenerStatus(listener)]);
+        var metrics = new ProxyMetrics();
+        var policy = new Http3AltSvcPolicy(source, metrics);
+
+        var created = policy.TryCreateHeader(listener, out var header);
+        var snapshot = metrics.Snapshot();
+
+        AssertEx.True(created);
+        AssertEx.Equal("Alt-Svc", header.Name);
+        AssertEx.Equal("h3=\":8443\"; ma=60", header.Value);
+        AssertEx.Equal(1, source.ReadCount);
+        AssertEx.Equal(1L, snapshot.Http3AltSvcEmitted);
+        AssertEx.Equal(0L, snapshot.Http3AltSvcSuppressed);
+    }
+
     public static async Task AltSvcIsAbsentWhenHttp3ExplicitlyDisabled()
     {
         if (!QuicListener.IsSupported || !QuicConnection.IsSupported)
@@ -2575,6 +2596,61 @@ internal static class ClientHttp3Tests
                 _ => RuntimeListenerProtocols.Http3
             }
         };
+    }
+
+    private static ProxyListenerStatus ActiveQuicListenerStatus(RuntimeListener listener)
+    {
+        var quicIdentity = AssertEx.NotNull(listener.QuicIdentity);
+        return new ProxyListenerStatus(
+            listener.Name,
+            quicIdentity.Key,
+            quicIdentity.BindKey,
+            "quic",
+            listener.Address,
+            listener.Port,
+            "udp",
+            true,
+            "http3",
+            new ProxyListenerHttp3Status(
+                Configured: true,
+                DefaultEnabled: true,
+                EnablementLevel: "default",
+                EnabledForTraffic: true,
+                DisabledReason: "default_enabled",
+                AltSvcConfigured: true,
+                AltSvcMaxAgeSeconds: listener.Http3AltSvc.MaxAgeSeconds,
+                UdpQuicListenerIdentityModeled: true,
+                QuicIdentity: new ProxyQuicListenerIdentity(
+                    listener.Name,
+                    listener.Address,
+                    listener.Port,
+                    TlsEnabled: true)),
+            listener.Http2Limits.MaxConcurrentStreams,
+            listener.Http2Limits.MaxHeaderListBytes,
+            listener.Http2Limits.MaxFrameSize,
+            ProxyListenerState.Active,
+            ActiveConnections: 0,
+            StartedAtUtc: DateTimeOffset.UnixEpoch,
+            StoppedAtUtc: null,
+            LastError: null);
+    }
+
+    private sealed class FixedHttp3AltSvcRuntimeListenerSource : IHttp3AltSvcRuntimeListenerSource
+    {
+        private readonly IReadOnlyList<ProxyListenerStatus> _listeners;
+
+        public FixedHttp3AltSvcRuntimeListenerSource(IReadOnlyList<ProxyListenerStatus> listeners)
+        {
+            _listeners = listeners;
+        }
+
+        public int ReadCount { get; private set; }
+
+        public IReadOnlyList<ProxyListenerStatus> ReadRuntimeListeners()
+        {
+            ReadCount++;
+            return _listeners;
+        }
     }
 
     private static void WriteCertificateConfig(string dataDirectory)
