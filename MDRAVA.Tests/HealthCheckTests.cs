@@ -214,6 +214,42 @@ internal static class HealthCheckTests
         AssertEx.Equal(second.Name, targets[1].UpstreamName);
     }
 
+    public static void UpstreamHealthSourceMapperReadsRoutesWithoutConfigurationSnapshot()
+    {
+        var http = Upstream(5001);
+        var https = new RuntimeUpstream(
+            "test",
+            "secure",
+            "https",
+            RuntimeUpstreamProtocol.Http2,
+            "secure.internal",
+            443,
+            7,
+            new RuntimeUpstreamTlsOptions(false, "sni.internal"));
+        var routes = new[]
+        {
+            Route([http]),
+            Route([https], healthEnabled: false)
+        };
+
+        var sources = ProxyUpstreamHealthSourceMapper.FromRoutes(routes);
+
+        AssertEx.Equal(2, sources.Count);
+        AssertEx.Equal(http.Identity, sources[0].HealthState.UpstreamIdentity);
+        AssertEx.Equal(http.RouteName, sources[0].HealthState.RouteName);
+        AssertEx.Equal(http.Name, sources[0].HealthState.UpstreamName);
+        AssertEx.Equal(http.Endpoint, sources[0].HealthState.UpstreamEndpoint);
+        AssertEx.Equal("http", sources[0].Scheme);
+        AssertEx.False(sources[0].ValidateCertificate);
+        AssertEx.True(sources[0].HealthCheckEnabled);
+        AssertEx.Equal(https.Identity, sources[1].HealthState.UpstreamIdentity);
+        AssertEx.Equal(RuntimeUpstreamProtocol.Http2, sources[1].Protocol);
+        AssertEx.Equal(7, sources[1].Weight);
+        AssertEx.False(sources[1].ValidateCertificate);
+        AssertEx.Equal("sni.internal", sources[1].EffectiveSniHost);
+        AssertEx.False(sources[1].HealthCheckEnabled);
+    }
+
     private static async Task<HealthCheckSample> RunHealthCheckAsync(string response)
     {
         var port = GetFreeTcpPort();

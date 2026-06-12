@@ -2022,7 +2022,7 @@ internal static class ProxyIntegrationTests
             var diagnostics = host.Services.GetRequiredService<RecentRequestDiagnosticsStore>().Recent(50);
             var configuration = host.Services.GetRequiredService<MDRAVA.BLL.ControlPlane.ConfigurationManagement.IProxyConfigurationStore>().Snapshot;
             var upstreams = host.Services.GetRequiredService<UpstreamHealthStore>()
-                .Snapshot(ProxyUpstreamHealthSourceMapper.FromSnapshot(configuration))
+                .Snapshot(ProxyUpstreamHealthSourceMapper.FromRoutes(configuration.Routes))
                 .ToArray();
 
             return new TwoUpstreamHttpResult(firstRequests, secondRequests, metrics, upstreams, diagnostics);
@@ -2269,7 +2269,7 @@ internal static class ProxyIntegrationTests
         while (true)
         {
             var records = healthStore.Snapshot(
-                ProxyUpstreamHealthSourceMapper.FromSnapshot(configurationStore.Snapshot));
+                ProxyUpstreamHealthSourceMapper.FromRoutes(configurationStore.Snapshot.Routes));
             if (predicate(records))
             {
                 return records;

@@ -1015,7 +1015,7 @@ internal static class ResilienceTests
                 Store.Snapshot,
                 Metrics.Snapshot(),
                 Cache.ReadStatusSnapshot(),
-                Health.ReadUpstreams(ProxyUpstreamHealthSourceMapper.FromSnapshot(Store.Snapshot)),
+                Health.ReadUpstreams(ProxyUpstreamHealthSourceMapper.FromRoutes(Store.Snapshot.Routes)),
                 Acme.Snapshot()));
         }
 

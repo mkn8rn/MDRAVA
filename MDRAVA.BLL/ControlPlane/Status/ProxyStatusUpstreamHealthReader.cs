@@ -19,6 +19,8 @@ public sealed class ProxyStatusUpstreamHealthReader : IProxyStatusUpstreamHealth
     {
         var configuration = _configurationSource.TryReadSnapshot(out var snapshot) ? snapshot : null;
         return _upstreamHealthSource.ReadUpstreams(
-            ProxyUpstreamHealthSourceMapper.FromSnapshot(configuration));
+            configuration is null
+                ? []
+                : ProxyUpstreamHealthSourceMapper.FromRoutes(configuration.Routes));
     }
 }

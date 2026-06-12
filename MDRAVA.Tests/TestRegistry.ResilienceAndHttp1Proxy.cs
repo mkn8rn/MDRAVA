@@ -130,6 +130,7 @@ internal static partial class TestRegistry
     Test("Health check coordinator skips until interval elapses", HealthCheckTests.HealthCheckCoordinatorSkipsUntilIntervalElapses, TestTaxonomy.HealthChecks),
     Test("Health check target source maps only active targets", Sync(HealthCheckTests.HealthCheckTargetSourceReadsOnlyMappedActiveTargets), TestTaxonomy.HealthChecks, TestTaxonomy.Config),
     Test("Health check target mapper reads routes without configuration snapshot", Sync(HealthCheckTests.HealthCheckTargetMapperReadsRoutesWithoutConfigurationSnapshot), TestTaxonomy.HealthChecks, TestTaxonomy.Config),
+    Test("Upstream health source mapper reads routes without configuration snapshot", Sync(HealthCheckTests.UpstreamHealthSourceMapperReadsRoutesWithoutConfigurationSnapshot), TestTaxonomy.HealthChecks, TestTaxonomy.Config),
     Test("Round-robin distributes sequential requests across two upstreams", ProxyIntegrationTests.RoundRobinDistributesSequentialRequestsAcrossTwoUpstreams, TestTaxonomy.Routing),
     Test("Unhealthy upstream is not selected", ProxyIntegrationTests.UnhealthyUpstreamIsNotSelected, TestTaxonomy.HealthChecks, TestTaxonomy.SecurityNegativePaths),
     Test("All unhealthy upstreams return service unavailable", ProxyIntegrationTests.AllUnhealthyUpstreamsReturnServiceUnavailable, TestTaxonomy.RetryCircuit, TestTaxonomy.HealthChecks, TestTaxonomy.SecurityNegativePaths),

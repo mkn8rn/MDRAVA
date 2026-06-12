@@ -677,7 +677,7 @@ internal static class MetricsTests
                 snapshot,
                 Metrics.Snapshot(),
                 Cache.ReadStatusSnapshot(),
-                Health.ReadUpstreams(ProxyUpstreamHealthSourceMapper.FromSnapshot(snapshot)),
+                Health.ReadUpstreams(ProxyUpstreamHealthSourceMapper.FromRoutes(snapshot.Routes)),
                 Acme.Snapshot()));
         }
 

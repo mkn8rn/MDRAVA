@@ -33,9 +33,9 @@ public static class UpstreamHealthStateSourceMapper
 
 public static class ProxyUpstreamHealthSourceMapper
 {
-    public static IReadOnlyList<ProxyUpstreamHealthSource> FromSnapshot(ProxyConfigurationSnapshot? snapshot)
+    public static IReadOnlyList<ProxyUpstreamHealthSource> FromRoutes(IReadOnlyList<RuntimeRoute> routes)
     {
-        return snapshot?.Routes
+        return routes
             .SelectMany(static route => route.Upstreams.Select(upstream => new ProxyUpstreamHealthSource(
                 UpstreamHealthStateSourceMapper.FromUpstream(upstream),
                 CircuitBreakerStatusSourceMapper.FromUpstream(upstream),
@@ -48,6 +48,6 @@ public static class ProxyUpstreamHealthSourceMapper
                     ? upstream.EffectiveSniHost
                     : null,
                 route.HealthCheck.Enabled)))
-            .ToArray() ?? [];
+            .ToArray();
     }
 }
