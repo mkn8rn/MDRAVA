@@ -1,3 +1,4 @@
+using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using MDRAVA.API.Controllers;
 using MDRAVA.BLL.ControlPlane.Acme;
@@ -347,6 +348,58 @@ internal static class AcmeTests
         AssertEx.Equal(30, input.Certificates[0].RenewBeforeDays);
     }
 
+    public static void AcmeRenewalConfigurationInputMapperAttachesOnlyAcmeActiveCertificates()
+    {
+        using var certificate = X509CertificateLoader.LoadPkcs12(
+            TestCertificates.CreateSelfSignedPfxBytes("home.example.test"),
+            ReadOnlySpan<char>.Empty,
+            X509KeyStorageFlags.UserKeySet);
+        var acme = new RuntimeAcmeOptions(
+            Enabled: true,
+            UseStaging: false,
+            DirectoryUrl: "https://acme.example.test/directory",
+            ContactEmails: ["ops@example.test"],
+            TermsAccepted: true,
+            StoragePath: "acme",
+            RenewBeforeDays: 30,
+            CheckIntervalMinutes: 60,
+            RetryAfterMinutes: 15,
+            Certificates:
+            [
+                new RuntimeAcmeCertificateOptions(
+                    "home-acme",
+                    Enabled: true,
+                    Domains: ["home.example.test"],
+                    RenewBeforeDays: 20),
+                new RuntimeAcmeCertificateOptions(
+                    "manual-cert",
+                    Enabled: true,
+                    Domains: ["manual.example.test"],
+                    RenewBeforeDays: 25)
+            ]);
+        Dictionary<string, RuntimeCertificate> runtimeCertificates = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["home-acme"] = RuntimeCertificate("home-acme", certificate, "acme"),
+            ["manual-cert"] = RuntimeCertificate("manual-cert", certificate, "manualPfx")
+        };
+
+        var input = AcmeRenewalConfigurationInputMapper.FromRuntimeConfiguration(
+            acme,
+            runtimeCertificates);
+
+        AssertEx.True(input.Enabled);
+        AssertEx.Equal("acme", input.StoragePath);
+        AssertEx.Equal("https://acme.example.test/directory", input.DirectoryUrl);
+        AssertEx.Equal(15, input.RetryAfterMinutes);
+        AssertEx.Equal(2, input.Certificates.Count);
+        AssertEx.NotNull(input.Certificates[0].ActiveCertificate);
+        AssertEx.Equal("home-acme", input.Certificates[0].ActiveCertificate!.Id);
+        AssertEx.Equal("home.example.test", input.Certificates[0].Domains[0]);
+        AssertEx.Equal(20, input.Certificates[0].RenewBeforeDays);
+        AssertEx.Equal("manual-cert", input.Certificates[1].Id);
+        AssertEx.Equal(null, input.Certificates[1].ActiveCertificate);
+    }
+
     private static Http1RequestHead Request(string method, string path)
     {
         return new Http1RequestHead(
@@ -406,6 +459,21 @@ internal static class AcmeTests
         var store = new ProxyConfigurationStore();
         store.Replace(snapshot);
         return store;
+    }
+
+    private static RuntimeCertificate RuntimeCertificate(
+        string id,
+        X509Certificate2 certificate,
+        string source)
+    {
+        return new RuntimeCertificate(
+            id,
+            $"{id}.pfx",
+            "pfx",
+            HasConfiguredPassword: false,
+            certificate,
+            source,
+            [id]);
     }
 
     private static AcmeCertificateManager CreateManager(

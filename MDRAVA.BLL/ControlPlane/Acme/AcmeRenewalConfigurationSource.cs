@@ -29,6 +29,40 @@ public interface IAcmeCertificateActivator
     void Activate(RuntimeCertificate certificate);
 }
 
+public static class AcmeRenewalConfigurationInputMapper
+{
+    public static AcmeRenewalConfigurationInput FromRuntimeConfiguration(
+        RuntimeAcmeOptions acme,
+        IReadOnlyDictionary<string, RuntimeCertificate> runtimeCertificates)
+    {
+        return new AcmeRenewalConfigurationInput(
+            acme.Enabled,
+            acme.StoragePath,
+            acme.DirectoryUrl,
+            acme.ContactEmails,
+            acme.TermsAccepted,
+            acme.RetryAfterMinutes,
+            acme.Certificates
+                .Select(certificate => new AcmeRenewalCertificateInput(
+                    certificate.Id,
+                    certificate.Enabled,
+                    certificate.Domains,
+                    certificate.RenewBeforeDays,
+                    ReadActiveAcmeCertificate(runtimeCertificates, certificate.Id)))
+                .ToArray());
+    }
+
+    private static RuntimeCertificate? ReadActiveAcmeCertificate(
+        IReadOnlyDictionary<string, RuntimeCertificate> runtimeCertificates,
+        string certificateId)
+    {
+        return runtimeCertificates.TryGetValue(certificateId, out var certificate)
+            && string.Equals(certificate.Source, "acme", StringComparison.OrdinalIgnoreCase)
+            ? certificate
+            : null;
+    }
+}
+
 public sealed class ProxyConfigurationAcmeRenewalConfigurationSource : IAcmeRenewalConfigurationSource
 {
     private readonly IProxyConfigurationStore _configurationStore;
@@ -45,31 +79,9 @@ public sealed class ProxyConfigurationAcmeRenewalConfigurationSource : IAcmeRene
             return null;
         }
 
-        return new AcmeRenewalConfigurationInput(
-            snapshot.Acme.Enabled,
-            snapshot.Acme.StoragePath,
-            snapshot.Acme.DirectoryUrl,
-            snapshot.Acme.ContactEmails,
-            snapshot.Acme.TermsAccepted,
-            snapshot.Acme.RetryAfterMinutes,
-            snapshot.Acme.Certificates
-                .Select(certificate => new AcmeRenewalCertificateInput(
-                    certificate.Id,
-                    certificate.Enabled,
-                    certificate.Domains,
-                    certificate.RenewBeforeDays,
-                    ReadActiveAcmeCertificate(snapshot, certificate.Id)))
-                .ToArray());
-    }
-
-    private static RuntimeCertificate? ReadActiveAcmeCertificate(
-        ProxyConfigurationSnapshot snapshot,
-        string certificateId)
-    {
-        return snapshot.Certificates.TryGetValue(certificateId, out var certificate)
-            && string.Equals(certificate.Source, "acme", StringComparison.OrdinalIgnoreCase)
-            ? certificate
-            : null;
+        return AcmeRenewalConfigurationInputMapper.FromRuntimeConfiguration(
+            snapshot.Acme,
+            snapshot.Certificates);
     }
 }
 
