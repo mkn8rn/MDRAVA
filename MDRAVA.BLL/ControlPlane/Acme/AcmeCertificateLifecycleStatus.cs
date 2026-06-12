@@ -14,4 +14,30 @@ public sealed record AcmeCertificateLifecycleStatus(
     DateTimeOffset? LastFailedAtUtc,
     DateTimeOffset? NextAttemptNotBeforeUtc,
     string LastResult,
-    string? ErrorSummary);
+    string? ErrorSummary)
+{
+    public static AcmeCertificateLifecycleStatus FromConfiguredCertificate(
+        ProxyAcmeConfiguredCertificateStatus certificate,
+        ProxyAcmeRuntimeCertificateStatus? runtimeCertificate)
+    {
+        ArgumentNullException.ThrowIfNull(certificate);
+
+        var active = runtimeCertificate is not null
+            && string.Equals(runtimeCertificate.Source, "acme", StringComparison.OrdinalIgnoreCase);
+        return new AcmeCertificateLifecycleStatus(
+            certificate.Id,
+            certificate.Enabled,
+            certificate.Domains,
+            active,
+            active ? "acme" : "none",
+            active ? runtimeCertificate!.NotBeforeUtc : null,
+            active ? runtimeCertificate!.NotAfterUtc : null,
+            active ? runtimeCertificate!.NotAfterUtc.AddDays(-certificate.RenewBeforeDays) : null,
+            LastAttemptAtUtc: null,
+            LastSucceededAtUtc: null,
+            LastFailedAtUtc: null,
+            NextAttemptNotBeforeUtc: null,
+            active ? "loaded" : "inactive",
+            ErrorSummary: null);
+    }
+}

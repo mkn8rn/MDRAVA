@@ -26,30 +26,13 @@ public sealed class ProxyAcmeAdministrationService
                     return status;
                 }
 
-                var active = snapshot.RuntimeCertificates.TryGetValue(certificate.Id, out var runtimeCertificate)
-                    && string.Equals(runtimeCertificate.Source, "acme", StringComparison.OrdinalIgnoreCase);
-                return new AcmeCertificateLifecycleStatus(
-                    certificate.Id,
-                    certificate.Enabled,
-                    certificate.Domains,
-                    active,
-                    active ? "acme" : "none",
-                    active ? runtimeCertificate!.NotBeforeUtc : null,
-                    active ? runtimeCertificate!.NotAfterUtc : null,
-                    active ? runtimeCertificate!.NotAfterUtc.AddDays(-certificate.RenewBeforeDays) : null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    active ? "loaded" : "inactive",
-                    null);
+                snapshot.RuntimeCertificates.TryGetValue(certificate.Id, out var runtimeCertificate);
+                return AcmeCertificateLifecycleStatus.FromConfiguredCertificate(
+                    certificate,
+                    runtimeCertificate);
             })
             .ToArray();
 
-        return new AcmeStatusResponse(
-            snapshot.Enabled,
-            snapshot.DirectoryUrl,
-            snapshot.UseStaging,
-            statuses);
+        return AcmeStatusResponse.FromSnapshot(snapshot, statuses);
     }
 }
