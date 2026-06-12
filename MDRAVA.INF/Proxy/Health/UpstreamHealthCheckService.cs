@@ -28,7 +28,9 @@ public sealed class UpstreamHealthCheckService : BackgroundService
         {
             if (_configurationStore.TryGetSnapshot(out var snapshot) && snapshot is not null)
             {
-                await _coordinator.RunDueChecksAsync(snapshot, stoppingToken);
+                await _coordinator.RunDueChecksAsync(
+                    UpstreamHealthCheckTargetMapper.FromSnapshot(snapshot),
+                    stoppingToken);
             }
 
             await Task.Delay(PollInterval, _timeProvider, stoppingToken);

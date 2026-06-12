@@ -31,13 +31,13 @@ public sealed class UpstreamHealthCheckClient : IUpstreamHealthCheckClient
     }
 
     public async ValueTask<HealthCheckSample> CheckAsync(
-        RuntimeRoute route,
-        RuntimeUpstream upstream,
+        UpstreamHealthCheckTarget target,
         CancellationToken cancellationToken)
     {
+        var upstream = target.Upstream;
         if (RuntimeUpstreamProtocol.IsHttp3(upstream.Protocol))
         {
-            return await CheckHttp3Async(route, upstream, cancellationToken);
+            return await CheckHttp3Async(target, cancellationToken);
         }
 
         UpstreamTransportConnection? connection = null;
@@ -46,24 +46,24 @@ public sealed class UpstreamHealthCheckClient : IUpstreamHealthCheckClient
         {
             connection = await _connectionFactory.ConnectAsync(
                 upstream,
-                route.HealthCheck.Timeout,
+                target.Timeout,
                 cancellationToken);
             var stream = connection.Stream;
 
             if (RuntimeUpstreamProtocol.IsHttp2(upstream.Protocol))
             {
-                return await CheckHttp2Async(route, upstream, stream, cancellationToken);
+                return await CheckHttp2Async(target, stream, cancellationToken);
             }
 
             var requestBytes = Encoding.ASCII.GetBytes(
-                $"GET {route.HealthCheck.Path} HTTP/1.1\r\nHost: {upstream.Address}\r\nConnection: close\r\n\r\n");
+                $"GET {target.Path} HTTP/1.1\r\nHost: {upstream.Address}\r\nConnection: close\r\n\r\n");
             await ProxyTimeoutPolicy.RunAsync(
                 async timeoutToken => await stream.WriteAsync(requestBytes, timeoutToken),
-                route.HealthCheck.Timeout,
+                target.Timeout,
                 ProxyTimeoutKind.DownstreamWrite,
                 cancellationToken);
 
-            var responseHead = await ReadResponseHeadAsync(stream, route.HealthCheck.Timeout, cancellationToken);
+            var responseHead = await ReadResponseHeadAsync(stream, target.Timeout, cancellationToken);
             if (responseHead.Length == 0)
             {
                 return new HealthCheckSample(false, "empty response");
@@ -92,13 +92,13 @@ public sealed class UpstreamHealthCheckClient : IUpstreamHealthCheckClient
     }
 
     private async ValueTask<HealthCheckSample> CheckHttp3Async(
-        RuntimeRoute route,
-        RuntimeUpstream upstream,
+        UpstreamHealthCheckTarget target,
         CancellationToken cancellationToken)
     {
+        var upstream = target.Upstream;
         try
         {
-            var timeouts = HealthCheckTimeouts(route.HealthCheck.Timeout);
+            var timeouts = HealthCheckTimeouts(target.Timeout);
             await using var http3 = await Http3UpstreamConnection.ConnectAsync(
                 upstream,
                 timeouts,
@@ -110,7 +110,7 @@ public sealed class UpstreamHealthCheckClient : IUpstreamHealthCheckClient
                     new ProxyHeaderField(":method", "GET"),
                     new ProxyHeaderField(":scheme", upstream.Scheme),
                     new ProxyHeaderField(":authority", upstream.Address),
-                    new ProxyHeaderField(":path", route.HealthCheck.Path)
+                    new ProxyHeaderField(":path", target.Path)
                 ],
                 endStream: true,
                 timeouts,
@@ -134,12 +134,12 @@ public sealed class UpstreamHealthCheckClient : IUpstreamHealthCheckClient
     }
 
     private async ValueTask<HealthCheckSample> CheckHttp2Async(
-        RuntimeRoute route,
-        RuntimeUpstream upstream,
+        UpstreamHealthCheckTarget target,
         Stream stream,
         CancellationToken cancellationToken)
     {
-        var timeouts = HealthCheckTimeouts(route.HealthCheck.Timeout);
+        var upstream = target.Upstream;
+        var timeouts = HealthCheckTimeouts(target.Timeout);
         var http2 = new Http2UpstreamConnection(stream, _metrics, maxFrameSize: 16 * 1024);
         await http2.InitializeAsync(timeouts, cancellationToken);
         await http2.SendHeadersAsync(
@@ -147,7 +147,7 @@ public sealed class UpstreamHealthCheckClient : IUpstreamHealthCheckClient
                 new ProxyHeaderField(":method", "GET"),
                 new ProxyHeaderField(":scheme", upstream.Scheme),
                 new ProxyHeaderField(":authority", upstream.Address),
-                new ProxyHeaderField(":path", route.HealthCheck.Path)
+                new ProxyHeaderField(":path", target.Path)
             ],
             endStream: true,
             timeouts,

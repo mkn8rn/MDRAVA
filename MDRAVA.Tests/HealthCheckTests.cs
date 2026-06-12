@@ -54,7 +54,7 @@ internal static class HealthCheckTests
             }, timeout.Token);
 
             var sample = await new UpstreamHealthCheckClient(new UpstreamConnectionFactory(), new ProxyMetrics())
-                .CheckAsync(route, upstream, timeout.Token);
+                .CheckAsync(Target(route, upstream), timeout.Token);
 
             AssertEx.False(sample.Healthy, sample.Result);
             AssertEx.True(sample.Result.Contains("timeout", StringComparison.OrdinalIgnoreCase), sample.Result);
@@ -78,10 +78,12 @@ internal static class HealthCheckTests
         var upstream = Upstream(5001);
         var route = Route([upstream], unhealthyThreshold: 2);
 
-        store.RecordHealthCheckResult(route, upstream, new HealthCheckSample(false, "fail"), DateTimeOffset.UtcNow);
+        var target = Target(route, upstream);
+
+        store.RecordHealthCheckResult(target, new HealthCheckSample(false, "fail"), DateTimeOffset.UtcNow);
         AssertEx.True(store.IsUsable(upstream));
 
-        var state = store.RecordHealthCheckResult(route, upstream, new HealthCheckSample(false, "fail"), DateTimeOffset.UtcNow);
+        var state = store.RecordHealthCheckResult(target, new HealthCheckSample(false, "fail"), DateTimeOffset.UtcNow);
 
         AssertEx.Equal(UpstreamHealthState.Unhealthy, state);
         AssertEx.False(store.IsUsable(upstream));
@@ -99,13 +101,15 @@ internal static class HealthCheckTests
         var upstream = Upstream(5001);
         var route = Route([upstream], healthyThreshold: 2, unhealthyThreshold: 1);
 
-        store.RecordHealthCheckResult(route, upstream, new HealthCheckSample(false, "fail"), DateTimeOffset.UtcNow);
+        var target = Target(route, upstream);
+
+        store.RecordHealthCheckResult(target, new HealthCheckSample(false, "fail"), DateTimeOffset.UtcNow);
         AssertEx.False(store.IsUsable(upstream));
 
-        store.RecordHealthCheckResult(route, upstream, new HealthCheckSample(true, "ok"), DateTimeOffset.UtcNow);
+        store.RecordHealthCheckResult(target, new HealthCheckSample(true, "ok"), DateTimeOffset.UtcNow);
         AssertEx.False(store.IsUsable(upstream));
 
-        var state = store.RecordHealthCheckResult(route, upstream, new HealthCheckSample(true, "ok"), DateTimeOffset.UtcNow);
+        var state = store.RecordHealthCheckResult(target, new HealthCheckSample(true, "ok"), DateTimeOffset.UtcNow);
 
         AssertEx.Equal(UpstreamHealthState.Healthy, state);
         AssertEx.True(store.IsUsable(upstream));
@@ -124,7 +128,7 @@ internal static class HealthCheckTests
         var events = new CapturingHealthCheckEventSink();
         var coordinator = new UpstreamHealthCheckCoordinator(client, store, metrics, clock, events);
 
-        await coordinator.RunDueChecksAsync(Snapshot(route), CancellationToken.None);
+        await coordinator.RunDueChecksAsync(Targets(route), CancellationToken.None);
 
         AssertEx.Equal(1, client.Calls);
         var counters = metrics.Snapshot();
@@ -152,12 +156,12 @@ internal static class HealthCheckTests
             metrics,
             clock,
             new CapturingHealthCheckEventSink());
-        var snapshot = Snapshot(route);
+        var targets = Targets(route);
 
-        await coordinator.RunDueChecksAsync(snapshot, CancellationToken.None);
-        await coordinator.RunDueChecksAsync(snapshot, CancellationToken.None);
+        await coordinator.RunDueChecksAsync(targets, CancellationToken.None);
+        await coordinator.RunDueChecksAsync(targets, CancellationToken.None);
         clock.Advance(TimeSpan.FromSeconds(2));
-        await coordinator.RunDueChecksAsync(snapshot, CancellationToken.None);
+        await coordinator.RunDueChecksAsync(targets, CancellationToken.None);
 
         AssertEx.Equal(2, client.Calls);
         var counters = metrics.Snapshot();
@@ -185,7 +189,7 @@ internal static class HealthCheckTests
             }, timeout.Token);
 
             var sample = await new UpstreamHealthCheckClient(new UpstreamConnectionFactory(), new ProxyMetrics())
-                .CheckAsync(route, upstream, timeout.Token);
+                .CheckAsync(Target(route, upstream), timeout.Token);
             await serverTask;
             return sample;
         }
@@ -230,25 +234,23 @@ internal static class HealthCheckTests
                 true));
     }
 
-    private static ProxyConfigurationSnapshot Snapshot(RuntimeRoute route)
+    private static IReadOnlyList<UpstreamHealthCheckTarget> Targets(RuntimeRoute route)
     {
-        return ProxyConfigurationRuntimeMapper.ToRuntimeSnapshot(
-            new ProxyOptions(),
-            new ProxyOperationalOptions(),
-            ProxyAdminSecurityTokenPolicy.Resolve(new ProxyAdminOptions(), static _ => null),
-            new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),
-            1,
-            DateTimeOffset.UnixEpoch,
-            "tests",
-            [],
-            new ProxyConfigurationDiscovery(
-                new ProxyFilesystemLayout("tests", "tests/config", "tests/config/sites", "tests/logs", "tests/certs", "tests/state", "tests/config/proxy.json"),
-                [],
-                [],
-                [])) with
-        {
-            Routes = [route]
-        };
+        return route.Upstreams
+            .Select(upstream => Target(route, upstream))
+            .ToArray();
+    }
+
+    private static UpstreamHealthCheckTarget Target(RuntimeRoute route, RuntimeUpstream upstream)
+    {
+        return new UpstreamHealthCheckTarget(
+            route.Name,
+            upstream,
+            route.HealthCheck.Path,
+            route.HealthCheck.Interval,
+            route.HealthCheck.Timeout,
+            route.HealthCheck.HealthyThreshold,
+            route.HealthCheck.UnhealthyThreshold);
     }
 
     private static RuntimeUpstream Upstream(int port)
@@ -315,12 +317,10 @@ internal static class HealthCheckTests
         public int Calls { get; private set; }
 
         public ValueTask<HealthCheckSample> CheckAsync(
-            RuntimeRoute route,
-            RuntimeUpstream upstream,
+            UpstreamHealthCheckTarget target,
             CancellationToken cancellationToken)
         {
-            _ = route;
-            _ = upstream;
+            _ = target;
             _ = cancellationToken;
             Calls++;
             return ValueTask.FromResult(_sample);

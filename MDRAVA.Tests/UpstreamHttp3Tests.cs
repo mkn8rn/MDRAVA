@@ -289,10 +289,10 @@ internal static class UpstreamHttp3Tests
             applicationProtocols: [new SslApplicationProtocol("not-h3")]);
         var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         var client = new UpstreamHealthCheckClient(new UpstreamConnectionFactory(), new ProxyMetrics());
+        var upstream = Upstream(port, RuntimeUpstreamProtocol.Http3);
 
         var result = await client.CheckAsync(
-            Route([Upstream(port, RuntimeUpstreamProtocol.Http3)]),
-            Upstream(port, RuntimeUpstreamProtocol.Http3),
+            Target(Route([upstream]), upstream),
             timeout.Token);
 
         AssertEx.False(result.Healthy, result.Result);
@@ -353,8 +353,9 @@ internal static class UpstreamHttp3Tests
             [],
             timeout.Token);
         var client = new UpstreamHealthCheckClient(new UpstreamConnectionFactory(), new ProxyMetrics());
+        var upstream = Upstream(port, RuntimeUpstreamProtocol.Http3);
 
-        var healthy = await client.CheckAsync(Route([Upstream(port, RuntimeUpstreamProtocol.Http3)]), Upstream(port, RuntimeUpstreamProtocol.Http3), timeout.Token);
+        var healthy = await client.CheckAsync(Target(Route([upstream]), upstream), timeout.Token);
         var observation = await server.WaitAsync(timeout.Token);
 
         AssertEx.True(healthy.Healthy, healthy.Result);
@@ -1170,6 +1171,18 @@ internal static class UpstreamHttp3Tests
             port,
             1,
             new RuntimeUpstreamTlsOptions(validateCertificate, sniHost));
+    }
+
+    private static UpstreamHealthCheckTarget Target(RuntimeRoute route, RuntimeUpstream upstream)
+    {
+        return new UpstreamHealthCheckTarget(
+            route.Name,
+            upstream,
+            route.HealthCheck.Path,
+            route.HealthCheck.Interval,
+            route.HealthCheck.Timeout,
+            route.HealthCheck.HealthyThreshold,
+            route.HealthCheck.UnhealthyThreshold);
     }
 
     private static ProxyConfigurationLoader CreateLoader(string dataDirectory)

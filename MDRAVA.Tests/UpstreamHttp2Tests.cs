@@ -267,9 +267,11 @@ internal static class UpstreamHttp2Tests
             applicationProtocols: [SslApplicationProtocol.Http11],
             readRequest: false);
         var client = new UpstreamHealthCheckClient(new UpstreamConnectionFactory(), new ProxyMetrics());
+        var healthyUpstream = Upstream(healthyPort, RuntimeUpstreamProtocol.Http2);
+        var wrongAlpnUpstream = Upstream(wrongAlpnPort, RuntimeUpstreamProtocol.Http2);
 
-        var healthy = await client.CheckAsync(Route([Upstream(healthyPort, RuntimeUpstreamProtocol.Http2)]), Upstream(healthyPort, RuntimeUpstreamProtocol.Http2), timeout.Token);
-        var unhealthy = await client.CheckAsync(Route([Upstream(wrongAlpnPort, RuntimeUpstreamProtocol.Http2)]), Upstream(wrongAlpnPort, RuntimeUpstreamProtocol.Http2), timeout.Token);
+        var healthy = await client.CheckAsync(Target(Route([healthyUpstream]), healthyUpstream), timeout.Token);
+        var unhealthy = await client.CheckAsync(Target(Route([wrongAlpnUpstream]), wrongAlpnUpstream), timeout.Token);
         var observation = await healthyServer.WaitAsync(timeout.Token);
         _ = await wrongAlpnServer.WaitAsync(timeout.Token);
 
@@ -628,6 +630,18 @@ internal static class UpstreamHttp2Tests
             port,
             1,
             new RuntimeUpstreamTlsOptions(false, "upstream.test"));
+    }
+
+    private static UpstreamHealthCheckTarget Target(RuntimeRoute route, RuntimeUpstream upstream)
+    {
+        return new UpstreamHealthCheckTarget(
+            route.Name,
+            upstream,
+            route.HealthCheck.Path,
+            route.HealthCheck.Interval,
+            route.HealthCheck.Timeout,
+            route.HealthCheck.HealthyThreshold,
+            route.HealthCheck.UnhealthyThreshold);
     }
 
     private static ProxyConfigurationLoader CreateLoader(string dataDirectory)

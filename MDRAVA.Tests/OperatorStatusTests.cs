@@ -43,8 +43,7 @@ internal static class OperatorStatusTests
         fixture.Store.Replace(Snapshot([listener], [route]));
         fixture.Runtime.ReplaceListeners([ListenerStatus(listener, ProxyListenerState.Active)], null);
         fixture.Health.RecordHealthCheckResult(
-            route,
-            upstream,
+            HealthTarget(route, upstream),
             new HealthCheckSample(true, "status_200"),
             DateTimeOffset.UtcNow);
         var observedAtUtc = new DateTimeOffset(2026, 6, 10, 9, 0, 0, TimeSpan.Zero);
@@ -430,8 +429,7 @@ internal static class OperatorStatusTests
         fixture.Store.Replace(Snapshot([listener], [route]));
         fixture.Runtime.ReplaceListeners([ListenerStatus(listener, ProxyListenerState.Active)], null);
         fixture.Health.RecordHealthCheckResult(
-            route,
-            upstream,
+            HealthTarget(route, upstream),
             new HealthCheckSample(false, "status_500"),
             DateTimeOffset.UtcNow);
 
@@ -736,6 +734,18 @@ internal static class OperatorStatusTests
             5000,
             1,
             RuntimeUpstreamTlsOptions.Default);
+    }
+
+    private static UpstreamHealthCheckTarget HealthTarget(RuntimeRoute route, RuntimeUpstream upstream)
+    {
+        return new UpstreamHealthCheckTarget(
+            route.Name,
+            upstream,
+            route.HealthCheck.Path,
+            route.HealthCheck.Interval,
+            route.HealthCheck.Timeout,
+            route.HealthCheck.HealthyThreshold,
+            route.HealthCheck.UnhealthyThreshold);
     }
 
     private static RuntimeCachePolicy CachePolicy()

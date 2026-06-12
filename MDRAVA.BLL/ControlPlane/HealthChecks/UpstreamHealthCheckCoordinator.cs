@@ -1,5 +1,3 @@
-using MDRAVA.BLL.Configuration;
-
 namespace MDRAVA.BLL.ControlPlane.HealthChecks;
 
 public sealed class UpstreamHealthCheckCoordinator
@@ -26,38 +24,29 @@ public sealed class UpstreamHealthCheckCoordinator
     }
 
     public async ValueTask RunDueChecksAsync(
-        ProxyConfigurationSnapshot snapshot,
+        IReadOnlyList<UpstreamHealthCheckTarget> targets,
         CancellationToken cancellationToken)
     {
         var now = _timeProvider.GetUtcNow();
-        foreach (var route in snapshot.Routes)
+        foreach (var target in targets)
         {
-            if (!route.HealthCheck.Enabled)
+            if (_nextChecks.TryGetValue(target.Upstream.Identity, out var nextCheck)
+                && nextCheck > now)
             {
                 continue;
             }
 
-            foreach (var upstream in route.Upstreams)
-            {
-                if (_nextChecks.TryGetValue(upstream.Identity, out var nextCheck)
-                    && nextCheck > now)
-                {
-                    continue;
-                }
-
-                _nextChecks[upstream.Identity] = now + route.HealthCheck.Interval;
-                await CheckUpstreamAsync(route, upstream, cancellationToken);
-            }
+            _nextChecks[target.Upstream.Identity] = now + target.Interval;
+            await CheckUpstreamAsync(target, cancellationToken);
         }
     }
 
     private async ValueTask CheckUpstreamAsync(
-        RuntimeRoute route,
-        RuntimeUpstream upstream,
+        UpstreamHealthCheckTarget target,
         CancellationToken cancellationToken)
     {
         _metrics.HealthCheckAttempted();
-        var sample = await _client.CheckAsync(route, upstream, cancellationToken);
+        var sample = await _client.CheckAsync(target, cancellationToken);
         if (sample.Healthy)
         {
             _metrics.HealthCheckSucceeded();
@@ -68,10 +57,9 @@ public sealed class UpstreamHealthCheckCoordinator
         }
 
         var state = _healthStore.RecordHealthCheckResult(
-            route,
-            upstream,
+            target,
             sample,
             _timeProvider.GetUtcNow());
-        _events.Checked(route.Name, upstream.Name, upstream.Endpoint, sample.Result, state);
+        _events.Checked(target.RouteName, target.Upstream.Name, target.Upstream.Endpoint, sample.Result, state);
     }
 }

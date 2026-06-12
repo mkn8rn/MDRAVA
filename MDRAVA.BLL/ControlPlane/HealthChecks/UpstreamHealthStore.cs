@@ -42,15 +42,15 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
     }
 
     public UpstreamHealthState RecordHealthCheckResult(
-        RuntimeRoute route,
-        RuntimeUpstream upstream,
+        UpstreamHealthCheckTarget target,
         HealthCheckSample sample,
         DateTimeOffset checkedAtUtc)
     {
+        var upstream = target.Upstream;
         var state = GetOrCreate(upstream);
         lock (state.Gate)
         {
-            state.HealthCheckEnabled = route.HealthCheck.Enabled;
+            state.HealthCheckEnabled = true;
             state.LastResult = sample.Result;
             state.LastCheckedAtUtc = checkedAtUtc;
             var previous = state.State;
@@ -60,7 +60,7 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
                 state.ConsecutiveSuccesses++;
                 state.ConsecutiveFailures = 0;
                 if (state.State != UpstreamHealthState.Healthy
-                    && state.ConsecutiveSuccesses >= route.HealthCheck.HealthyThreshold)
+                    && state.ConsecutiveSuccesses >= target.HealthyThreshold)
                 {
                     state.State = UpstreamHealthState.Healthy;
                 }
@@ -70,7 +70,7 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
                 state.ConsecutiveFailures++;
                 state.ConsecutiveSuccesses = 0;
                 if (state.State != UpstreamHealthState.Unhealthy
-                    && state.ConsecutiveFailures >= route.HealthCheck.UnhealthyThreshold)
+                    && state.ConsecutiveFailures >= target.UnhealthyThreshold)
                 {
                     state.State = UpstreamHealthState.Unhealthy;
                 }

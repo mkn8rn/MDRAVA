@@ -183,7 +183,7 @@ internal static class UpstreamTlsTests
             timeout.Token);
 
         var sample = await new UpstreamHealthCheckClient(new UpstreamConnectionFactory(), new ProxyMetrics())
-            .CheckAsync(route, upstream, timeout.Token);
+            .CheckAsync(Target(route, upstream), timeout.Token);
         var observation = await upstreamTask.WaitAsync(timeout.Token);
 
         AssertEx.True(sample.Healthy, sample.Result);
@@ -329,6 +329,18 @@ internal static class UpstreamTlsTests
             port,
             1,
             tls);
+    }
+
+    private static UpstreamHealthCheckTarget Target(RuntimeRoute route, RuntimeUpstream upstream)
+    {
+        return new UpstreamHealthCheckTarget(
+            route.Name,
+            upstream,
+            route.HealthCheck.Path,
+            route.HealthCheck.Interval,
+            route.HealthCheck.Timeout,
+            route.HealthCheck.HealthyThreshold,
+            route.HealthCheck.UnhealthyThreshold);
     }
 
     private static RuntimeTimeouts Timeouts()

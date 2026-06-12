@@ -430,7 +430,7 @@ internal static class ResilienceTests
 
         using var healthFixture = SelectorFixture.Create();
         var route = Route([first, second], healthEnabled: true);
-        healthFixture.Health.RecordHealthCheckResult(route, first, new HealthCheckSample(false, "failed"), healthFixture.Clock.GetUtcNow());
+        healthFixture.Health.RecordHealthCheckResult(HealthTarget(route, first), new HealthCheckSample(false, "failed"), healthFixture.Clock.GetUtcNow());
         var firstSelection = AssertEx.NotNull(healthFixture.Selector.Select(route));
         AssertEx.Equal("second", firstSelection.Upstream.Name);
 
@@ -938,6 +938,18 @@ internal static class ResilienceTests
     private static CircuitBreakerStatusSource StatusSource(RuntimeUpstream upstream)
     {
         return CircuitBreakerStatusSourceMapper.FromUpstream(upstream);
+    }
+
+    private static UpstreamHealthCheckTarget HealthTarget(RuntimeRoute route, RuntimeUpstream upstream)
+    {
+        return new UpstreamHealthCheckTarget(
+            route.Name,
+            upstream,
+            route.HealthCheck.Path,
+            route.HealthCheck.Interval,
+            route.HealthCheck.Timeout,
+            route.HealthCheck.HealthyThreshold,
+            route.HealthCheck.UnhealthyThreshold);
     }
 
     private sealed class SelectorFixture : IDisposable
