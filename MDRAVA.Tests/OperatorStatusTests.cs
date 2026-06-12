@@ -876,8 +876,13 @@ internal static class OperatorStatusTests
         fixture.Store.Replace(Snapshot([listener], [route]));
         fixture.Runtime.ReplaceListeners([ListenerStatus(listener, ProxyListenerState.Active)], null);
 
-        AssertEx.True(fixture.Circuit.TryAcquire(CircuitBreakerStatusSourceMapper.FromUpstream(upstream), out var lease));
-        fixture.Circuit.RecordFailure(AssertEx.NotNull(lease), "connect_failure");
+        var acquisition = fixture.Circuit.Acquire(CircuitBreakerStatusSourceMapper.FromUpstream(upstream));
+        if (acquisition is not CircuitBreakerAcquisitionResult.AcceptedResult acceptedAcquisition)
+        {
+            throw new InvalidOperationException("Expected accepted circuit breaker acquisition.");
+        }
+
+        fixture.Circuit.RecordFailure(acceptedAcquisition.Lease, "connect_failure");
         var status = fixture.Controller().Get();
 
         AssertEx.Equal("degraded", status.Readiness.State);

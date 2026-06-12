@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Diagnostics.CodeAnalysis;
 using MDRAVA.BLL.Configuration;
 
 namespace MDRAVA.BLL.ControlPlane.Resilience;
@@ -57,12 +56,12 @@ public sealed class CircuitBreakerStore
         }
     }
 
-    public bool TryAcquire(CircuitBreakerStatusSource source, [MaybeNullWhen(false)] out CircuitBreakerLease lease)
+    public CircuitBreakerAcquisitionResult Acquire(CircuitBreakerStatusSource source)
     {
         if (!source.Policy.Enabled)
         {
-            lease = new CircuitBreakerLease(source, enabled: false, halfOpenProbe: false, _ => { });
-            return true;
+            return CircuitBreakerAcquisitionResult.Accepted(
+                new CircuitBreakerLease(source, enabled: false, halfOpenProbe: false, _ => { }));
         }
 
         var state = GetOrCreate(source.UpstreamIdentity);
@@ -71,10 +70,9 @@ public sealed class CircuitBreakerStore
             RefreshOpenState(source.Policy, state, _timeProvider.GetUtcNow());
             if (state.State == CircuitBreakerRuntimeState.Open)
             {
-                lease = null;
                 state.RejectedRequests++;
                 _metrics.CircuitRejected();
-                return false;
+                return CircuitBreakerAcquisitionResult.Rejected;
             }
 
             var halfOpenProbe = state.State == CircuitBreakerRuntimeState.HalfOpen;
@@ -82,17 +80,16 @@ public sealed class CircuitBreakerStore
             {
                 if (state.HalfOpenInFlight >= source.Policy.HalfOpenMaxAttempts)
                 {
-                    lease = null;
                     state.RejectedRequests++;
                     _metrics.CircuitRejected();
-                    return false;
+                    return CircuitBreakerAcquisitionResult.Rejected;
                 }
 
                 state.HalfOpenInFlight++;
             }
 
-            lease = new CircuitBreakerLease(source, enabled: true, halfOpenProbe, ReleaseHalfOpenProbe);
-            return true;
+            return CircuitBreakerAcquisitionResult.Accepted(
+                new CircuitBreakerLease(source, enabled: true, halfOpenProbe, ReleaseHalfOpenProbe));
         }
     }
 
@@ -268,4 +265,32 @@ public sealed class CircuitBreakerStore
 
         public string? LastFailureReason { get; set; }
     }
+}
+
+public abstract record CircuitBreakerAcquisitionResult
+{
+    private CircuitBreakerAcquisitionResult()
+    {
+    }
+
+    public static CircuitBreakerAcquisitionResult Rejected { get; } = new RejectedResult();
+
+    public static CircuitBreakerAcquisitionResult Accepted(CircuitBreakerLease lease)
+    {
+        ArgumentNullException.ThrowIfNull(lease);
+        return new AcceptedResult(lease);
+    }
+
+    public sealed record AcceptedResult : CircuitBreakerAcquisitionResult
+    {
+        public AcceptedResult(CircuitBreakerLease lease)
+        {
+            ArgumentNullException.ThrowIfNull(lease);
+            Lease = lease;
+        }
+
+        public CircuitBreakerLease Lease { get; }
+    }
+
+    public sealed record RejectedResult : CircuitBreakerAcquisitionResult;
 }

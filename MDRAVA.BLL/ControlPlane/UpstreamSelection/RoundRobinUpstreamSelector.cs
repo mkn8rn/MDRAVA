@@ -60,7 +60,8 @@ public sealed class RoundRobinUpstreamSelector : IUpstreamSelector
         while (candidates.Count > 0)
         {
             var selected = SelectWeighted(route, candidates);
-            if (_circuitBreakerStore.TryAcquire(CircuitBreakerStatusSourceMapper.FromUpstream(selected), out var lease))
+            var acquisition = _circuitBreakerStore.Acquire(CircuitBreakerStatusSourceMapper.FromUpstream(selected));
+            if (acquisition is CircuitBreakerAcquisitionResult.AcceptedResult acceptedAcquisition)
             {
                 _metrics.UpstreamSelected(new ProxyUpstreamSelectionMetric(
                     selected.RouteName,
@@ -68,7 +69,7 @@ public sealed class RoundRobinUpstreamSelector : IUpstreamSelector
                     selected.Scheme,
                     selected.Protocol));
                 _healthStore.RecordSelection(UpstreamHealthStateSourceMapper.FromUpstream(selected));
-                return new UpstreamSelection(selected, lease);
+                return new UpstreamSelection(selected, acceptedAcquisition.Lease);
             }
 
             candidates.Remove(selected);
