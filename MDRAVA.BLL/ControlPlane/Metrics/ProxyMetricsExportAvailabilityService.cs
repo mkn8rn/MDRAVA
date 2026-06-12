@@ -12,9 +12,6 @@ public sealed class ProxyMetricsExportAvailabilityService
     public ProxyMetricsExportAvailabilityResult GetAvailability()
     {
         var state = _reader.Read();
-        return new ProxyMetricsExportAvailabilityResult(
-            state.HasActiveConfiguration,
-            state.MetricsExportEnabled,
-            state.HasActiveConfiguration && state.MetricsExportEnabled);
+        return ProxyMetricsExportAvailabilityResult.FromState(state);
     }
 }

@@ -17,7 +17,27 @@ public sealed record ProxyMetricsExportAvailabilityState(
     }
 }
 
-public sealed record ProxyMetricsExportAvailabilityResult(
-    bool HasActiveConfiguration,
-    bool MetricsExportEnabled,
-    bool Available);
+public sealed record ProxyMetricsExportAvailabilityResult
+{
+    private ProxyMetricsExportAvailabilityResult(
+        bool hasActiveConfiguration,
+        bool metricsExportEnabled)
+    {
+        HasActiveConfiguration = hasActiveConfiguration;
+        MetricsExportEnabled = metricsExportEnabled;
+    }
+
+    public bool HasActiveConfiguration { get; }
+
+    public bool MetricsExportEnabled { get; }
+
+    public bool Available => HasActiveConfiguration && MetricsExportEnabled;
+
+    public static ProxyMetricsExportAvailabilityResult FromState(
+        ProxyMetricsExportAvailabilityState state)
+    {
+        return new ProxyMetricsExportAvailabilityResult(
+            hasActiveConfiguration: state.HasActiveConfiguration,
+            metricsExportEnabled: state.MetricsExportEnabled);
+    }
+}

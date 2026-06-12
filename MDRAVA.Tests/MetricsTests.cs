@@ -180,10 +180,21 @@ internal static class MetricsTests
             new FixedMetricsExportAvailabilityReader(true, false)).GetAvailability();
         var available = new ProxyMetricsExportAvailabilityService(
             new FixedMetricsExportAvailabilityReader(true, true)).GetAvailability();
+        var fromState = ProxyMetricsExportAvailabilityResult.FromState(
+            new ProxyMetricsExportAvailabilityState(
+                HasActiveConfiguration: true,
+                MetricsExportEnabled: true));
 
         AssertEx.False(missing.Available);
+        AssertEx.False(missing.HasActiveConfiguration);
+        AssertEx.False(missing.MetricsExportEnabled);
         AssertEx.False(disabled.Available);
+        AssertEx.True(disabled.HasActiveConfiguration);
+        AssertEx.False(disabled.MetricsExportEnabled);
         AssertEx.True(available.Available);
+        AssertEx.True(fromState.Available);
+        AssertEx.True(fromState.HasActiveConfiguration);
+        AssertEx.True(fromState.MetricsExportEnabled);
     }
 
     public static void MetricsExportAvailabilityReaderNamesMissingConfiguration()
