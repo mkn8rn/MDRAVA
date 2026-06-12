@@ -1302,9 +1302,9 @@ public sealed class ProxyForwarder
             builder.Append(header.Name).Append(": ").Append(header.Value).Append("\r\n");
         }
 
-        if (_altSvcPolicy.TryCreateHeader(listener, out var altSvc))
+        if (_altSvcPolicy.CreateHeader(listener) is Http3AltSvcHeaderResult.EmittedResult altSvc)
         {
-            builder.Append(altSvc.Name).Append(": ").Append(altSvc.Value).Append("\r\n");
+            builder.Append(altSvc.Header.Name).Append(": ").Append(altSvc.Header.Value).Append("\r\n");
         }
 
         builder.Append("X-Request-Id: ").Append(requestId).Append("\r\n");
@@ -1350,9 +1350,9 @@ public sealed class ProxyForwarder
             builder.Append(header.Name).Append(": ").Append(header.Value).Append("\r\n");
         }
 
-        if (_altSvcPolicy.TryCreateHeader(listener, out var altSvc))
+        if (_altSvcPolicy.CreateHeader(listener) is Http3AltSvcHeaderResult.EmittedResult altSvc)
         {
-            builder.Append(altSvc.Name).Append(": ").Append(altSvc.Value).Append("\r\n");
+            builder.Append(altSvc.Header.Name).Append(": ").Append(altSvc.Header.Value).Append("\r\n");
         }
 
         builder.Append("X-Request-Id: ").Append(requestId).Append("\r\n");

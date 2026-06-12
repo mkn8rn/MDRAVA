@@ -484,10 +484,11 @@ internal static class ClientHttp3Tests
         var metrics = new ProxyMetrics();
         var policy = new Http3AltSvcPolicy(source, metrics);
 
-        var created = policy.TryCreateHeader(listener, out var header);
+        var result = policy.CreateHeader(listener);
         var snapshot = metrics.Snapshot();
 
-        AssertEx.True(created);
+        AssertEx.True(result is Http3AltSvcHeaderResult.EmittedResult);
+        var header = ((Http3AltSvcHeaderResult.EmittedResult)result).Header;
         AssertEx.Equal("Alt-Svc", header.Name);
         AssertEx.Equal("h3=\":8443\"; ma=60", header.Value);
         AssertEx.Equal(1, source.ReadCount);

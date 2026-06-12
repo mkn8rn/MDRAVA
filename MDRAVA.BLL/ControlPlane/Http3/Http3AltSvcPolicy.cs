@@ -17,13 +17,12 @@ public sealed class Http3AltSvcPolicy
         _metrics = metrics;
     }
 
-    public bool TryCreateHeader(RuntimeListener listener, out ProxyHeaderField header)
+    public Http3AltSvcHeaderResult CreateHeader(RuntimeListener listener)
     {
-        header = null!;
         if (!RuntimeHttp3AltSvcPolicy.IsEnabled(listener))
         {
             _metrics.Http3AltSvcSuppressed();
-            return false;
+            return Http3AltSvcHeaderResult.Suppressed;
         }
 
         if (!RuntimeHttp3AltSvcPolicy.HasActiveQuicListener(
@@ -31,13 +30,13 @@ public sealed class Http3AltSvcPolicy
             _runtimeListeners.ReadRuntimeListeners()))
         {
             _metrics.Http3AltSvcSuppressed();
-            return false;
+            return Http3AltSvcHeaderResult.Suppressed;
         }
 
-        header = new ProxyHeaderField(
-            "Alt-Svc",
-            $"h3=\":{listener.Port}\"; ma={listener.Http3AltSvc.MaxAgeSeconds}");
         _metrics.Http3AltSvcEmitted();
-        return true;
+        return Http3AltSvcHeaderResult.Emitted(
+            new ProxyHeaderField(
+                "Alt-Svc",
+                $"h3=\":{listener.Port}\"; ma={listener.Http3AltSvc.MaxAgeSeconds}"));
     }
 }

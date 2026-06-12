@@ -974,9 +974,9 @@ public sealed class ClientConnection
             builder.Append(header.Name).Append(": ").Append(header.Value).Append("\r\n");
         }
 
-        if (_altSvcPolicy.TryCreateHeader(_listener, out var altSvc))
+        if (_altSvcPolicy.CreateHeader(_listener) is Http3AltSvcHeaderResult.EmittedResult altSvc)
         {
-            builder.Append(altSvc.Name).Append(": ").Append(altSvc.Value).Append("\r\n");
+            builder.Append(altSvc.Header.Name).Append(": ").Append(altSvc.Header.Value).Append("\r\n");
         }
 
         builder.Append("Age: ").Append(ageSeconds).Append("\r\n");
@@ -1038,9 +1038,9 @@ public sealed class ClientConnection
         var result = headers
             .Where(static header => !string.Equals(header.Name, "alt-svc", StringComparison.OrdinalIgnoreCase))
             .ToList();
-        if (_altSvcPolicy.TryCreateHeader(_listener, out var altSvc))
+        if (_altSvcPolicy.CreateHeader(_listener) is Http3AltSvcHeaderResult.EmittedResult altSvc)
         {
-            result.Add(altSvc);
+            result.Add(altSvc.Header);
         }
 
         return result;

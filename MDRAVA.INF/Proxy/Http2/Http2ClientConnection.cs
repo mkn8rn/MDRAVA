@@ -943,10 +943,10 @@ public sealed class Http2ClientConnection
 
     private void AddAltSvcHeader(List<ProxyHeaderField> headers)
     {
-        if (_altSvcPolicy.TryCreateHeader(_listener, out var altSvc))
+        if (_altSvcPolicy.CreateHeader(_listener) is Http3AltSvcHeaderResult.EmittedResult altSvc)
         {
             headers.RemoveAll(static header => string.Equals(header.Name, "alt-svc", StringComparison.OrdinalIgnoreCase));
-            headers.Add(altSvc);
+            headers.Add(altSvc.Header);
         }
     }
 
