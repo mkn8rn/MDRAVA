@@ -5,5 +5,5 @@ namespace MDRAVA.BLL.ControlPlane.Routing;
 
 public interface IRouteMatcher
 {
-    RouteMatch? Match(ProxyConfigurationSnapshot snapshot, Http1RequestHead requestHead);
+    RouteMatch? Match(IReadOnlyList<RuntimeRoute> routes, Http1RequestHead requestHead);
 }

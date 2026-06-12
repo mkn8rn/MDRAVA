@@ -392,7 +392,7 @@ public sealed class Http2ClientConnection
                 return;
             }
 
-            var routeMatch = _routeMatcher.Match(_configurationSnapshot, requestHead);
+            var routeMatch = _routeMatcher.Match(_configurationSnapshot.Routes, requestHead);
             if (routeMatch is null)
             {
                 await WriteGeneratedResponseAsync(

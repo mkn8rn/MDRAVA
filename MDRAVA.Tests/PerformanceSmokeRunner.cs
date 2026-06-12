@@ -185,14 +185,14 @@ internal static class PerformanceSmokeRunner
 
         for (var index = 0; index < warmup; index++)
         {
-            matcher.Match(snapshot, request);
+            matcher.Match(snapshot.Routes, request);
         }
 
         var stopwatch = Stopwatch.StartNew();
         RouteMatch? match = null;
         for (var index = 0; index < operations; index++)
         {
-            match = matcher.Match(snapshot, request);
+            match = matcher.Match(snapshot.Routes, request);
         }
 
         stopwatch.Stop();

@@ -21,7 +21,7 @@ public sealed class ProxyRouteDiagnosticsConfigurationSource
             return false;
         }
 
-        snapshot = new ProxyRouteDiagnosticsRuntimeConfigurationSnapshot(runtimeSnapshot);
+        snapshot = new ProxyRouteDiagnosticsRuntimeConfigurationSnapshot(runtimeSnapshot.Listeners, runtimeSnapshot.Routes);
         return true;
     }
 }
@@ -29,12 +29,14 @@ public sealed class ProxyRouteDiagnosticsConfigurationSource
 internal sealed class ProxyRouteDiagnosticsRuntimeConfigurationSnapshot
     : IProxyRouteDiagnosticsConfigurationSnapshot
 {
-    public ProxyRouteDiagnosticsRuntimeConfigurationSnapshot(ProxyConfigurationSnapshot runtimeSnapshot)
+    public ProxyRouteDiagnosticsRuntimeConfigurationSnapshot(
+        IReadOnlyList<RuntimeListener> runtimeListeners,
+        IReadOnlyList<RuntimeRoute> runtimeRoutes)
     {
-        Listeners = runtimeSnapshot.Listeners
+        Listeners = runtimeListeners
             .Select(static listener => new ProxyRouteDiagnosticsRuntimeListener(listener))
             .ToArray();
-        Routes = runtimeSnapshot.Routes
+        Routes = runtimeRoutes
             .Select(static route => new ProxyRouteDiagnosticsRuntimeRoute(route))
             .ToArray();
     }

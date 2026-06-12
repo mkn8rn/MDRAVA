@@ -26,7 +26,7 @@ internal static class RouteDiagnosticsTests
         var matcher = new SingleUpstreamRouteMatcher();
         var requestHead = Request("GET", "/api/users?id=1", "/api/users", "diag.test");
 
-        var direct = matcher.Match(Snapshot(options), requestHead);
+        var direct = matcher.Match(Snapshot(options).Routes, requestHead);
         var dryRun = service.Explain(new RouteMatchDryRunRequest("http", "diag.test", 8080, "GET", "/api/users", "?id=1", NoHeaders(), null, null));
 
         AssertEx.NotNull(direct);
@@ -1020,10 +1020,10 @@ internal static class RouteDiagnosticsTests
     private sealed class FixedRouteDiagnosticsMatcher : IProxyRouteDiagnosticsMatcher
     {
         public IProxyRouteDiagnosticsRoute? Match(
-            IProxyRouteDiagnosticsConfigurationSnapshot snapshot,
+            IReadOnlyList<IProxyRouteDiagnosticsRoute> routes,
             ProxyRouteDiagnosticsRequestHead requestHead)
         {
-            return snapshot.Routes.FirstOrDefault(route =>
+            return routes.FirstOrDefault(route =>
                 HostMatches(route.Host, requestHead.Host)
                 && requestHead.Path.StartsWith(route.PathPrefix, StringComparison.Ordinal));
         }

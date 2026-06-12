@@ -77,7 +77,7 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
                 [new RouteMatchDryRunFinding("warning", "no_matching_listener", "No enabled listener matches the supplied scheme, port, or listener identity.")]));
         }
 
-        var route = _routeMatcher.Match(snapshot, requestInput.RequestHead);
+        var route = _routeMatcher.Match(snapshot.Routes, requestInput.RequestHead);
         if (route is null)
         {
             return Complete(new RouteMatchDryRunResult(

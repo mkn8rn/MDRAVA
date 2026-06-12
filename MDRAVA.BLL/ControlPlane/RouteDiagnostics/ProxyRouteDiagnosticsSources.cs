@@ -18,7 +18,7 @@ public interface IProxyRouteDiagnosticsConfigurationSnapshot
 public interface IProxyRouteDiagnosticsMatcher
 {
     IProxyRouteDiagnosticsRoute? Match(
-        IProxyRouteDiagnosticsConfigurationSnapshot snapshot,
+        IReadOnlyList<IProxyRouteDiagnosticsRoute> routes,
         ProxyRouteDiagnosticsRequestHead requestHead);
 }
 

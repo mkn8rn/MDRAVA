@@ -5,9 +5,9 @@ namespace MDRAVA.BLL.ControlPlane.Routing;
 
 public sealed class SingleUpstreamRouteMatcher : IRouteMatcher
 {
-    public RouteMatch? Match(ProxyConfigurationSnapshot snapshot, Http1RequestHead requestHead)
+    public RouteMatch? Match(IReadOnlyList<RuntimeRoute> routes, Http1RequestHead requestHead)
     {
-        foreach (var route in snapshot.Routes)
+        foreach (var route in routes)
         {
             if (!HostMatches(route.Host, requestHead.Host))
             {

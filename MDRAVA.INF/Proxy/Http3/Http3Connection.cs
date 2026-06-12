@@ -223,7 +223,7 @@ public sealed class Http3Connection
                 return true;
             }
 
-            var routeMatch = _routeMatcher.Match(_configurationSnapshot, requestHead);
+            var routeMatch = _routeMatcher.Match(_configurationSnapshot.Routes, requestHead);
             if (routeMatch is null)
             {
                 await WriteGeneratedResponseAsync(stream, 404, "Not Found", context, requestHead.Method, cancellationToken);

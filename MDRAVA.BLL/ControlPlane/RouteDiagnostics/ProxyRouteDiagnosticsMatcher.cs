@@ -4,10 +4,10 @@ public sealed class ProxyRouteDiagnosticsMatcher
     : IProxyRouteDiagnosticsMatcher
 {
     public IProxyRouteDiagnosticsRoute? Match(
-        IProxyRouteDiagnosticsConfigurationSnapshot snapshot,
+        IReadOnlyList<IProxyRouteDiagnosticsRoute> routes,
         ProxyRouteDiagnosticsRequestHead requestHead)
     {
-        foreach (var route in snapshot.Routes)
+        foreach (var route in routes)
         {
             if (!HostMatches(route.Host, requestHead.Host))
             {

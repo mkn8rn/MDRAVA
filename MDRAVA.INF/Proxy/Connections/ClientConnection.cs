@@ -359,7 +359,7 @@ public sealed class ClientConnection
                     continue;
                 }
 
-                var routeMatch = _routeMatcher.Match(_configurationSnapshot, requestHead);
+                var routeMatch = _routeMatcher.Match(_configurationSnapshot.Routes, requestHead);
                 if (routeMatch is null)
                 {
                     await WriteGeneratedResponseAsync(
@@ -743,7 +743,7 @@ public sealed class ClientConnection
             return false;
         }
 
-        var upgradeRouteMatch = _routeMatcher.Match(_configurationSnapshot, requestHead);
+        var upgradeRouteMatch = _routeMatcher.Match(_configurationSnapshot.Routes, requestHead);
         if (upgradeRouteMatch is null)
         {
             _metrics.UpgradeRequestRejected();

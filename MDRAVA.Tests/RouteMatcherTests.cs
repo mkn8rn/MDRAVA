@@ -31,7 +31,7 @@ internal static class RouteMatcherTests
 
         var request = new Http1RequestHead("GET", "/anything", "/anything", "HTTP/1.1", "example.test", Http1RequestFraming.None, []);
 
-        var match = matcher.Match(snapshot, request);
+        var match = matcher.Match(snapshot.Routes, request);
 
         AssertEx.NotNull(match);
         AssertEx.Equal("default", match!.Route.Name);
@@ -65,7 +65,7 @@ internal static class RouteMatcherTests
 
         var request = new Http1RequestHead("GET", "/api/status", "/api/status", "HTTP/1.1", "example.test:8080", Http1RequestFraming.None, []);
 
-        var match = matcher.Match(snapshot, request);
+        var match = matcher.Match(snapshot.Routes, request);
 
         AssertEx.NotNull(match);
         AssertEx.Equal("example", match!.Route.Name);
@@ -85,7 +85,7 @@ internal static class RouteMatcherTests
         });
         var request = Request("GET", "/resource", "example.test");
 
-        var match = AssertEx.NotNull(matcher.Match(snapshot, request));
+        var match = AssertEx.NotNull(matcher.Match(snapshot.Routes, request));
 
         AssertEx.Equal("exact", match.Route.Name);
         AssertEx.Equal("exact-upstream", match.Route.Upstreams[0].Name);
@@ -104,7 +104,7 @@ internal static class RouteMatcherTests
         });
         var request = Request("GET", "/resource", "example.test:8443");
 
-        var match = AssertEx.NotNull(matcher.Match(snapshot, request));
+        var match = AssertEx.NotNull(matcher.Match(snapshot.Routes, request));
 
         AssertEx.Equal("port-specific", match.Route.Name);
         AssertEx.Equal("port-upstream", match.Route.Upstreams[0].Name);
@@ -123,7 +123,25 @@ internal static class RouteMatcherTests
         });
         var request = Request("GET", "/api/users", "example.test");
 
-        var match = AssertEx.NotNull(matcher.Match(snapshot, request));
+        var match = AssertEx.NotNull(matcher.Match(snapshot.Routes, request));
+
+        AssertEx.Equal("api", match.Route.Name);
+        AssertEx.Equal("api-upstream", match.Route.Upstreams[0].Name);
+    }
+
+    public static void MatchesRuntimeRoutesWithoutConfigurationSnapshot()
+    {
+        var matcher = new SingleUpstreamRouteMatcher();
+        var routes = Snapshot(new ProxyOptions
+        {
+            Routes =
+            [
+                Route("api", "example.test", "/api", "api-upstream", 5001)
+            ]
+        }).Routes;
+        var request = Request("GET", "/api/users", "example.test");
+
+        var match = AssertEx.NotNull(matcher.Match(routes, request));
 
         AssertEx.Equal("api", match.Route.Name);
         AssertEx.Equal("api-upstream", match.Route.Upstreams[0].Name);
