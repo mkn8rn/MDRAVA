@@ -18,15 +18,11 @@ public static class Http3RequestTranslator
         "te"
     };
 
-    public static bool TryBuildRequest(
+    public static Http3RequestTranslationResult BuildRequest(
         IReadOnlyList<ProxyHeaderField> headers,
         RuntimeListener listener,
-        out Http1RequestHead requestHead,
-        out string rejectionReason,
         bool bodyMayFollow = true)
     {
-        requestHead = null!;
-        rejectionReason = "invalid_headers";
         Dictionary<string, string> pseudo = new(StringComparer.Ordinal);
         List<ProxyHeaderField> regularHeaders = [];
         var regularHeaderSeen = false;
@@ -35,14 +31,12 @@ public static class Http3RequestTranslator
         {
             if (header.Name.Length == 0)
             {
-                rejectionReason = "empty_header_name";
-                return false;
+                return Http3RequestTranslationResult.Rejected("empty_header_name");
             }
 
             if (header.Name.Any(static character => char.IsAsciiLetterUpper(character)))
             {
-                rejectionReason = "uppercase_header_name";
-                return false;
+                return Http3RequestTranslationResult.Rejected("uppercase_header_name");
             }
 
             if (header.Name[0] == ':')
@@ -51,8 +45,7 @@ public static class Http3RequestTranslator
                     || pseudo.ContainsKey(header.Name)
                     || !IsAllowedPseudoHeader(header.Name))
                 {
-                    rejectionReason = "invalid_pseudo_header";
-                    return false;
+                    return Http3RequestTranslationResult.Rejected("invalid_pseudo_header");
                 }
 
                 pseudo[header.Name] = header.Value;
@@ -62,14 +55,12 @@ public static class Http3RequestTranslator
             regularHeaderSeen = true;
             if (!IsValidHeaderName(header.Name))
             {
-                rejectionReason = "invalid_header_name";
-                return false;
+                return Http3RequestTranslationResult.Rejected("invalid_header_name");
             }
 
             if (ForbiddenHeaders.Contains(header.Name))
             {
-                rejectionReason = "forbidden_header";
-                return false;
+                return Http3RequestTranslationResult.Rejected("forbidden_header");
             }
 
             regularHeaders.Add(header);
@@ -77,72 +68,65 @@ public static class Http3RequestTranslator
 
         if (!pseudo.TryGetValue(":method", out var method))
         {
-            rejectionReason = "missing_pseudo_header";
-            return false;
+            return Http3RequestTranslationResult.Rejected("missing_pseudo_header");
         }
 
         if (pseudo.ContainsKey(":protocol"))
         {
-            rejectionReason = "extended_connect_unsupported";
-            return false;
+            return Http3RequestTranslationResult.Rejected("extended_connect_unsupported");
         }
 
         if (ProxyRequestMethodPolicy.IsConnectTunnelMethod(method))
         {
-            return TryBuildConnectRequest(pseudo, regularHeaders, listener, method, out requestHead, out rejectionReason);
+            return BuildConnectRequest(pseudo, regularHeaders, listener, method);
         }
 
         if (!pseudo.TryGetValue(":scheme", out var scheme)
             || !pseudo.TryGetValue(":authority", out var authority)
             || !pseudo.TryGetValue(":path", out var target))
         {
-            rejectionReason = "missing_pseudo_header";
-            return false;
+            return Http3RequestTranslationResult.Rejected("missing_pseudo_header");
         }
 
         if (!string.Equals(scheme, "https", StringComparison.OrdinalIgnoreCase)
             || listener.Transport != RuntimeListenerTransport.Https)
         {
-            rejectionReason = "invalid_scheme";
-            return false;
+            return Http3RequestTranslationResult.Rejected("invalid_scheme");
         }
 
         if (!ProxyRequestMethodPolicy.IsValidMethodToken(method))
         {
-            rejectionReason = "invalid_method";
-            return false;
+            return Http3RequestTranslationResult.Rejected("invalid_method");
         }
 
         if (!IsValidAuthority(authority) || !IsValidTarget(target))
         {
-            rejectionReason = "invalid_target";
-            return false;
+            return Http3RequestTranslationResult.Rejected("invalid_target");
         }
 
         var hostHeader = regularHeaders.FirstOrDefault(static header => string.Equals(header.Name, "host", StringComparison.OrdinalIgnoreCase));
         if (hostHeader is not null && !string.Equals(hostHeader.Value, authority, StringComparison.OrdinalIgnoreCase))
         {
-            rejectionReason = "authority_host_mismatch";
-            return false;
+            return Http3RequestTranslationResult.Rejected("authority_host_mismatch");
         }
 
-        if (!TryGetRequestFraming(regularHeaders, method, bodyMayFollow, out var framing, out rejectionReason))
+        if (!TryGetRequestFraming(regularHeaders, method, bodyMayFollow, out var framing, out var rejectionReason))
         {
-            return false;
+            return Http3RequestTranslationResult.Rejected(rejectionReason);
         }
 
         regularHeaders.RemoveAll(static header => string.Equals(header.Name, "host", StringComparison.OrdinalIgnoreCase));
         var path = target.Split('?', 2)[0];
         regularHeaders.Insert(0, new ProxyHeaderField("Host", authority));
-        requestHead = new Http1RequestHead(
-            method,
-            target,
-            path,
-            "HTTP/3",
-            authority,
-            framing,
-            regularHeaders);
-        return true;
+        return Http3RequestTranslationResult.Accepted(
+            new Http1RequestHead(
+                method,
+                target,
+                path,
+                "HTTP/3",
+                authority,
+                framing,
+                regularHeaders));
     }
 
     private static bool IsAllowedPseudoHeader(string name)
@@ -150,64 +134,55 @@ public static class Http3RequestTranslator
         return name is ":method" or ":scheme" or ":authority" or ":path" or ":protocol";
     }
 
-    private static bool TryBuildConnectRequest(
+    private static Http3RequestTranslationResult BuildConnectRequest(
         IReadOnlyDictionary<string, string> pseudo,
         List<ProxyHeaderField> regularHeaders,
         RuntimeListener listener,
-        string method,
-        out Http1RequestHead requestHead,
-        out string rejectionReason)
+        string method)
     {
-        requestHead = null!;
-        rejectionReason = "";
         if (pseudo.ContainsKey(":scheme") || pseudo.ContainsKey(":path"))
         {
-            rejectionReason = "malformed_connect";
-            return false;
+            return Http3RequestTranslationResult.Rejected("malformed_connect");
         }
 
         if (!pseudo.TryGetValue(":authority", out var authority)
             || !IsValidConnectAuthority(authority))
         {
-            rejectionReason = "invalid_connect_target";
-            return false;
+            return Http3RequestTranslationResult.Rejected("invalid_connect_target");
         }
 
         if (listener.Transport != RuntimeListenerTransport.Https)
         {
-            rejectionReason = "invalid_scheme";
-            return false;
+            return Http3RequestTranslationResult.Rejected("invalid_scheme");
         }
 
         var hostHeader = regularHeaders.FirstOrDefault(static header => string.Equals(header.Name, "host", StringComparison.OrdinalIgnoreCase));
         if (hostHeader is not null && !string.Equals(hostHeader.Value, authority, StringComparison.OrdinalIgnoreCase))
         {
-            rejectionReason = "authority_host_mismatch";
-            return false;
+            return Http3RequestTranslationResult.Rejected("authority_host_mismatch");
         }
 
-        if (!TryGetRequestFraming(regularHeaders, method, bodyMayFollow: false, out var framing, out rejectionReason))
+        if (!TryGetRequestFraming(regularHeaders, method, bodyMayFollow: false, out var framing, out var rejectionReason))
         {
-            return false;
+            return Http3RequestTranslationResult.Rejected(rejectionReason);
         }
 
         if (framing.Kind != Http1BodyKind.None)
         {
-            rejectionReason = "connect_body_unsupported";
-            return false;
+            return Http3RequestTranslationResult.Rejected("connect_body_unsupported");
         }
 
         regularHeaders.RemoveAll(static header => string.Equals(header.Name, "host", StringComparison.OrdinalIgnoreCase));
         regularHeaders.Insert(0, new ProxyHeaderField("Host", authority));
-        requestHead = new Http1RequestHead(
-            method,
-            authority,
-            authority,
-            "HTTP/3",
-            authority,
-            Http1RequestFraming.None,
-            regularHeaders);
-        return true;
+        return Http3RequestTranslationResult.Accepted(
+            new Http1RequestHead(
+                method,
+                authority,
+                authority,
+                "HTTP/3",
+                authority,
+                Http1RequestFraming.None,
+                regularHeaders));
     }
 
     private static bool IsValidAuthority(string authority)

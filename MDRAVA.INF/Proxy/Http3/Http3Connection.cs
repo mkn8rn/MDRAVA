@@ -162,19 +162,20 @@ public sealed class Http3Connection
                 return !closeConnection;
             }
 
-            if (!Http3RequestTranslator.TryBuildRequest(
-                    headerRead.Headers,
-                    _listener,
-                    out var requestHead,
-                    out rejectionReason,
-                    bodyMayFollow: true))
+            var translationResult = Http3RequestTranslator.BuildRequest(
+                headerRead.Headers,
+                _listener,
+                bodyMayFollow: true);
+            if (translationResult is not Http3RequestTranslationResult.AcceptedResult translation)
             {
+                rejectionReason = ((Http3RequestTranslationResult.RejectedResult)translationResult).Reason;
                 var closeConnection = RecordProtocolError(rejectionReason);
                 await WriteGeneratedResponseAsync(stream, 400, "Bad Request", context, "GET", cancellationToken);
                 CompleteContext(ref context);
                 return !closeConnection;
             }
 
+            var requestHead = translation.RequestHead;
             _metrics.RequestReceived();
             _metrics.Http3RequestReceived();
             context.SetRequest(requestHead.Method, requestHead.Host, requestHead.Target, ProxyExternalRequestIdPolicy.Extract(requestHead));

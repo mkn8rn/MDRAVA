@@ -1705,13 +1705,8 @@ internal static class ClientHttp3Tests
             new ProxyHeaderField(":path", "/")
         };
 
-        var ok = Http3RequestTranslator.TryBuildRequest(
-            headers,
-            TestHttp3Listener("http3"),
-            out _,
-            out var reason);
+        var reason = RejectHttp3Request(headers);
 
-        AssertEx.False(ok);
         AssertEx.Equal("invalid_pseudo_header", reason);
     }
 
@@ -1726,13 +1721,8 @@ internal static class ClientHttp3Tests
             new ProxyHeaderField(":path", "/")
         };
 
-        var ok = Http3RequestTranslator.TryBuildRequest(
-            headers,
-            TestHttp3Listener("http3"),
-            out _,
-            out var reason);
+        var reason = RejectHttp3Request(headers);
 
-        AssertEx.False(ok);
         AssertEx.Equal("invalid_pseudo_header", reason);
     }
 
@@ -1747,13 +1737,8 @@ internal static class ClientHttp3Tests
             new ProxyHeaderField(":status", "200")
         };
 
-        var ok = Http3RequestTranslator.TryBuildRequest(
-            headers,
-            TestHttp3Listener("http3"),
-            out _,
-            out var reason);
+        var reason = RejectHttp3Request(headers);
 
-        AssertEx.False(ok);
         AssertEx.Equal("invalid_pseudo_header", reason);
     }
 
@@ -1766,13 +1751,8 @@ internal static class ClientHttp3Tests
             new ProxyHeaderField(":authority", "localhost")
         };
 
-        var ok = Http3RequestTranslator.TryBuildRequest(
-            headers,
-            TestHttp3Listener("http3"),
-            out _,
-            out var reason);
+        var reason = RejectHttp3Request(headers);
 
-        AssertEx.False(ok);
         AssertEx.Equal("missing_pseudo_header", reason);
     }
 
@@ -1787,13 +1767,8 @@ internal static class ClientHttp3Tests
             new ProxyHeaderField("connection", "close")
         };
 
-        var ok = Http3RequestTranslator.TryBuildRequest(
-            headers,
-            TestHttp3Listener("http3"),
-            out _,
-            out var reason);
+        var reason = RejectHttp3Request(headers);
 
-        AssertEx.False(ok);
         AssertEx.Equal("forbidden_header", reason);
     }
 
@@ -1808,13 +1783,8 @@ internal static class ClientHttp3Tests
             new ProxyHeaderField("bad header", "value")
         };
 
-        var ok = Http3RequestTranslator.TryBuildRequest(
-            headers,
-            TestHttp3Listener("http3"),
-            out _,
-            out var reason);
+        var reason = RejectHttp3Request(headers);
 
-        AssertEx.False(ok);
         AssertEx.Equal("invalid_header_name", reason);
     }
 
@@ -1828,13 +1798,8 @@ internal static class ClientHttp3Tests
             new ProxyHeaderField(":path", "/")
         };
 
-        var ok = Http3RequestTranslator.TryBuildRequest(
-            headers,
-            TestHttp3Listener("http3"),
-            out _,
-            out var reason);
+        var reason = RejectHttp3Request(headers);
 
-        AssertEx.False(ok);
         AssertEx.Equal("invalid_method", reason);
     }
 
@@ -1855,20 +1820,10 @@ internal static class ClientHttp3Tests
             new ProxyHeaderField(":path", "/fragment#bad")
         };
 
-        var authorityOk = Http3RequestTranslator.TryBuildRequest(
-            badAuthority,
-            TestHttp3Listener("http3"),
-            out _,
-            out var authorityReason);
-        var pathOk = Http3RequestTranslator.TryBuildRequest(
-            badPath,
-            TestHttp3Listener("http3"),
-            out _,
-            out var pathReason);
+        var authorityReason = RejectHttp3Request(badAuthority);
+        var pathReason = RejectHttp3Request(badPath);
 
-        AssertEx.False(authorityOk);
         AssertEx.Equal("invalid_target", authorityReason);
-        AssertEx.False(pathOk);
         AssertEx.Equal("invalid_target", pathReason);
     }
 
@@ -1887,21 +1842,19 @@ internal static class ClientHttp3Tests
             new ProxyHeaderField("content-length", "1")
         };
 
-        var pathOk = Http3RequestTranslator.TryBuildRequest(
-            connectWithPath,
-            TestHttp3Listener("http3"),
-            out _,
-            out var pathReason);
-        var bodyOk = Http3RequestTranslator.TryBuildRequest(
-            connectWithBody,
-            TestHttp3Listener("http3"),
-            out _,
-            out var bodyReason);
+        var pathReason = RejectHttp3Request(connectWithPath);
+        var bodyReason = RejectHttp3Request(connectWithBody);
 
-        AssertEx.False(pathOk);
         AssertEx.Equal("malformed_connect", pathReason);
-        AssertEx.False(bodyOk);
         AssertEx.Equal("connect_body_unsupported", bodyReason);
+    }
+
+    private static string RejectHttp3Request(IReadOnlyList<ProxyHeaderField> headers)
+    {
+        var result = Http3RequestTranslator.BuildRequest(headers, TestHttp3Listener("http3"));
+
+        AssertEx.True(result is Http3RequestTranslationResult.RejectedResult);
+        return ((Http3RequestTranslationResult.RejectedResult)result).Reason;
     }
 
     public static void MetricsIncludeHttp3Counters()
