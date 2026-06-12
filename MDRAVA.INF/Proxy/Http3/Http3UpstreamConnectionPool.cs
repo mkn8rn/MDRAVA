@@ -39,12 +39,13 @@ public sealed class Http3UpstreamConnectionPool : IDisposable
         {
             ThrowIfDisposed();
             await PruneExpiredIdleConnectionsAsync(key, timeouts.UpstreamIdleConnectionLifetime);
-            if (TryReserveExistingConnection(key, timeouts.UpstreamIdleConnectionLifetime, out var pooled))
+            if (ReserveExistingConnection(key, timeouts.UpstreamIdleConnectionLifetime)
+                is ExistingConnectionReservation.Reserved reserved)
             {
                 _metrics.UpstreamHttp3PoolConnectionReused();
                 return await OpenReservedStreamAsync(
                     key,
-                    pooled,
+                    reserved.Connection,
                     timeouts,
                     maxFramePayloadBytes,
                     cancellationToken);
@@ -74,7 +75,7 @@ public sealed class Http3UpstreamConnectionPool : IDisposable
                 throw;
             }
 
-            pooled = new Http3UpstreamPooledConnection(
+            var pooled = new Http3UpstreamPooledConnection(
                 key,
                 transport,
                 _metrics,
@@ -148,18 +149,16 @@ public sealed class Http3UpstreamConnectionPool : IDisposable
         return $"{endpoint.PoolKey}|alpn=h3|qpack=static-zero";
     }
 
-    private bool TryReserveExistingConnection(
+    private ExistingConnectionReservation ReserveExistingConnection(
         string key,
-        TimeSpan idleLifetime,
-        out Http3UpstreamPooledConnection pooled)
+        TimeSpan idleLifetime)
     {
-        pooled = null!;
         List<Http3UpstreamPooledConnection>? connections;
         lock (_gate)
         {
             if (!_connections.TryGetValue(key, out connections))
             {
-                return false;
+                return ExistingConnectionReservation.Unavailable;
             }
         }
 
@@ -170,11 +169,38 @@ public sealed class Http3UpstreamConnectionPool : IDisposable
                 continue;
             }
 
-            pooled = connection;
-            return true;
+            return ExistingConnectionReservation.Reserve(connection);
         }
 
-        return false;
+        return ExistingConnectionReservation.Unavailable;
+    }
+
+    private abstract record ExistingConnectionReservation
+    {
+        private ExistingConnectionReservation()
+        {
+        }
+
+        public static ExistingConnectionReservation Unavailable { get; } = new UnavailableReservation();
+
+        public static ExistingConnectionReservation Reserve(Http3UpstreamPooledConnection connection)
+        {
+            return new Reserved(connection);
+        }
+
+        public sealed record Reserved : ExistingConnectionReservation
+        {
+            public Reserved(Http3UpstreamPooledConnection connection)
+            {
+                ArgumentNullException.ThrowIfNull(connection);
+
+                Connection = connection;
+            }
+
+            public Http3UpstreamPooledConnection Connection { get; }
+        }
+
+        private sealed record UnavailableReservation : ExistingConnectionReservation;
     }
 
     private async ValueTask PruneExpiredIdleConnectionsAsync(string key, TimeSpan idleLifetime)
