@@ -926,14 +926,14 @@ internal static class RouteDiagnosticsTests
 
     private sealed class FixedConfigLintRuntimeStateSource : IProxyConfigLintRuntimeStateSource
     {
-        private readonly IReadOnlyList<ProxyListenerStatus> _listeners;
+        private readonly IReadOnlyList<ProxyConfigLintRuntimeListenerState> _listeners;
 
-        public FixedConfigLintRuntimeStateSource(IReadOnlyList<ProxyListenerStatus> listeners)
+        public FixedConfigLintRuntimeStateSource(IReadOnlyList<ProxyConfigLintRuntimeListenerState> listeners)
         {
             _listeners = listeners;
         }
 
-        public IReadOnlyList<ProxyListenerStatus> GetListeners()
+        public IReadOnlyList<ProxyConfigLintRuntimeListenerState> GetListenerStates()
         {
             return _listeners;
         }

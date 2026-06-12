@@ -42,8 +42,15 @@ public sealed class ProxyConfigLintRuntimeStateSource : IProxyConfigLintRuntimeS
         _runtimeState = runtimeState;
     }
 
-    public IReadOnlyList<ProxyListenerStatus> GetListeners()
+    public IReadOnlyList<ProxyConfigLintRuntimeListenerState> GetListenerStates()
     {
-        return _runtimeState.Snapshot().Listeners;
+        return _runtimeState
+            .Snapshot()
+            .Listeners
+            .Select(static listener => new ProxyConfigLintRuntimeListenerState(
+                listener.Identity,
+                listener.Kind,
+                listener.State == ProxyListenerState.Active))
+            .ToArray();
     }
 }

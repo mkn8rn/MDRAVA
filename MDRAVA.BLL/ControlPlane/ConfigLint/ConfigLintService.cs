@@ -1,6 +1,5 @@
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
-using MDRAVA.BLL.ControlPlane.Listeners;
 using MDRAVA.BLL.Http;
 using System.Text;
 
@@ -144,7 +143,7 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
             findings.Add(Warning("overlapping_listener_bind", $"Multiple enabled listeners share bind identity {group.Key}.", sourceName, "listeners", "Keep only one enabled listener per address, port, and transport."));
         }
 
-        IReadOnlyList<ProxyListenerStatus> runtimeListeners = activeRuntime ? _runtimeStateSource.GetListeners() : [];
+        IReadOnlyList<ProxyConfigLintRuntimeListenerState> runtimeListeners = activeRuntime ? _runtimeStateSource.GetListenerStates() : [];
         foreach (var listener in snapshot.Listeners)
         {
             var path = $"listeners[{listener.Name}]";
@@ -163,7 +162,7 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
                 var ready = activeRuntime
                     && listener.QuicIdentityKey is not null
                     && runtimeListeners.Any(runtime => string.Equals(runtime.Kind, "quic", StringComparison.OrdinalIgnoreCase)
-                        && runtime.State == ProxyListenerState.Active
+                        && runtime.Active
                         && string.Equals(runtime.Identity, listener.QuicIdentityKey, StringComparison.OrdinalIgnoreCase));
                 if (!ready)
                 {

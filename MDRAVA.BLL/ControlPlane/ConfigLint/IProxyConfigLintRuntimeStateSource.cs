@@ -1,8 +1,11 @@
-using MDRAVA.BLL.ControlPlane.Listeners;
-
 namespace MDRAVA.BLL.ControlPlane.ConfigLint;
 
 public interface IProxyConfigLintRuntimeStateSource
 {
-    IReadOnlyList<ProxyListenerStatus> GetListeners();
+    IReadOnlyList<ProxyConfigLintRuntimeListenerState> GetListenerStates();
 }
+
+public sealed record ProxyConfigLintRuntimeListenerState(
+    string Identity,
+    string Kind,
+    bool Active);
