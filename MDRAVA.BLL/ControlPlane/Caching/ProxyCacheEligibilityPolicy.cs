@@ -69,9 +69,10 @@ public static class ProxyCacheEligibilityPolicy
             return responseEligibility;
         }
 
-        if (TryGetResponseFramingRejection(policy, responseHead, out var framingReason))
+        var framingEligibility = EvaluateResponseFraming(policy, responseHead);
+        if (framingEligibility is ProxyCacheResponseFramingEligibility.Rejected rejectedFraming)
         {
-            return ProxyCacheEligibilityResult.Reject(framingReason);
+            return ProxyCacheEligibilityResult.Reject(rejectedFraming.Reason);
         }
 
         return ProxyCacheEligibilityResult.Accept();
@@ -97,31 +98,27 @@ public static class ProxyCacheEligibilityPolicy
         return ProxyCacheEligibilityResult.Accept();
     }
 
-    public static bool TryGetResponseFramingRejection(
+    public static ProxyCacheResponseFramingEligibility EvaluateResponseFraming(
         ProxyCachePolicyFacts policy,
-        Http1ResponseHead responseHead,
-        out string reason)
+        Http1ResponseHead responseHead)
     {
-        reason = "";
         if (!policy.Enabled)
         {
-            return false;
+            return ProxyCacheResponseFramingEligibility.Accept();
         }
 
         if (responseHead.Framing.Kind is Http1BodyKind.Chunked or Http1BodyKind.CloseDelimited)
         {
-            reason = ReasonFraming;
-            return true;
+            return ProxyCacheResponseFramingEligibility.Reject(ReasonFraming);
         }
 
         if (responseHead.Framing.Kind == Http1BodyKind.ContentLength
             && responseHead.Framing.ContentLength.GetValueOrDefault() > policy.MaxEntryBytes)
         {
-            reason = ReasonOversized;
-            return true;
+            return ProxyCacheResponseFramingEligibility.Reject(ReasonOversized);
         }
 
-        return false;
+        return ProxyCacheResponseFramingEligibility.Accept();
     }
 
     private static ProxyCacheEligibilityResult EvaluateResponseMetadata(

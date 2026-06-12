@@ -1423,9 +1423,10 @@ public sealed class ProxyForwarder
     private void RecordUncacheableFraming(RuntimeCachePolicy policy, Http1ResponseHead responseHead)
     {
         var policyFacts = ProxyCacheRuntimeMapper.ToPolicyFacts(policy);
-        if (ProxyCacheEligibilityPolicy.TryGetResponseFramingRejection(policyFacts, responseHead, out var reason))
+        if (ProxyCacheEligibilityPolicy.EvaluateResponseFraming(policyFacts, responseHead)
+            is ProxyCacheResponseFramingEligibility.Rejected rejected)
         {
-            _cacheStore.RecordUncacheable(policyFacts, reason);
+            _cacheStore.RecordUncacheable(policyFacts, rejected.Reason);
         }
     }
 
