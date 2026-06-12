@@ -64,6 +64,7 @@ internal static partial class TestRegistry
     Test("Authorization request is not cached by default", Sync(CacheTests.AuthorizationRequestIsNotCachedByDefault), TestTaxonomy.Caching, TestTaxonomy.SecurityNegativePaths),
     Test("Cookie request is not cached by default", Sync(CacheTests.CookieRequestIsNotCachedByDefault), TestTaxonomy.Caching, TestTaxonomy.SecurityNegativePaths),
     Test("Cache eligibility rejects Cookie before buffering", Sync(CacheTests.CacheEligibilityRejectsCookieBeforeBuffering), TestTaxonomy.Caching, TestTaxonomy.SecurityNegativePaths),
+    Test("Cache eligibility result names accepted and rejected outcomes", Sync(CacheTests.CacheEligibilityResultNamesAcceptedAndRejectedOutcomes), TestTaxonomy.Caching),
     Test("Set-Cookie response is not cached by default", Sync(CacheTests.SetCookieResponseIsNotCachedByDefault), TestTaxonomy.Caching, TestTaxonomy.SecurityNegativePaths),
     Test("Cache-Control no-store is not cached", Sync(CacheTests.NoStoreResponseIsNotCached), TestTaxonomy.Caching, TestTaxonomy.SecurityNegativePaths),
     Test("Cache eligibility rejects no-store before buffering", Sync(CacheTests.CacheEligibilityRejectsNoStoreBeforeBuffering), TestTaxonomy.Caching, TestTaxonomy.SecurityNegativePaths),

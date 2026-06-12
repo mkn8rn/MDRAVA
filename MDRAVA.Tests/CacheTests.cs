@@ -201,6 +201,17 @@ internal static class CacheTests
         AssertEx.Equal(ProxyCacheEligibilityPolicy.ReasonCookie, result.RejectionReason);
     }
 
+    public static void CacheEligibilityResultNamesAcceptedAndRejectedOutcomes()
+    {
+        var accepted = ProxyCacheEligibilityResult.Accept();
+        var rejected = ProxyCacheEligibilityResult.Reject(ProxyCacheEligibilityPolicy.ReasonCookie);
+
+        AssertEx.True(accepted.CanCache);
+        AssertEx.Equal<string?>(null, accepted.RejectionReason);
+        AssertEx.False(rejected.CanCache);
+        AssertEx.Equal(ProxyCacheEligibilityPolicy.ReasonCookie, rejected.RejectionReason);
+    }
+
     public static void SetCookieResponseIsNotCachedByDefault()
     {
         AssertRejectedResponse([new ProxyHeaderField("Set-Cookie", "id=1")]);
