@@ -1,0 +1,160 @@
+using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane.HealthChecks;
+using MDRAVA.BLL.ControlPlane.Http3;
+using MDRAVA.BLL.ControlPlane.Listeners;
+using MDRAVA.BLL.ControlPlane.Metrics;
+
+namespace MDRAVA.BLL.ControlPlane.Status;
+
+public static class ProxyConfiguredListenerSummarySourceMapper
+{
+    public static IReadOnlyList<ProxyConfiguredListenerSummarySource> FromSnapshot(
+        ProxyConfigurationSnapshot? snapshot)
+    {
+        return snapshot?.Listeners
+            .Select(static listener => new ProxyConfiguredListenerSummarySource(
+                listener.Enabled,
+                listener.Protocols.HasFlag(RuntimeListenerProtocols.Http1),
+                listener.Protocols.HasFlag(RuntimeListenerProtocols.Http2),
+                listener.Http3.EnabledForTraffic))
+            .ToArray() ?? [];
+    }
+}
+
+public static class ProxyRuntimeListenerSummarySourceMapper
+{
+    public static IReadOnlyList<ProxyRuntimeListenerSummarySource> FromRuntime(
+        ProxyRuntimeSnapshot runtime)
+    {
+        return runtime.Listeners
+            .Select(static listener => new ProxyRuntimeListenerSummarySource(
+                string.Equals(listener.Kind, "quic", StringComparison.OrdinalIgnoreCase),
+                listener.State))
+            .ToArray();
+    }
+}
+
+public static class ProxyRouteSummarySourceMapper
+{
+    public static IReadOnlyList<ProxyRouteSummarySource> FromSnapshot(ProxyConfigurationSnapshot? snapshot)
+    {
+        return snapshot?.Routes
+            .Select(static route => new ProxyRouteSummarySource(
+                route.SiteName,
+                route.Action == RuntimeRouteAction.Proxy,
+                route.Cache.Enabled,
+                route.Upstreams.Any(static upstream => RuntimeUpstreamProtocol.IsHttp3(upstream.Protocol))))
+            .ToArray() ?? [];
+    }
+}
+
+public static class ProxyCertificateSummarySourceMapper
+{
+    public static ProxyCertificateSummarySource? FromSnapshot(ProxyConfigurationSnapshot? snapshot)
+    {
+        if (snapshot is null)
+        {
+            return null;
+        }
+
+        List<string> referenced = [];
+        foreach (var listener in snapshot.Listeners)
+        {
+            if (!string.IsNullOrWhiteSpace(listener.DefaultCertificateId))
+            {
+                referenced.Add(listener.DefaultCertificateId);
+            }
+
+            foreach (var binding in listener.SniCertificates)
+            {
+                referenced.Add(binding.CertificateId);
+            }
+        }
+
+        return new ProxyCertificateSummarySource(
+            referenced,
+            snapshot.Certificates.Values
+                .Select(static certificate => new ProxyCertificateValiditySource(
+                    certificate.Id,
+                    certificate.Certificate.NotBefore,
+                    certificate.Certificate.NotAfter))
+                .ToArray());
+    }
+}
+
+public static class ProxyAcmeSummaryConfigurationSourceMapper
+{
+    public static ProxyAcmeSummaryConfigurationSource? FromSnapshot(ProxyConfigurationSnapshot? snapshot)
+    {
+        return snapshot is null
+            ? null
+            : new ProxyAcmeSummaryConfigurationSource(
+                snapshot.Acme.Enabled,
+                snapshot.Acme.Certificates.Count(static certificate => certificate.Enabled));
+    }
+}
+
+public static class ProxyUpstreamSummarySourceMapper
+{
+    public static IReadOnlyList<ProxyUpstreamSummarySource> FromStatusResponses(
+        IReadOnlyList<ProxyUpstreamStatusResponse> upstreams)
+    {
+        return upstreams
+            .Select(static upstream => new ProxyUpstreamSummarySource(
+                upstream.HealthState,
+                upstream.HealthCheckEnabled,
+                upstream.CircuitBreaker.Enabled,
+                upstream.CircuitBreaker.State))
+            .ToArray();
+    }
+}
+
+public static class ProxyLimitSummarySourceMapper
+{
+    public static ProxyLimitConfigurationSummarySource? FromConfiguration(ProxyConfigurationSnapshot? snapshot)
+    {
+        if (snapshot is null)
+        {
+            return null;
+        }
+
+        return new ProxyLimitConfigurationSummarySource(
+            snapshot.Limits.MaxActiveClientConnections,
+            snapshot.Limits.MaxConcurrentTlsHandshakes,
+            snapshot.Limits.RequestsPerMinutePerIp);
+    }
+
+    public static ProxyLimitRuntimeSummarySource FromMetrics(ProxyMetricsSnapshot metrics)
+    {
+        return new ProxyLimitRuntimeSummarySource(
+            metrics.ActiveConnections,
+            metrics.ActiveTlsHandshakes,
+            metrics.ActiveHttp2Streams,
+            metrics.ActiveHttp3Streams,
+            metrics.ActiveUpstreamHttp3Streams);
+    }
+}
+
+public static class ProxyLogSummarySourceMapper
+{
+    public static ProxyLogSummarySource FromStatus(ProxyLogPersistenceStatus logPersistence)
+    {
+        return new ProxyLogSummarySource(
+            logPersistence.AccessLogEnabled,
+            logPersistence.AdminAuditEnabled,
+            logPersistence.State,
+            logPersistence.Reason);
+    }
+}
+
+public static class ProxyShutdownSummarySourceMapper
+{
+    public static ProxyShutdownSummarySource FromRuntime(ProxyRuntimeSnapshot runtime)
+    {
+        return new ProxyShutdownSummarySource(
+            runtime.IsRunning,
+            runtime.IsShuttingDown,
+            runtime.ShutdownStartedAtUtc,
+            runtime.ShutdownDeadlineUtc);
+    }
+}
