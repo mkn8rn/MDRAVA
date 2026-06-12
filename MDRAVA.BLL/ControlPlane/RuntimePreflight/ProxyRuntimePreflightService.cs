@@ -81,28 +81,11 @@ public sealed class ProxyRuntimePreflightService : IProxyStatusRuntimePreflightS
             if (requirement.Kind != ProxyRuntimePreflightDirectoryKind.Data
                 && !_pathSafety.TryGetSafeRelativePath(dataDirectory, path, out _))
             {
-                return new ProxyRuntimePreflightCheck(
-                    requirement.Name,
-                    requirement.RelativePath,
-                    Exists: false,
-                    Created: false,
-                    CanRead: false,
-                    CanWrite: false,
-                    requirement.Critical ? ProxyStatusText.Error : ProxyStatusText.Warning,
-                    "unsafe_path");
+                return ProxyRuntimePreflightCheckFactory.UnsafePath(requirement);
             }
 
             var result = _directoryProbe.Probe(path, createMissing);
-            var classification = ProxyRuntimePreflightProbePolicy.Classify(result, requirement.Critical);
-            return new ProxyRuntimePreflightCheck(
-                requirement.Name,
-                requirement.RelativePath,
-                result.Exists,
-                result.Created,
-                result.CanRead,
-                result.CanWrite,
-                classification.Severity,
-                classification.Reason);
+            return ProxyRuntimePreflightCheckFactory.FromProbeResult(requirement, result);
         }
     }
 

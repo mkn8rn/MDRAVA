@@ -56,6 +56,7 @@ internal static partial class TestRegistry
     Test("Runtime preflight probe policy classifies reason and severity", Sync(RuntimePreflightTests.RuntimePreflightProbePolicyClassifiesReasonAndSeverity), TestTaxonomy.Config),
     Test("Runtime preflight directory policy lists expected directories", Sync(RuntimePreflightTests.RuntimePreflightDirectoryPolicyListsExpectedDirectories), TestTaxonomy.Config),
     Test("Runtime preflight status builder builds state and bounded reasons", Sync(RuntimePreflightTests.RuntimePreflightStatusBuilderBuildsStateAndBoundedReasons), TestTaxonomy.Config),
+    Test("Runtime preflight check factory builds unsafe and probed checks", Sync(RuntimePreflightTests.RuntimePreflightCheckFactoryBuildsUnsafeAndProbedChecks), TestTaxonomy.Config),
     Test("Admission controller enforces client limit", Sync(HardeningTests.AdmissionControllerEnforcesClientLimit), TestTaxonomy.Limits),
     Test("Admission lease disposal releases client slot", Sync(HardeningTests.AdmissionLeaseDisposalReleasesClientSlot), TestTaxonomy.Limits),
     Test("Admission controller enforces TLS handshake limit", Sync(HardeningTests.AdmissionControllerEnforcesTlsHandshakeLimit), TestTaxonomy.Tls, TestTaxonomy.Limits),

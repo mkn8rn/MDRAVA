@@ -198,6 +198,41 @@ internal static class RuntimePreflightTests
         AssertEx.Equal(3, status.Checks.Count);
     }
 
+    public static void RuntimePreflightCheckFactoryBuildsUnsafeAndProbedChecks()
+    {
+        var logs = new ProxyRuntimePreflightDirectoryRequirement(
+            ProxyRuntimePreflightDirectoryKind.Logs,
+            "logs_directory",
+            "logs",
+            Critical: false);
+        var config = new ProxyRuntimePreflightDirectoryRequirement(
+            ProxyRuntimePreflightDirectoryKind.Config,
+            "config_directory",
+            "config",
+            Critical: true);
+
+        var unsafeCheck = ProxyRuntimePreflightCheckFactory.UnsafePath(logs);
+        var probedCheck = ProxyRuntimePreflightCheckFactory.FromProbeResult(
+            config,
+            new ProxyRuntimeDirectoryProbeResult(
+                Exists: false,
+                Created: false,
+                CanRead: false,
+                CanWrite: false,
+                FailureReason: null));
+
+        AssertEx.Equal("logs_directory", unsafeCheck.Name);
+        AssertEx.Equal("logs", unsafeCheck.RelativePath);
+        AssertEx.False(unsafeCheck.Exists);
+        AssertEx.Equal(ProxyStatusText.Warning, unsafeCheck.Severity);
+        AssertEx.Equal("unsafe_path", unsafeCheck.Reason);
+        AssertEx.Equal("config_directory", probedCheck.Name);
+        AssertEx.Equal("config", probedCheck.RelativePath);
+        AssertEx.False(probedCheck.Exists);
+        AssertEx.Equal(ProxyStatusText.Error, probedCheck.Severity);
+        AssertEx.Equal("missing_directory", probedCheck.Reason);
+    }
+
     private static MdravaDataDirectoryProvider Provider(string dataDirectory)
     {
         return new MdravaDataDirectoryProvider(new MdravaDataDirectoryOptions
