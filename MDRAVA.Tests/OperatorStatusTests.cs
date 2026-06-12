@@ -109,6 +109,22 @@ internal static class OperatorStatusTests
         AssertEx.Equal(reload, summary.LastListenerReload);
     }
 
+    public static void StatusRuntimeSourceReadsRuntimeSummaryWithoutRuntimeSnapshot()
+    {
+        var listener = Listener();
+        var runtime = new ProxyRuntimeState(TimeProvider.System);
+        runtime.ReplaceListeners([ListenerStatus(listener, ProxyListenerState.Active)], null);
+        IProxyStatusRuntimeStateSource source = runtime;
+
+        var summary = source.ReadRuntimeSummary();
+
+        AssertEx.True(summary.ListenerLive);
+        AssertEx.Equal(listener.Name, summary.ListenerName);
+        AssertEx.Equal($"{listener.Address}:{listener.Port}", summary.Endpoint);
+        AssertEx.Equal(1, summary.Listeners.Count);
+        AssertEx.Equal(ProxyListenerState.Active, summary.Listeners[0].State);
+    }
+
     public static void StatusConfigurationSummaryMapperReadsRuntimeConfigurationFactsWithoutSnapshot()
     {
         var loadedAtUtc = new DateTimeOffset(2026, 6, 12, 8, 0, 0, TimeSpan.Zero);

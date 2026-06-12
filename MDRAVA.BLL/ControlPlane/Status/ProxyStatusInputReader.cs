@@ -48,8 +48,7 @@ public sealed class ProxyStatusInputReader : IProxyStatusInputReader
 
     public ProxyStatusInput Read()
     {
-        var runtime = _runtimeSource.ReadRuntime();
-        var runtimeSummary = ProxyStatusRuntimeSummaryMapper.FromRuntime(runtime);
+        var runtimeSummary = _runtimeSource.ReadRuntimeSummary();
         var configuration = _configurationSource.TryReadConfiguration(out var source) ? source : null;
         var readinessConfiguration = configuration?.ReadinessConfiguration
             ?? ProxyStatusReadinessConfigurationSourceMapper.FromConfiguration(null);
@@ -60,7 +59,7 @@ public sealed class ProxyStatusInputReader : IProxyStatusInputReader
                 configuration?.Listeners ?? [],
                 configuration?.Routes ?? []),
             _http3PlatformSupportSource.Read(),
-            Http3SupportSourceMapper.FromRuntimeListeners(runtime.Listeners));
+            Http3SupportSourceMapper.FromRuntimeListeners(runtimeSummary.Listeners));
         var logPersistence = _logPersistenceStore.GetStatus();
         var runtimePreflight = _preflightSource.ReadRuntimePreflight();
         var cacheStatus = _cacheStatusReader.GetStatus();

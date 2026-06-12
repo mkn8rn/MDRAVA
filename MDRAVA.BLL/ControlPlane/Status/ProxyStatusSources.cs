@@ -7,7 +7,7 @@ namespace MDRAVA.BLL.ControlPlane.Status;
 
 public interface IProxyStatusRuntimeStateSource
 {
-    ProxyRuntimeSnapshot ReadRuntime();
+    ProxyStatusRuntimeSummary ReadRuntimeSummary();
 }
 
 public interface IProxyStatusConfigurationSource
