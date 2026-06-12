@@ -1,5 +1,3 @@
-using MDRAVA.BLL.Configuration;
-
 namespace MDRAVA.BLL.ControlPlane.Resilience;
 
 public sealed class CircuitBreakerLease : IDisposable
@@ -8,18 +6,18 @@ public sealed class CircuitBreakerLease : IDisposable
     private int _completed;
 
     internal CircuitBreakerLease(
-        RuntimeUpstream upstream,
+        CircuitBreakerStatusSource source,
         bool enabled,
         bool halfOpenProbe,
         Action<CircuitBreakerLease> release)
     {
-        Upstream = upstream;
+        Source = source;
         Enabled = enabled;
         HalfOpenProbe = halfOpenProbe;
         _release = release;
     }
 
-    public RuntimeUpstream Upstream { get; }
+    public CircuitBreakerStatusSource Source { get; }
 
     public bool Enabled { get; }
 

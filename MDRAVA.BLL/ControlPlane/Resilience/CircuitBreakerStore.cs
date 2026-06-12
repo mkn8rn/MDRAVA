@@ -59,9 +59,10 @@ public sealed class CircuitBreakerStore
 
     public bool TryAcquire(RuntimeUpstream upstream, [MaybeNullWhen(false)] out CircuitBreakerLease lease)
     {
+        var source = CircuitBreakerStatusSourceMapper.FromUpstream(upstream);
         if (!upstream.CircuitBreaker.Enabled)
         {
-            lease = new CircuitBreakerLease(upstream, enabled: false, halfOpenProbe: false, _ => { });
+            lease = new CircuitBreakerLease(source, enabled: false, halfOpenProbe: false, _ => { });
             return true;
         }
 
@@ -91,7 +92,7 @@ public sealed class CircuitBreakerStore
                 state.HalfOpenInFlight++;
             }
 
-            lease = new CircuitBreakerLease(upstream, enabled: true, halfOpenProbe, ReleaseHalfOpenProbe);
+            lease = new CircuitBreakerLease(source, enabled: true, halfOpenProbe, ReleaseHalfOpenProbe);
             return true;
         }
     }
@@ -105,13 +106,13 @@ public sealed class CircuitBreakerStore
             return;
         }
 
-        var state = GetOrCreate(lease.Upstream);
+        var state = GetOrCreate(lease.Source.UpstreamIdentity);
         lock (state.Gate)
         {
             if (lease.HalfOpenProbe)
             {
                 state.HalfOpenInFlight = Math.Max(0, state.HalfOpenInFlight - 1);
-                Close(lease.Upstream, state);
+                Close(state);
                 return;
             }
 
@@ -130,13 +131,13 @@ public sealed class CircuitBreakerStore
             return;
         }
 
-        if (statusCode.HasValue && !ContainsStatus(lease.Upstream.CircuitBreaker.FailureStatusCodes, statusCode.Value))
+        if (statusCode.HasValue && !ContainsStatus(lease.Source.Policy.FailureStatusCodes, statusCode.Value))
         {
             ReleaseHalfOpenProbe(lease);
             return;
         }
 
-        var state = GetOrCreate(lease.Upstream);
+        var state = GetOrCreate(lease.Source.UpstreamIdentity);
         var now = _timeProvider.GetUtcNow();
         lock (state.Gate)
         {
@@ -144,20 +145,20 @@ public sealed class CircuitBreakerStore
             if (lease.HalfOpenProbe)
             {
                 state.HalfOpenInFlight = Math.Max(0, state.HalfOpenInFlight - 1);
-                Open(lease.Upstream, state, now);
+                Open(state, now);
                 return;
             }
 
-            if (state.WindowStartedAtUtc is null || now - state.WindowStartedAtUtc > lease.Upstream.CircuitBreaker.SamplingWindow)
+            if (state.WindowStartedAtUtc is null || now - state.WindowStartedAtUtc > lease.Source.Policy.SamplingWindow)
             {
                 state.WindowStartedAtUtc = now;
                 state.FailureCount = 0;
             }
 
             state.FailureCount++;
-            if (state.FailureCount >= lease.Upstream.CircuitBreaker.FailureThreshold)
+            if (state.FailureCount >= lease.Source.Policy.FailureThreshold)
             {
-                Open(lease.Upstream, state, now);
+                Open(state, now);
             }
         }
     }
@@ -217,7 +218,7 @@ public sealed class CircuitBreakerStore
         }
     }
 
-    private void Open(RuntimeUpstream upstream, MutableCircuitState state, DateTimeOffset now)
+    private void Open(MutableCircuitState state, DateTimeOffset now)
     {
         state.State = CircuitBreakerRuntimeState.Open;
         state.OpenedAtUtc = now;
@@ -227,7 +228,7 @@ public sealed class CircuitBreakerStore
         _metrics.CircuitOpened();
     }
 
-    private void Close(RuntimeUpstream upstream, MutableCircuitState state)
+    private void Close(MutableCircuitState state)
     {
         state.State = CircuitBreakerRuntimeState.Closed;
         state.OpenedAtUtc = null;
@@ -245,7 +246,7 @@ public sealed class CircuitBreakerStore
             return;
         }
 
-        var state = GetOrCreate(lease.Upstream);
+        var state = GetOrCreate(lease.Source.UpstreamIdentity);
         lock (state.Gate)
         {
             state.HalfOpenInFlight = Math.Max(0, state.HalfOpenInFlight - 1);
