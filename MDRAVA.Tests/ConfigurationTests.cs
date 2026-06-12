@@ -65,20 +65,22 @@ internal static class ConfigurationTests
             [],
             []);
         var active = new TestConfigurationProjection("active");
-        var listenerReload = new ProxyListenerReloadResult(
-            true,
+        var listenerReload = ProxyListenerReloadResult.Applied(
             attemptedAtUtc,
-            Added: 1,
-            Removed: 0,
-            Changed: 0,
-            Unchanged: 0,
-            Changes: [],
-            Errors: []);
-        var failedListenerReload = listenerReload with
-        {
-            Succeeded = false,
-            Errors = ["listener failed"]
-        };
+            added: 1,
+            removed: 0,
+            changed: 0,
+            unchanged: 0,
+            changes: [],
+            errors: []);
+        var failedListenerReload = ProxyListenerReloadResult.Failed(
+            attemptedAtUtc,
+            added: 1,
+            removed: 0,
+            changed: 0,
+            unchanged: 0,
+            changes: [],
+            errors: ["listener failed"]);
 
         var loadFailed = ProxyConfigurationReloadResult<TestConfigurationProjection>.LoadFailed(
             sourceDirectory: "data",

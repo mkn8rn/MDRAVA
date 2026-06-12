@@ -110,15 +110,14 @@ internal static class OperatorStatusTests
         var stoppedAt = startedAt.AddMinutes(2);
         var shutdownStartedAt = startedAt.AddMinutes(3);
         var shutdownDeadline = startedAt.AddMinutes(4);
-        var reload = new ProxyListenerReloadResult(
-            Succeeded: false,
-            AttemptedAtUtc: startedAt,
-            Added: 1,
-            Removed: 0,
-            Changed: 0,
-            Unchanged: 0,
-            Changes: [],
-            Errors: ["bind_failed"]);
+        var reload = ProxyListenerReloadResult.Failed(
+            startedAt,
+            added: 1,
+            removed: 0,
+            changed: 0,
+            unchanged: 0,
+            changes: [],
+            errors: ["bind_failed"]);
         var runtime = new ProxyRuntimeSnapshot(
             IsRunning: false,
             ListenerName: "main",
@@ -285,15 +284,14 @@ internal static class OperatorStatusTests
     public static void StatusReadinessSourceMapperConsumesRuntimeSummaryWithoutRuntimeSnapshot()
     {
         var listener = Listener();
-        var reload = new ProxyListenerReloadResult(
-            Succeeded: false,
-            AttemptedAtUtc: DateTimeOffset.UnixEpoch,
-            Added: 0,
-            Removed: 0,
-            Changed: 1,
-            Unchanged: 0,
-            Changes: [],
-            Errors: ["bind_failed"]);
+        var reload = ProxyListenerReloadResult.Failed(
+            DateTimeOffset.UnixEpoch,
+            added: 0,
+            removed: 0,
+            changed: 1,
+            unchanged: 0,
+            changes: [],
+            errors: ["bind_failed"]);
         var runtime = new ProxyStatusRuntimeSummary(
             ListenerLive: false,
             ListenerName: null,
@@ -791,15 +789,14 @@ internal static class OperatorStatusTests
         fixture.Store.Replace(Snapshot([listener], [StaticRoute()]));
         fixture.Runtime.ReplaceListeners(
             [active],
-            new ProxyListenerReloadResult(
-                false,
+            ProxyListenerReloadResult.Failed(
                 DateTimeOffset.UtcNow,
-                Added: 0,
-                Removed: 0,
-                Changed: 0,
-                Unchanged: 1,
-                Changes: [],
-                Errors: ["raw bind failure that should not be copied into readiness"]));
+                added: 0,
+                removed: 0,
+                changed: 0,
+                unchanged: 1,
+                changes: [],
+                errors: ["raw bind failure that should not be copied into readiness"]));
 
         var status = fixture.Controller().Get();
 

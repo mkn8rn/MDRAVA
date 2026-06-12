@@ -172,7 +172,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
                 _metrics.ListenerStartFailed();
                 _metrics.ListenerReloadFailed();
                 var result = BuildReloadResult(
-                    false,
+                    ProxyListenerReloadApplicationState.Failed,
                     attemptedAt,
                     diff,
                     quicDiff,
@@ -237,7 +237,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
 
                 _metrics.ListenerReloadFailed();
                 var result = BuildReloadResult(
-                    false,
+                    ProxyListenerReloadApplicationState.Failed,
                     attemptedAt,
                     diff,
                     quicDiff,
@@ -334,7 +334,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
             }
 
             var success = BuildReloadResult(
-                true,
+                ProxyListenerReloadApplicationState.Applied,
                 attemptedAt,
                 diff,
                 quicDiff,
@@ -549,7 +549,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
     }
 
     private ProxyListenerReloadResult BuildReloadResult(
-        bool succeeded,
+        ProxyListenerReloadApplicationState applicationState,
         DateTimeOffset attemptedAt,
         ProxyListenerDiff diff,
         ProxyListenerDiff quicDiff,
@@ -571,17 +571,41 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
         AddQuicChanges(changes, "changed", quicDiff.Changed, pendingQuic.Count == 0 ? _quicListeners : pendingQuic);
         AddQuicChanges(changes, "unchanged", quicDiff.Unchanged, existingQuic);
 
-        return new ProxyListenerReloadResult(
-            succeeded,
-            attemptedAt,
-            diff.Added.Count + quicDiff.Added.Count,
-            diff.Removed.Count + quicDiff.Removed.Count,
-            diff.Changed.Count + quicDiff.Changed.Count,
-            diff.Unchanged.Count + quicDiff.Unchanged.Count,
-            changes.OrderBy(static change => change.Name, StringComparer.OrdinalIgnoreCase)
-                .ThenBy(static change => change.Action, StringComparer.OrdinalIgnoreCase)
-                .ToArray(),
-            errors);
+        var orderedChanges = changes
+            .OrderBy(static change => change.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(static change => change.Action, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var added = diff.Added.Count + quicDiff.Added.Count;
+        var removed = diff.Removed.Count + quicDiff.Removed.Count;
+        var changed = diff.Changed.Count + quicDiff.Changed.Count;
+        var unchanged = diff.Unchanged.Count + quicDiff.Unchanged.Count;
+
+        return applicationState switch
+        {
+            ProxyListenerReloadApplicationState.Applied => ProxyListenerReloadResult.Applied(
+                attemptedAt,
+                added,
+                removed,
+                changed,
+                unchanged,
+                orderedChanges,
+                errors),
+            ProxyListenerReloadApplicationState.Failed => ProxyListenerReloadResult.Failed(
+                attemptedAt,
+                added,
+                removed,
+                changed,
+                unchanged,
+                orderedChanges,
+                errors),
+            _ => throw new InvalidOperationException($"Unknown listener reload application state '{applicationState}'.")
+        };
+    }
+
+    private enum ProxyListenerReloadApplicationState
+    {
+        Applied,
+        Failed
     }
 
     private static void AddChanges(

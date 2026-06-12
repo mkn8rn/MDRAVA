@@ -33,14 +33,13 @@ internal sealed class ActivatingProxyListenerReloadApplier : IProxyListenerReloa
         CancellationToken cancellationToken)
     {
         activateSnapshot(snapshot);
-        return ValueTask.FromResult(new ProxyListenerReloadResult(
-            true,
+        return ValueTask.FromResult(ProxyListenerReloadResult.Applied(
             DateTimeOffset.UnixEpoch,
-            0,
-            0,
-            0,
-            0,
-            [],
-            []));
+            added: 0,
+            removed: 0,
+            changed: 0,
+            unchanged: 0,
+            changes: [],
+            errors: []));
     }
 }
