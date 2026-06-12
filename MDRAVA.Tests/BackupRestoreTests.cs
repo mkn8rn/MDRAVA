@@ -106,6 +106,24 @@ internal static class BackupRestoreTests
         AssertEx.Equal("manifest_truncated", manifest.Warnings[1].Code);
     }
 
+    public static void BackupManifestEntryFactoryClassifiesFilesystemEntry()
+    {
+        var lastWriteTimeUtc = new DateTimeOffset(2026, 6, 12, 12, 0, 0, TimeSpan.Zero);
+        var file = new ProxyBackupFileSystemEntry(
+            "certs/acme/private-keys/home/current.pfx",
+            SizeBytes: 1234,
+            lastWriteTimeUtc);
+
+        var entry = ProxyBackupManifestEntryFactory.FromFileSystemEntry(file);
+
+        AssertEx.Equal("certs/acme/private-keys/home/current.pfx", entry.RelativePath);
+        AssertEx.Equal("acme_secret_material", entry.Category);
+        AssertEx.Equal("never_export_by_default_sensitive", entry.Classification);
+        AssertEx.True(entry.Sensitive);
+        AssertEx.Equal(1234, entry.SizeBytes);
+        AssertEx.Equal(lastWriteTimeUtc, entry.LastWriteTimeUtc);
+    }
+
     public static void RestoreValidationDirectoryPolicyReportsOnlyMissingRequiredDirectories()
     {
         ProxyBackupDirectoryStatus[] directories =

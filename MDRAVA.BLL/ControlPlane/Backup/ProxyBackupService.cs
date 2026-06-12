@@ -45,14 +45,7 @@ public sealed class ProxyBackupService : IProxyBackupOperations
         {
             foreach (var file in scan.Files)
             {
-                var category = ProxyBackupFileClassificationPolicy.ClassifyFile(file.RelativePath);
-                entries.Add(new ProxyBackupManifestEntry(
-                    file.RelativePath,
-                    category.Category,
-                    category.Classification,
-                    category.Sensitive,
-                    file.SizeBytes,
-                    file.LastWriteTimeUtc));
+                entries.Add(ProxyBackupManifestEntryFactory.FromFileSystemEntry(file));
             }
 
             foreach (var warning in scan.Warnings)
