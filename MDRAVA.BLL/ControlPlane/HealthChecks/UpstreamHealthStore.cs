@@ -38,7 +38,7 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
     {
         var state = GetOrCreate(upstream);
         Interlocked.Increment(ref state.RequestFailures);
-        _metrics.UpstreamRequestFailed(upstream);
+        _metrics.UpstreamRequestFailed();
     }
 
     public UpstreamHealthState RecordHealthCheckResult(

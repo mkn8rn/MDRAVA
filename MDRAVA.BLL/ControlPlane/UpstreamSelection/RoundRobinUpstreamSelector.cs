@@ -60,7 +60,11 @@ public sealed class RoundRobinUpstreamSelector : IUpstreamSelector
             var selected = SelectWeighted(route, candidates);
             if (_circuitBreakerStore.TryAcquire(selected, out var lease))
             {
-                _metrics.UpstreamSelected(selected);
+                _metrics.UpstreamSelected(new ProxyUpstreamSelectionMetric(
+                    selected.RouteName,
+                    selected.Name,
+                    selected.Scheme,
+                    selected.Protocol));
                 _healthStore.RecordSelection(selected);
                 return new UpstreamSelection(route, selected, lease);
             }

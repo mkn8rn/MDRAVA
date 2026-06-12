@@ -1,14 +1,12 @@
-using MDRAVA.BLL.Configuration;
-
 namespace MDRAVA.BLL.ControlPlane.Resilience;
 
 public interface IProxyCircuitBreakerMetricsSink
 {
-    void CircuitOpened(RuntimeUpstream upstream);
+    void CircuitOpened();
 
-    void CircuitHalfOpened(RuntimeUpstream upstream);
+    void CircuitHalfOpened();
 
-    void CircuitClosed(RuntimeUpstream upstream);
+    void CircuitClosed();
 
-    void CircuitRejected(RuntimeUpstream upstream);
+    void CircuitRejected();
 }

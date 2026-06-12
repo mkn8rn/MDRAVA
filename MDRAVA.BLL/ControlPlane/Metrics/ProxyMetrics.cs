@@ -363,14 +363,14 @@ public sealed class ProxyMetrics :
 
     public void TunnelRelayFailed() => Interlocked.Increment(ref _tunnelRelayFailures);
 
-    public void UpstreamSelected(RuntimeUpstream upstream)
+    public void UpstreamSelected(ProxyUpstreamSelectionMetric selection)
     {
         Interlocked.Increment(ref _upstreamSelections);
         var key = new UpstreamSelectionKey(
-            ProxyMetricLabelPolicy.NormalizeValue(upstream.RouteName),
-            ProxyMetricLabelPolicy.NormalizeValue(upstream.Name),
-            ProxyMetricLabelPolicy.NormalizeValue(upstream.Scheme),
-            ProxyMetricLabelPolicy.NormalizeValue(upstream.Protocol));
+            ProxyMetricLabelPolicy.NormalizeValue(selection.Route),
+            ProxyMetricLabelPolicy.NormalizeValue(selection.Upstream),
+            ProxyMetricLabelPolicy.NormalizeValue(selection.Scheme),
+            ProxyMetricLabelPolicy.NormalizeValue(selection.Protocol));
         var counter = _upstreamSelectionsByUpstream.GetOrAdd(key, static _ => new RequestSeriesCounter());
         Interlocked.Increment(ref counter.Count);
     }
@@ -387,7 +387,7 @@ public sealed class ProxyMetrics :
 
     public void UpstreamHealthTransition() => Interlocked.Increment(ref _upstreamHealthTransitions);
 
-    public void UpstreamRequestFailed(RuntimeUpstream upstream) => Interlocked.Increment(ref _upstreamRequestFailures);
+    public void UpstreamRequestFailed() => Interlocked.Increment(ref _upstreamRequestFailures);
 
     public void RequestIdGenerated() => Interlocked.Increment(ref _requestIdsGenerated);
 
@@ -460,13 +460,13 @@ public sealed class ProxyMetrics :
         Interlocked.Increment(ref counter.Count);
     }
 
-    public void CircuitOpened(RuntimeUpstream upstream) => Interlocked.Increment(ref _circuitOpened);
+    public void CircuitOpened() => Interlocked.Increment(ref _circuitOpened);
 
-    public void CircuitHalfOpened(RuntimeUpstream upstream) => Interlocked.Increment(ref _circuitHalfOpened);
+    public void CircuitHalfOpened() => Interlocked.Increment(ref _circuitHalfOpened);
 
-    public void CircuitClosed(RuntimeUpstream upstream) => Interlocked.Increment(ref _circuitClosed);
+    public void CircuitClosed() => Interlocked.Increment(ref _circuitClosed);
 
-    public void CircuitRejected(RuntimeUpstream upstream) => Interlocked.Increment(ref _circuitRejections);
+    public void CircuitRejected() => Interlocked.Increment(ref _circuitRejections);
 
     public void ListenerReloadAttempted() => Interlocked.Increment(ref _listenerReloadAttempts);
 

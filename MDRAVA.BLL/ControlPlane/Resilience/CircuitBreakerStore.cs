@@ -52,7 +52,7 @@ public sealed class CircuitBreakerStore
                     && state.HalfOpenInFlight >= upstream.CircuitBreaker.HalfOpenMaxAttempts))
             {
                 state.RejectedRequests++;
-                _metrics.CircuitRejected(upstream);
+                _metrics.CircuitRejected();
             }
         }
     }
@@ -73,7 +73,7 @@ public sealed class CircuitBreakerStore
             {
                 lease = null;
                 state.RejectedRequests++;
-                _metrics.CircuitRejected(upstream);
+                _metrics.CircuitRejected();
                 return false;
             }
 
@@ -84,7 +84,7 @@ public sealed class CircuitBreakerStore
                 {
                     lease = null;
                     state.RejectedRequests++;
-                    _metrics.CircuitRejected(upstream);
+                    _metrics.CircuitRejected();
                     return false;
                 }
 
@@ -208,7 +208,7 @@ public sealed class CircuitBreakerStore
         {
             state.State = CircuitBreakerRuntimeState.HalfOpen;
             state.HalfOpenInFlight = 0;
-            _metrics.CircuitHalfOpened(upstream);
+            _metrics.CircuitHalfOpened();
         }
     }
 
@@ -219,7 +219,7 @@ public sealed class CircuitBreakerStore
         state.HalfOpenInFlight = 0;
         state.WindowStartedAtUtc = now;
         state.FailureCount = 0;
-        _metrics.CircuitOpened(upstream);
+        _metrics.CircuitOpened();
     }
 
     private void Close(RuntimeUpstream upstream, MutableCircuitState state)
@@ -230,7 +230,7 @@ public sealed class CircuitBreakerStore
         state.FailureCount = 0;
         state.HalfOpenInFlight = 0;
         state.LastFailureReason = null;
-        _metrics.CircuitClosed(upstream);
+        _metrics.CircuitClosed();
     }
 
     private void ReleaseHalfOpenProbe(CircuitBreakerLease lease)
