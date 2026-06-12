@@ -60,6 +60,6 @@ public sealed class AcmeRenewalService : BackgroundService
     private TimeSpan ResolveDelay()
     {
         _configurationStore.TryGetSnapshot(out var snapshot);
-        return _schedulePolicy.ResolveDelay(snapshot);
+        return _schedulePolicy.ResolveDelay(AcmeRenewalScheduleInputMapper.FromSnapshot(snapshot));
     }
 }
