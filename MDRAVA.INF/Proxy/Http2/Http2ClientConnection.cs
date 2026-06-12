@@ -706,12 +706,13 @@ public sealed class Http2ClientConnection
         string requestId,
         CancellationToken cancellationToken)
     {
-        var retryAllowed = ProxyRetryPolicy.IsRetryAllowed(route, requestHead, out var skipReason);
-        if (!retryAllowed && skipReason is not null)
+        var retryAdmission = ProxyRetryPolicy.EvaluateAdmission(route, requestHead);
+        if (retryAdmission is ProxyRetryAdmissionDecision.SkippedDecision skippedAdmission)
         {
-            _metrics.RetrySkipped(skipReason);
+            _metrics.RetrySkipped(skippedAdmission.Reason);
         }
 
+        var retryAllowed = retryAdmission == ProxyRetryAdmissionDecision.Allowed;
         var maxAttempts = retryAllowed ? route.Retry.MaxAttempts : 1;
         ForwardingResult? lastResult = null;
         for (var attempt = 1; attempt <= maxAttempts; attempt++)
@@ -765,9 +766,10 @@ public sealed class Http2ClientConnection
             lastResult = result;
             RecordUpstreamAttemptResult(selection, result);
 
-            string? finalSkipReason = null;
-            if (retryAllowed
-                && ProxyRetryPolicy.ShouldRetry(route.Retry, result, attempt, maxAttempts, out finalSkipReason))
+            var retryAttempt = retryAllowed
+                ? ProxyRetryPolicy.EvaluateAttempt(route.Retry, result, attempt, maxAttempts)
+                : ProxyRetryAttemptDecision.Stop;
+            if (retryAttempt == ProxyRetryAttemptDecision.Retry)
             {
                 _metrics.RetryAttempted();
                 if (route.Retry.RetryBackoff > TimeSpan.Zero)
@@ -778,9 +780,9 @@ public sealed class Http2ClientConnection
                 continue;
             }
 
-            if (finalSkipReason is not null)
+            if (retryAttempt is ProxyRetryAttemptDecision.SkippedDecision skippedAttempt)
             {
-                _metrics.RetrySkipped(finalSkipReason);
+                _metrics.RetrySkipped(skippedAttempt.Reason);
             }
 
             if (retryAllowed && attempt == maxAttempts && ProxyRetryPolicy.IsRetryableFailure(route.Retry, result))

@@ -29,6 +29,8 @@ internal static partial class TestRegistry
     Test("Metrics include retry circuit and balancing counters", Sync(ResilienceTests.MetricsIncludeRetryCircuitAndBalancingCounters), TestTaxonomy.RetryCircuit, TestTaxonomy.Metrics),
     Test("Effective and status projections show resilience state", Sync(ResilienceTests.EffectiveAndStatusProjectionsShowSafeResilienceState), TestTaxonomy.Config, TestTaxonomy.RetryCircuit),
     Test("Retry policy suppresses configured status only when allowed", Sync(ResilienceTests.RetryPolicySuppressesConfiguredStatusOnlyWhenAllowed), TestTaxonomy.RetryCircuit),
+    Test("Retry policy names admission decisions", Sync(ResilienceTests.RetryPolicyNamesAdmissionDecisions), TestTaxonomy.RetryCircuit),
+    Test("Retry policy names attempt decisions", Sync(ResilienceTests.RetryPolicyNamesAttemptDecisions), TestTaxonomy.RetryCircuit),
     Test("Forwarding result names success and failure outcomes", Sync(ResilienceTests.ForwardingResultNamesSuccessAndFailureOutcomes), TestTaxonomy.RetryCircuit),
     Test("Timeout policy applies route and retry attempt timeouts", Sync(ResilienceTests.TimeoutPolicyAppliesRouteAndRetryAttemptTimeouts), TestTaxonomy.RetryCircuit, TestTaxonomy.Limits),
     Test("Host startup succeeds from fresh data directory", StartupSmokeTests.StartsFromFreshDataDirectory, TestTaxonomy.Config, TestTaxonomy.Headers),

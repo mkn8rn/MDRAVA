@@ -6,52 +6,45 @@ namespace MDRAVA.BLL.ControlPlane.Resilience;
 
 public static class ProxyRetryPolicy
 {
-    public static bool IsRetryAllowed(
-        RuntimeRoute route,
-        Http1RequestHead requestHead,
-        out string? skipReason)
+    public static ProxyRetryAdmissionDecision EvaluateAdmission(RuntimeRoute route, Http1RequestHead requestHead)
     {
-        skipReason = null;
         if (!route.Retry.Enabled)
         {
-            return false;
+            return ProxyRetryAdmissionDecision.NotAllowed;
         }
 
         if (!route.Retry.RetryMethods.Any(method => string.Equals(method, requestHead.Method, StringComparison.OrdinalIgnoreCase)))
         {
-            skipReason = "method";
-            return false;
+            return ProxyRetryAdmissionDecision.Skipped("method");
         }
 
         if (requestHead.Framing.Kind != Http1BodyKind.None)
         {
-            skipReason = "request_body";
-            return false;
+            return ProxyRetryAdmissionDecision.Skipped("request_body");
         }
 
-        return true;
+        return ProxyRetryAdmissionDecision.Allowed;
     }
 
-    public static bool ShouldRetry(
+    public static ProxyRetryAttemptDecision EvaluateAttempt(
         RuntimeRetryPolicy retry,
         ForwardingResult result,
         int attempt,
-        int maxAttempts,
-        out string? skipReason)
+        int maxAttempts)
     {
-        skipReason = null;
         if (!IsRetryableFailure(retry, result))
         {
-            return false;
+            return ProxyRetryAttemptDecision.Stop;
         }
 
         if (result.ResponseStarted)
         {
-            skipReason = "response_started";
-            return false;
+            return ProxyRetryAttemptDecision.Skipped("response_started");
         }
 
-        return attempt < maxAttempts;
+        return attempt < maxAttempts
+            ? ProxyRetryAttemptDecision.Retry
+            : ProxyRetryAttemptDecision.Stop;
     }
 
     public static bool ShouldSuppressRetryableStatusResponse(
@@ -85,4 +78,74 @@ public static class ProxyRetryPolicy
 
         return false;
     }
+}
+
+public abstract record ProxyRetryAdmissionDecision
+{
+    private ProxyRetryAdmissionDecision()
+    {
+    }
+
+    public static ProxyRetryAdmissionDecision Allowed { get; } = new AllowedDecision();
+
+    public static ProxyRetryAdmissionDecision NotAllowed { get; } = new NotAllowedDecision();
+
+    public static ProxyRetryAdmissionDecision Skipped(string reason)
+    {
+        return new SkippedDecision(reason);
+    }
+
+    public sealed record SkippedDecision : ProxyRetryAdmissionDecision
+    {
+        public SkippedDecision(string reason)
+        {
+            if (string.IsNullOrWhiteSpace(reason))
+            {
+                throw new ArgumentException("Retry admission skip reason is required.", nameof(reason));
+            }
+
+            Reason = reason;
+        }
+
+        public string Reason { get; }
+    }
+
+    private sealed record AllowedDecision : ProxyRetryAdmissionDecision;
+
+    private sealed record NotAllowedDecision : ProxyRetryAdmissionDecision;
+}
+
+public abstract record ProxyRetryAttemptDecision
+{
+    private ProxyRetryAttemptDecision()
+    {
+    }
+
+    public static ProxyRetryAttemptDecision Retry { get; } = new RetryDecision();
+
+    public static ProxyRetryAttemptDecision Stop { get; } = new StopDecision();
+
+    public static ProxyRetryAttemptDecision Skipped(string reason)
+    {
+        return new SkippedDecision(reason);
+    }
+
+    public sealed record SkippedDecision : ProxyRetryAttemptDecision
+    {
+        public SkippedDecision(string reason)
+        {
+            if (string.IsNullOrWhiteSpace(reason))
+            {
+                throw new ArgumentException("Retry attempt skip reason is required.", nameof(reason));
+            }
+
+            Reason = reason;
+        }
+
+        public string Reason { get; }
+    }
+
+    private sealed record RetryDecision : ProxyRetryAttemptDecision;
+
+    private sealed record StopDecision : ProxyRetryAttemptDecision;
 }

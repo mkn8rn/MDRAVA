@@ -573,6 +573,70 @@ internal static class ResilienceTests
         AssertEx.False(ProxyRetryPolicy.ShouldSuppressRetryableStatusResponse(retry with { Enabled = false }, 503, true));
     }
 
+    public static void RetryPolicyNamesAdmissionDecisions()
+    {
+        var retryRoute = Route([]) with
+        {
+            Retry = new RuntimeRetryPolicy(
+                true,
+                2,
+                null,
+                true,
+                false,
+                [],
+                ["GET", "HEAD"],
+                TimeSpan.Zero)
+        };
+
+        var disabled = ProxyRetryPolicy.EvaluateAdmission(Route([]), RequestHead("GET", Http1RequestFraming.None));
+        var methodSkipped = ProxyRetryPolicy.EvaluateAdmission(retryRoute, RequestHead("POST", Http1RequestFraming.None));
+        var bodySkipped = ProxyRetryPolicy.EvaluateAdmission(retryRoute, RequestHead("GET", Http1RequestFraming.FromContentLength(5)));
+        var allowed = ProxyRetryPolicy.EvaluateAdmission(retryRoute, RequestHead("GET", Http1RequestFraming.None));
+
+        AssertEx.Equal(ProxyRetryAdmissionDecision.NotAllowed, disabled);
+        AssertEx.True(methodSkipped is ProxyRetryAdmissionDecision.SkippedDecision);
+        AssertEx.Equal("method", ((ProxyRetryAdmissionDecision.SkippedDecision)methodSkipped).Reason);
+        AssertEx.True(bodySkipped is ProxyRetryAdmissionDecision.SkippedDecision);
+        AssertEx.Equal("request_body", ((ProxyRetryAdmissionDecision.SkippedDecision)bodySkipped).Reason);
+        AssertEx.Equal(ProxyRetryAdmissionDecision.Allowed, allowed);
+    }
+
+    public static void RetryPolicyNamesAttemptDecisions()
+    {
+        var retry = new RuntimeRetryPolicy(
+            true,
+            2,
+            null,
+            true,
+            false,
+            [],
+            ["GET"],
+            TimeSpan.Zero);
+        var retryableFailure = ForwardingResult.Failure(
+            responseStarted: false,
+            responseStatusCode: null,
+            failureKind: ProxyFailureKind.UpstreamConnectFailed);
+        var startedFailure = ForwardingResult.Failure(
+            responseStarted: true,
+            responseStatusCode: null,
+            failureKind: ProxyFailureKind.UpstreamConnectFailed);
+        var success = ForwardingResult.Success(
+            responseStarted: true,
+            keepClientConnectionOpen: true,
+            responseStatusCode: 200);
+
+        var firstAttempt = ProxyRetryPolicy.EvaluateAttempt(retry, retryableFailure, attempt: 1, maxAttempts: 2);
+        var finalAttempt = ProxyRetryPolicy.EvaluateAttempt(retry, retryableFailure, attempt: 2, maxAttempts: 2);
+        var responseStarted = ProxyRetryPolicy.EvaluateAttempt(retry, startedFailure, attempt: 1, maxAttempts: 2);
+        var nonRetryable = ProxyRetryPolicy.EvaluateAttempt(retry, success, attempt: 1, maxAttempts: 2);
+
+        AssertEx.Equal(ProxyRetryAttemptDecision.Retry, firstAttempt);
+        AssertEx.Equal(ProxyRetryAttemptDecision.Stop, finalAttempt);
+        AssertEx.True(responseStarted is ProxyRetryAttemptDecision.SkippedDecision);
+        AssertEx.Equal("response_started", ((ProxyRetryAttemptDecision.SkippedDecision)responseStarted).Reason);
+        AssertEx.Equal(ProxyRetryAttemptDecision.Stop, nonRetryable);
+    }
+
     public static void ForwardingResultNamesSuccessAndFailureOutcomes()
     {
         var success = ForwardingResult.Success(
@@ -632,6 +696,18 @@ internal static class ResilienceTests
         AssertEx.Equal(TimeSpan.FromSeconds(2), retryAttemptTimeouts.UpstreamConnectTimeout);
         AssertEx.Equal(TimeSpan.FromSeconds(2), retryAttemptTimeouts.UpstreamResponseHeadTimeout);
         AssertEx.Equal(routeTimeouts.DownstreamWriteTimeout, retryAttemptTimeouts.DownstreamWriteTimeout);
+    }
+
+    private static Http1RequestHead RequestHead(string method, Http1RequestFraming framing)
+    {
+        return new Http1RequestHead(
+            method,
+            "/",
+            "/",
+            "HTTP/1.1",
+            "resilience.test",
+            framing,
+            []);
     }
 
     private static async Task<ClosedUpstreamResult> RunClosedUpstreamScenarioAsync(
