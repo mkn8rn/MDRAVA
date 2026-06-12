@@ -93,6 +93,20 @@ internal static class AcmeTests
         AssertEx.Equal(404, response.StatusCode);
     }
 
+    public static void AcmeCertificateIssueResultNamesSuccessAndFailure()
+    {
+        var pfxBytes = new byte[] { 1, 2, 3 };
+        var success = AcmeCertificateIssueResult.Success(pfxBytes);
+        var failure = AcmeCertificateIssueResult.Failure("issuer failed");
+
+        AssertEx.True(success.Succeeded);
+        AssertEx.True(ReferenceEquals(pfxBytes, success.PfxBytes));
+        AssertEx.Equal<string?>(null, success.ErrorSummary);
+        AssertEx.False(failure.Succeeded);
+        AssertEx.Equal<byte[]?>(null, failure.PfxBytes);
+        AssertEx.Equal("issuer failed", failure.ErrorSummary);
+    }
+
     public static async Task AcmeRenewalStoresMaterialUnderCertsDirectory()
     {
         using var temp = TemporaryDirectory.Create();

@@ -26,6 +26,7 @@ internal static partial class TestRegistry
     Test("ACME config validation rejects missing terms acceptance", Sync(AcmeTests.AcmeConfigValidationRejectsMissingTermsAcceptance), TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
     Test("HTTP-01 challenge returns exact token response", Sync(AcmeTests.Http01ChallengeReturnsExactTokenResponse), TestTaxonomy.Tls, TestTaxonomy.Admin),
     Test("Unknown HTTP-01 challenge returns safe 404", Sync(AcmeTests.UnknownHttp01ChallengeReturnsSafe404), TestTaxonomy.Tls),
+    Test("ACME certificate issue result names success and failure", Sync(AcmeTests.AcmeCertificateIssueResultNamesSuccessAndFailure), TestTaxonomy.Tls),
     Test("ACME renewal stores material under certs directory", AcmeTests.AcmeRenewalStoresMaterialUnderCertsDirectory, TestTaxonomy.Tls),
     Test("Loader loads stored ACME certificate on startup", AcmeTests.LoaderLoadsStoredAcmeCertificateOnStartup, TestTaxonomy.Config, TestTaxonomy.Tls),
     Test("Failed ACME renewal preserves current active certificate", AcmeTests.FailedAcmeRenewalPreservesCurrentActiveCertificate, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
