@@ -240,6 +240,39 @@ internal static class OperatorStatusTests
         AssertEx.Equal(DateTimeOffset.UnixEpoch.AddMinutes(1), sources.Shutdown.ShutdownStartedAtUtc);
     }
 
+    public static void StatusListenerAndRouteSourceMappersReadCollectionsWithoutConfigurationSnapshot()
+    {
+        var listener = Listener() with
+        {
+            Transport = RuntimeListenerTransport.Https,
+            DefaultCertificateId = "status-cert",
+            Protocols = RuntimeListenerProtocols.Http1AndHttp3
+        };
+        var upstream = Upstream() with
+        {
+            Scheme = "https",
+            Protocol = RuntimeUpstreamProtocol.Http3
+        };
+        var route = ProxyRoute(upstream) with
+        {
+            Cache = CachePolicy()
+        };
+
+        var listeners = ProxyConfiguredListenerSummarySourceMapper.FromListeners([listener]);
+        var routes = ProxyRouteSummarySourceMapper.FromRoutes([route]);
+
+        AssertEx.Equal(1, listeners.Count);
+        AssertEx.True(listeners[0].Enabled);
+        AssertEx.True(listeners[0].Http1Enabled);
+        AssertEx.False(listeners[0].Http2Enabled);
+        AssertEx.True(listeners[0].Http3EnabledForTraffic);
+        AssertEx.Equal(1, routes.Count);
+        AssertEx.Equal("main", routes[0].SiteName);
+        AssertEx.True(routes[0].IsProxyRoute);
+        AssertEx.True(routes[0].CacheEnabled);
+        AssertEx.True(routes[0].HasHttp3Upstream);
+    }
+
     public static void ReadinessEvaluatorConsumesNarrowFactsWithoutRuntimeSnapshots()
     {
         var evaluatedAt = new DateTimeOffset(2026, 6, 9, 12, 0, 0, TimeSpan.Zero);

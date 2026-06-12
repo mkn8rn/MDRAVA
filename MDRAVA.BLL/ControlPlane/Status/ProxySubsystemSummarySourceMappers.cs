@@ -8,16 +8,16 @@ namespace MDRAVA.BLL.ControlPlane.Status;
 
 public static class ProxyConfiguredListenerSummarySourceMapper
 {
-    public static IReadOnlyList<ProxyConfiguredListenerSummarySource> FromSnapshot(
-        ProxyConfigurationSnapshot? snapshot)
+    public static IReadOnlyList<ProxyConfiguredListenerSummarySource> FromListeners(
+        IReadOnlyList<RuntimeListener> listeners)
     {
-        return snapshot?.Listeners
+        return listeners
             .Select(static listener => new ProxyConfiguredListenerSummarySource(
                 listener.Enabled,
                 listener.Protocols.HasFlag(RuntimeListenerProtocols.Http1),
                 listener.Protocols.HasFlag(RuntimeListenerProtocols.Http2),
                 listener.Http3.EnabledForTraffic))
-            .ToArray() ?? [];
+            .ToArray();
     }
 }
 
@@ -36,15 +36,15 @@ public static class ProxyRuntimeListenerSummarySourceMapper
 
 public static class ProxyRouteSummarySourceMapper
 {
-    public static IReadOnlyList<ProxyRouteSummarySource> FromSnapshot(ProxyConfigurationSnapshot? snapshot)
+    public static IReadOnlyList<ProxyRouteSummarySource> FromRoutes(IReadOnlyList<RuntimeRoute> routes)
     {
-        return snapshot?.Routes
+        return routes
             .Select(static route => new ProxyRouteSummarySource(
                 route.SiteName,
                 route.Action == RuntimeRouteAction.Proxy,
                 route.Cache.Enabled,
                 route.Upstreams.Any(static upstream => RuntimeUpstreamProtocol.IsHttp3(upstream.Protocol))))
-            .ToArray() ?? [];
+            .ToArray();
     }
 }
 

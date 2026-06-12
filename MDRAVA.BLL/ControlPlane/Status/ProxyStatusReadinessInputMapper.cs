@@ -42,9 +42,13 @@ public static class ProxyStatusReadinessSourceMapper
             configuration?.LoadedAtUtc,
             runtime.LastListenerReload?.Succeeded,
             runtime.LastListenerReload is { Succeeded: false },
-            ProxyConfiguredListenerSummarySourceMapper.FromSnapshot(configuration),
+            configuration is null
+                ? []
+                : ProxyConfiguredListenerSummarySourceMapper.FromListeners(configuration.Listeners),
             ProxyRuntimeListenerSummarySourceMapper.FromRuntimeSummary(runtime),
-            ProxyRouteSummarySourceMapper.FromSnapshot(configuration),
+            configuration is null
+                ? []
+                : ProxyRouteSummarySourceMapper.FromRoutes(configuration.Routes),
             ProxyCertificateSummarySourceMapper.FromSnapshot(configuration),
             ProxyAcmeSummaryConfigurationSourceMapper.FromSnapshot(configuration),
             ProxyUpstreamSummarySourceMapper.FromStatusResponses(upstreams),
