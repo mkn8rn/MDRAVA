@@ -83,20 +83,20 @@ public sealed class ProxyMetricsExportInputSource : IProxyMetricsExportInputSour
 {
     private readonly IProxyConfigurationStore _configurationStore;
     private readonly IProxyStatusMetricsSource _metricsSource;
-    private readonly IProxyCacheRuntimeStatusSource _cacheRuntimeSource;
+    private readonly IProxyCacheStatusReader _cacheStatusReader;
     private readonly IProxyStatusUpstreamHealthSource _upstreamHealthSource;
     private readonly IProxyAcmeCertificateLifecycleStatusSource _acmeStatusSource;
 
     public ProxyMetricsExportInputSource(
         IProxyConfigurationStore configurationStore,
         IProxyStatusMetricsSource metricsSource,
-        IProxyCacheRuntimeStatusSource cacheRuntimeSource,
+        IProxyCacheStatusReader cacheStatusReader,
         IProxyStatusUpstreamHealthSource upstreamHealthSource,
         IProxyAcmeCertificateLifecycleStatusSource acmeStatusSource)
     {
         _configurationStore = configurationStore;
         _metricsSource = metricsSource;
-        _cacheRuntimeSource = cacheRuntimeSource;
+        _cacheStatusReader = cacheStatusReader;
         _upstreamHealthSource = upstreamHealthSource;
         _acmeStatusSource = acmeStatusSource;
     }
@@ -108,15 +108,11 @@ public sealed class ProxyMetricsExportInputSource : IProxyMetricsExportInputSour
             return null;
         }
 
-        var cacheStatus = ProxyCacheStatusReader.Project(
-            ProxyCacheStatusRouteSourceMapper.ToRouteSources(snapshot),
-            _cacheRuntimeSource.ReadSnapshot());
-
         return ProxyMetricsExportInputMapper.FromSources(
             _metricsSource.ReadMetrics(),
             ProxyMetricsExportLabelOptionsMapper.FromSnapshot(snapshot),
             ProxyMetricsExportHttp3FactsMapper.FromSnapshot(snapshot),
-            cacheStatus,
+            _cacheStatusReader.GetStatus(),
             _upstreamHealthSource.ReadUpstreams(ProxyUpstreamHealthSourceMapper.FromSnapshot(snapshot)),
             _acmeStatusSource.GetLifecycleStatuses());
     }

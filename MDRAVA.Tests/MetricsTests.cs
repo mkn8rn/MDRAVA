@@ -474,7 +474,9 @@ internal static class MetricsTests
         return new ProxyMetricsExportInputSource(
             store,
             fixture.Metrics,
-            new ProxyCacheRuntimeStatusSource(fixture.Cache),
+            new ProxyCacheStatusReader(
+                new ProxyCacheStatusConfigurationSource(store),
+                new ProxyCacheRuntimeStatusSource(fixture.Cache)),
             fixture.Health,
             new ProxyAcmeCertificateLifecycleStatusSource(fixture.Acme));
     }
