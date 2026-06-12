@@ -100,23 +100,18 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
         return result;
     }
 
-    private List<ConfigLintFinding> Analyze(
+    private IReadOnlyList<ConfigLintFinding> Analyze(
         ProxyConfigLintConfigurationSnapshot snapshot,
         bool activeRuntime,
         string? sourceName)
     {
-        List<ConfigLintFinding> findings = [];
         var runtimeListeners = activeRuntime ? _runtimeStateSource.GetListenerStates() : [];
-        findings.AddRange(ConfigLintListenerAnalyzer.Analyze(
+        return ConfigLintConfigurationAnalyzer.Analyze(
             snapshot,
             activeRuntime,
             runtimeListeners,
-            sourceName));
-        findings.AddRange(ConfigLintRouteOrderingAnalyzer.Analyze(snapshot, sourceName));
-        findings.AddRange(ConfigLintRouteAnalyzer.Analyze(snapshot, sourceName));
-        findings.AddRange(ConfigLintSiteAnalyzer.Analyze(snapshot, sourceName));
-        findings.AddRange(ConfigLintExposureAnalyzer.Analyze(snapshot, _adminUrlPolicy, sourceName));
-        return findings;
+            _adminUrlPolicy,
+            sourceName);
     }
 
     private static ConfigLintFinding SubmittedFailure(ProxyConfigLintSubmittedConfigurationFailure failure)
