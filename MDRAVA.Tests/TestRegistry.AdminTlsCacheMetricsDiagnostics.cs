@@ -133,6 +133,7 @@ internal static partial class TestRegistry
     Test("Config lint handles JSON and YAML submitted config without applying", Sync(RouteDiagnosticsTests.LintHandlesJsonAndYamlSubmittedConfigWithoutApplying), TestTaxonomy.Config, TestTaxonomy.Routing),
     Test("Config lint output has stable codes and severities", Sync(RouteDiagnosticsTests.LintOutputHasStableCodesAndSeverities), TestTaxonomy.Config, TestTaxonomy.Routing),
     Test("Config lint service shapes active source findings", Sync(RouteDiagnosticsTests.ConfigLintServiceShapesActiveSourceFindings), TestTaxonomy.Config, TestTaxonomy.Routing),
+    Test("Config lint status names empty and completed states", Sync(RouteDiagnosticsTests.ConfigLintStatusNamesEmptyAndCompletedStates), TestTaxonomy.Config, TestTaxonomy.Routing),
     Test("Config lint service shapes submitted source findings", Sync(RouteDiagnosticsTests.ConfigLintServiceShapesSubmittedSourceFindings), TestTaxonomy.Config, TestTaxonomy.Routing),
     Test("Config lint rejects missing submitted request body", Sync(RouteDiagnosticsTests.ConfigLintRejectsMissingSubmittedRequestBody), TestTaxonomy.Config, TestTaxonomy.Routing, TestTaxonomy.SecurityNegativePaths),
     Test("Config lint controller rejects missing submitted request body", Sync(RouteDiagnosticsTests.ConfigLintControllerRejectsMissingSubmittedRequestBody), TestTaxonomy.Config, TestTaxonomy.Routing, TestTaxonomy.SecurityNegativePaths),

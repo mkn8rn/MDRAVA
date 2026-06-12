@@ -29,10 +29,36 @@ public sealed record ConfigLintSummary(
     public static ConfigLintSummary Empty { get; } = new(0, 0, 0);
 }
 
-public sealed record ConfigLintStatus(
-    bool Available,
-    DateTimeOffset? LastActiveLintAtUtc,
-    ConfigLintSummary? LastActiveLintSummary)
+public sealed record ConfigLintStatus
 {
-    public static ConfigLintStatus Empty { get; } = new(true, null, null);
+    public static ConfigLintStatus Empty { get; } = new(
+        available: true,
+        lastActiveLintAtUtc: null,
+        lastActiveLintSummary: null);
+
+    private ConfigLintStatus(
+        bool available,
+        DateTimeOffset? lastActiveLintAtUtc,
+        ConfigLintSummary? lastActiveLintSummary)
+    {
+        Available = available;
+        LastActiveLintAtUtc = lastActiveLintAtUtc;
+        LastActiveLintSummary = lastActiveLintSummary;
+    }
+
+    public bool Available { get; }
+
+    public DateTimeOffset? LastActiveLintAtUtc { get; }
+
+    public ConfigLintSummary? LastActiveLintSummary { get; }
+
+    public static ConfigLintStatus Completed(
+        DateTimeOffset lintedAtUtc,
+        ConfigLintSummary summary)
+    {
+        return new ConfigLintStatus(
+            available: true,
+            lastActiveLintAtUtc: lintedAtUtc,
+            lastActiveLintSummary: summary);
+    }
 }

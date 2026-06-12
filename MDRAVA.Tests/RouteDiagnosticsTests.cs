@@ -551,6 +551,21 @@ internal static class RouteDiagnosticsTests
         AssertEx.Equal(result.Findings.Count, metrics.LastFindings.Count);
     }
 
+    public static void ConfigLintStatusNamesEmptyAndCompletedStates()
+    {
+        var lintedAtUtc = DateTimeOffset.UnixEpoch.AddHours(5);
+        var summary = new ConfigLintSummary(Info: 1, Warning: 2, Error: 3);
+        var empty = ConfigLintStatus.Empty;
+        var completed = ConfigLintStatus.Completed(lintedAtUtc, summary);
+
+        AssertEx.True(empty.Available);
+        AssertEx.Equal<DateTimeOffset?>(null, empty.LastActiveLintAtUtc);
+        AssertEx.Equal<ConfigLintSummary?>(null, empty.LastActiveLintSummary);
+        AssertEx.True(completed.Available);
+        AssertEx.Equal(lintedAtUtc, completed.LastActiveLintAtUtc!.Value);
+        AssertEx.Equal(summary, completed.LastActiveLintSummary);
+    }
+
     public static void ConfigLintServiceShapesSubmittedSourceFindings()
     {
         var source = new FixedConfigLintSubmittedConfigurationSource(

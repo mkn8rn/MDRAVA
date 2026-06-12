@@ -84,7 +84,7 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
 
     private void StoreActiveStatus(ConfigLintResult result)
     {
-        Volatile.Write(ref _lastActiveStatus, new ConfigLintStatus(true, result.LintedAtUtc, result.Summary));
+        Volatile.Write(ref _lastActiveStatus, ConfigLintStatus.Completed(result.LintedAtUtc, result.Summary));
     }
 
     private ConfigLintResult BuildResult(
