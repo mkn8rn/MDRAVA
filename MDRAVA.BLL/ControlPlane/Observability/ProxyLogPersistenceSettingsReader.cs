@@ -1,6 +1,19 @@
 using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
+using MDRAVA.BLL.Configuration;
 
 namespace MDRAVA.BLL.ControlPlane.Observability;
+
+public static class ProxyLogPersistenceSettingsMapper
+{
+    public static ProxyLogPersistenceSettings FromRuntimeOptions(RuntimeLogPersistenceOptions options)
+    {
+        return new ProxyLogPersistenceSettings(
+            options.AccessLogEnabled,
+            options.AdminAuditEnabled,
+            options.MaxFileBytes,
+            options.MaxFiles);
+    }
+}
 
 public sealed class ProxyLogPersistenceSettingsReader : IProxyLogPersistenceSettingsReader
 {
@@ -41,12 +54,7 @@ public sealed class ProxyConfigurationLogPersistenceSettingsSource
     {
         if (_configurationStore.TryGetSnapshot(out var snapshot) && snapshot is not null)
         {
-            var runtimeOptions = snapshot.Observability.LogPersistence;
-            settings = new ProxyLogPersistenceSettings(
-                runtimeOptions.AccessLogEnabled,
-                runtimeOptions.AdminAuditEnabled,
-                runtimeOptions.MaxFileBytes,
-                runtimeOptions.MaxFiles);
+            settings = ProxyLogPersistenceSettingsMapper.FromRuntimeOptions(snapshot.Observability.LogPersistence);
             return true;
         }
 

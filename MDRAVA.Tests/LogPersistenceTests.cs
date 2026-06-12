@@ -194,6 +194,21 @@ internal static class LogPersistenceTests
         AssertEx.Equal(null, status.LastWriteFailure);
     }
 
+    public static void LogPersistenceSettingsMapperReadsRuntimeOptionsWithoutConfigurationSnapshot()
+    {
+        var settings = ProxyLogPersistenceSettingsMapper.FromRuntimeOptions(
+            new RuntimeLogPersistenceOptions(
+                AccessLogEnabled: true,
+                AdminAuditEnabled: false,
+                MaxFileBytes: 16384,
+                MaxFiles: 5));
+
+        AssertEx.True(settings.AccessLogEnabled);
+        AssertEx.False(settings.AdminAuditEnabled);
+        AssertEx.Equal(16384L, settings.MaxFileBytes);
+        AssertEx.Equal(5, settings.MaxFiles);
+    }
+
     public static void LogPersistenceStatusReportsDisabledSettings()
     {
         using var temp = TemporaryDirectory.Create();
