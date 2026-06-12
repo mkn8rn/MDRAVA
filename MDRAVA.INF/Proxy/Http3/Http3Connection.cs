@@ -230,7 +230,7 @@ public sealed class Http3Connection
                 return true;
             }
 
-            context.SetRoute(routeMatch.Route);
+            context.SetRoute(ProxyRequestContextRuntimeMapper.ToRequestRoute(routeMatch.Route));
             if (await TryHandleGeneratedRouteActionAsync(
                     stream,
                     routeMatch.Route,
@@ -623,7 +623,7 @@ public sealed class Http3Connection
                 return new ForwardingResult(false, true, false, 503, ProxyFailureKind.NoHealthyUpstream);
             }
 
-            context.SetUpstream(selection.Upstream);
+            context.SetUpstream(ProxyRequestContextRuntimeMapper.ToRequestUpstream(selection.Upstream));
             var suppressGeneratedFailureResponse = retryAllowed && attempt < maxAttempts;
             var translator = new Http3ResponseTranslationStream(
                 this,
@@ -939,7 +939,7 @@ public sealed class Http3Connection
         return new ProxyRequestContext(
             _requestIdGenerator.Create(),
             _listener.Name,
-            _listener.Transport,
+            ProxyRequestContextRuntimeMapper.ToTransport(_listener),
             _connection.RemoteEndPoint?.ToString(),
             _configurationSnapshot.Version,
             _timeProvider,

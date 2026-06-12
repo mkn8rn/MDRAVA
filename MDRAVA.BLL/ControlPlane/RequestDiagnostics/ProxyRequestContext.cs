@@ -1,5 +1,3 @@
-using MDRAVA.BLL.Configuration;
-
 using MDRAVA.BLL.ControlPlane.Forwarding;
 
 namespace MDRAVA.BLL.ControlPlane.RequestDiagnostics;
@@ -12,7 +10,7 @@ public sealed class ProxyRequestContext
     public ProxyRequestContext(
         string requestId,
         string listenerName,
-        RuntimeListenerTransport transport,
+        string transport,
         string? clientEndpoint,
         int configVersion,
         TimeProvider timeProvider,
@@ -22,7 +20,7 @@ public sealed class ProxyRequestContext
         _startedTimestamp = timeProvider.GetTimestamp();
         RequestId = requestId;
         ListenerName = listenerName;
-        Transport = transport.ToString();
+        Transport = transport;
         ClientEndpoint = clientEndpoint;
         ConfigVersion = configVersion;
         Protocol = protocol;
@@ -91,12 +89,12 @@ public sealed class ProxyRequestContext
         ExternalRequestId = externalRequestId;
     }
 
-    public void SetRoute(RuntimeRoute route)
+    public void SetRoute(ProxyRequestRoute route)
     {
         RouteName = route.Name;
         SiteName = route.SiteName;
-        RouteAction = route.Maintenance.Enabled ? "maintenance" : ActionName(route.Action);
-        AccessLogEnabled = route.ResolvedOptions.AccessLogEnabled;
+        RouteAction = route.Action;
+        AccessLogEnabled = route.AccessLogEnabled;
     }
 
     public void SetRouteAction(string action)
@@ -104,7 +102,7 @@ public sealed class ProxyRequestContext
         RouteAction = action;
     }
 
-    public void SetUpstream(RuntimeUpstream upstream)
+    public void SetUpstream(ProxyRequestUpstream upstream)
     {
         UpstreamName = upstream.Name;
         UpstreamEndpoint = upstream.Endpoint;
@@ -115,13 +113,14 @@ public sealed class ProxyRequestContext
         ClientEndpoint = clientEndpoint;
     }
 
-    private static string ActionName(RuntimeRouteAction action)
-    {
-        return action switch
-        {
-            RuntimeRouteAction.Redirect => "redirect",
-            RuntimeRouteAction.StaticResponse => "staticResponse",
-            _ => "proxy"
-        };
-    }
 }
+
+public sealed record ProxyRequestRoute(
+    string Name,
+    string SiteName,
+    string Action,
+    bool AccessLogEnabled);
+
+public sealed record ProxyRequestUpstream(
+    string Name,
+    string Endpoint);

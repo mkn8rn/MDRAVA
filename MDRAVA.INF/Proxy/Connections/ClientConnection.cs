@@ -372,7 +372,7 @@ public sealed class ClientConnection
                     CompleteContext(ref currentContext);
                     return;
                 }
-                currentContext.SetRoute(routeMatch.Route);
+                currentContext.SetRoute(ProxyRequestContextRuntimeMapper.ToRequestRoute(routeMatch.Route));
 
                 if (await TryHandleGeneratedRouteActionAsync(
                         clientStream,
@@ -638,7 +638,7 @@ public sealed class ClientConnection
                 return new ForwardingResult(false, true, false, 503, ProxyFailureKind.NoHealthyUpstream);
             }
 
-            context.SetUpstream(selection.Upstream);
+            context.SetUpstream(ProxyRequestContextRuntimeMapper.ToRequestUpstream(selection.Upstream));
             var suppressGeneratedFailureResponse = retryAllowed && attempt < maxAttempts;
             var result = await _forwarder.ForwardAsync(
                 clientStream,
@@ -757,7 +757,7 @@ public sealed class ClientConnection
                 cancellationToken);
             return false;
         }
-        context.SetRoute(upgradeRouteMatch.Route);
+        context.SetRoute(ProxyRequestContextRuntimeMapper.ToRequestRoute(upgradeRouteMatch.Route));
 
         var actionDecision = _routeActionPolicy.Evaluate(
             upgradeRouteMatch.Route,
@@ -788,7 +788,7 @@ public sealed class ClientConnection
                 cancellationToken);
             return false;
         }
-        context.SetUpstream(upgradeSelection.Upstream);
+        context.SetUpstream(ProxyRequestContextRuntimeMapper.ToRequestUpstream(upgradeSelection.Upstream));
 
         var upstreamTarget = _pathRewritePolicy.Apply(upgradeRouteMatch.Route, requestHead.Target, requestHead.Path);
         var effectiveTimeouts = ProxyTimeoutPolicy.ApplyRouteTimeouts(upgradeRouteMatch.Route, _configurationSnapshot.Timeouts);
@@ -1049,7 +1049,7 @@ public sealed class ClientConnection
         return new ProxyRequestContext(
             _requestIdGenerator.Create(),
             _listener.Name,
-            _listener.Transport,
+            ProxyRequestContextRuntimeMapper.ToTransport(_listener),
             _socket.RemoteEndPoint?.ToString(),
             _configurationSnapshot.Version,
             _timeProvider);

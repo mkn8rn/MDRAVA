@@ -406,7 +406,7 @@ public sealed class Http2ClientConnection
                 return;
             }
 
-            context.SetRoute(routeMatch.Route);
+            context.SetRoute(ProxyRequestContextRuntimeMapper.ToRequestRoute(routeMatch.Route));
             if (await TryHandleGeneratedRouteActionAsync(
                     stream.Id,
                     routeMatch.Route,
@@ -702,7 +702,7 @@ public sealed class Http2ClientConnection
                 return new ForwardingResult(false, true, false, 503, ProxyFailureKind.NoHealthyUpstream);
             }
 
-            context.SetUpstream(selection.Upstream);
+            context.SetUpstream(ProxyRequestContextRuntimeMapper.ToRequestUpstream(selection.Upstream));
             var suppressGeneratedFailureResponse = retryAllowed && attempt < maxAttempts;
             var translator = new Http2ResponseTranslationStream(
                 this,
@@ -1075,7 +1075,7 @@ public sealed class Http2ClientConnection
         return new ProxyRequestContext(
             _requestIdGenerator.Create(),
             _listener.Name,
-            _listener.Transport,
+            ProxyRequestContextRuntimeMapper.ToTransport(_listener),
             _remoteEndPoint?.ToString(),
             _configurationSnapshot.Version,
             _timeProvider,

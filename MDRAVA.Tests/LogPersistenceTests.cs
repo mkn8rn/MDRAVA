@@ -270,7 +270,7 @@ internal static class LogPersistenceTests
         var context = new ProxyRequestContext(
             "request-1",
             "main",
-            RuntimeListenerTransport.Http,
+            "Http",
             "127.0.0.1:12345",
             1,
             timeProvider ?? TimeProvider.System,
