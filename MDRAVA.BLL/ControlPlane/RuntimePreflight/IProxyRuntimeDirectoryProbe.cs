@@ -5,21 +5,40 @@ public interface IProxyRuntimeDirectoryProbe
     ProxyRuntimeDirectoryProbeResult Probe(string path, bool createIfMissing);
 }
 
-public sealed record ProxyRuntimeDirectoryProbeResult(
-    bool Exists,
-    bool Created,
-    bool CanRead,
-    bool CanWrite,
-    string? FailureReason)
+public sealed record ProxyRuntimeDirectoryProbeResult
 {
+    private ProxyRuntimeDirectoryProbeResult(
+        bool exists,
+        bool created,
+        bool canRead,
+        bool canWrite,
+        string? failureReason)
+    {
+        Exists = exists;
+        Created = created;
+        CanRead = canRead;
+        CanWrite = canWrite;
+        FailureReason = failureReason;
+    }
+
+    public bool Exists { get; }
+
+    public bool Created { get; }
+
+    public bool CanRead { get; }
+
+    public bool CanWrite { get; }
+
+    public string? FailureReason { get; }
+
     public static ProxyRuntimeDirectoryProbeResult Missing()
     {
         return new ProxyRuntimeDirectoryProbeResult(
-            Exists: false,
-            Created: false,
-            CanRead: false,
-            CanWrite: false,
-            "missing");
+            exists: false,
+            created: false,
+            canRead: false,
+            canWrite: false,
+            failureReason: "missing");
     }
 
     public static ProxyRuntimeDirectoryProbeResult Probed(
@@ -28,11 +47,11 @@ public sealed record ProxyRuntimeDirectoryProbeResult(
         bool canWrite)
     {
         return new ProxyRuntimeDirectoryProbeResult(
-            Exists: true,
-            created,
-            canRead,
-            canWrite,
-            canWrite ? null : "not_writable");
+            exists: true,
+            created: created,
+            canRead: canRead,
+            canWrite: canWrite,
+            failureReason: canWrite ? null : "not_writable");
     }
 
     public static ProxyRuntimeDirectoryProbeResult NotWritable(
@@ -40,11 +59,11 @@ public sealed record ProxyRuntimeDirectoryProbeResult(
         string? failureReason = "not_writable")
     {
         return new ProxyRuntimeDirectoryProbeResult(
-            Exists: true,
-            created,
-            CanRead: true,
-            CanWrite: false,
-            failureReason);
+            exists: true,
+            created: created,
+            canRead: true,
+            canWrite: false,
+            failureReason: failureReason);
     }
 
     public static ProxyRuntimeDirectoryProbeResult Failed(
@@ -53,10 +72,10 @@ public sealed record ProxyRuntimeDirectoryProbeResult(
         string failureReason)
     {
         return new ProxyRuntimeDirectoryProbeResult(
-            exists,
-            created,
-            CanRead: false,
-            CanWrite: false,
-            failureReason);
+            exists: exists,
+            created: created,
+            canRead: false,
+            canWrite: false,
+            failureReason: failureReason);
     }
 }
