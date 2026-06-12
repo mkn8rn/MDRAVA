@@ -35,7 +35,8 @@ public sealed class RoundRobinUpstreamSelector : IUpstreamSelector
         foreach (var upstream in route.Upstreams)
         {
             var circuitSource = CircuitBreakerStatusSourceMapper.FromUpstream(upstream);
-            if (route.HealthCheckEnabled && !_healthStore.IsUsable(upstream))
+            var healthSource = UpstreamHealthStateSourceMapper.FromUpstream(upstream);
+            if (route.HealthCheckEnabled && !_healthStore.IsUsable(healthSource))
             {
                 continue;
             }
@@ -66,7 +67,7 @@ public sealed class RoundRobinUpstreamSelector : IUpstreamSelector
                     selected.Name,
                     selected.Scheme,
                     selected.Protocol));
-                _healthStore.RecordSelection(selected);
+                _healthStore.RecordSelection(UpstreamHealthStateSourceMapper.FromUpstream(selected));
                 return new UpstreamSelection(selected, lease);
             }
 

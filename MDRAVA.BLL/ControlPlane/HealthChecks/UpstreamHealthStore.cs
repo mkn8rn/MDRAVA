@@ -22,21 +22,21 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
         _circuitBreakerStore = circuitBreakerStore;
     }
 
-    public bool IsUsable(RuntimeUpstream upstream)
+    public bool IsUsable(UpstreamHealthStateSource source)
     {
-        return !_states.TryGetValue(upstream.Identity, out var state)
+        return !_states.TryGetValue(source.UpstreamIdentity, out var state)
             || state.State != UpstreamHealthState.Unhealthy;
     }
 
-    public void RecordSelection(RuntimeUpstream upstream)
+    public void RecordSelection(UpstreamHealthStateSource source)
     {
-        var state = GetOrCreate(upstream);
+        var state = GetOrCreate(source);
         Interlocked.Increment(ref state.SelectedRequests);
     }
 
-    public void RecordRequestFailure(RuntimeUpstream upstream)
+    public void RecordRequestFailure(UpstreamHealthStateSource source)
     {
-        var state = GetOrCreate(upstream);
+        var state = GetOrCreate(source);
         Interlocked.Increment(ref state.RequestFailures);
         _metrics.UpstreamRequestFailed();
     }
@@ -104,7 +104,7 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
         foreach (var source in upstreams)
         {
             var upstream = source.Upstream;
-            var state = GetOrCreate(upstream);
+            var state = GetOrCreate(UpstreamHealthStateSourceMapper.FromUpstream(upstream));
             lock (state.Gate)
             {
                 state.HealthCheckEnabled = source.HealthCheckEnabled;
@@ -144,9 +144,13 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
         return Snapshot(upstreams);
     }
 
-    private MutableUpstreamHealth GetOrCreate(RuntimeUpstream upstream)
+    private MutableUpstreamHealth GetOrCreate(UpstreamHealthStateSource source)
     {
-        return GetOrCreate(upstream.Identity, upstream.RouteName, upstream.Name, upstream.Endpoint);
+        return GetOrCreate(
+            source.UpstreamIdentity,
+            source.RouteName,
+            source.UpstreamName,
+            source.UpstreamEndpoint);
     }
 
     private MutableUpstreamHealth GetOrCreate(

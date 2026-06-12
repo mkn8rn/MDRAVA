@@ -814,7 +814,7 @@ public sealed class Http2ClientConnection
 
         if (!result.Succeeded)
         {
-            _healthStore.RecordRequestFailure(selection.Upstream);
+            _healthStore.RecordRequestFailure(UpstreamHealthStateSourceMapper.FromUpstream(selection.Upstream));
             if (ProxyForwardingFailurePolicy.IsCircuitFailure(result.FailureKind))
             {
                 _circuitBreakerStore.RecordFailure(

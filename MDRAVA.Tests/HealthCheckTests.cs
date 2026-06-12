@@ -81,12 +81,12 @@ internal static class HealthCheckTests
         var target = Target(route, upstream);
 
         store.RecordHealthCheckResult(target, new HealthCheckSample(false, "fail"), DateTimeOffset.UtcNow);
-        AssertEx.True(store.IsUsable(upstream));
+        AssertEx.True(store.IsUsable(HealthSource(upstream)));
 
         var state = store.RecordHealthCheckResult(target, new HealthCheckSample(false, "fail"), DateTimeOffset.UtcNow);
 
         AssertEx.Equal(UpstreamHealthState.Unhealthy, state);
-        AssertEx.False(store.IsUsable(upstream));
+        AssertEx.False(store.IsUsable(HealthSource(upstream)));
     }
 
     public static void HealthStateTransitionsToHealthyAfterRecoveryThreshold()
@@ -104,15 +104,15 @@ internal static class HealthCheckTests
         var target = Target(route, upstream);
 
         store.RecordHealthCheckResult(target, new HealthCheckSample(false, "fail"), DateTimeOffset.UtcNow);
-        AssertEx.False(store.IsUsable(upstream));
+        AssertEx.False(store.IsUsable(HealthSource(upstream)));
 
         store.RecordHealthCheckResult(target, new HealthCheckSample(true, "ok"), DateTimeOffset.UtcNow);
-        AssertEx.False(store.IsUsable(upstream));
+        AssertEx.False(store.IsUsable(HealthSource(upstream)));
 
         var state = store.RecordHealthCheckResult(target, new HealthCheckSample(true, "ok"), DateTimeOffset.UtcNow);
 
         AssertEx.Equal(UpstreamHealthState.Healthy, state);
-        AssertEx.True(store.IsUsable(upstream));
+        AssertEx.True(store.IsUsable(HealthSource(upstream)));
     }
 
     public static async Task HealthCheckCoordinatorRunsDueChecksAndRecordsMetrics()
@@ -135,7 +135,7 @@ internal static class HealthCheckTests
         AssertEx.Equal(1L, counters.HealthChecksAttempted);
         AssertEx.Equal(1L, counters.HealthChecksSucceeded);
         AssertEx.Equal(0L, counters.HealthChecksFailed);
-        AssertEx.True(store.IsUsable(upstream));
+        AssertEx.True(store.IsUsable(HealthSource(upstream)));
         AssertEx.Equal(1, events.Events.Count);
         AssertEx.Equal(UpstreamHealthState.Healthy, events.Events[0].State);
     }
@@ -324,6 +324,11 @@ internal static class HealthCheckTests
             port,
             1,
             RuntimeUpstreamTlsOptions.Default);
+    }
+
+    private static UpstreamHealthStateSource HealthSource(RuntimeUpstream upstream)
+    {
+        return UpstreamHealthStateSourceMapper.FromUpstream(upstream);
     }
 
     private static async Task ReadRequestHeadAsync(NetworkStream stream, CancellationToken cancellationToken)

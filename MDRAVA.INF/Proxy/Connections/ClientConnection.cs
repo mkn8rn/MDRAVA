@@ -807,7 +807,7 @@ public sealed class ClientConnection
             cancellationToken);
         if (!upgradeResult.Succeeded)
         {
-            _healthStore.RecordRequestFailure(upgradeSelection.Upstream);
+            _healthStore.RecordRequestFailure(UpstreamHealthStateSourceMapper.FromUpstream(upgradeSelection.Upstream));
             _circuitBreakerStore.RecordFailure(
                 upgradeSelection.CircuitBreakerLease,
                 ProxyForwardingFailurePolicy.CircuitFailureReason(upgradeResult.FailureKind));
@@ -832,7 +832,7 @@ public sealed class ClientConnection
 
         if (!result.Succeeded)
         {
-            _healthStore.RecordRequestFailure(selection.Upstream);
+            _healthStore.RecordRequestFailure(UpstreamHealthStateSourceMapper.FromUpstream(selection.Upstream));
             if (ProxyForwardingFailurePolicy.IsCircuitFailure(result.FailureKind))
             {
                 _circuitBreakerStore.RecordFailure(
