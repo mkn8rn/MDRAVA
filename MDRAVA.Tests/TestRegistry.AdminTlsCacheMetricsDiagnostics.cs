@@ -114,6 +114,7 @@ internal static partial class TestRegistry
     Test("Route diagnostics listener selector reads listeners without configuration snapshot", Sync(RouteDiagnosticsTests.ListenerSelectorReadsListenersWithoutConfigurationSnapshot), TestTaxonomy.Routing, TestTaxonomy.Config),
     Test("Route dry-run reports generated route actions", Sync(RouteDiagnosticsTests.DryRunReportsGeneratedRouteActions), TestTaxonomy.Routing),
     Test("Route dry-run policy explainer uses named policy outcomes", Sync(RouteDiagnosticsTests.DryRunPolicyExplainerUsesNamedPolicyOutcomes), TestTaxonomy.Routing, TestTaxonomy.Caching, TestTaxonomy.RetryCircuit),
+    Test("Route diagnostics action decision names proxy and generated responses", Sync(RouteDiagnosticsTests.RouteDiagnosticsActionDecisionNamesProxyAndGeneratedResponses), TestTaxonomy.Routing),
     Test("Route dry-run redacts sensitive headers", Sync(RouteDiagnosticsTests.DryRunRedactsSensitiveHeaders), TestTaxonomy.Routing, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
     Test("Route diagnostics service shapes no-listener result", Sync(RouteDiagnosticsTests.RouteDiagnosticsServiceShapesNoListenerResult), TestTaxonomy.Routing),
     Test("Route diagnostics service selects listener before policy explanation", Sync(RouteDiagnosticsTests.RouteDiagnosticsServiceSelectsListenerBeforePolicyExplanation), TestTaxonomy.Routing),

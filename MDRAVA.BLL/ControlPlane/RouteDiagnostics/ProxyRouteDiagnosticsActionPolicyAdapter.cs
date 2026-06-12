@@ -11,25 +11,25 @@ public sealed class ProxyRouteDiagnosticsActionPolicyAdapter
     {
         if (!isUpgradeRequest && TryBuildPolicyRedirect(route, requestHead, listener, out var policyRedirectStatusCode))
         {
-            return new ProxyRouteDiagnosticsActionDecision(false, policyRedirectStatusCode);
+            return ProxyRouteDiagnosticsActionDecision.GeneratedResponse(policyRedirectStatusCode);
         }
 
         if (route.Maintenance.Enabled)
         {
-            return new ProxyRouteDiagnosticsActionDecision(false, 503);
+            return ProxyRouteDiagnosticsActionDecision.GeneratedResponse(503);
         }
 
         if (string.Equals(route.Action, "Redirect", StringComparison.OrdinalIgnoreCase))
         {
-            return new ProxyRouteDiagnosticsActionDecision(false, route.Redirect.StatusCode);
+            return ProxyRouteDiagnosticsActionDecision.GeneratedResponse(route.Redirect.StatusCode);
         }
 
         if (string.Equals(route.Action, "StaticResponse", StringComparison.OrdinalIgnoreCase))
         {
-            return new ProxyRouteDiagnosticsActionDecision(false, route.StaticResponse.StatusCode);
+            return ProxyRouteDiagnosticsActionDecision.GeneratedResponse(route.StaticResponse.StatusCode);
         }
 
-        return new ProxyRouteDiagnosticsActionDecision(true, null);
+        return ProxyRouteDiagnosticsActionDecision.Proxy;
     }
 
     private static bool TryBuildPolicyRedirect(

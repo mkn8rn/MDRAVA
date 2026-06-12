@@ -242,6 +242,17 @@ internal static class RouteDiagnosticsTests
         AssertEx.Equal(RouteMatchDryRunPolicy.EnabledButBlocked("not_proxy_action"), circuitBlocked);
     }
 
+    public static void RouteDiagnosticsActionDecisionNamesProxyAndGeneratedResponses()
+    {
+        var proxy = ProxyRouteDiagnosticsActionDecision.Proxy;
+        var generated = ProxyRouteDiagnosticsActionDecision.GeneratedResponse(308);
+
+        AssertEx.True(proxy.ShouldProxy);
+        AssertEx.Equal<int?>(null, proxy.GeneratedStatusCode);
+        AssertEx.False(generated.ShouldProxy);
+        AssertEx.Equal(308, generated.GeneratedStatusCode!.Value);
+    }
+
     public static void DryRunRedactsSensitiveHeaders()
     {
         var service = CreateRouteService(BaseOptions([ProxyRoute("private", "diag.test", "/private", cache: CachePolicy())]), out _, out _);
@@ -286,7 +297,7 @@ internal static class RouteDiagnosticsTests
 
     public static void RouteDiagnosticsServiceSelectsListenerBeforePolicyExplanation()
     {
-        var actionPolicy = new FixedRouteDiagnosticsActionPolicy(new ProxyRouteDiagnosticsActionDecision(true, null));
+        var actionPolicy = new FixedRouteDiagnosticsActionPolicy(ProxyRouteDiagnosticsActionDecision.Proxy);
         var metrics = new FixedRouteDiagnosticsMetricsSink();
         var service = CreateBllRouteService(
             new FixedRouteDiagnosticsConfigurationSnapshot(
@@ -319,7 +330,7 @@ internal static class RouteDiagnosticsTests
 
     public static void RouteDiagnosticsServiceRedactsSensitiveHeadersBeforeAdapters()
     {
-        var actionPolicy = new FixedRouteDiagnosticsActionPolicy(new ProxyRouteDiagnosticsActionDecision(true, null));
+        var actionPolicy = new FixedRouteDiagnosticsActionPolicy(ProxyRouteDiagnosticsActionDecision.Proxy);
         var service = CreateBllRouteService(
             new FixedRouteDiagnosticsConfigurationSnapshot(
                 [RouteDiagnosticsListener("web", "http", 8080, RuntimeListenerProtocols.Http1, http3EnabledForTraffic: false)],
@@ -718,7 +729,7 @@ internal static class RouteDiagnosticsTests
         return new RouteMatchDiagnosticsService(
             new FixedRouteDiagnosticsConfigurationSource(snapshot),
             matcher ?? new FixedRouteDiagnosticsMatcher(),
-            actionPolicy ?? new FixedRouteDiagnosticsActionPolicy(new ProxyRouteDiagnosticsActionDecision(true, null)),
+            actionPolicy ?? new FixedRouteDiagnosticsActionPolicy(ProxyRouteDiagnosticsActionDecision.Proxy),
             pathRewritePolicy ?? new FixedRouteDiagnosticsPathRewritePolicy(),
             metricsSink ?? new FixedRouteDiagnosticsMetricsSink(),
             new MDRAVA.INF.Proxy.RuntimeGuards.ProxyClientAddressSyntaxPolicy(),
