@@ -60,6 +60,8 @@ internal static class TlsCertificateSelectorTests
             $"{id}.pfx",
             "pfx",
             false,
-            certificate);
+            certificate,
+            "manualPfx",
+            []);
     }
 }

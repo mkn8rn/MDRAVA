@@ -36,7 +36,7 @@ public static class ProxyConfigurationProjectionMapper
                     certificate.Path,
                     certificate.Format,
                     certificate.Source,
-                    certificate.Domains ?? [],
+                    certificate.Domains,
                     certificate.HasConfiguredPassword,
                     certificate.Certificate.Subject,
                     certificate.Certificate.Thumbprint,

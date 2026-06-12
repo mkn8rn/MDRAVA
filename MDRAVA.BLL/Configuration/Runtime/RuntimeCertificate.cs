@@ -8,5 +8,5 @@ public sealed record RuntimeCertificate(
     string Format,
     bool HasConfiguredPassword,
     X509Certificate2 Certificate,
-    string Source = "manualPfx",
-    IReadOnlyList<string>? Domains = null);
+    string Source,
+    IReadOnlyList<string> Domains);
