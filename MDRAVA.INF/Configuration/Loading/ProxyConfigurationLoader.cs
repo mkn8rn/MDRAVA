@@ -67,8 +67,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
         CancellationToken cancellationToken)
     {
         var loadResult = await ValidateExistingLayoutAsync(cancellationToken);
-        return new ProxyRestoreConfigurationValidationResult(
-            loadResult.Succeeded,
+        return ProxyRestoreConfigurationValidationResult.Completed(
             loadResult.Errors,
             loadResult.FileErrors,
             loadResult.WouldBeVersion);

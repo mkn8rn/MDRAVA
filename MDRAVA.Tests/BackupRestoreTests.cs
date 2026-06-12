@@ -180,11 +180,10 @@ internal static class BackupRestoreTests
             [],
             [],
             Truncated: false);
-        var configValidation = new ProxyRestoreConfigurationValidationResult(
-            Succeeded: true,
-            Errors: [],
-            FileErrors: [],
-            WouldBeVersion: 7);
+        var configValidation = ProxyRestoreConfigurationValidationResult.Completed(
+            errors: [],
+            fileErrors: [],
+            wouldBeVersion: 7);
         ProxyRestoreValidationFinding[] errors =
         [
             new ProxyRestoreValidationFinding(ProxyStatusText.Error, "first", "First.", null),

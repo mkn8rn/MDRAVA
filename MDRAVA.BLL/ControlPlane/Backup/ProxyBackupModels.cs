@@ -7,11 +7,43 @@ public interface IProxyRestoreConfigurationValidator
     ValueTask<ProxyRestoreConfigurationValidationResult> ValidateExistingLayoutAsync(CancellationToken cancellationToken);
 }
 
-public sealed record ProxyRestoreConfigurationValidationResult(
-    bool Succeeded,
-    IReadOnlyList<string> Errors,
-    IReadOnlyList<ProxyConfigurationFileError> FileErrors,
-    int? WouldBeVersion);
+public sealed record ProxyRestoreConfigurationValidationResult
+{
+    private ProxyRestoreConfigurationValidationResult(
+        bool succeeded,
+        IReadOnlyList<string> errors,
+        IReadOnlyList<ProxyConfigurationFileError> fileErrors,
+        int? wouldBeVersion)
+    {
+        Succeeded = succeeded;
+        Errors = errors;
+        FileErrors = fileErrors;
+        WouldBeVersion = wouldBeVersion;
+    }
+
+    public bool Succeeded { get; }
+
+    public IReadOnlyList<string> Errors { get; }
+
+    public IReadOnlyList<ProxyConfigurationFileError> FileErrors { get; }
+
+    public int? WouldBeVersion { get; }
+
+    public static ProxyRestoreConfigurationValidationResult Completed(
+        IReadOnlyList<string> errors,
+        IReadOnlyList<ProxyConfigurationFileError> fileErrors,
+        int? wouldBeVersion)
+    {
+        ArgumentNullException.ThrowIfNull(errors);
+        ArgumentNullException.ThrowIfNull(fileErrors);
+
+        return new ProxyRestoreConfigurationValidationResult(
+            errors.Count == 0 && fileErrors.Count == 0,
+            errors,
+            fileErrors,
+            wouldBeVersion);
+    }
+}
 
 public interface IProxyBackupFileSystem
 {
