@@ -51,7 +51,7 @@ internal static class MetricsTests
         using var fixture = MetricsFixture.Create();
         var store = CreateStore();
         var controller = new ProxyMetricsController(new ProxyMetricsAdministrationService(
-            CreateExportProvider(store, fixture.Exporter)));
+            CreateExportProvider(store, fixture)));
 
         var content = (ContentResult)controller.Get();
         var text = AssertEx.NotNull(content.Content);
@@ -72,7 +72,7 @@ internal static class MetricsTests
             }
         });
         var controller = new ProxyMetricsController(new ProxyMetricsAdministrationService(
-            CreateExportProvider(store, fixture.Exporter)));
+            CreateExportProvider(store, fixture)));
 
         var result = (NotFoundResult)controller.Get();
 
@@ -120,7 +120,7 @@ internal static class MetricsTests
         cache.Store(route, listener, request, "/cached", response, response.Headers, Encoding.ASCII.GetBytes("cached"));
         AssertEx.True(cache.TryGet(route, listener, request, "/cached", out _));
 
-        var text = fixture.Exporter.Export(store.Snapshot);
+        var text = fixture.Export(store.Snapshot);
 
         AssertEx.True(text.Contains("mdrava_cache_hits_total 1", StringComparison.Ordinal), text);
         AssertEx.True(text.Contains("mdrava_cache_misses_total 1", StringComparison.Ordinal), text);
@@ -148,7 +148,7 @@ internal static class MetricsTests
         var second = await service.ReloadAsync(CancellationToken.None);
         AssertEx.False(second.Succeeded);
 
-        var text = fixture.Exporter.Export(store.Snapshot);
+        var text = fixture.Export(store.Snapshot);
 
         AssertEx.True(text.Contains("mdrava_config_reloads_total{result=\"success\"} 1", StringComparison.Ordinal), text);
         AssertEx.True(text.Contains("mdrava_config_reloads_total{result=\"failure\"} 1", StringComparison.Ordinal), text);
@@ -217,7 +217,7 @@ internal static class MetricsTests
         var rawRoute = "route\"with/slash/and/query?token=secret";
         fixture.Metrics.RequestCompleted(rawSite, rawRoute, "proxy\r\nbad", 200);
 
-        var text = fixture.Exporter.Export(store.Snapshot);
+        var text = fixture.Export(store.Snapshot);
 
         AssertEx.False(text.Contains(rawSite, StringComparison.Ordinal));
         AssertEx.False(text.Contains(rawRoute, StringComparison.Ordinal));
@@ -246,9 +246,8 @@ internal static class MetricsTests
             var response = await SendSingleRequestAsync(proxyPort, request, timeout.Token);
             AssertEx.True(response.Contains("200 OK", StringComparison.Ordinal), response);
             await upstreamTask.WaitAsync(timeout.Token);
-            var store = host.Services.GetRequiredService<IProxyConfigurationStore>();
-            var exporter = host.Services.GetRequiredService<PrometheusMetricsExporter>();
-            return exporter.Export(store.Snapshot);
+            var provider = host.Services.GetRequiredService<IProxyMetricsExportProvider>();
+            return provider.Export().Content;
         }
         finally
         {
@@ -271,9 +270,8 @@ internal static class MetricsTests
         {
             var response = await SendSingleRequestAsync(proxyPort, request, timeout.Token);
             AssertEx.True(response.Contains("404 Not Found", StringComparison.Ordinal), response);
-            var store = host.Services.GetRequiredService<IProxyConfigurationStore>();
-            var exporter = host.Services.GetRequiredService<PrometheusMetricsExporter>();
-            return exporter.Export(store.Snapshot);
+            var provider = host.Services.GetRequiredService<IProxyMetricsExportProvider>();
+            return provider.Export().Content;
         }
         finally
         {
@@ -446,11 +444,15 @@ internal static class MetricsTests
 
     private static ProxyMetricsExportProvider CreateExportProvider(
         IProxyConfigurationStore store,
-        PrometheusMetricsExporter exporter)
+        MetricsFixture fixture)
     {
         return new ProxyMetricsExportProvider(
             store,
-            exporter,
+            fixture.Metrics,
+            new ProxyCacheRuntimeStatusSource(fixture.Cache),
+            fixture.Health,
+            new ProxyAcmeCertificateLifecycleStatusSource(fixture.Acme),
+            fixture.Exporter,
             new ProxyMetricsExportAvailabilityService(new ProxyMetricsExportAvailabilityReader(store)));
     }
 
@@ -597,11 +599,15 @@ internal static class MetricsTests
         private MetricsFixture(
             ProxyMetrics metrics,
             ResponseCacheStore cache,
+            UpstreamHealthStore health,
+            AcmeCertificateStatusStore acme,
             PrometheusMetricsExporter exporter,
             UpstreamConnectionPool pool)
         {
             Metrics = metrics;
             Cache = cache;
+            Health = health;
+            Acme = acme;
             Exporter = exporter;
             _pool = pool;
         }
@@ -610,7 +616,21 @@ internal static class MetricsTests
 
         public ResponseCacheStore Cache { get; }
 
+        public UpstreamHealthStore Health { get; }
+
+        public AcmeCertificateStatusStore Acme { get; }
+
         public PrometheusMetricsExporter Exporter { get; }
+
+        public string Export(ProxyConfigurationSnapshot snapshot)
+        {
+            return Exporter.Export(ProxyMetricsExportInputMapper.FromRuntime(
+                snapshot,
+                Metrics.Snapshot(),
+                Cache.ReadStatusSnapshot(),
+                Health.ReadUpstreams(snapshot),
+                Acme.Snapshot()));
+        }
 
         public static MetricsFixture Create()
         {
@@ -623,7 +643,9 @@ internal static class MetricsTests
             return new MetricsFixture(
                 metrics,
                 cache,
-                new PrometheusMetricsExporter(metrics, cache, health, acme),
+                health,
+                acme,
+                new PrometheusMetricsExporter(),
                 pool);
         }
 

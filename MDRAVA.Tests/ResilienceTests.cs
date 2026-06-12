@@ -517,7 +517,7 @@ internal static class ResilienceTests
         var selection = AssertEx.NotNull(fixture.Selector.Select(route));
         fixture.Circuit.RecordFailure(selection.CircuitBreakerLease, "connect_failure");
 
-        var text = fixture.Exporter.Export(fixture.Store.Snapshot);
+        var text = fixture.Export();
 
         AssertEx.True(text.Contains("mdrava_retry_attempts_total 1", StringComparison.Ordinal), text);
         AssertEx.True(text.Contains("mdrava_retry_exhausted_total 1", StringComparison.Ordinal), text);
@@ -945,6 +945,8 @@ internal static class ResilienceTests
             CircuitBreakerStore circuit,
             UpstreamHealthStore health,
             RoundRobinUpstreamSelector selector,
+            ResponseCacheStore cache,
+            AcmeCertificateStatusStore acme,
             PrometheusMetricsExporter exporter,
             ProxyConfigurationStore store,
             UpstreamConnectionPool pool)
@@ -954,6 +956,8 @@ internal static class ResilienceTests
             Circuit = circuit;
             Health = health;
             Selector = selector;
+            Cache = cache;
+            Acme = acme;
             Exporter = exporter;
             Store = store;
             _pool = pool;
@@ -969,9 +973,23 @@ internal static class ResilienceTests
 
         public RoundRobinUpstreamSelector Selector { get; }
 
+        public ResponseCacheStore Cache { get; }
+
+        public AcmeCertificateStatusStore Acme { get; }
+
         public PrometheusMetricsExporter Exporter { get; }
 
         public ProxyConfigurationStore Store { get; }
+
+        public string Export()
+        {
+            return Exporter.Export(ProxyMetricsExportInputMapper.FromRuntime(
+                Store.Snapshot,
+                Metrics.Snapshot(),
+                Cache.ReadStatusSnapshot(),
+                Health.ReadUpstreams(Store.Snapshot),
+                Acme.Snapshot()));
+        }
 
         public static SelectorFixture Create(bool includePerUpstreamLabels = false)
         {
@@ -985,8 +1003,9 @@ internal static class ResilienceTests
             var store = CreateStore(
                 RuntimeMetricsOptions.Default with { IncludePerUpstreamLabels = includePerUpstreamLabels },
                 [Route([Upstream("first", 1, Circuit(1))])]);
-            var exporter = new PrometheusMetricsExporter(metrics, cache, health, new AcmeCertificateStatusStore());
-            return new SelectorFixture(metrics, clock, circuit, health, selector, exporter, store, pool);
+            var acme = new AcmeCertificateStatusStore();
+            var exporter = new PrometheusMetricsExporter();
+            return new SelectorFixture(metrics, clock, circuit, health, selector, cache, acme, exporter, store, pool);
         }
 
         public void Dispose()

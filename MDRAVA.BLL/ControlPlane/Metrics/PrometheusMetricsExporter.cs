@@ -2,7 +2,6 @@ using MDRAVA.BLL.ControlPlane.HealthChecks;
 using MDRAVA.BLL.ControlPlane.Status;
 using System.Globalization;
 using System.Text;
-using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.Acme;
 using MDRAVA.BLL.ControlPlane.Caching;
 
@@ -12,31 +11,12 @@ public sealed class PrometheusMetricsExporter
 {
     public const string ContentType = "text/plain; version=0.0.4; charset=utf-8";
 
-    private readonly ProxyMetrics _metrics;
-    private readonly ResponseCacheStore _cacheStore;
-    private readonly UpstreamHealthStore _healthStore;
-    private readonly AcmeCertificateStatusStore _acmeStatusStore;
-
-    public PrometheusMetricsExporter(
-        ProxyMetrics metrics,
-        ResponseCacheStore cacheStore,
-        UpstreamHealthStore healthStore,
-        AcmeCertificateStatusStore acmeStatusStore)
+    public string Export(ProxyMetricsExportInput input)
     {
-        _metrics = metrics;
-        _cacheStore = cacheStore;
-        _healthStore = healthStore;
-        _acmeStatusStore = acmeStatusStore;
-    }
-
-    public string Export(ProxyConfigurationSnapshot snapshot)
-    {
-        var proxy = _metrics.Snapshot();
-        var cache = ProxyCacheStatusReader.Project(
-            ProxyCacheStatusRouteSourceMapper.ToRouteSources(snapshot),
-            _cacheStore.ReadStatusSnapshot());
-        var health = _healthStore.Snapshot(snapshot);
-        var acme = _acmeStatusStore.Snapshot();
+        var proxy = input.Metrics;
+        var cache = input.CacheStatus;
+        var health = input.UpstreamHealth;
+        var acme = input.AcmeCertificates;
         var builder = new StringBuilder();
 
         AppendCounter(builder, "mdrava_client_connections_accepted_total", "Accepted downstream client connections.", proxy.AcceptedConnections);
@@ -85,10 +65,10 @@ public sealed class PrometheusMetricsExporter
         AppendCounter(builder, "mdrava_http3_response_stream_resets_total", "HTTP/3 response stream cancellations or write failures.", proxy.Http3ResponseStreamResets);
         AppendCounter(builder, "mdrava_http3_alt_svc_emitted_total", "HTTP/3 Alt-Svc headers emitted on proxy responses.", proxy.Http3AltSvcEmitted);
         AppendCounter(builder, "mdrava_http3_alt_svc_suppressed_total", "HTTP/3 Alt-Svc opportunities suppressed because HTTP/3 was disabled or not ready.", proxy.Http3AltSvcSuppressed);
-        AppendGauge(builder, "mdrava_http3_default_enabled_listeners", "Configured default-enabled HTTP/3 proxy listeners.", snapshot.Listeners.Count(static listener => listener.Http3.EnabledForTraffic && string.Equals(listener.Http3.EnablementLevel, "default", StringComparison.OrdinalIgnoreCase)));
+        AppendGauge(builder, "mdrava_http3_default_enabled_listeners", "Configured default-enabled HTTP/3 proxy listeners.", input.DefaultEnabledHttp3ListenerCount);
         AppendGauge(builder, "mdrava_http3_qpack_dynamic_table_capacity", "Configured HTTP/3 QPACK dynamic table capacity. MDRAVA advertises zero for bounded static-table operation.", 0);
         AppendGauge(builder, "mdrava_http3_qpack_blocked_streams", "Configured HTTP/3 QPACK blocked streams. MDRAVA advertises zero to avoid blocked-stream accumulation.", 0);
-        AppendGauge(builder, "mdrava_http3_request_body_streaming_enabled", "Whether HTTP/3 request body streaming is enabled for eligible proxy listeners.", snapshot.Listeners.Any(static listener => listener.Http3.EnabledForTraffic) ? 1 : 0);
+        AppendGauge(builder, "mdrava_http3_request_body_streaming_enabled", "Whether HTTP/3 request body streaming is enabled for eligible proxy listeners.", input.Http3RequestBodyStreamingEnabled ? 1 : 0);
         AppendGauge(builder, "mdrava_quic_listeners_active", "Currently active HTTP/3 QUIC listeners.", proxy.ActiveQuicListeners);
         AppendLabeledCounter(builder, "mdrava_quic_listener_starts_total", "HTTP/3 QUIC listener starts by result.", proxy.QuicListenerStartSuccesses, new Label("result", "success"));
         AppendLabeledCounter(builder, "mdrava_quic_listener_starts_total", null, proxy.QuicListenerStartFailures, new Label("result", "failure"));
@@ -110,7 +90,7 @@ public sealed class PrometheusMetricsExporter
             }
         }
 
-        AppendRouteRequestCounters(builder, snapshot.Metrics, proxy.RequestsByRoute);
+        AppendRouteRequestCounters(builder, input.IncludePerRouteLabels, proxy.RequestsByRoute);
         AppendRequestRejectionCounters(builder, proxy);
 
         AppendCounter(builder, "mdrava_upstream_request_attempts_total", "Selected upstream request attempts.", proxy.UpstreamSelections);
@@ -123,10 +103,10 @@ public sealed class PrometheusMetricsExporter
         AppendCounter(builder, "mdrava_upstream_http3_pool_connections_reused_total", "Upstream HTTP/3 pool connection reuses.", proxy.UpstreamHttp3PoolConnectionsReused);
         AppendCounter(builder, "mdrava_upstream_http3_pool_connections_closed_total", "Upstream HTTP/3 pool connections closed.", proxy.UpstreamHttp3PoolConnectionsClosed);
         AppendCounter(builder, "mdrava_upstream_http3_stream_limit_rejections_total", "Upstream HTTP/3 stream limit rejections.", proxy.UpstreamHttp3StreamLimitRejections);
-        AppendGauge(builder, "mdrava_upstream_http3_multiplexing_enabled", "Whether upstream HTTP/3 multiplexing is enabled.", proxy.UpstreamHttp3Requests > 0 || snapshot.Routes.Any(static route => route.Upstreams.Any(static upstream => RuntimeUpstreamProtocol.IsHttp3(upstream.Protocol))) ? 1 : 0);
+        AppendGauge(builder, "mdrava_upstream_http3_multiplexing_enabled", "Whether upstream HTTP/3 multiplexing is enabled.", proxy.UpstreamHttp3Requests > 0 || input.UpstreamHttp3MultiplexingConfigured ? 1 : 0);
         AppendGauge(builder, "mdrava_upstream_http3_connections_active", "Active upstream HTTP/3 QUIC connections.", proxy.ActiveUpstreamHttp3Connections);
         AppendGauge(builder, "mdrava_upstream_http3_streams_active", "Active upstream HTTP/3 streams.", proxy.ActiveUpstreamHttp3Streams);
-        AppendUpstreamSelectionCounters(builder, snapshot.Metrics, proxy.UpstreamSelectionsByUpstream);
+        AppendUpstreamSelectionCounters(builder, input.IncludePerUpstreamLabels, proxy.UpstreamSelectionsByUpstream);
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", "Upstream failures by bounded reason.", proxy.UpstreamConnectFailures, new Label("reason", "connect_failure"));
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.UpstreamConnectTimeouts, new Label("reason", "connect_timeout"));
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.UpstreamResponseHeadTimeouts, new Label("reason", "response_head_timeout"));
@@ -174,7 +154,7 @@ public sealed class PrometheusMetricsExporter
         AppendLabeledCounter(builder, "mdrava_health_checks_total", null, proxy.HealthChecksSucceeded, new Label("result", "success"));
         AppendLabeledCounter(builder, "mdrava_health_checks_total", null, proxy.HealthChecksFailed, new Label("result", "failure"));
         AppendCounter(builder, "mdrava_upstream_health_transitions_total", "Upstream health state transitions.", proxy.UpstreamHealthTransitions);
-        AppendUpstreamHealth(builder, snapshot.Metrics, health);
+        AppendUpstreamHealth(builder, input.IncludePerUpstreamLabels, health);
 
         AppendGauge(builder, "mdrava_cache_entries", "Current in-memory response cache entries.", cache.EntryCount);
         AppendGauge(builder, "mdrava_cache_bytes", "Approximate in-memory response cache bytes.", cache.ApproximateBytes);
@@ -249,11 +229,11 @@ public sealed class PrometheusMetricsExporter
 
     private static void AppendRouteRequestCounters(
         StringBuilder builder,
-        RuntimeMetricsOptions options,
+        bool includePerRouteLabels,
         IReadOnlyList<ProxyRequestSeriesSnapshot> requests)
     {
         AppendHelpAndType(builder, "mdrava_route_requests_total", "Completed requests by bounded route/action/status labels.", "counter");
-        IEnumerable<ProxyRequestSeriesSnapshot> series = options.IncludePerRouteLabels
+        IEnumerable<ProxyRequestSeriesSnapshot> series = includePerRouteLabels
             ? requests
             : requests
                 .GroupBy(static request => new { request.Action, request.StatusClass })
@@ -266,7 +246,7 @@ public sealed class PrometheusMetricsExporter
 
         foreach (var request in series)
         {
-            var labels = options.IncludePerRouteLabels
+            var labels = includePerRouteLabels
                 ? new[]
                 {
                     new Label("site", request.Site),
@@ -291,10 +271,10 @@ public sealed class PrometheusMetricsExporter
 
     private static void AppendUpstreamSelectionCounters(
         StringBuilder builder,
-        RuntimeMetricsOptions options,
+        bool includePerUpstreamLabels,
         IReadOnlyList<ProxyUpstreamSelectionSnapshot> selections)
     {
-        if (!options.IncludePerUpstreamLabels || selections.Count == 0)
+        if (!includePerUpstreamLabels || selections.Count == 0)
         {
             return;
         }
@@ -315,10 +295,10 @@ public sealed class PrometheusMetricsExporter
 
     private static void AppendUpstreamHealth(
         StringBuilder builder,
-        RuntimeMetricsOptions options,
+        bool includePerUpstreamLabels,
         IReadOnlyList<ProxyUpstreamStatusResponse> health)
     {
-        if (!options.IncludePerUpstreamLabels)
+        if (!includePerUpstreamLabels)
         {
             return;
         }
