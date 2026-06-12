@@ -60,7 +60,8 @@ public sealed class UpgradeForwarder
 
         try
         {
-            if (!_metrics.TryStartTunnel(connectionLimits.MaxActiveUpgradedTunnels))
+            if (_metrics.StartTunnel(connectionLimits.MaxActiveUpgradedTunnels)
+                is ProxyTunnelAdmissionDecision.RejectedResult)
             {
                 _metrics.UpgradeRequestRejected();
                 await ProxyErrorResponses.WriteAsync(

@@ -322,19 +322,19 @@ public sealed class ProxyMetrics :
 
     public void UpgradeUpstreamFailed() => Interlocked.Increment(ref _upgradeUpstreamFailures);
 
-    public bool TryStartTunnel(int maxActiveTunnels)
+    public ProxyTunnelAdmissionDecision StartTunnel(int maxActiveTunnels)
     {
         while (true)
         {
             var observed = Interlocked.Read(ref _activeTunnels);
             if (observed >= maxActiveTunnels)
             {
-                return false;
+                return ProxyTunnelAdmissionDecision.Rejected;
             }
 
             if (Interlocked.CompareExchange(ref _activeTunnels, observed + 1, observed) == observed)
             {
-                return true;
+                return ProxyTunnelAdmissionDecision.Accepted;
             }
         }
     }
@@ -875,4 +875,19 @@ public sealed class ProxyMetrics :
     {
         public long Count;
     }
+}
+
+public abstract record ProxyTunnelAdmissionDecision
+{
+    private ProxyTunnelAdmissionDecision()
+    {
+    }
+
+    public static ProxyTunnelAdmissionDecision Accepted { get; } = new AcceptedResult();
+
+    public static ProxyTunnelAdmissionDecision Rejected { get; } = new RejectedResult();
+
+    public sealed record AcceptedResult : ProxyTunnelAdmissionDecision;
+
+    public sealed record RejectedResult : ProxyTunnelAdmissionDecision;
 }
