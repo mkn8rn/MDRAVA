@@ -27,7 +27,7 @@ public sealed class ProxyConfigLintActiveConfigurationSource
         }
 
         snapshot = ProxyConfigLintConfigurationSnapshotMapper.ToLintSnapshot(
-            runtimeSnapshot,
+            ProxyConfigLintRuntimeConfigurationSourceMapper.FromConfiguration(runtimeSnapshot),
             _http3PlatformSupportSource.Read());
         return true;
     }

@@ -407,6 +407,23 @@ internal static class RouteDiagnosticsTests
         AssertNoFinding(result, "upstream_http3_one_request_per_connection");
     }
 
+    public static void ConfigLintSnapshotMapperReadsRuntimeSourceWithoutConfigurationSnapshot()
+    {
+        var snapshot = Snapshot(BaseOptions([ProxyRoute("api", "diag.test", "/api")]));
+        var source = ProxyConfigLintRuntimeConfigurationSourceMapper.FromConfiguration(snapshot);
+
+        var lintSnapshot = ProxyConfigLintConfigurationSnapshotMapper.ToLintSnapshot(
+            source,
+            TestHttp3PlatformSupport.Supported);
+
+        AssertEx.Equal(snapshot.SourceFiles.Count, lintSnapshot.SourceFiles.Count);
+        AssertEx.Equal(snapshot.AdminSecurity.RequireAuthentication, lintSnapshot.AdminSecurity.RequireAuthentication);
+        AssertEx.Equal(snapshot.Metrics.PublicMetricsEnabled, lintSnapshot.Metrics.PublicMetricsEnabled);
+        AssertEx.Equal(snapshot.Listeners.Count, lintSnapshot.Listeners.Count);
+        AssertEx.Equal(snapshot.Routes.Count, lintSnapshot.Routes.Count);
+        AssertEx.Equal("api", lintSnapshot.Routes[0].Name);
+    }
+
     public static void LintHandlesJsonAndYamlSubmittedConfigWithoutApplying()
     {
         var service = CreateLintService(BaseOptions([ProxyRoute("active", "active.test", "/")]), out var store);

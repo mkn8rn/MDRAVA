@@ -116,6 +116,7 @@ internal static partial class TestRegistry
     Test("Config lint detects HTTPS redirect without HTTPS listener", Sync(RouteDiagnosticsTests.LintDetectsHttpsRedirectWithoutHttpsListener), TestTaxonomy.Config, TestTaxonomy.Routing, TestTaxonomy.Tls),
     Test("Config lint warns about unsafe upstream TLS validation", Sync(RouteDiagnosticsTests.LintWarnsAboutUnsafeUpstreamTlsValidation), TestTaxonomy.UpstreamHttp1, TestTaxonomy.Config, TestTaxonomy.Routing, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
     Test("Config lint omits resolved upstream HTTP/3 pooling limitation", Sync(RouteDiagnosticsTests.LintDoesNotReportResolvedUpstreamHttp3PoolingLimitation), TestTaxonomy.Http3, TestTaxonomy.Config, TestTaxonomy.Routing, TestTaxonomy.Limits),
+    Test("Config lint snapshot mapper reads runtime source without configuration snapshot", Sync(RouteDiagnosticsTests.ConfigLintSnapshotMapperReadsRuntimeSourceWithoutConfigurationSnapshot), TestTaxonomy.Config, TestTaxonomy.Routing),
     Test("Config lint handles JSON and YAML submitted config without applying", Sync(RouteDiagnosticsTests.LintHandlesJsonAndYamlSubmittedConfigWithoutApplying), TestTaxonomy.Config, TestTaxonomy.Routing),
     Test("Config lint output has stable codes and severities", Sync(RouteDiagnosticsTests.LintOutputHasStableCodesAndSeverities), TestTaxonomy.Config, TestTaxonomy.Routing),
     Test("Config lint service shapes active source findings", Sync(RouteDiagnosticsTests.ConfigLintServiceShapesActiveSourceFindings), TestTaxonomy.Config, TestTaxonomy.Routing),

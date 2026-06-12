@@ -3,23 +3,46 @@ using MDRAVA.BLL.Configuration;
 
 namespace MDRAVA.BLL.ControlPlane.ConfigLint;
 
+public sealed record ProxyConfigLintRuntimeConfigurationSource(
+    IReadOnlyList<string> SourceFiles,
+    IReadOnlyList<string> AdminUrls,
+    bool AdminRequiresAuthentication,
+    bool PublicMetricsEnabled,
+    IReadOnlyList<RuntimeListener> Listeners,
+    IReadOnlyList<RuntimeRoute> Routes);
+
+public static class ProxyConfigLintRuntimeConfigurationSourceMapper
+{
+    public static ProxyConfigLintRuntimeConfigurationSource FromConfiguration(
+        ProxyConfigurationSnapshot snapshot)
+    {
+        return new ProxyConfigLintRuntimeConfigurationSource(
+            snapshot.SourceFiles,
+            snapshot.AdminSecurity.Urls,
+            snapshot.AdminSecurity.RequireAuthentication,
+            snapshot.Metrics.PublicMetricsEnabled,
+            snapshot.Listeners,
+            snapshot.Routes);
+    }
+}
+
 public static class ProxyConfigLintConfigurationSnapshotMapper
 {
     public static ProxyConfigLintConfigurationSnapshot ToLintSnapshot(
-        ProxyConfigurationSnapshot snapshot,
+        ProxyConfigLintRuntimeConfigurationSource source,
         RuntimeHttp3PlatformSupport platformSupport)
     {
         var http3 = Http3RuntimeSupport.ProjectConfiguration(
-            Http3SupportSourceMapper.FromConfiguration(snapshot.Listeners, snapshot.Routes),
+            Http3SupportSourceMapper.FromConfiguration(source.Listeners, source.Routes),
             platformSupport);
         return new ProxyConfigLintConfigurationSnapshot(
-            snapshot.SourceFiles,
+            source.SourceFiles,
             new ProxyConfigLintAdminSecurity(
-                snapshot.AdminSecurity.Urls,
-                snapshot.AdminSecurity.RequireAuthentication),
-            new ProxyConfigLintMetricsOptions(snapshot.Metrics.PublicMetricsEnabled),
+                source.AdminUrls,
+                source.AdminRequiresAuthentication),
+            new ProxyConfigLintMetricsOptions(source.PublicMetricsEnabled),
             http3.QuicConnectionSupported,
-            snapshot.Listeners
+            source.Listeners
                 .Select(static listener => new ProxyConfigLintListener(
                     listener.Name,
                     listener.Address,
@@ -33,7 +56,7 @@ public static class ProxyConfigLintConfigurationSnapshotMapper
                     RuntimeHttp3AltSvcPolicy.IsEnabled(listener),
                     listener.QuicIdentity?.Key))
                 .ToArray(),
-            snapshot.Routes
+            source.Routes
                 .Select(static route => new ProxyConfigLintRoute(
                     route.Name,
                     route.SiteName,

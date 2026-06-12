@@ -78,7 +78,7 @@ public sealed class ProxyConfigLintSubmittedConfigurationSource
 
         return new ProxyConfigLintSubmittedConfigurationResult(
             ProxyConfigLintConfigurationSnapshotMapper.ToLintSnapshot(
-                snapshot,
+                ProxyConfigLintRuntimeConfigurationSourceMapper.FromConfiguration(snapshot),
                 _http3PlatformSupportSource.Read()),
             validationErrors,
             null);
