@@ -19,6 +19,22 @@ public sealed record AcmeRenewalCertificateInput(
     int RenewBeforeDays,
     RuntimeCertificate? ActiveCertificate);
 
+public sealed record AcmeRenewalConfigurationSourceSet(
+    bool Enabled,
+    string StoragePath,
+    string DirectoryUrl,
+    IReadOnlyList<string> ContactEmails,
+    bool TermsAccepted,
+    int RetryAfterMinutes,
+    IReadOnlyList<AcmeRenewalCertificateSource> Certificates);
+
+public sealed record AcmeRenewalCertificateSource(
+    string Id,
+    bool Enabled,
+    IReadOnlyList<string> Domains,
+    int RenewBeforeDays,
+    RuntimeCertificate? ActiveCertificate);
+
 public interface IAcmeRenewalConfigurationSource
 {
     AcmeRenewalConfigurationInput? ReadInput();
@@ -31,11 +47,34 @@ public interface IAcmeCertificateActivator
 
 public static class AcmeRenewalConfigurationInputMapper
 {
-    public static AcmeRenewalConfigurationInput FromRuntimeConfiguration(
+    public static AcmeRenewalConfigurationInput FromSources(
+        AcmeRenewalConfigurationSourceSet source)
+    {
+        return new AcmeRenewalConfigurationInput(
+            source.Enabled,
+            source.StoragePath,
+            source.DirectoryUrl,
+            source.ContactEmails,
+            source.TermsAccepted,
+            source.RetryAfterMinutes,
+            source.Certificates
+                .Select(static certificate => new AcmeRenewalCertificateInput(
+                    certificate.Id,
+                    certificate.Enabled,
+                    certificate.Domains,
+                    certificate.RenewBeforeDays,
+                    certificate.ActiveCertificate))
+                .ToArray());
+    }
+}
+
+public static class AcmeRenewalConfigurationSourceMapper
+{
+    public static AcmeRenewalConfigurationSourceSet FromRuntimeConfiguration(
         RuntimeAcmeOptions acme,
         IReadOnlyDictionary<string, RuntimeCertificate> runtimeCertificates)
     {
-        return new AcmeRenewalConfigurationInput(
+        return new AcmeRenewalConfigurationSourceSet(
             acme.Enabled,
             acme.StoragePath,
             acme.DirectoryUrl,
@@ -43,7 +82,7 @@ public static class AcmeRenewalConfigurationInputMapper
             acme.TermsAccepted,
             acme.RetryAfterMinutes,
             acme.Certificates
-                .Select(certificate => new AcmeRenewalCertificateInput(
+                .Select(certificate => new AcmeRenewalCertificateSource(
                     certificate.Id,
                     certificate.Enabled,
                     certificate.Domains,
@@ -79,9 +118,10 @@ public sealed class ProxyConfigurationAcmeRenewalConfigurationSource : IAcmeRene
             return null;
         }
 
-        return AcmeRenewalConfigurationInputMapper.FromRuntimeConfiguration(
-            snapshot.Acme,
-            snapshot.Certificates);
+        return AcmeRenewalConfigurationInputMapper.FromSources(
+            AcmeRenewalConfigurationSourceMapper.FromRuntimeConfiguration(
+                snapshot.Acme,
+                snapshot.Certificates));
     }
 }
 

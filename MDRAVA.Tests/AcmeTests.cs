@@ -348,7 +348,7 @@ internal static class AcmeTests
         AssertEx.Equal(30, input.Certificates[0].RenewBeforeDays);
     }
 
-    public static void AcmeRenewalConfigurationInputMapperAttachesOnlyAcmeActiveCertificates()
+    public static void AcmeRenewalConfigurationSourceMapperAttachesOnlyAcmeActiveCertificates()
     {
         using var certificate = X509CertificateLoader.LoadPkcs12(
             TestCertificates.CreateSelfSignedPfxBytes("home.example.test"),
@@ -383,21 +383,55 @@ internal static class AcmeTests
             ["manual-cert"] = RuntimeCertificate("manual-cert", certificate, "manualPfx")
         };
 
-        var input = AcmeRenewalConfigurationInputMapper.FromRuntimeConfiguration(
+        var source = AcmeRenewalConfigurationSourceMapper.FromRuntimeConfiguration(
             acme,
             runtimeCertificates);
+
+        AssertEx.True(source.Enabled);
+        AssertEx.Equal("acme", source.StoragePath);
+        AssertEx.Equal("https://acme.example.test/directory", source.DirectoryUrl);
+        AssertEx.Equal(15, source.RetryAfterMinutes);
+        AssertEx.Equal(2, source.Certificates.Count);
+        AssertEx.NotNull(source.Certificates[0].ActiveCertificate);
+        AssertEx.Equal("home-acme", source.Certificates[0].ActiveCertificate!.Id);
+        AssertEx.Equal("home.example.test", source.Certificates[0].Domains[0]);
+        AssertEx.Equal(20, source.Certificates[0].RenewBeforeDays);
+        AssertEx.Equal("manual-cert", source.Certificates[1].Id);
+        AssertEx.Equal(null, source.Certificates[1].ActiveCertificate);
+    }
+
+    public static void AcmeRenewalConfigurationInputMapperConsumesSourceSetWithoutRuntimeConfiguration()
+    {
+        var source = new AcmeRenewalConfigurationSourceSet(
+            Enabled: true,
+            StoragePath: "acme",
+            DirectoryUrl: "https://acme.example.test/directory",
+            ContactEmails: ["ops@example.test"],
+            TermsAccepted: true,
+            RetryAfterMinutes: 15,
+            Certificates:
+            [
+                new AcmeRenewalCertificateSource(
+                    "home-acme",
+                    Enabled: true,
+                    Domains: ["home.example.test"],
+                    RenewBeforeDays: 20,
+                    ActiveCertificate: null)
+            ]);
+
+        var input = AcmeRenewalConfigurationInputMapper.FromSources(source);
 
         AssertEx.True(input.Enabled);
         AssertEx.Equal("acme", input.StoragePath);
         AssertEx.Equal("https://acme.example.test/directory", input.DirectoryUrl);
+        AssertEx.Equal("ops@example.test", input.ContactEmails[0]);
+        AssertEx.True(input.TermsAccepted);
         AssertEx.Equal(15, input.RetryAfterMinutes);
-        AssertEx.Equal(2, input.Certificates.Count);
-        AssertEx.NotNull(input.Certificates[0].ActiveCertificate);
-        AssertEx.Equal("home-acme", input.Certificates[0].ActiveCertificate!.Id);
+        AssertEx.Equal(1, input.Certificates.Count);
+        AssertEx.Equal("home-acme", input.Certificates[0].Id);
         AssertEx.Equal("home.example.test", input.Certificates[0].Domains[0]);
         AssertEx.Equal(20, input.Certificates[0].RenewBeforeDays);
-        AssertEx.Equal("manual-cert", input.Certificates[1].Id);
-        AssertEx.Equal(null, input.Certificates[1].ActiveCertificate);
+        AssertEx.Equal(null, input.Certificates[0].ActiveCertificate);
     }
 
     private static Http1RequestHead Request(string method, string path)
