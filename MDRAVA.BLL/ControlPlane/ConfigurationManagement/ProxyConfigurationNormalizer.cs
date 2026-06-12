@@ -28,12 +28,14 @@ public sealed class ProxyConfigurationNormalizer
                 [ProxyConfigurationFileError.Global("A normalize request body is required.")]);
         }
 
-        if (!TryParseFormat(request.Format, out var format))
+        var formatDecision = ParseFormat(request.Format);
+        if (formatDecision is not ProxyConfigurationNormalizeFormatDecision.Accepted acceptedFormat)
         {
             var error = ProxyConfigurationFileError.Global("Format must be 'json' or 'yaml'.");
             return ProxyConfigurationNormalizeResult.Failed(RequestFormatName(request.Format), [error]);
         }
 
+        var format = acceptedFormat.Format;
         var formatName = FormatName(format);
         if (string.IsNullOrWhiteSpace(request.Text))
         {
@@ -73,25 +75,20 @@ public sealed class ProxyConfigurationNormalizer
             parsed.CanonicalJson);
     }
 
-    private static bool TryParseFormat(
-        string? format,
-        out ProxyConfigurationNormalizeFormat parsed)
+    private static ProxyConfigurationNormalizeFormatDecision ParseFormat(string? format)
     {
         if (string.Equals(format, "json", StringComparison.OrdinalIgnoreCase))
         {
-            parsed = ProxyConfigurationNormalizeFormat.Json;
-            return true;
+            return ProxyConfigurationNormalizeFormatDecision.Accept(ProxyConfigurationNormalizeFormat.Json);
         }
 
         if (string.Equals(format, "yaml", StringComparison.OrdinalIgnoreCase)
             || string.Equals(format, "yml", StringComparison.OrdinalIgnoreCase))
         {
-            parsed = ProxyConfigurationNormalizeFormat.Yaml;
-            return true;
+            return ProxyConfigurationNormalizeFormatDecision.Accept(ProxyConfigurationNormalizeFormat.Yaml);
         }
 
-        parsed = ProxyConfigurationNormalizeFormat.Json;
-        return false;
+        return ProxyConfigurationNormalizeFormatDecision.Rejected;
     }
 
     private static string FormatName(ProxyConfigurationNormalizeFormat format)
@@ -102,5 +99,24 @@ public sealed class ProxyConfigurationNormalizer
     private static string RequestFormatName(string? format)
     {
         return string.IsNullOrWhiteSpace(format) ? "unknown" : format;
+    }
+
+    private abstract record ProxyConfigurationNormalizeFormatDecision
+    {
+        private ProxyConfigurationNormalizeFormatDecision()
+        {
+        }
+
+        public static ProxyConfigurationNormalizeFormatDecision Rejected { get; } = new RejectedDecision();
+
+        public static ProxyConfigurationNormalizeFormatDecision Accept(ProxyConfigurationNormalizeFormat format)
+        {
+            return new Accepted(format);
+        }
+
+        public sealed record Accepted(ProxyConfigurationNormalizeFormat Format)
+            : ProxyConfigurationNormalizeFormatDecision;
+
+        private sealed record RejectedDecision : ProxyConfigurationNormalizeFormatDecision;
     }
 }
