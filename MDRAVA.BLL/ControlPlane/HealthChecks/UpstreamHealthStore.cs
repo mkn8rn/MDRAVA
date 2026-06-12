@@ -103,21 +103,17 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
         List<ProxyUpstreamStatusResponse> records = [];
         foreach (var source in upstreams)
         {
-            var upstream = source.Upstream;
-            var state = GetOrCreate(UpstreamHealthStateSourceMapper.FromUpstream(upstream));
+            var state = GetOrCreate(source.HealthState);
             lock (state.Gate)
             {
                 state.HealthCheckEnabled = source.HealthCheckEnabled;
                 records.Add(new ProxyUpstreamStatusResponse(
-                    upstream.RouteName,
-                    upstream.Name,
-                    upstream.Endpoint,
-                    upstream.Scheme,
-                    string.Equals(upstream.Scheme, "https", StringComparison.OrdinalIgnoreCase)
-                        && upstream.Tls.ValidateCertificate,
-                    string.Equals(upstream.Scheme, "https", StringComparison.OrdinalIgnoreCase)
-                        ? upstream.EffectiveSniHost
-                        : null,
+                    source.HealthState.RouteName,
+                    source.HealthState.UpstreamName,
+                    source.HealthState.UpstreamEndpoint,
+                    source.Scheme,
+                    source.ValidateCertificate,
+                    source.EffectiveSniHost,
                     source.HealthCheckEnabled,
                     state.State,
                     state.LastResult,
@@ -127,10 +123,9 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
                     Interlocked.Read(ref state.SelectedRequests),
                     Interlocked.Read(ref state.RequestFailures))
                 {
-                    Protocol = upstream.Protocol,
-                    Weight = upstream.Weight,
-                    CircuitBreaker = _circuitBreakerStore.Snapshot(
-                        CircuitBreakerStatusSourceMapper.FromUpstream(upstream))
+                    Protocol = source.Protocol,
+                    Weight = source.Weight,
+                    CircuitBreaker = _circuitBreakerStore.Snapshot(source.CircuitBreaker)
                 });
             }
         }

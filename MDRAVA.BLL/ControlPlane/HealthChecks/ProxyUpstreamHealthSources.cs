@@ -1,9 +1,16 @@
 using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane.Resilience;
 
 namespace MDRAVA.BLL.ControlPlane.HealthChecks;
 
 public sealed record ProxyUpstreamHealthSource(
-    RuntimeUpstream Upstream,
+    UpstreamHealthStateSource HealthState,
+    CircuitBreakerStatusSource CircuitBreaker,
+    string Scheme,
+    string Protocol,
+    int Weight,
+    bool ValidateCertificate,
+    string? EffectiveSniHost,
     bool HealthCheckEnabled);
 
 public sealed record UpstreamHealthStateSource(
@@ -30,7 +37,16 @@ public static class ProxyUpstreamHealthSourceMapper
     {
         return snapshot?.Routes
             .SelectMany(static route => route.Upstreams.Select(upstream => new ProxyUpstreamHealthSource(
-                upstream,
+                UpstreamHealthStateSourceMapper.FromUpstream(upstream),
+                CircuitBreakerStatusSourceMapper.FromUpstream(upstream),
+                upstream.Scheme,
+                upstream.Protocol,
+                upstream.Weight,
+                string.Equals(upstream.Scheme, "https", StringComparison.OrdinalIgnoreCase)
+                    && upstream.Tls.ValidateCertificate,
+                string.Equals(upstream.Scheme, "https", StringComparison.OrdinalIgnoreCase)
+                    ? upstream.EffectiveSniHost
+                    : null,
                 route.HealthCheck.Enabled)))
             .ToArray() ?? [];
     }
