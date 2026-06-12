@@ -1,6 +1,13 @@
 namespace MDRAVA.BLL.ControlPlane.RouteDiagnostics;
 
-public sealed record RouteDiagnosticsStatus(bool Available)
+public sealed record RouteDiagnosticsStatus
 {
-    public static RouteDiagnosticsStatus Enabled { get; } = new(true);
+    public static RouteDiagnosticsStatus Enabled { get; } = new(available: true);
+
+    private RouteDiagnosticsStatus(bool available)
+    {
+        Available = available;
+    }
+
+    public bool Available { get; }
 }

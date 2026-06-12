@@ -253,6 +253,13 @@ internal static class RouteDiagnosticsTests
         AssertEx.Equal(308, generated.GeneratedStatusCode!.Value);
     }
 
+    public static void RouteDiagnosticsStatusNamesEnabledAvailability()
+    {
+        var status = RouteDiagnosticsStatus.Enabled;
+
+        AssertEx.True(status.Available);
+    }
+
     public static void DryRunRedactsSensitiveHeaders()
     {
         var service = CreateRouteService(BaseOptions([ProxyRoute("private", "diag.test", "/private", cache: CachePolicy())]), out _, out _);
