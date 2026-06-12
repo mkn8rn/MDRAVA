@@ -131,6 +131,36 @@ internal static class RouteDiagnosticsTests
         AssertEx.True(listener.Protocols.Contains("Http3", StringComparison.Ordinal));
     }
 
+    public static void ListenerSelectorReadsListenersWithoutConfigurationSnapshot()
+    {
+        var listeners = new IProxyRouteDiagnosticsListener[]
+        {
+            RouteDiagnosticsListener(
+                "plain",
+                "http",
+                8080,
+                RuntimeListenerProtocols.Http1,
+                false),
+            RouteDiagnosticsListener(
+                "secure",
+                "https",
+                8443,
+                RuntimeListenerProtocols.Http1 | RuntimeListenerProtocols.Http2 | RuntimeListenerProtocols.Http3,
+                true)
+        };
+
+        var selected = ProxyRouteDiagnosticsListenerSelector.Select(
+            listeners,
+            "secure",
+            "https",
+            8443,
+            "http3");
+
+        AssertEx.NotNull(selected);
+        AssertEx.Equal("secure", selected!.Name);
+        AssertEx.True(selected.Http3EnabledForTraffic);
+    }
+
     public static void DryRunReportsGeneratedRouteActions()
     {
         var redirect = new ProxyRouteOptions

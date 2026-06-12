@@ -50,7 +50,7 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
 
         var requestInput = input!;
         var listener = ProxyRouteDiagnosticsListenerSelector.Select(
-            snapshot,
+            snapshot.Listeners,
             requestInput.ListenerName,
             requestInput.Scheme,
             requestInput.Port,
