@@ -113,45 +113,8 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
             runtimeListeners,
             sourceName));
         findings.AddRange(ConfigLintRouteAnalyzer.Analyze(snapshot, sourceName));
-        AddAdminFindings(snapshot, sourceName, findings);
-        AddMetricsFindings(snapshot, sourceName, findings);
+        findings.AddRange(ConfigLintExposureAnalyzer.Analyze(snapshot, _adminUrlPolicy, sourceName));
         return findings;
-    }
-
-    private void AddAdminFindings(
-        ProxyConfigLintConfigurationSnapshot snapshot,
-        string? sourceName,
-        List<ConfigLintFinding> findings)
-    {
-        foreach (var url in snapshot.AdminSecurity.Urls)
-        {
-            if (!_adminUrlPolicy.IsNonLocal(url))
-            {
-                continue;
-            }
-
-            var severity = snapshot.AdminSecurity.RequireAuthentication ? "warning" : "error";
-            findings.Add(new ConfigLintFinding(
-                severity,
-                snapshot.AdminSecurity.RequireAuthentication ? "admin_nonlocal_bind" : "admin_nonlocal_bind_without_auth",
-                snapshot.AdminSecurity.RequireAuthentication
-                    ? "Admin API is configured on a non-local bind address and relies on bearer-token authentication."
-                    : "Admin API is configured on a non-local bind address without authentication.",
-                sourceName,
-                "admin.urls",
-                "Keep admin binding localhost-only unless remote administration is intentional and authenticated."));
-        }
-    }
-
-    private static void AddMetricsFindings(
-        ProxyConfigLintConfigurationSnapshot snapshot,
-        string? sourceName,
-        List<ConfigLintFinding> findings)
-    {
-        if (snapshot.Metrics.PublicMetricsEnabled)
-        {
-            findings.Add(Warning("metrics_public_exposure", "Public metrics exposure is configured.", sourceName, "metrics.publicMetricsEnabled", "Prefer the protected /admin/proxy/metrics endpoint."));
-        }
     }
 
     private static ConfigLintFinding SubmittedFailure(ProxyConfigLintSubmittedConfigurationFailure failure)
@@ -180,16 +143,6 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
     {
         var sanitized = message.Replace('\r', ' ').Replace('\n', ' ');
         return sanitized.Length > 256 ? sanitized[..256] : sanitized;
-    }
-
-    private static ConfigLintFinding Warning(
-        string code,
-        string message,
-        string? source,
-        string? path,
-        string? suggestedFix)
-    {
-        return new ConfigLintFinding("warning", code, message, source, path, suggestedFix);
     }
 
     private static ConfigLintFinding Error(
