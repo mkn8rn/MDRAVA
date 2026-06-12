@@ -1,19 +1,26 @@
 using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane.Acme;
+using MDRAVA.BLL.ControlPlane.Caching;
+using MDRAVA.BLL.ControlPlane.Http3;
 using MDRAVA.BLL.ControlPlane.Listeners;
+using MDRAVA.BLL.ControlPlane.Metrics;
 
 namespace MDRAVA.BLL.ControlPlane.Status;
 
 public static class ProxyStatusReadinessInputMapper
 {
-    public static ProxyStatusReadinessInput FromStatusInput(ProxyStatusInput input)
+    public static ProxyStatusReadinessInput FromSources(
+        ProxyConfigurationSnapshot? configuration,
+        ProxyRuntimeSnapshot runtime,
+        ProxyMetricsSnapshot metrics,
+        IReadOnlyList<ProxyUpstreamStatusResponse> upstreams,
+        RuntimeHttp3SupportProjection http3,
+        ProxyLogPersistenceStatus logPersistence,
+        ProxyCacheStatusResponse? cacheStatus,
+        IReadOnlyList<AcmeCertificateLifecycleStatus> acmeStatuses,
+        ProxyRuntimePreflightStatus runtimePreflight,
+        DateTimeOffset observedAtUtc)
     {
-        ArgumentNullException.ThrowIfNull(input);
-
-        var configuration = input.Configuration;
-        var runtime = input.Runtime;
-        var metrics = input.Metrics;
-        var logPersistence = input.LogPersistence;
-
         return new ProxyStatusReadinessInput(
             configuration is not null,
             configuration?.Version,
@@ -25,7 +32,7 @@ public static class ProxyStatusReadinessInputMapper
             RouteSources(configuration),
             CertificateSource(configuration),
             AcmeSource(configuration),
-            UpstreamSources(input.Upstreams),
+            UpstreamSources(upstreams),
             LimitConfigurationSource(configuration),
             new ProxyLimitRuntimeSummarySource(
                 metrics.ActiveConnections,
@@ -33,8 +40,8 @@ public static class ProxyStatusReadinessInputMapper
                 metrics.ActiveHttp2Streams,
                 metrics.ActiveHttp3Streams,
                 metrics.ActiveUpstreamHttp3Streams),
-            input.Http3.EnabledForTraffic,
-            input.Http3.QuicListenerReady,
+            http3.EnabledForTraffic,
+            http3.QuicListenerReady,
             new ProxyLogSummarySource(
                 logPersistence.AccessLogEnabled,
                 logPersistence.AdminAuditEnabled,
@@ -45,10 +52,10 @@ public static class ProxyStatusReadinessInputMapper
                 runtime.IsShuttingDown,
                 runtime.ShutdownStartedAtUtc,
                 runtime.ShutdownDeadlineUtc),
-            input.CacheStatus,
-            input.AcmeStatuses,
-            input.RuntimePreflight,
-            input.ObservedAtUtc);
+            cacheStatus,
+            acmeStatuses,
+            runtimePreflight,
+            observedAtUtc);
     }
 
     private static IReadOnlyList<ProxyConfiguredListenerSummarySource> ConfiguredListenerSources(

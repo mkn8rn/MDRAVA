@@ -61,10 +61,10 @@ public sealed class ProxyStatusInputReader : IProxyStatusInputReader
         var runtimePreflight = _preflightSource.ReadRuntimePreflight();
         var cacheStatus = _cacheStatusReader.GetStatus();
         var acmeStatuses = _acmeStatusSource.GetLifecycleStatuses();
-
-        return new ProxyStatusInput(
-            runtime,
+        var observedAtUtc = _timeProvider.GetUtcNow();
+        var readiness = ProxyStatusReadinessInputMapper.FromSources(
             configuration,
+            runtime,
             metrics,
             upstreams,
             http3,
@@ -72,7 +72,20 @@ public sealed class ProxyStatusInputReader : IProxyStatusInputReader
             cacheStatus,
             acmeStatuses,
             runtimePreflight,
-            _timeProvider.GetUtcNow(),
+            observedAtUtc);
+
+        return new ProxyStatusInput(
+            runtime,
+            ProxyStatusConfigurationSummaryMapper.FromSnapshot(configuration),
+            metrics,
+            upstreams,
+            http3,
+            logPersistence,
+            cacheStatus,
+            acmeStatuses,
+            runtimePreflight,
+            observedAtUtc,
+            readiness,
             _lintOperations.LastActiveStatus);
     }
 }

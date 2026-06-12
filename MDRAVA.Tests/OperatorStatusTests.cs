@@ -79,30 +79,46 @@ internal static class OperatorStatusTests
         };
         var metrics = new ProxyMetrics().Snapshot();
         var observedAtUtc = new DateTimeOffset(2026, 6, 10, 9, 5, 0, TimeSpan.Zero);
-        var input = new ProxyStatusInput(
-            runtime,
+        var http3 = Http3RuntimeSupport.ProjectRuntime(
+            snapshot.Listeners,
+            TestHttp3PlatformSupport.Supported,
+            runtime.Listeners,
+            snapshot.Routes);
+        var logPersistence = new ProxyLogPersistenceStatus(
+            true,
+            true,
+            null,
+            0,
+            0,
+            ProxyStatusText.Healthy,
+            "ok",
+            null,
+            null);
+        var cacheStatus = new ProxyCacheStatusResponse(3, 1024, 0, 0, 0, 0, 0, null, null, [], []);
+        var preflight = ProxyRuntimePreflightStatus.Unknown;
+        var readiness = ProxyStatusReadinessInputMapper.FromSources(
             snapshot,
+            runtime,
             metrics,
             [],
-            Http3RuntimeSupport.ProjectRuntime(
-                snapshot.Listeners,
-                TestHttp3PlatformSupport.Supported,
-                runtime.Listeners,
-                snapshot.Routes),
-            new ProxyLogPersistenceStatus(
-                true,
-                true,
-                null,
-                0,
-                0,
-                ProxyStatusText.Healthy,
-                "ok",
-                null,
-                null),
-            new ProxyCacheStatusResponse(3, 1024, 0, 0, 0, 0, 0, null, null, [], []),
+            http3,
+            logPersistence,
+            cacheStatus,
             [],
-            ProxyRuntimePreflightStatus.Unknown,
+            preflight,
+            observedAtUtc);
+        var input = new ProxyStatusInput(
+            runtime,
+            ProxyStatusConfigurationSummaryMapper.FromSnapshot(snapshot),
+            metrics,
+            [],
+            http3,
+            logPersistence,
+            cacheStatus,
+            [],
+            preflight,
             observedAtUtc,
+            readiness,
             ConfigLintStatus.Empty);
 
         var status = ProxyStatusResponseBuilder.Build(input);

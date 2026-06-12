@@ -10,10 +10,9 @@ public static class ProxyStatusResponseBuilder
 
         var configuration = input.Configuration;
         var runtime = input.Runtime;
-        var listenerCount = configuration?.Listeners.Count ?? 0;
-        var routeCount = configuration?.Routes.Count ?? 0;
-        var readinessInput = ProxyStatusReadinessInputMapper.FromStatusInput(input);
-        var (readiness, subsystems) = ProxyStatusReadinessBuilder.Build(readinessInput);
+        var listenerCount = configuration?.ListenerCount ?? 0;
+        var routeCount = configuration?.RouteCount ?? 0;
+        var (readiness, subsystems) = ProxyStatusReadinessBuilder.Build(input.Readiness);
 
         return new ProxyStatusResponse(
             runtime.IsRunning,
