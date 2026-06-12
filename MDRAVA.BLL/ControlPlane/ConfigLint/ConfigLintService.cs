@@ -63,7 +63,7 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
         var submitted = _submittedConfigurationSource.Read(input!.Text, input.Format, now);
         if (submitted.Failure is not null)
         {
-            return BuildResult(now, [SubmittedFailure(submitted.Failure)], []);
+            return BuildResult(now, [ConfigLintSubmittedFailureMapper.ToFinding(submitted.Failure)], []);
         }
 
         if (submitted.Snapshot is null)
@@ -110,16 +110,6 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
             sourceName);
     }
 
-    private static ConfigLintFinding SubmittedFailure(ProxyConfigLintSubmittedConfigurationFailure failure)
-    {
-        return failure.Kind switch
-        {
-            ProxyConfigLintSubmittedConfigurationFailureKind.JsonParseError => ConfigLintFindingFactory.Error("parse_error", $"JSON is invalid: {SafeMessage(failure.Message ?? "")}", "lint-input", null, "Fix the JSON syntax and retry linting."),
-            ProxyConfigLintSubmittedConfigurationFailureKind.YamlParseError => ConfigLintFindingFactory.Error("parse_error", $"YAML is invalid: {SafeMessage(failure.Message ?? "")}", "lint-input", null, "Fix the YAML syntax and retry linting."),
-            _ => ConfigLintFindingFactory.Error("empty_config", "Submitted config did not contain a site object.", "lint-input", null, "Submit one site configuration object.")
-        };
-    }
-
     private string ActiveSource(ProxyConfigLintConfigurationSnapshot snapshot)
     {
         return snapshot.SourceFiles.Count == 1
@@ -130,12 +120,6 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
     private string? SourceName(string? path)
     {
         return _sourceNameFormatter.FormatSourceName(path);
-    }
-
-    private static string SafeMessage(string message)
-    {
-        var sanitized = message.Replace('\r', ' ').Replace('\n', ' ');
-        return sanitized.Length > 256 ? sanitized[..256] : sanitized;
     }
 
 }
