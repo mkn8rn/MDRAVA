@@ -94,6 +94,8 @@ internal static partial class TestRegistry
     Test("Metrics export configuration mapper consumes named facts without runtime configuration", Sync(MetricsTests.MetricsExportConfigurationMapperConsumesNamedFactsWithoutRuntimeConfiguration), TestTaxonomy.Metrics, TestTaxonomy.Config),
     Test("Metrics endpoint returns 404 when metrics disabled", Sync(MetricsTests.MetricsEndpointReturnsNotFoundWhenMetricsDisabled), TestTaxonomy.Metrics),
     Test("Metrics export availability requires active enabled config", Sync(MetricsTests.MetricsExportAvailabilityRequiresActiveEnabledConfig), TestTaxonomy.Metrics),
+    Test("Metrics export availability reader names missing configuration", Sync(MetricsTests.MetricsExportAvailabilityReaderNamesMissingConfiguration), TestTaxonomy.Metrics, TestTaxonomy.Config),
+    Test("Metrics export availability state maps configuration", Sync(MetricsTests.MetricsExportAvailabilityStateMapsConfiguration), TestTaxonomy.Metrics, TestTaxonomy.Config),
     Test("Metrics include request counters after proxied request", MetricsTests.MetricsIncludeRequestCountersAfterProxiedRequest, TestTaxonomy.Metrics),
     Test("Metrics include cache counters after cache activity", Sync(MetricsTests.MetricsIncludeCacheCountersAfterCacheActivity), TestTaxonomy.Caching, TestTaxonomy.Metrics),
     Test("Metrics include reload success and failure counters", MetricsTests.MetricsIncludeReloadCounters, TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),

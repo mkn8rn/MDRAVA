@@ -173,6 +173,36 @@ internal static class MetricsTests
         AssertEx.True(available.Available);
     }
 
+    public static void MetricsExportAvailabilityReaderNamesMissingConfiguration()
+    {
+        var reader = new ProxyMetricsExportAvailabilityReader(
+            MissingMetricsExportConfigurationSource.Instance);
+
+        var state = reader.Read();
+
+        AssertEx.Equal(ProxyMetricsExportAvailabilityState.MissingConfiguration, state);
+        AssertEx.False(state.HasActiveConfiguration);
+        AssertEx.False(state.MetricsExportEnabled);
+    }
+
+    public static void MetricsExportAvailabilityStateMapsConfiguration()
+    {
+        var configuration = ProxyMetricsExportConfigurationMapper.FromSources(
+            metricsEnabled: true,
+            new ProxyMetricsExportLabelOptions(
+                IncludePerRouteLabels: false,
+                IncludePerUpstreamLabels: false),
+            new ProxyMetricsExportHttp3Facts(
+                DefaultEnabledListenerCount: 0,
+                RequestBodyStreamingEnabled: false,
+                UpstreamMultiplexingConfigured: false));
+
+        var state = ProxyMetricsExportAvailabilityState.FromConfiguration(configuration);
+
+        AssertEx.True(state.HasActiveConfiguration);
+        AssertEx.True(state.MetricsExportEnabled);
+    }
+
     public static async Task MetricsIncludeRequestCountersAfterProxiedRequest()
     {
         var text = await RunProxiedRequestAndExportAsync(
@@ -800,6 +830,16 @@ internal static class MetricsTests
         public ProxyMetricsExportAvailabilityState Read()
         {
             return _state;
+        }
+    }
+
+    private sealed class MissingMetricsExportConfigurationSource : IProxyMetricsExportConfigurationSource
+    {
+        public static MissingMetricsExportConfigurationSource Instance { get; } = new();
+
+        public ProxyMetricsExportConfiguration? ReadConfiguration()
+        {
+            return null;
         }
     }
 

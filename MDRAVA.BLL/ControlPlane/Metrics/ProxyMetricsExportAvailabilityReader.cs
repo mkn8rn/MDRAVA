@@ -15,9 +15,9 @@ public sealed class ProxyMetricsExportAvailabilityReader : IProxyMetricsExportAv
         var configuration = _configurationSource.ReadConfiguration();
         if (configuration is null)
         {
-            return new ProxyMetricsExportAvailabilityState(false, false);
+            return ProxyMetricsExportAvailabilityState.MissingConfiguration;
         }
 
-        return new ProxyMetricsExportAvailabilityState(true, configuration.MetricsEnabled);
+        return ProxyMetricsExportAvailabilityState.FromConfiguration(configuration);
     }
 }
