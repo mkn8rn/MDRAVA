@@ -112,7 +112,9 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
             activeRuntime,
             runtimeListeners,
             sourceName));
+        findings.AddRange(ConfigLintRouteOrderingAnalyzer.Analyze(snapshot, sourceName));
         findings.AddRange(ConfigLintRouteAnalyzer.Analyze(snapshot, sourceName));
+        findings.AddRange(ConfigLintSiteAnalyzer.Analyze(snapshot, sourceName));
         findings.AddRange(ConfigLintExposureAnalyzer.Analyze(snapshot, _adminUrlPolicy, sourceName));
         return findings;
     }

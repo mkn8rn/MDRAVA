@@ -12,9 +12,7 @@ public static class ConfigLintRouteAnalyzer
         string? sourceName)
     {
         List<ConfigLintFinding> findings = [];
-        findings.AddRange(ConfigLintRouteOrderingAnalyzer.Analyze(snapshot, sourceName));
         AddPerRouteFindings(snapshot, sourceName, findings);
-        AddSiteFallbackFindings(snapshot, sourceName, findings);
         return findings;
     }
 
@@ -58,20 +56,6 @@ public static class ConfigLintRouteAnalyzer
         }
     }
 
-    private static void AddSiteFallbackFindings(
-        ProxyConfigLintConfigurationSnapshot snapshot,
-        string? sourceName,
-        List<ConfigLintFinding> findings)
-    {
-        foreach (var group in snapshot.Routes.GroupBy(static route => route.SiteName, StringComparer.OrdinalIgnoreCase))
-        {
-            if (!group.Any(static route => route.PathPrefix == "/"))
-            {
-                findings.Add(Info("site_without_fallback_route", $"Site '{group.Key}' has no '/' fallback route.", sourceName, $"sites[{group.Key}]", "Add an explicit fallback route if unmatched paths should have controlled behavior."));
-            }
-        }
-    }
-
     private static bool LooksPrivate(ProxyConfigLintRoute route)
     {
         var path = route.PathPrefix.ToLowerInvariant();
@@ -83,16 +67,6 @@ public static class ConfigLintRouteAnalyzer
             || path.Contains("user", StringComparison.Ordinal)
             || route.CacheVaryByHeaders.Any(static header => string.Equals(header, "Authorization", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(header, "Cookie", StringComparison.OrdinalIgnoreCase));
-    }
-
-    private static ConfigLintFinding Info(
-        string code,
-        string message,
-        string? source,
-        string? path,
-        string? suggestedFix)
-    {
-        return new ConfigLintFinding("info", code, message, source, path, suggestedFix);
     }
 
     private static ConfigLintFinding Warning(
