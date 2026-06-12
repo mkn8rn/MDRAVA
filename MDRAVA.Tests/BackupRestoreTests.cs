@@ -70,6 +70,42 @@ internal static class BackupRestoreTests
         AssertEx.True(manifest.Warnings.All(static warning => warning.RelativePath is null || !Path.IsPathRooted(warning.RelativePath)));
     }
 
+    public static void BackupManifestBuilderTruncatesAndCountsBoundedEntries()
+    {
+        var generatedAtUtc = new DateTimeOffset(2026, 6, 12, 10, 0, 0, TimeSpan.Zero);
+        ProxyBackupManifestEntry[] entries =
+        [
+            new ProxyBackupManifestEntry("logs/z.log", "logs", "should_backup", false, 7, generatedAtUtc),
+            new ProxyBackupManifestEntry("config/a.json", "config", "must_backup", false, 3, generatedAtUtc),
+            new ProxyBackupManifestEntry("config/b.json", "config", "must_backup", false, 5, generatedAtUtc)
+        ];
+        ProxyBackupWarning[] warnings =
+        [
+            new ProxyBackupWarning("existing_warning", "Existing warning.", null)
+        ];
+
+        var manifest = ProxyBackupManifestBuilder.Build(
+            generatedAtUtc,
+            [],
+            entries,
+            warnings,
+            maxEntries: 2,
+            maxWarnings: 2);
+
+        AssertEx.True(manifest.Truncated);
+        AssertEx.Equal(2, manifest.Entries.Count);
+        AssertEx.Equal("config/a.json", manifest.Entries[0].RelativePath);
+        AssertEx.Equal("config/b.json", manifest.Entries[1].RelativePath);
+        AssertEx.Equal(1, manifest.Counts.Count);
+        AssertEx.Equal("config", manifest.Counts[0].Category);
+        AssertEx.Equal("must_backup", manifest.Counts[0].Classification);
+        AssertEx.Equal(2, manifest.Counts[0].Count);
+        AssertEx.Equal(8, manifest.Counts[0].SizeBytes);
+        AssertEx.Equal(2, manifest.Warnings.Count);
+        AssertEx.Equal("existing_warning", manifest.Warnings[0].Code);
+        AssertEx.Equal("manifest_truncated", manifest.Warnings[1].Code);
+    }
+
     public static void BackupPathSafetyRejectsTraversalOutsideDataDirectory()
     {
         using var temp = TemporaryDirectory.Create();

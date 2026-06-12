@@ -58,43 +58,22 @@ public sealed class ProxyBackupService : IProxyBackupOperations
 
             foreach (var warning in scan.Warnings)
             {
-                AddWarning(warnings, ProxyBackupWarningPolicy.FromFileSystemWarning(warning));
+                warnings.Add(ProxyBackupWarningPolicy.FromFileSystemWarning(warning));
             }
         }
 
         foreach (var directory in directories.Where(static directory => !directory.Exists))
         {
-            AddWarning(warnings, ProxyBackupWarningPolicy.MissingDirectory(directory.RelativePath));
+            warnings.Add(ProxyBackupWarningPolicy.MissingDirectory(directory.RelativePath));
         }
 
-        var truncated = entries.Count > MaxEntries;
-        if (truncated)
-        {
-            entries = entries
-                .OrderBy(static entry => entry.RelativePath, StringComparer.OrdinalIgnoreCase)
-                .Take(MaxEntries)
-                .ToList();
-            AddWarning(warnings, ProxyBackupWarningPolicy.ManifestTruncated());
-        }
-
-        var counts = entries
-            .GroupBy(static entry => (entry.Category, entry.Classification))
-            .Select(static group => new ProxyBackupManifestCount(
-                group.Key.Category,
-                group.Key.Classification,
-                group.Count(),
-                group.Sum(static entry => entry.SizeBytes)))
-            .OrderBy(static count => count.Category, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(static count => count.Classification, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-
-        return new ProxyBackupManifestResponse(
+        return ProxyBackupManifestBuilder.Build(
             generatedAtUtc,
             directories,
-            entries.OrderBy(static entry => entry.RelativePath, StringComparer.OrdinalIgnoreCase).ToArray(),
-            counts,
-            warnings.Take(MaxWarnings).ToArray(),
-            truncated);
+            entries,
+            warnings,
+            MaxEntries,
+            MaxWarnings);
     }
 
     public async ValueTask<ProxyRestoreValidationResponse> ValidateAsync(CancellationToken cancellationToken)
@@ -181,11 +160,4 @@ public sealed class ProxyBackupService : IProxyBackupOperations
             : null;
     }
 
-    private static void AddWarning(List<ProxyBackupWarning> warnings, ProxyBackupWarning warning)
-    {
-        if (warnings.Count < MaxWarnings)
-        {
-            warnings.Add(warning);
-        }
-    }
 }
