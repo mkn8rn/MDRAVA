@@ -27,16 +27,23 @@ public sealed record RuntimeHttp3Compatibility(
 
     public static RuntimeHttp3Compatibility From(ListenerOptions listener)
     {
-        var protocolsValid = TryParseProtocols(listener.Protocols, out var protocols);
-        if (!protocolsValid)
-        {
-            protocols = RuntimeListenerProtocols.Http1;
-        }
+        var protocolParsing = ParseProtocols(listener.Protocols);
+        var protocolsValid = protocolParsing is RuntimeListenerProtocolParseResult.AcceptedResult;
+        var protocols = protocolParsing is RuntimeListenerProtocolParseResult.AcceptedResult acceptedProtocols
+            ? acceptedProtocols.Protocols
+            : RuntimeListenerProtocols.Http1;
 
-        var enablementValid = TryParseEnablement(
-            listener.Http3Enablement,
-            out var parsedEnablement,
-            out var enablementExplicitlyConfigured);
+        var enablementParsing = ParseEnablement(listener.Http3Enablement);
+        var enablementValid = enablementParsing is RuntimeHttp3EnablementParseResult.AcceptedResult;
+        var parsedEnablement = enablementParsing is RuntimeHttp3EnablementParseResult.AcceptedResult acceptedEnablement
+            ? acceptedEnablement.Enablement
+            : RuntimeHttp3Enablement.Default;
+        var enablementExplicitlyConfigured = enablementParsing switch
+        {
+            RuntimeHttp3EnablementParseResult.AcceptedResult accepted => accepted.ExplicitlyConfigured,
+            RuntimeHttp3EnablementParseResult.RejectedResult rejected => rejected.ExplicitlyConfigured,
+            _ => false
+        };
         var effectiveEnablement = enablementValid && enablementExplicitlyConfigured
             ? parsedEnablement
             : RuntimeHttp3Enablement.Default;
@@ -50,73 +57,63 @@ public sealed record RuntimeHttp3Compatibility(
             protocols.HasHttp3());
     }
 
-    public static bool TryParseProtocols(string? protocols, out RuntimeListenerProtocols parsed)
+    public static RuntimeListenerProtocolParseResult ParseProtocols(string? protocols)
     {
         if (string.IsNullOrWhiteSpace(protocols))
         {
-            parsed = RuntimeListenerProtocols.Http1;
-            return true;
+            return RuntimeListenerProtocolParseResult.Accepted(RuntimeListenerProtocols.Http1);
         }
 
         switch (protocols.Trim().ToLowerInvariant())
         {
             case "http1":
-                parsed = RuntimeListenerProtocols.Http1;
-                return true;
+                return RuntimeListenerProtocolParseResult.Accepted(RuntimeListenerProtocols.Http1);
             case "http2":
-                parsed = RuntimeListenerProtocols.Http2;
-                return true;
+                return RuntimeListenerProtocolParseResult.Accepted(RuntimeListenerProtocols.Http2);
             case "http1andhttp2":
-                parsed = RuntimeListenerProtocols.Http1AndHttp2;
-                return true;
+                return RuntimeListenerProtocolParseResult.Accepted(RuntimeListenerProtocols.Http1AndHttp2);
             case "http3":
-                parsed = RuntimeListenerProtocols.Http3;
-                return true;
+                return RuntimeListenerProtocolParseResult.Accepted(RuntimeListenerProtocols.Http3);
             case "http1andhttp3":
-                parsed = RuntimeListenerProtocols.Http1AndHttp3;
-                return true;
+                return RuntimeListenerProtocolParseResult.Accepted(RuntimeListenerProtocols.Http1AndHttp3);
             case "http2andhttp3":
-                parsed = RuntimeListenerProtocols.Http2AndHttp3;
-                return true;
+                return RuntimeListenerProtocolParseResult.Accepted(RuntimeListenerProtocols.Http2AndHttp3);
             case "http1andhttp2andhttp3":
-                parsed = RuntimeListenerProtocols.Http1AndHttp2AndHttp3;
-                return true;
+                return RuntimeListenerProtocolParseResult.Accepted(RuntimeListenerProtocols.Http1AndHttp2AndHttp3);
             default:
-                parsed = RuntimeListenerProtocols.None;
-                return false;
+                return RuntimeListenerProtocolParseResult.Rejected;
         }
     }
 
     public static RuntimeListenerProtocols ParseProtocolsOrDefault(string? protocols)
     {
-        return TryParseProtocols(protocols, out var parsed)
-            ? parsed
+        return ParseProtocols(protocols) is RuntimeListenerProtocolParseResult.AcceptedResult accepted
+            ? accepted.Protocols
             : RuntimeListenerProtocols.Http1;
     }
 
-    public static bool TryParseEnablement(
-        string? enablement,
-        out RuntimeHttp3Enablement parsed,
-        out bool explicitlyConfigured)
+    public static RuntimeHttp3EnablementParseResult ParseEnablement(string? enablement)
     {
-        explicitlyConfigured = !string.IsNullOrWhiteSpace(enablement);
+        var explicitlyConfigured = !string.IsNullOrWhiteSpace(enablement);
         if (!explicitlyConfigured)
         {
-            parsed = RuntimeHttp3Enablement.Default;
-            return true;
+            return RuntimeHttp3EnablementParseResult.Accepted(
+                RuntimeHttp3Enablement.Default,
+                explicitlyConfigured: false);
         }
 
         switch (enablement!.Trim().ToLowerInvariant())
         {
             case "default":
-                parsed = RuntimeHttp3Enablement.Default;
-                return true;
+                return RuntimeHttp3EnablementParseResult.Accepted(
+                    RuntimeHttp3Enablement.Default,
+                    explicitlyConfigured: true);
             case "disabled":
-                parsed = RuntimeHttp3Enablement.Disabled;
-                return true;
+                return RuntimeHttp3EnablementParseResult.Accepted(
+                    RuntimeHttp3Enablement.Disabled,
+                    explicitlyConfigured: true);
             default:
-                parsed = RuntimeHttp3Enablement.Default;
-                return false;
+                return RuntimeHttp3EnablementParseResult.Rejected(explicitlyConfigured: true);
         }
     }
 
@@ -129,18 +126,26 @@ public sealed record RuntimeHttp3Compatibility(
 
     public static string MergeEnablementConfigText(string existing, string next)
     {
-        if (!TryParseEnablement(existing, out var existingEnablement, out var existingExplicit)
+        var existingParsing = ParseEnablement(existing);
+        if (existingParsing is RuntimeHttp3EnablementParseResult.RejectedResult
             && !string.IsNullOrWhiteSpace(existing))
         {
             return existing.Trim();
         }
 
-        if (!TryParseEnablement(next, out var nextEnablement, out var nextExplicit)
+        var nextParsing = ParseEnablement(next);
+        if (nextParsing is RuntimeHttp3EnablementParseResult.RejectedResult
             && !string.IsNullOrWhiteSpace(next))
         {
             return next.Trim();
         }
 
+        var existingAccepted = (RuntimeHttp3EnablementParseResult.AcceptedResult)existingParsing;
+        var nextAccepted = (RuntimeHttp3EnablementParseResult.AcceptedResult)nextParsing;
+        var existingEnablement = existingAccepted.Enablement;
+        var nextEnablement = nextAccepted.Enablement;
+        var existingExplicit = existingAccepted.ExplicitlyConfigured;
+        var nextExplicit = nextAccepted.ExplicitlyConfigured;
         if (!existingExplicit && !nextExplicit)
         {
             return "";
@@ -150,4 +155,50 @@ public sealed record RuntimeHttp3Compatibility(
             ? RuntimeHttp3Enablement.Disabled.ToConfigText()
             : RuntimeHttp3Enablement.Default.ToConfigText();
     }
+}
+
+public abstract record RuntimeListenerProtocolParseResult
+{
+    private RuntimeListenerProtocolParseResult()
+    {
+    }
+
+    public static RuntimeListenerProtocolParseResult Rejected { get; } = new RejectedResult();
+
+    public static RuntimeListenerProtocolParseResult Accepted(RuntimeListenerProtocols protocols)
+    {
+        return new AcceptedResult(protocols);
+    }
+
+    public sealed record AcceptedResult(RuntimeListenerProtocols Protocols)
+        : RuntimeListenerProtocolParseResult;
+
+    private sealed record RejectedResult : RuntimeListenerProtocolParseResult;
+}
+
+public abstract record RuntimeHttp3EnablementParseResult
+{
+    private RuntimeHttp3EnablementParseResult()
+    {
+    }
+
+    public static RuntimeHttp3EnablementParseResult Accepted(
+        RuntimeHttp3Enablement enablement,
+        bool explicitlyConfigured)
+    {
+        return new AcceptedResult(enablement, explicitlyConfigured);
+    }
+
+    public static RuntimeHttp3EnablementParseResult Rejected(bool explicitlyConfigured)
+    {
+        return new RejectedResult(explicitlyConfigured);
+    }
+
+    public sealed record AcceptedResult(
+        RuntimeHttp3Enablement Enablement,
+        bool ExplicitlyConfigured)
+        : RuntimeHttp3EnablementParseResult;
+
+    public sealed record RejectedResult(bool ExplicitlyConfigured)
+        : RuntimeHttp3EnablementParseResult;
 }

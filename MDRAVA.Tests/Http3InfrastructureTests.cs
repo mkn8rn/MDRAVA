@@ -65,14 +65,22 @@ internal static class Http3InfrastructureTests
 
         foreach (var entry in cases)
         {
-            var parsed = RuntimeListenerProtocolExtensions.TryParseConfigText(entry.Text, out var protocols);
-            var compatibilityParsed = RuntimeHttp3Compatibility.TryParseProtocols(entry.Text, out var compatibilityProtocols);
+            var parsed = RuntimeListenerProtocolExtensions.ParseConfigText(entry.Text);
+            var compatibilityParsed = RuntimeHttp3Compatibility.ParseProtocols(entry.Text);
 
-            AssertEx.True(parsed, entry.Text);
-            AssertEx.True(compatibilityParsed, entry.Text);
-            AssertEx.Equal(entry.Protocols, protocols);
-            AssertEx.Equal(entry.Protocols, compatibilityProtocols);
-            AssertEx.Equal(entry.Text, protocols.ToConfigText());
+            if (parsed is not RuntimeListenerProtocolParseResult.AcceptedResult acceptedProtocols)
+            {
+                throw new InvalidOperationException($"Expected accepted listener protocol parse for {entry.Text}.");
+            }
+
+            if (compatibilityParsed is not RuntimeListenerProtocolParseResult.AcceptedResult acceptedCompatibilityProtocols)
+            {
+                throw new InvalidOperationException($"Expected accepted compatibility protocol parse for {entry.Text}.");
+            }
+
+            AssertEx.Equal(entry.Protocols, acceptedProtocols.Protocols);
+            AssertEx.Equal(entry.Protocols, acceptedCompatibilityProtocols.Protocols);
+            AssertEx.Equal(entry.Text, acceptedProtocols.Protocols.ToConfigText());
         }
 
         AssertEx.True(RuntimeListenerProtocols.Http1AndHttp2AndHttp3.HasHttp3());

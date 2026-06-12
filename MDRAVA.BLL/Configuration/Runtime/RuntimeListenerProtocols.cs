@@ -27,9 +27,9 @@ public static class RuntimeListenerProtocolExtensions
         return protocols.HasFlag(RuntimeListenerProtocols.Http3);
     }
 
-    public static bool TryParseConfigText(string? protocols, out RuntimeListenerProtocols parsed)
+    public static RuntimeListenerProtocolParseResult ParseConfigText(string? protocols)
     {
-        return RuntimeHttp3Compatibility.TryParseProtocols(protocols, out parsed);
+        return RuntimeHttp3Compatibility.ParseProtocols(protocols);
     }
 
     public static RuntimeListenerProtocols ParseConfigTextOrDefault(string? protocols)

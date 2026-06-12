@@ -126,17 +126,19 @@ public static class SiteOptionsAggregator
 
     private static string MergeListenerProtocols(string existing, string next)
     {
-        if (!RuntimeListenerProtocolExtensions.TryParseConfigText(existing, out var existingProtocols))
+        var existingParsing = RuntimeListenerProtocolExtensions.ParseConfigText(existing);
+        if (existingParsing is not RuntimeListenerProtocolParseResult.AcceptedResult existingProtocols)
         {
             return existing;
         }
 
-        if (!RuntimeListenerProtocolExtensions.TryParseConfigText(next, out var nextProtocols))
+        var nextParsing = RuntimeListenerProtocolExtensions.ParseConfigText(next);
+        if (nextParsing is not RuntimeListenerProtocolParseResult.AcceptedResult nextProtocols)
         {
             return next;
         }
 
-        var merged = existingProtocols | nextProtocols;
+        var merged = existingProtocols.Protocols | nextProtocols.Protocols;
         return merged.ToConfigText();
     }
 
