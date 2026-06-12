@@ -78,10 +78,11 @@ internal static class OperatorStatusTests
             EffectiveSniHost: "sni.internal",
             HealthCheckEnabled: true);
         var configuration = new ProxyStatusConfigurationSourceSet(
-            Version: 9,
-            LoadedAtUtc: DateTimeOffset.UnixEpoch,
-            Listeners: [],
-            Routes: [],
+            ConfigurationSummary: new ProxyStatusConfigurationSummary(
+                9,
+                DateTimeOffset.UnixEpoch,
+                ListenerCount: 0,
+                RouteCount: 0),
             UpstreamHealthSources: [healthSource],
             Http3Configuration: Http3SupportSourceMapper.FromConfiguration([], []),
             ReadinessConfiguration: ProxyStatusReadinessConfigurationSourceMapper.FromConfiguration(null));
@@ -191,10 +192,10 @@ internal static class OperatorStatusTests
 
         var source = ProxyStatusConfigurationSourceMapper.FromConfiguration(snapshot);
 
-        AssertEx.Equal(snapshot.Version, source.Version);
-        AssertEx.Equal(snapshot.LoadedAtUtc, source.LoadedAtUtc);
-        AssertEx.Equal(1, source.Listeners.Count);
-        AssertEx.Equal(1, source.Routes.Count);
+        AssertEx.Equal(snapshot.Version, source.ConfigurationSummary.Version);
+        AssertEx.Equal(snapshot.LoadedAtUtc, source.ConfigurationSummary.LoadedAtUtc);
+        AssertEx.Equal(1, source.ConfigurationSummary.ListenerCount);
+        AssertEx.Equal(1, source.ConfigurationSummary.RouteCount);
         AssertEx.Equal(1, source.Http3Configuration.Listeners.Count);
         AssertEx.False(source.Http3Configuration.UpstreamHttp3Configured);
         AssertEx.True(source.ReadinessConfiguration.HasActiveConfiguration);

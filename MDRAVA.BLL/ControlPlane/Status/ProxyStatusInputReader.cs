@@ -80,11 +80,7 @@ public sealed class ProxyStatusInputReader : IProxyStatusInputReader
             runtimeSummary,
             configuration is null
                 ? null
-                : ProxyStatusConfigurationSummaryMapper.FromRuntimeConfiguration(
-                    configuration.Version,
-                    configuration.LoadedAtUtc,
-                    configuration.Listeners,
-                    configuration.Routes),
+                : configuration.ConfigurationSummary,
             metrics,
             upstreams,
             http3,
