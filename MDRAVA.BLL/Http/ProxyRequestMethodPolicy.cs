@@ -42,17 +42,47 @@ public static class ProxyRequestMethodPolicy
                 || character is >= '0' and <= '9');
     }
 
-    public static bool IsSupportedApplicationMethod(string method, out string rejectionReason)
+    public static ProxyRequestApplicationMethodDecision ClassifyApplicationMethod(string method)
     {
         if (SupportedApplicationMethods.Contains(method))
         {
-            rejectionReason = "";
-            return true;
+            return ProxyRequestApplicationMethodDecision.Supported;
         }
 
-        rejectionReason = IsConnectTunnelMethod(method)
+        var rejectionReason = IsConnectTunnelMethod(method)
             ? ConnectUnsupportedReason
             : MethodUnsupportedReason;
-        return false;
+        return ProxyRequestApplicationMethodDecision.Rejected(rejectionReason);
     }
+}
+
+public abstract record ProxyRequestApplicationMethodDecision
+{
+    private ProxyRequestApplicationMethodDecision()
+    {
+    }
+
+    public static ProxyRequestApplicationMethodDecision Supported { get; } = new SupportedDecision();
+
+    public static ProxyRequestApplicationMethodDecision Rejected(string reason)
+    {
+        return new RejectedDecision(reason);
+    }
+
+    public sealed record RejectedDecision : ProxyRequestApplicationMethodDecision
+    {
+        public RejectedDecision(string reason)
+        {
+            if (string.IsNullOrWhiteSpace(reason))
+            {
+                throw new ArgumentException("Request method rejection reason is required.", nameof(reason));
+            }
+
+            Reason = reason;
+        }
+
+        public string Reason { get; }
+    }
+
+    private sealed record SupportedDecision : ProxyRequestApplicationMethodDecision;
 }

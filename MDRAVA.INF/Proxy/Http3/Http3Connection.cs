@@ -180,9 +180,10 @@ public sealed class Http3Connection
             _metrics.Http3RequestReceived();
             context.SetRequest(requestHead.Method, requestHead.Host, requestHead.Target, ProxyExternalRequestIdPolicy.Extract(requestHead));
 
-            if (!ProxyRequestMethodPolicy.IsSupportedApplicationMethod(requestHead.Method, out rejectionReason))
+            var methodDecision = ProxyRequestMethodPolicy.ClassifyApplicationMethod(requestHead.Method);
+            if (methodDecision is ProxyRequestApplicationMethodDecision.RejectedDecision rejectedMethod)
             {
-                _metrics.Http3RequestRejected(rejectionReason);
+                _metrics.Http3RequestRejected(rejectedMethod.Reason);
                 await WriteGeneratedResponseAsync(stream, 501, "Not Implemented", context, requestHead.Method, cancellationToken);
                 CompleteContext(ref context);
                 return true;

@@ -12,13 +12,11 @@ internal static class ProxyRequestMethodPolicyTests
 
     public static void ClassifiesSupportedApplicationMethods()
     {
-        var getSupported = ProxyRequestMethodPolicy.IsSupportedApplicationMethod("GET", out var getReason);
-        var lowerPostSupported = ProxyRequestMethodPolicy.IsSupportedApplicationMethod("post", out var lowerPostReason);
+        var getDecision = ProxyRequestMethodPolicy.ClassifyApplicationMethod("GET");
+        var lowerPostDecision = ProxyRequestMethodPolicy.ClassifyApplicationMethod("post");
 
-        AssertEx.True(getSupported);
-        AssertEx.Equal("", getReason);
-        AssertEx.True(lowerPostSupported);
-        AssertEx.Equal("", lowerPostReason);
+        AssertEx.True(getDecision is not ProxyRequestApplicationMethodDecision.RejectedDecision);
+        AssertEx.True(lowerPostDecision is not ProxyRequestApplicationMethodDecision.RejectedDecision);
     }
 
     public static void ClassifiesSafeReadMethods()
@@ -31,13 +29,15 @@ internal static class ProxyRequestMethodPolicyTests
 
     public static void ClassifiesUnsupportedMethods()
     {
-        var traceSupported = ProxyRequestMethodPolicy.IsSupportedApplicationMethod("TRACE", out var traceReason);
-        var connectSupported = ProxyRequestMethodPolicy.IsSupportedApplicationMethod("connect", out var connectReason);
+        var traceDecision = ProxyRequestMethodPolicy.ClassifyApplicationMethod("TRACE");
+        var connectDecision = ProxyRequestMethodPolicy.ClassifyApplicationMethod("connect");
 
-        AssertEx.False(traceSupported);
-        AssertEx.Equal(ProxyRequestMethodPolicy.MethodUnsupportedReason, traceReason);
-        AssertEx.False(connectSupported);
-        AssertEx.Equal(ProxyRequestMethodPolicy.ConnectUnsupportedReason, connectReason);
+        AssertEx.True(traceDecision is ProxyRequestApplicationMethodDecision.RejectedDecision);
+        AssertEx.True(connectDecision is ProxyRequestApplicationMethodDecision.RejectedDecision);
+        var traceRejection = (ProxyRequestApplicationMethodDecision.RejectedDecision)traceDecision;
+        var connectRejection = (ProxyRequestApplicationMethodDecision.RejectedDecision)connectDecision;
+        AssertEx.Equal(ProxyRequestMethodPolicy.MethodUnsupportedReason, traceRejection.Reason);
+        AssertEx.Equal(ProxyRequestMethodPolicy.ConnectUnsupportedReason, connectRejection.Reason);
         AssertEx.True(ProxyRequestMethodPolicy.IsConnectTunnelMethod("CONNECT"));
         AssertEx.True(ProxyRequestMethodPolicy.IsConnectTunnelMethod("connect"));
     }
