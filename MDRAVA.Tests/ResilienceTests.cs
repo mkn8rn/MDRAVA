@@ -430,7 +430,7 @@ internal static class ResilienceTests
 
         using var healthFixture = SelectorFixture.Create();
         var route = Route([first, second], healthEnabled: true);
-        healthFixture.Health.RecordHealthCheckResult(HealthTarget(route, first), new HealthCheckSample(false, "failed"), healthFixture.Clock.GetUtcNow());
+        healthFixture.Health.RecordHealthCheckResult(HealthTarget(route, first), HealthCheckSample.UnhealthyResult("failed"), healthFixture.Clock.GetUtcNow());
         var firstSelection = AssertEx.NotNull(healthFixture.Selector.Select(SelectionRoute(route)));
         AssertEx.Equal("second", firstSelection.Upstream.Name);
 

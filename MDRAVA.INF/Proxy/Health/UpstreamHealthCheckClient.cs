@@ -67,24 +67,23 @@ public sealed class UpstreamHealthCheckClient : IUpstreamHealthCheckClient
             var responseHead = await ReadResponseHeadAsync(stream, target.Timeout, cancellationToken);
             if (responseHead.Length == 0)
             {
-                return new HealthCheckSample(false, "empty response");
+                return HealthCheckSample.UnhealthyResult("empty response");
             }
 
             if (!Http1ResponseParser.TryParse(responseHead.Span, "GET", out var parsed, out var error))
             {
-                return new HealthCheckSample(false, $"malformed response: {error}");
+                return HealthCheckSample.UnhealthyResult($"malformed response: {error}");
             }
 
-            var healthy = parsed.StatusCode is >= 200 and <= 399;
-            return new HealthCheckSample(healthy, $"HTTP {parsed.StatusCode}");
+            return HealthCheckSample.FromHttpStatus(parsed.StatusCode);
         }
         catch (ProxyTimeoutException)
         {
-            return new HealthCheckSample(false, "timeout");
+            return HealthCheckSample.UnhealthyResult("timeout");
         }
         catch (Exception exception) when (exception is SocketException or IOException)
         {
-            return new HealthCheckSample(false, exception.GetType().Name);
+            return HealthCheckSample.UnhealthyResult(exception.GetType().Name);
         }
         finally
         {
@@ -117,20 +116,19 @@ public sealed class UpstreamHealthCheckClient : IUpstreamHealthCheckClient
                 timeouts,
                 cancellationToken);
             var response = await http3.ReadResponseHeadAsync(MaxHealthResponseHeadBytes, timeouts, cancellationToken);
-            var healthy = response.StatusCode is >= 200 and <= 399;
-            return new HealthCheckSample(healthy, $"HTTP/3 {response.StatusCode}");
+            return HealthCheckSample.FromHttp3Status(response.StatusCode);
         }
         catch (ProxyTimeoutException)
         {
-            return new HealthCheckSample(false, "timeout");
+            return HealthCheckSample.UnhealthyResult("timeout");
         }
         catch (Http3UpstreamProtocolException)
         {
-            return new HealthCheckSample(false, "HTTP/3 protocol error");
+            return HealthCheckSample.UnhealthyResult("HTTP/3 protocol error");
         }
         catch (Exception exception) when (exception is SocketException or IOException)
         {
-            return new HealthCheckSample(false, exception.GetType().Name);
+            return HealthCheckSample.UnhealthyResult(exception.GetType().Name);
         }
     }
 
@@ -154,8 +152,7 @@ public sealed class UpstreamHealthCheckClient : IUpstreamHealthCheckClient
             timeouts,
             cancellationToken);
         var response = await http2.ReadResponseHeadAsync(MaxHealthResponseHeadBytes, timeouts, cancellationToken);
-        var healthy = response.StatusCode is >= 200 and <= 399;
-        return new HealthCheckSample(healthy, $"HTTP/2 {response.StatusCode}");
+        return HealthCheckSample.FromHttp2Status(response.StatusCode);
     }
 
     private static RuntimeTimeouts HealthCheckTimeouts(TimeSpan timeout)

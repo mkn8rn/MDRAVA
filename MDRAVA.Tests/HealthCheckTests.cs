@@ -80,10 +80,10 @@ internal static class HealthCheckTests
 
         var target = Target(route, upstream);
 
-        store.RecordHealthCheckResult(target, new HealthCheckSample(false, "fail"), DateTimeOffset.UtcNow);
+        store.RecordHealthCheckResult(target, HealthCheckSample.UnhealthyResult("fail"), DateTimeOffset.UtcNow);
         AssertEx.True(store.IsUsable(HealthSource(upstream)));
 
-        var state = store.RecordHealthCheckResult(target, new HealthCheckSample(false, "fail"), DateTimeOffset.UtcNow);
+        var state = store.RecordHealthCheckResult(target, HealthCheckSample.UnhealthyResult("fail"), DateTimeOffset.UtcNow);
 
         AssertEx.Equal(UpstreamHealthState.Unhealthy, state);
         AssertEx.False(store.IsUsable(HealthSource(upstream)));
@@ -103,13 +103,13 @@ internal static class HealthCheckTests
 
         var target = Target(route, upstream);
 
-        store.RecordHealthCheckResult(target, new HealthCheckSample(false, "fail"), DateTimeOffset.UtcNow);
+        store.RecordHealthCheckResult(target, HealthCheckSample.UnhealthyResult("fail"), DateTimeOffset.UtcNow);
         AssertEx.False(store.IsUsable(HealthSource(upstream)));
 
-        store.RecordHealthCheckResult(target, new HealthCheckSample(true, "ok"), DateTimeOffset.UtcNow);
+        store.RecordHealthCheckResult(target, HealthCheckSample.HealthyResult("ok"), DateTimeOffset.UtcNow);
         AssertEx.False(store.IsUsable(HealthSource(upstream)));
 
-        var state = store.RecordHealthCheckResult(target, new HealthCheckSample(true, "ok"), DateTimeOffset.UtcNow);
+        var state = store.RecordHealthCheckResult(target, HealthCheckSample.HealthyResult("ok"), DateTimeOffset.UtcNow);
 
         AssertEx.Equal(UpstreamHealthState.Healthy, state);
         AssertEx.True(store.IsUsable(HealthSource(upstream)));
@@ -124,7 +124,7 @@ internal static class HealthCheckTests
         var store = new UpstreamHealthStore(metrics, pool, circuit);
         var upstream = Upstream(5001);
         var route = Route([upstream], healthyThreshold: 1);
-        var client = new FixedHealthCheckClient(new HealthCheckSample(true, "ok"));
+        var client = new FixedHealthCheckClient(HealthCheckSample.HealthyResult("ok"));
         var events = new CapturingHealthCheckEventSink();
         var coordinator = new UpstreamHealthCheckCoordinator(client, store, metrics, clock, events);
 
@@ -149,7 +149,7 @@ internal static class HealthCheckTests
         var store = new UpstreamHealthStore(metrics, pool, circuit);
         var upstream = Upstream(5001);
         var route = Route([upstream]);
-        var client = new FixedHealthCheckClient(new HealthCheckSample(false, "fail"));
+        var client = new FixedHealthCheckClient(HealthCheckSample.UnhealthyResult("fail"));
         var coordinator = new UpstreamHealthCheckCoordinator(
             client,
             store,
@@ -248,6 +248,26 @@ internal static class HealthCheckTests
         AssertEx.False(sources[1].ValidateCertificate);
         AssertEx.Equal("sni.internal", sources[1].EffectiveSniHost);
         AssertEx.False(sources[1].HealthCheckEnabled);
+    }
+
+    public static void HealthCheckSampleNamesStatusesAndExplicitResults()
+    {
+        var healthy = HealthCheckSample.HealthyResult("ok");
+        var unhealthy = HealthCheckSample.UnhealthyResult("failed");
+        var httpHealthy = HealthCheckSample.FromHttpStatus(302);
+        var httpUnhealthy = HealthCheckSample.FromHttp2Status(500);
+        var http3Healthy = HealthCheckSample.FromHttp3Status(204);
+
+        AssertEx.True(healthy.Healthy);
+        AssertEx.Equal("ok", healthy.Result);
+        AssertEx.False(unhealthy.Healthy);
+        AssertEx.Equal("failed", unhealthy.Result);
+        AssertEx.True(httpHealthy.Healthy);
+        AssertEx.Equal("HTTP 302", httpHealthy.Result);
+        AssertEx.False(httpUnhealthy.Healthy);
+        AssertEx.Equal("HTTP/2 500", httpUnhealthy.Result);
+        AssertEx.True(http3Healthy.Healthy);
+        AssertEx.Equal("HTTP/3 204", http3Healthy.Result);
     }
 
     private static async Task<HealthCheckSample> RunHealthCheckAsync(string response)

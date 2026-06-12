@@ -45,7 +45,7 @@ internal static class OperatorStatusTests
         fixture.Runtime.ReplaceListeners([ListenerStatus(listener, ProxyListenerState.Active)], null);
         fixture.Health.RecordHealthCheckResult(
             HealthTarget(route, upstream),
-            new HealthCheckSample(true, "status_200"),
+            HealthCheckSample.HealthyResult("status_200"),
             DateTimeOffset.UtcNow);
         var observedAtUtc = new DateTimeOffset(2026, 6, 10, 9, 0, 0, TimeSpan.Zero);
 
@@ -822,7 +822,7 @@ internal static class OperatorStatusTests
         fixture.Runtime.ReplaceListeners([ListenerStatus(listener, ProxyListenerState.Active)], null);
         fixture.Health.RecordHealthCheckResult(
             HealthTarget(route, upstream),
-            new HealthCheckSample(false, "status_500"),
+            HealthCheckSample.UnhealthyResult("status_500"),
             DateTimeOffset.UtcNow);
 
         var status = fixture.Controller().Get();

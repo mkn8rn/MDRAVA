@@ -123,6 +123,7 @@ internal static partial class TestRegistry
     Test("Health check 3xx response is healthy", HealthCheckTests.HealthCheck3xxIsHealthy, TestTaxonomy.HealthChecks),
     Test("Health check 4xx response is unhealthy", HealthCheckTests.HealthCheck4xxIsUnhealthy, TestTaxonomy.HealthChecks, TestTaxonomy.SecurityNegativePaths),
     Test("Health check 5xx response is unhealthy", HealthCheckTests.HealthCheck5xxIsUnhealthy, TestTaxonomy.HealthChecks, TestTaxonomy.SecurityNegativePaths),
+    Test("Health check sample names statuses and explicit results", Sync(HealthCheckTests.HealthCheckSampleNamesStatusesAndExplicitResults), TestTaxonomy.HealthChecks),
     Test("Health check timeout is unhealthy", HealthCheckTests.HealthCheckTimeoutIsUnhealthy, TestTaxonomy.HealthChecks, TestTaxonomy.Limits, TestTaxonomy.SecurityNegativePaths),
     Test("Health state transitions to unhealthy after threshold", Sync(HealthCheckTests.HealthStateTransitionsToUnhealthyAfterThreshold), TestTaxonomy.HealthChecks, TestTaxonomy.SecurityNegativePaths),
     Test("Health state transitions to healthy after recovery threshold", Sync(HealthCheckTests.HealthStateTransitionsToHealthyAfterRecoveryThreshold), TestTaxonomy.HealthChecks),
