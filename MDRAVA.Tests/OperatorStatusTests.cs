@@ -127,6 +127,25 @@ internal static class OperatorStatusTests
         AssertEx.Equal(1, summary.RouteCount);
     }
 
+    public static void StatusConfigurationSourceMapperShapesStatusFactsFromActiveConfiguration()
+    {
+        var listener = Listener();
+        var route = StaticRoute();
+        var snapshot = Snapshot([listener], [route]);
+
+        var source = ProxyStatusConfigurationSourceMapper.FromConfiguration(snapshot);
+
+        AssertEx.Equal(snapshot.Version, source.Version);
+        AssertEx.Equal(snapshot.LoadedAtUtc, source.LoadedAtUtc);
+        AssertEx.Equal(1, source.Listeners.Count);
+        AssertEx.Equal(1, source.Routes.Count);
+        AssertEx.True(source.ReadinessConfiguration.HasActiveConfiguration);
+        AssertEx.Equal(snapshot.Version, source.ReadinessConfiguration.ConfigGeneration!.Value);
+        AssertEx.Equal(snapshot.LoadedAtUtc, source.ReadinessConfiguration.ConfigurationLoadedAtUtc!.Value);
+        AssertEx.Equal(1, source.ReadinessConfiguration.ConfiguredListeners.Count);
+        AssertEx.Equal(1, source.ReadinessConfiguration.Routes.Count);
+    }
+
     public static void StatusResponseBuilderBuildsResponseFromNamedInput()
     {
         var listener = Listener();

@@ -25,9 +25,16 @@ public sealed class ProxyConfigurationStore
         return snapshot is not null;
     }
 
-    public bool TryReadSnapshot(out ProxyConfigurationSnapshot? snapshot)
+    public bool TryReadConfiguration(out ProxyStatusConfigurationSourceSet? configuration)
     {
-        return TryGetSnapshot(out snapshot);
+        if (!TryGetSnapshot(out var snapshot) || snapshot is null)
+        {
+            configuration = null;
+            return false;
+        }
+
+        configuration = ProxyStatusConfigurationSourceMapper.FromConfiguration(snapshot);
+        return true;
     }
 
     public ProxyConfigurationSnapshot Replace(ProxyConfigurationSnapshot snapshot)
