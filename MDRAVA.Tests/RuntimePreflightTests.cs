@@ -95,6 +95,41 @@ internal static class RuntimePreflightTests
         AssertEx.False(Directory.Exists(Path.Combine(temp.Path, "logs")));
     }
 
+    public static void RuntimePreflightProbePolicyClassifiesReasonAndSeverity()
+    {
+        var criticalMissing = ProxyRuntimePreflightProbePolicy.Classify(
+            new ProxyRuntimeDirectoryProbeResult(
+                Exists: false,
+                Created: false,
+                CanRead: false,
+                CanWrite: false,
+                FailureReason: null),
+            critical: true);
+        var nonCriticalDenied = ProxyRuntimePreflightProbePolicy.Classify(
+            new ProxyRuntimeDirectoryProbeResult(
+                Exists: true,
+                Created: false,
+                CanRead: true,
+                CanWrite: true,
+                FailureReason: "access_denied"),
+            critical: false);
+        var healthy = ProxyRuntimePreflightProbePolicy.Classify(
+            new ProxyRuntimeDirectoryProbeResult(
+                Exists: true,
+                Created: false,
+                CanRead: true,
+                CanWrite: true,
+                FailureReason: null),
+            critical: true);
+
+        AssertEx.Equal(ProxyStatusText.Error, criticalMissing.Severity);
+        AssertEx.Equal("missing_directory", criticalMissing.Reason);
+        AssertEx.Equal(ProxyStatusText.Warning, nonCriticalDenied.Severity);
+        AssertEx.Equal("directory_access_denied", nonCriticalDenied.Reason);
+        AssertEx.Equal(ProxyStatusText.Info, healthy.Severity);
+        AssertEx.Equal(ProxyStatusText.Ok, healthy.Reason);
+    }
+
     private static MdravaDataDirectoryProvider Provider(string dataDirectory)
     {
         return new MdravaDataDirectoryProvider(new MdravaDataDirectoryOptions

@@ -53,6 +53,7 @@ internal static partial class TestRegistry
     Test("Runtime preflight reports unwritable directory safely", Sync(RuntimePreflightTests.RuntimePreflightReportsUnwritableDirectorySafely), TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
     Test("Runtime preflight rejects unsafe child path", Sync(RuntimePreflightTests.RuntimePreflightRejectsUnsafeChildPath), TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
     Test("Runtime preflight inspect does not create missing directories", Sync(RuntimePreflightTests.RuntimePreflightInspectDoesNotCreateMissingDirectories), TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
+    Test("Runtime preflight probe policy classifies reason and severity", Sync(RuntimePreflightTests.RuntimePreflightProbePolicyClassifiesReasonAndSeverity), TestTaxonomy.Config),
     Test("Admission controller enforces client limit", Sync(HardeningTests.AdmissionControllerEnforcesClientLimit), TestTaxonomy.Limits),
     Test("Admission lease disposal releases client slot", Sync(HardeningTests.AdmissionLeaseDisposalReleasesClientSlot), TestTaxonomy.Limits),
     Test("Admission controller enforces TLS handshake limit", Sync(HardeningTests.AdmissionControllerEnforcesTlsHandshakeLimit), TestTaxonomy.Tls, TestTaxonomy.Limits),
