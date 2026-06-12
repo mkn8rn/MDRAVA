@@ -37,20 +37,19 @@ public sealed class ProxyAdminAuthenticationService
             _events.ActiveConfigurationMissing();
         }
 
-        var security = securityResult.Security;
         var decision = ProxyAdminAuthenticationPolicy.Authenticate(new ProxyAdminAuthenticationInput(
-            security.RequireAuthentication,
-            security.Token,
+            securityResult.RequireAuthentication,
+            securityResult.Token,
             input.PresentedCredentials));
         if (decision.AuthenticationRequired && !decision.Allowed)
         {
             _metrics.AdminAuthFailed();
             var deniedStatusCode = decision.ShouldChallenge ? UnauthorizedStatusCode : ForbiddenStatusCode;
-            RecordAudit(input, decision.Result, deniedStatusCode, succeeded: false, security.RecentAuditCapacity);
+            RecordAudit(input, decision.Result, deniedStatusCode, succeeded: false, securityResult.RecentAuditCapacity);
             return new ProxyAdminAuthenticationOutcome(
                 false,
                 decision.Result,
-                security.RecentAuditCapacity,
+                securityResult.RecentAuditCapacity,
                 decision.ShouldChallenge,
                 deniedStatusCode);
         }
@@ -63,7 +62,7 @@ public sealed class ProxyAdminAuthenticationService
         return new ProxyAdminAuthenticationOutcome(
             true,
             decision.Result,
-            security.RecentAuditCapacity,
+            securityResult.RecentAuditCapacity,
             ShouldChallenge: false,
             DeniedStatusCode: null);
     }

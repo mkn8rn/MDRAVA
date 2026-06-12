@@ -19,14 +19,19 @@ public sealed class ProxyAdminSecurityOptionsReader : IProxyAdminSecurityOptions
         {
             return new ProxyAdminSecurityOptionsReadResult(
                 true,
-                snapshot.AdminSecurity);
+                snapshot.AdminSecurity.RequireAuthentication,
+                snapshot.AdminSecurity.Token,
+                snapshot.AdminSecurity.RecentAuditCapacity);
         }
 
         var adminOptions = new ProxyAdminOptions();
+        var security = ProxyConfigurationRuntimeMapper.ToRuntimeAdminSecurityOptions(
+            adminOptions,
+            ProxyAdminSecurityTokenPolicy.Resolve(adminOptions, Environment.GetEnvironmentVariable));
         return new ProxyAdminSecurityOptionsReadResult(
             false,
-            ProxyConfigurationRuntimeMapper.ToRuntimeAdminSecurityOptions(
-                adminOptions,
-                ProxyAdminSecurityTokenPolicy.Resolve(adminOptions, Environment.GetEnvironmentVariable)));
+            security.RequireAuthentication,
+            security.Token,
+            security.RecentAuditCapacity);
     }
 }

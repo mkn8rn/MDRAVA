@@ -1,5 +1,3 @@
-using MDRAVA.BLL.Configuration;
-
 namespace MDRAVA.BLL.ControlPlane.AdminAuthentication;
 
 public interface IProxyAdminSecurityOptionsReader
@@ -9,4 +7,6 @@ public interface IProxyAdminSecurityOptionsReader
 
 public sealed record ProxyAdminSecurityOptionsReadResult(
     bool HasActiveConfiguration,
-    RuntimeAdminSecurityOptions Security);
+    bool RequireAuthentication,
+    string? Token,
+    int RecentAuditCapacity);
