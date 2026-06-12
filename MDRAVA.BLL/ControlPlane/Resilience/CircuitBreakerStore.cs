@@ -162,15 +162,15 @@ public sealed class CircuitBreakerStore
         }
     }
 
-    public CircuitBreakerStatus Snapshot(RuntimeUpstream upstream)
+    public CircuitBreakerStatus Snapshot(CircuitBreakerStatusSource source)
     {
-        if (!upstream.CircuitBreaker.Enabled)
+        if (!source.Policy.Enabled)
         {
             return new CircuitBreakerStatus(
                 CircuitBreakerRuntimeState.Disabled,
                 false,
-                upstream.CircuitBreaker.FailureThreshold,
-                upstream.CircuitBreaker.HalfOpenMaxAttempts,
+                source.Policy.FailureThreshold,
+                source.Policy.HalfOpenMaxAttempts,
                 null,
                 null,
                 0,
@@ -178,18 +178,18 @@ public sealed class CircuitBreakerStore
                 null);
         }
 
-        var state = GetOrCreate(upstream);
+        var state = GetOrCreate(source.UpstreamIdentity);
         lock (state.Gate)
         {
-            RefreshOpenState(upstream, state, _timeProvider.GetUtcNow());
+            RefreshOpenState(source.Policy, state, _timeProvider.GetUtcNow());
             return new CircuitBreakerStatus(
                 state.State,
                 true,
-                upstream.CircuitBreaker.FailureThreshold,
-                upstream.CircuitBreaker.HalfOpenMaxAttempts,
+                source.Policy.FailureThreshold,
+                source.Policy.HalfOpenMaxAttempts,
                 state.OpenedAtUtc,
                 state.State == CircuitBreakerRuntimeState.Open && state.OpenedAtUtc.HasValue
-                    ? state.OpenedAtUtc.Value.Add(upstream.CircuitBreaker.OpenDuration)
+                    ? state.OpenedAtUtc.Value.Add(source.Policy.OpenDuration)
                     : null,
                 state.FailureCount,
                 state.RejectedRequests,
@@ -199,12 +199,17 @@ public sealed class CircuitBreakerStore
 
     private void RefreshOpenState(RuntimeUpstream upstream, MutableCircuitState state, DateTimeOffset now)
     {
+        RefreshOpenState(upstream.CircuitBreaker, state, now);
+    }
+
+    private void RefreshOpenState(RuntimeCircuitBreakerPolicy policy, MutableCircuitState state, DateTimeOffset now)
+    {
         if (state.State != CircuitBreakerRuntimeState.Open || state.OpenedAtUtc is null)
         {
             return;
         }
 
-        if (now - state.OpenedAtUtc.Value >= upstream.CircuitBreaker.OpenDuration)
+        if (now - state.OpenedAtUtc.Value >= policy.OpenDuration)
         {
             state.State = CircuitBreakerRuntimeState.HalfOpen;
             state.HalfOpenInFlight = 0;
@@ -249,7 +254,12 @@ public sealed class CircuitBreakerStore
 
     private MutableCircuitState GetOrCreate(RuntimeUpstream upstream)
     {
-        return _states.GetOrAdd(upstream.Identity, _ => new MutableCircuitState());
+        return GetOrCreate(upstream.Identity);
+    }
+
+    private MutableCircuitState GetOrCreate(string upstreamIdentity)
+    {
+        return _states.GetOrAdd(upstreamIdentity, _ => new MutableCircuitState());
     }
 
     private static bool ContainsStatus(IReadOnlyList<int> statusCodes, int statusCode)

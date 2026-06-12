@@ -319,7 +319,7 @@ internal static class ResilienceTests
         var second = AssertEx.NotNull(fixture.Selector.Select(route));
         fixture.Circuit.RecordFailure(second.CircuitBreakerLease, "connect_failure");
 
-        AssertEx.Equal(CircuitBreakerRuntimeState.Open, fixture.Circuit.Snapshot(route.Upstreams[0]).State);
+        AssertEx.Equal(CircuitBreakerRuntimeState.Open, fixture.Circuit.Snapshot(StatusSource(route.Upstreams[0])).State);
     }
 
     public static void CircuitRejectsTrafficWhileOpen()
@@ -346,7 +346,7 @@ internal static class ResilienceTests
         var second = AssertEx.NotNull(fixture.Selector.Select(route));
 
         AssertEx.True(AssertEx.NotNull(second.CircuitBreakerLease).HalfOpenProbe);
-        AssertEx.Equal(CircuitBreakerRuntimeState.HalfOpen, fixture.Circuit.Snapshot(route.Upstreams[0]).State);
+        AssertEx.Equal(CircuitBreakerRuntimeState.HalfOpen, fixture.Circuit.Snapshot(StatusSource(route.Upstreams[0])).State);
     }
 
     public static void HalfOpenProbeCountIsBounded()
@@ -376,7 +376,7 @@ internal static class ResilienceTests
 
         fixture.Circuit.RecordSuccess(probe.CircuitBreakerLease);
 
-        AssertEx.Equal(CircuitBreakerRuntimeState.Closed, fixture.Circuit.Snapshot(route.Upstreams[0]).State);
+        AssertEx.Equal(CircuitBreakerRuntimeState.Closed, fixture.Circuit.Snapshot(StatusSource(route.Upstreams[0])).State);
     }
 
     public static void HalfOpenFailureReopensCircuit()
@@ -390,7 +390,7 @@ internal static class ResilienceTests
 
         fixture.Circuit.RecordFailure(probe.CircuitBreakerLease, "connect_failure");
 
-        AssertEx.Equal(CircuitBreakerRuntimeState.Open, fixture.Circuit.Snapshot(route.Upstreams[0]).State);
+        AssertEx.Equal(CircuitBreakerRuntimeState.Open, fixture.Circuit.Snapshot(StatusSource(route.Upstreams[0])).State);
     }
 
     public static void WeightedRoundRobinHonorsWeights()
@@ -460,8 +460,8 @@ internal static class ResilienceTests
         var second = AssertEx.NotNull(fixture.Selector.Select(route));
 
         AssertEx.Equal("http3", second.Upstream.Name);
-        AssertEx.Equal(CircuitBreakerRuntimeState.Open, fixture.Circuit.Snapshot(http1).State);
-        AssertEx.Equal(CircuitBreakerRuntimeState.Closed, fixture.Circuit.Snapshot(http3).State);
+        AssertEx.Equal(CircuitBreakerRuntimeState.Open, fixture.Circuit.Snapshot(StatusSource(http1)).State);
+        AssertEx.Equal(CircuitBreakerRuntimeState.Closed, fixture.Circuit.Snapshot(StatusSource(http3)).State);
     }
 
     public static void AllUpstreamsUnavailableReturnsNoSelection()
@@ -934,6 +934,11 @@ internal static class ResilienceTests
     private sealed record ClosedUpstreamResult(
         string Response,
         ProxyMetricsSnapshot Metrics);
+
+    private static CircuitBreakerStatusSource StatusSource(RuntimeUpstream upstream)
+    {
+        return CircuitBreakerStatusSourceMapper.FromUpstream(upstream);
+    }
 
     private sealed class SelectorFixture : IDisposable
     {

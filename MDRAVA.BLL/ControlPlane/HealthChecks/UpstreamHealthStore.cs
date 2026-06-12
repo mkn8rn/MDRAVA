@@ -126,7 +126,8 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
                 {
                     Protocol = upstream.Protocol,
                     Weight = upstream.Weight,
-                    CircuitBreaker = _circuitBreakerStore.Snapshot(upstream)
+                    CircuitBreaker = _circuitBreakerStore.Snapshot(
+                        CircuitBreakerStatusSourceMapper.FromUpstream(upstream))
                 });
             }
         }
