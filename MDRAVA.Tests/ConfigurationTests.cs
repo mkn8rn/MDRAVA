@@ -36,6 +36,25 @@ internal static class ConfigurationTests
         AssertEx.Equal("parse failed", failed.Error);
     }
 
+    public static void ConfigurationNormalizeResultNamesNormalizedAndFailedOutcomes()
+    {
+        var normalized = ProxyConfigurationNormalizeResult.Normalized("json", "{}");
+        var failed = ProxyConfigurationNormalizeResult.Failed(
+            "yaml",
+            [ProxyConfigurationFileError.Global("parse failed")]);
+
+        AssertEx.True(normalized.Succeeded);
+        AssertEx.Equal("json", normalized.Format);
+        AssertEx.Equal("{}", AssertEx.NotNull(normalized.CanonicalJson));
+        AssertEx.Equal(0, normalized.Errors.Count);
+        AssertEx.Equal(0, normalized.FileErrors.Count);
+        AssertEx.False(failed.Succeeded);
+        AssertEx.Equal("yaml", failed.Format);
+        AssertEx.Equal<string?>(null, failed.CanonicalJson);
+        AssertEx.Equal("parse failed", failed.Errors[0]);
+        AssertEx.Equal("parse failed", failed.FileErrors[0].Message);
+    }
+
     public static void ConfigurationReloadResultNamesReloadOutcomes()
     {
         var attemptedAtUtc = DateTimeOffset.UnixEpoch.AddMinutes(1);
@@ -951,6 +970,38 @@ internal static class ConfigurationTests
         AssertEx.Equal(null, result.CanonicalJson);
         AssertEx.True(result.Errors.Any(static error => error.Contains("Proxy:Listeners", StringComparison.Ordinal)), string.Join("; ", result.Errors));
         AssertEx.True(result.FileErrors.All(static error => error.Path is null));
+    }
+
+    public static void ConfigNormalizerRejectsMissingCanonicalJson()
+    {
+        var parser = new FixedNormalizeSiteParser(
+            ProxyConfigurationNormalizeSiteParseResult.Parsed(
+                new SiteOptions
+                {
+                    Name = "broken",
+                    Listeners =
+                    [
+                        new ListenerOptions
+                        {
+                            Name = "main",
+                            Address = "127.0.0.1",
+                            Port = 18080
+                        }
+                    ],
+                    Routes = []
+                },
+                null));
+        var normalizer = new ProxyConfigurationNormalizer(
+            parser,
+            new ProxyEndpointAddressPolicy(),
+            new ProxyUrlSyntaxPolicy());
+
+        var result = normalizer.Normalize(new ProxyConfigurationNormalizeRequest("json", "ignored"));
+
+        AssertEx.False(result.Succeeded);
+        AssertEx.Equal(ProxyConfigurationNormalizeFormat.Json, parser.LastFormat);
+        AssertEx.Equal<string?>(null, result.CanonicalJson);
+        AssertEx.True(result.Errors.Any(static error => error.Contains("canonical JSON", StringComparison.Ordinal)), string.Join("; ", result.Errors));
     }
 
     public static void ConfigNormalizerRejectsMissingRequestBody()

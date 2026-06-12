@@ -23,7 +23,7 @@ public sealed class ProxyConfigurationNormalizer
     {
         if (request is null)
         {
-            return Failure(
+            return ProxyConfigurationNormalizeResult.Failed(
                 "unknown",
                 [ProxyConfigurationFileError.Global("A normalize request body is required.")]);
         }
@@ -31,24 +31,29 @@ public sealed class ProxyConfigurationNormalizer
         if (!TryParseFormat(request.Format, out var format))
         {
             var error = ProxyConfigurationFileError.Global("Format must be 'json' or 'yaml'.");
-            return Failure(RequestFormatName(request.Format), [error]);
+            return ProxyConfigurationNormalizeResult.Failed(RequestFormatName(request.Format), [error]);
         }
 
         var formatName = FormatName(format);
         if (string.IsNullOrWhiteSpace(request.Text))
         {
-            return Failure(formatName, [ProxyConfigurationFileError.Global("Submitted config text is required.")]);
+            return ProxyConfigurationNormalizeResult.Failed(formatName, [ProxyConfigurationFileError.Global("Submitted config text is required.")]);
         }
 
         var parsed = _siteParser.Parse(request.Text, format);
         if (!parsed.Succeeded)
         {
-            return Failure(formatName, [ProxyConfigurationFileError.Global(parsed.Error ?? "Site configuration is invalid.")]);
+            return ProxyConfigurationNormalizeResult.Failed(formatName, [ProxyConfigurationFileError.Global(parsed.Error ?? "Site configuration is invalid.")]);
         }
 
         if (parsed.Site is null)
         {
-            return Failure(formatName, [ProxyConfigurationFileError.Global("Site configuration did not contain an object.")]);
+            return ProxyConfigurationNormalizeResult.Failed(formatName, [ProxyConfigurationFileError.Global("Site configuration did not contain an object.")]);
+        }
+
+        if (parsed.CanonicalJson is null)
+        {
+            return ProxyConfigurationNormalizeResult.Failed(formatName, [ProxyConfigurationFileError.Global("Site configuration did not produce canonical JSON.")]);
         }
 
         var options = SiteOptionsAggregator.ToProxyOptions(
@@ -56,31 +61,16 @@ public sealed class ProxyConfigurationNormalizer
         var validationFailures = ProxyOptionsValidationRules.Validate(options, _endpointAddressPolicy, _urlSyntaxPolicy);
         if (validationFailures.Count > 0)
         {
-            return Failure(
+            return ProxyConfigurationNormalizeResult.Failed(
                 formatName,
                 validationFailures
                     .Select(static failure => ProxyConfigurationFileError.Global(failure))
                     .ToArray());
         }
 
-        return new ProxyConfigurationNormalizeResult(
-            true,
+        return ProxyConfigurationNormalizeResult.Normalized(
             formatName,
-            parsed.CanonicalJson,
-            [],
-            []);
-    }
-
-    private static ProxyConfigurationNormalizeResult Failure(
-        string format,
-        IReadOnlyList<ProxyConfigurationFileError> errors)
-    {
-        return new ProxyConfigurationNormalizeResult(
-            false,
-            format,
-            null,
-            errors.Select(static error => error.Path is null ? error.Message : $"{error.Path}: {error.Message}").ToArray(),
-            errors);
+            parsed.CanonicalJson);
     }
 
     private static bool TryParseFormat(
