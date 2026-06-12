@@ -66,12 +66,13 @@ public sealed class ProxyStatusInputReader : IProxyStatusInputReader
         var acmeStatuses = _acmeStatusSource.GetLifecycleStatuses();
         var observedAtUtc = _timeProvider.GetUtcNow();
         var readiness = ProxyStatusReadinessInputMapper.FromSources(
-            configuration,
-            runtime,
-            metrics,
-            upstreams,
-            http3,
-            logPersistence,
+            ProxyStatusReadinessSourceMapper.FromSources(
+                configuration,
+                runtime,
+                metrics,
+                upstreams,
+                http3,
+                logPersistence),
             cacheStatus,
             acmeStatuses,
             runtimePreflight,

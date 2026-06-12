@@ -95,12 +95,13 @@ internal static class OperatorStatusTests
         var cacheStatus = new ProxyCacheStatusResponse(3, 1024, 0, 0, 0, 0, 0, null, null, [], []);
         var preflight = ProxyRuntimePreflightStatus.Unknown;
         var readiness = ProxyStatusReadinessInputMapper.FromSources(
-            snapshot,
-            runtime,
-            metrics,
-            [],
-            http3,
-            logPersistence,
+            ProxyStatusReadinessSourceMapper.FromSources(
+                snapshot,
+                runtime,
+                metrics,
+                [],
+                http3,
+                logPersistence),
             cacheStatus,
             [],
             preflight,

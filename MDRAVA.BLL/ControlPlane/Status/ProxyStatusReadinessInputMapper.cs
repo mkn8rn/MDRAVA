@@ -7,21 +7,36 @@ using MDRAVA.BLL.ControlPlane.Metrics;
 
 namespace MDRAVA.BLL.ControlPlane.Status;
 
-public static class ProxyStatusReadinessInputMapper
+public sealed record ProxyStatusReadinessSourceSet(
+    bool HasActiveConfiguration,
+    int? ConfigGeneration,
+    DateTimeOffset? ConfigurationLoadedAtUtc,
+    bool? LastListenerReloadSucceeded,
+    bool LastListenerReloadFailed,
+    IReadOnlyList<ProxyConfiguredListenerSummarySource> ConfiguredListeners,
+    IReadOnlyList<ProxyRuntimeListenerSummarySource> RuntimeListeners,
+    IReadOnlyList<ProxyRouteSummarySource> Routes,
+    ProxyCertificateSummarySource? Certificates,
+    ProxyAcmeSummaryConfigurationSource? Acme,
+    IReadOnlyList<ProxyUpstreamSummarySource> Upstreams,
+    ProxyLimitConfigurationSummarySource? LimitConfiguration,
+    ProxyLimitRuntimeSummarySource LimitRuntime,
+    bool ClientHttp3Enabled,
+    bool ClientHttp3Ready,
+    ProxyLogSummarySource Log,
+    ProxyShutdownSummarySource Shutdown);
+
+public static class ProxyStatusReadinessSourceMapper
 {
-    public static ProxyStatusReadinessInput FromSources(
+    public static ProxyStatusReadinessSourceSet FromSources(
         ProxyConfigurationSnapshot? configuration,
         ProxyRuntimeSnapshot runtime,
         ProxyMetricsSnapshot metrics,
         IReadOnlyList<ProxyUpstreamStatusResponse> upstreams,
         RuntimeHttp3SupportProjection http3,
-        ProxyLogPersistenceStatus logPersistence,
-        ProxyCacheStatusResponse? cacheStatus,
-        IReadOnlyList<AcmeCertificateLifecycleStatus> acmeStatuses,
-        ProxyRuntimePreflightStatus runtimePreflight,
-        DateTimeOffset observedAtUtc)
+        ProxyLogPersistenceStatus logPersistence)
     {
-        return new ProxyStatusReadinessInput(
+        return new ProxyStatusReadinessSourceSet(
             configuration is not null,
             configuration?.Version,
             configuration?.LoadedAtUtc,
@@ -51,11 +66,7 @@ public static class ProxyStatusReadinessInputMapper
                 runtime.IsRunning,
                 runtime.IsShuttingDown,
                 runtime.ShutdownStartedAtUtc,
-                runtime.ShutdownDeadlineUtc),
-            cacheStatus,
-            acmeStatuses,
-            runtimePreflight,
-            observedAtUtc);
+                runtime.ShutdownDeadlineUtc));
     }
 
     private static IReadOnlyList<ProxyConfiguredListenerSummarySource> ConfiguredListenerSources(
@@ -154,5 +165,39 @@ public static class ProxyStatusReadinessInputMapper
             snapshot.Limits.MaxActiveClientConnections,
             snapshot.Limits.MaxConcurrentTlsHandshakes,
             snapshot.Limits.RequestsPerMinutePerIp);
+    }
+}
+
+public static class ProxyStatusReadinessInputMapper
+{
+    public static ProxyStatusReadinessInput FromSources(
+        ProxyStatusReadinessSourceSet sources,
+        ProxyCacheStatusResponse? cacheStatus,
+        IReadOnlyList<AcmeCertificateLifecycleStatus> acmeStatuses,
+        ProxyRuntimePreflightStatus runtimePreflight,
+        DateTimeOffset observedAtUtc)
+    {
+        return new ProxyStatusReadinessInput(
+            sources.HasActiveConfiguration,
+            sources.ConfigGeneration,
+            sources.ConfigurationLoadedAtUtc,
+            sources.LastListenerReloadSucceeded,
+            sources.LastListenerReloadFailed,
+            sources.ConfiguredListeners,
+            sources.RuntimeListeners,
+            sources.Routes,
+            sources.Certificates,
+            sources.Acme,
+            sources.Upstreams,
+            sources.LimitConfiguration,
+            sources.LimitRuntime,
+            sources.ClientHttp3Enabled,
+            sources.ClientHttp3Ready,
+            sources.Log,
+            sources.Shutdown,
+            cacheStatus,
+            acmeStatuses,
+            runtimePreflight,
+            observedAtUtc);
     }
 }
