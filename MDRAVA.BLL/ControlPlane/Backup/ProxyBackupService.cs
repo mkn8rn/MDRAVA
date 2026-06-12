@@ -8,11 +8,6 @@ public sealed class ProxyBackupService : IProxyBackupOperations
 {
     private const int MaxEntries = 256;
     private const int MaxWarnings = 64;
-    private const string MustBackup = "must_backup";
-    private const string ShouldBackup = "should_backup";
-    private const string OptionalBackup = "optional_backup";
-    private const string RuntimeGeneratedSafeToOmit = "runtime_generated_safe_to_omit";
-    private const string NeverExportByDefaultSensitive = "never_export_by_default_sensitive";
 
     private readonly IMdravaDataDirectoryProvider _dataDirectoryProvider;
     private readonly IProxyBackupFileSystem _backupFileSystem;
@@ -54,7 +49,7 @@ public sealed class ProxyBackupService : IProxyBackupOperations
         {
             foreach (var file in scan.Files)
             {
-                var category = ClassifyFile(file.RelativePath);
+                var category = ProxyBackupFileClassificationPolicy.ClassifyFile(file.RelativePath);
                 entries.Add(new ProxyBackupManifestEntry(
                     file.RelativePath,
                     category.Category,
@@ -127,7 +122,7 @@ public sealed class ProxyBackupService : IProxyBackupOperations
 
         foreach (var directory in manifest.Directories.Where(static directory =>
             !directory.Exists
-            && string.Equals(directory.Classification, MustBackup, StringComparison.OrdinalIgnoreCase)))
+            && string.Equals(directory.Classification, ProxyBackupFileClassificationPolicy.MustBackup, StringComparison.OrdinalIgnoreCase)))
         {
             errors.Add(new ProxyRestoreValidationFinding(
                 ProxyStatusText.Error,
@@ -166,12 +161,12 @@ public sealed class ProxyBackupService : IProxyBackupOperations
     {
         return
         [
-            DirectoryStatus(root, "config", MustBackup, sensitive: false),
-            DirectoryStatus(root, "config/sites", MustBackup, sensitive: false),
-            DirectoryStatus(root, "logs", ShouldBackup, sensitive: false),
-            DirectoryStatus(root, "certs", NeverExportByDefaultSensitive, sensitive: true),
-            DirectoryStatus(root, "certs/acme", NeverExportByDefaultSensitive, sensitive: true),
-            DirectoryStatus(root, "state", ShouldBackup, sensitive: false)
+            DirectoryStatus(root, "config", ProxyBackupFileClassificationPolicy.MustBackup, sensitive: false),
+            DirectoryStatus(root, "config/sites", ProxyBackupFileClassificationPolicy.MustBackup, sensitive: false),
+            DirectoryStatus(root, "logs", ProxyBackupFileClassificationPolicy.ShouldBackup, sensitive: false),
+            DirectoryStatus(root, "certs", ProxyBackupFileClassificationPolicy.NeverExportByDefaultSensitive, sensitive: true),
+            DirectoryStatus(root, "certs/acme", ProxyBackupFileClassificationPolicy.NeverExportByDefaultSensitive, sensitive: true),
+            DirectoryStatus(root, "state", ProxyBackupFileClassificationPolicy.ShouldBackup, sensitive: false)
         ];
     }
 
@@ -186,65 +181,6 @@ public sealed class ProxyBackupService : IProxyBackupOperations
             _backupFileSystem.DirectoryExists(root, relativePath),
             classification,
             sensitive);
-    }
-
-    private static (string Category, string Classification, bool Sensitive) ClassifyFile(string relativePath)
-    {
-        var normalized = relativePath.Replace('\\', '/');
-        var slash = normalized.LastIndexOf('/');
-        var fileName = slash >= 0 ? normalized[(slash + 1)..] : normalized;
-        if (string.Equals(fileName, "example.site.yaml", StringComparison.OrdinalIgnoreCase)
-            || fileName.StartsWith("example.", StringComparison.OrdinalIgnoreCase))
-        {
-            return ("generated_example", RuntimeGeneratedSafeToOmit, false);
-        }
-
-        if (string.Equals(normalized, "config/proxy.json", StringComparison.OrdinalIgnoreCase))
-        {
-            return ("config", MustBackup, false);
-        }
-
-        if (normalized.StartsWith("config/sites/", StringComparison.OrdinalIgnoreCase))
-        {
-            return ("site_config", MustBackup, false);
-        }
-
-        if (normalized.StartsWith("logs/", StringComparison.OrdinalIgnoreCase))
-        {
-            return ("logs", ShouldBackup, false);
-        }
-
-        if (normalized.StartsWith("certs/acme/accounts/", StringComparison.OrdinalIgnoreCase)
-            || normalized.StartsWith("certs/acme/private-keys/", StringComparison.OrdinalIgnoreCase))
-        {
-            return ("acme_secret_material", NeverExportByDefaultSensitive, true);
-        }
-
-        if (normalized.StartsWith("certs/acme/certificates/", StringComparison.OrdinalIgnoreCase)
-            || normalized.StartsWith("certs/acme/metadata/", StringComparison.OrdinalIgnoreCase))
-        {
-            return ("acme_certificate_state", ShouldBackup, false);
-        }
-
-        if (normalized.StartsWith("certs/", StringComparison.OrdinalIgnoreCase)
-            && (fileName.EndsWith(".pfx", StringComparison.OrdinalIgnoreCase)
-                || fileName.EndsWith(".p12", StringComparison.OrdinalIgnoreCase)
-                || fileName.EndsWith(".key", StringComparison.OrdinalIgnoreCase)))
-        {
-            return ("manual_certificate_material", NeverExportByDefaultSensitive, true);
-        }
-
-        if (normalized.StartsWith("certs/", StringComparison.OrdinalIgnoreCase))
-        {
-            return ("certificate_metadata", ShouldBackup, false);
-        }
-
-        if (normalized.StartsWith("state/", StringComparison.OrdinalIgnoreCase))
-        {
-            return ("state", ShouldBackup, false);
-        }
-
-        return ("unknown", OptionalBackup, false);
     }
 
     private ProxyRestoreValidationFinding ClassifyConfigError(string root, ProxyConfigurationFileError fileError)
