@@ -85,7 +85,7 @@ internal static class OperatorStatusTests
                 RouteCount: 0),
             UpstreamHealthSources: [healthSource],
             Http3Configuration: Http3SupportSourceMapper.FromConfiguration([], []),
-            ReadinessConfiguration: ProxyStatusReadinessConfigurationSourceMapper.FromConfiguration(null));
+            ReadinessConfiguration: ProxyStatusReadinessConfigurationSourceSet.Missing);
         var upstreamHealthSource = new CapturingStatusUpstreamHealthSource();
         var reader = new ProxyStatusUpstreamHealthReader(
             new FixedStatusConfigurationSource(configuration),
@@ -324,7 +324,7 @@ internal static class OperatorStatusTests
         var logPersistence = ProxyLogPersistenceStatus.Unknown;
 
         var sources = ProxyStatusReadinessSourceMapper.FromSources(
-            ProxyStatusReadinessConfigurationSourceMapper.FromConfiguration(null),
+            ProxyStatusReadinessConfigurationSourceSet.Missing,
             runtime,
             metrics,
             upstreams: [],
@@ -339,6 +339,20 @@ internal static class OperatorStatusTests
         AssertEx.False(sources.Shutdown.IsRunning);
         AssertEx.True(sources.Shutdown.IsShuttingDown);
         AssertEx.Equal(DateTimeOffset.UnixEpoch.AddMinutes(1), sources.Shutdown.ShutdownStartedAtUtc);
+    }
+
+    public static void StatusReadinessConfigurationSourceSetNamesMissingConfiguration()
+    {
+        var configuration = ProxyStatusReadinessConfigurationSourceSet.Missing;
+
+        AssertEx.False(configuration.HasActiveConfiguration);
+        AssertEx.Equal<int?>(null, configuration.ConfigGeneration);
+        AssertEx.Equal<DateTimeOffset?>(null, configuration.ConfigurationLoadedAtUtc);
+        AssertEx.Equal(0, configuration.ConfiguredListeners.Count);
+        AssertEx.Equal(0, configuration.Routes.Count);
+        AssertEx.Equal(null, configuration.Certificates);
+        AssertEx.Equal(null, configuration.Acme);
+        AssertEx.Equal(null, configuration.LimitConfiguration);
     }
 
     public static void StatusReadinessSourceMapperConsumesConfigurationSourceSetWithoutConfigurationSnapshot()

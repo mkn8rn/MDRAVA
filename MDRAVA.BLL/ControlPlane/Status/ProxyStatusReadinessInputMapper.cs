@@ -34,7 +34,18 @@ public sealed record ProxyStatusReadinessConfigurationSourceSet(
     IReadOnlyList<ProxyRouteSummarySource> Routes,
     ProxyCertificateSummarySource? Certificates,
     ProxyAcmeSummaryConfigurationSource? Acme,
-    ProxyLimitConfigurationSummarySource? LimitConfiguration);
+    ProxyLimitConfigurationSummarySource? LimitConfiguration)
+{
+    public static ProxyStatusReadinessConfigurationSourceSet Missing { get; } = new(
+        HasActiveConfiguration: false,
+        ConfigGeneration: null,
+        ConfigurationLoadedAtUtc: null,
+        ConfiguredListeners: [],
+        Routes: [],
+        Certificates: null,
+        Acme: null,
+        LimitConfiguration: null);
+}
 
 public static class ProxyStatusReadinessConfigurationSourceMapper
 {
@@ -43,15 +54,7 @@ public static class ProxyStatusReadinessConfigurationSourceMapper
     {
         if (configuration is null)
         {
-            return new ProxyStatusReadinessConfigurationSourceSet(
-                false,
-                null,
-                null,
-                [],
-                [],
-                null,
-                null,
-                null);
+            return ProxyStatusReadinessConfigurationSourceSet.Missing;
         }
 
         return new ProxyStatusReadinessConfigurationSourceSet(
