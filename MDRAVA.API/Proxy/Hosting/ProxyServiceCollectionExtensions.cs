@@ -237,6 +237,7 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<UpstreamHealthCheckClient>();
         services.AddSingleton<IUpstreamHealthCheckClient>(static services => services.GetRequiredService<UpstreamHealthCheckClient>());
         services.AddSingleton<IUpstreamHealthCheckEventSink, UpstreamHealthCheckLogger>();
+        services.AddSingleton<IUpstreamHealthCheckTargetSource, ProxyConfigurationUpstreamHealthCheckTargetSource>();
         services.AddSingleton<UpstreamHealthCheckCoordinator>();
         services.AddSingleton<HopByHopHeaderPolicy>();
         services.AddSingleton<ForwardedHeadersPolicy>();

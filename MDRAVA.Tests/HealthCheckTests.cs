@@ -169,6 +169,25 @@ internal static class HealthCheckTests
         AssertEx.Equal(2L, counters.HealthChecksFailed);
     }
 
+    public static void HealthCheckTargetSourceReadsOnlyMappedActiveTargets()
+    {
+        var enabledUpstream = Upstream(5001);
+        var disabledUpstream = Upstream(5002);
+        var store = new ProxyConfigurationStore();
+        store.Replace(Snapshot([
+            Route([enabledUpstream]),
+            Route([disabledUpstream], healthEnabled: false)
+        ]));
+        var source = new ProxyConfigurationUpstreamHealthCheckTargetSource(store);
+
+        var targets = source.ReadTargets();
+
+        AssertEx.Equal(1, targets.Count);
+        AssertEx.Equal("test", targets[0].RouteName);
+        AssertEx.Equal(enabledUpstream.Identity, targets[0].Upstream.Identity);
+        AssertEx.Equal("/health", targets[0].Path);
+    }
+
     private static async Task<HealthCheckSample> RunHealthCheckAsync(string response)
     {
         var port = GetFreeTcpPort();
@@ -203,7 +222,8 @@ internal static class HealthCheckTests
         IReadOnlyList<RuntimeUpstream> upstreams,
         int timeoutSeconds = 1,
         int healthyThreshold = 2,
-        int unhealthyThreshold = 2)
+        int unhealthyThreshold = 2,
+        bool healthEnabled = true)
     {
         return new RuntimeRoute(
             "test",
@@ -212,7 +232,7 @@ internal static class HealthCheckTests
             RuntimeRouteAction.Proxy,
             "round-robin",
             new RuntimeHealthCheckOptions(
-                true,
+                healthEnabled,
                 "/health",
                 TimeSpan.FromSeconds(1),
                 TimeSpan.FromSeconds(timeoutSeconds),
@@ -232,6 +252,40 @@ internal static class HealthCheckTests
                 TimeSpan.FromSeconds(10),
                 TimeSpan.FromSeconds(30),
                 true));
+    }
+
+    private static ProxyConfigurationSnapshot Snapshot(IReadOnlyList<RuntimeRoute> routes)
+    {
+        return new ProxyConfigurationSnapshot(
+            1,
+            DateTimeOffset.UtcNow,
+            "tests",
+            [],
+            new ProxyConfigurationDiscovery(
+                new ProxyFilesystemLayout("tests", "tests/config", "tests/config/sites", "tests/logs", "tests/certs", "tests/state", "tests/config/proxy.json"),
+                [],
+                [],
+                []),
+            new RuntimeAdminSecurityOptions([], false, false, null, "MDRAVA_ADMIN_TOKEN", "none", 100),
+            new RuntimeAcmeOptions(false, true, "", [], false, "acme", 30, 720, 60, []),
+            new RuntimeTimeouts(
+                TimeSpan.FromSeconds(15),
+                TimeSpan.FromSeconds(100),
+                TimeSpan.FromSeconds(30),
+                TimeSpan.FromSeconds(30),
+                TimeSpan.FromSeconds(30),
+                TimeSpan.FromSeconds(15),
+                TimeSpan.FromSeconds(30),
+                TimeSpan.FromSeconds(60),
+                TimeSpan.FromSeconds(30),
+                TimeSpan.FromSeconds(5)),
+            new RuntimeConnectionLimits(100, 16, 1024),
+            new RuntimeObservabilityOptions(true, 100, new RuntimeLogPersistenceOptions(true, true, 1_048_576, 8)),
+            new RuntimeLimits(4096, 128, 240, 30, 32768, 128, 8192, 104857600, 8192, TimeSpan.FromSeconds(15)),
+            new RuntimeForwardedHeadersOptions(true, []),
+            new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),
+            [],
+            routes);
     }
 
     private static IReadOnlyList<UpstreamHealthCheckTarget> Targets(RuntimeRoute route)

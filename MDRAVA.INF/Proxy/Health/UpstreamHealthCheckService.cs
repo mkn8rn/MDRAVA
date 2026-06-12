@@ -1,5 +1,4 @@
 using MDRAVA.BLL.ControlPlane.HealthChecks;
-using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 using Microsoft.Extensions.Hosting;
 
 namespace MDRAVA.INF.Proxy.Health;
@@ -8,16 +7,16 @@ public sealed class UpstreamHealthCheckService : BackgroundService
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(250);
 
-    private readonly IProxyConfigurationStore _configurationStore;
+    private readonly IUpstreamHealthCheckTargetSource _targetSource;
     private readonly UpstreamHealthCheckCoordinator _coordinator;
     private readonly TimeProvider _timeProvider;
 
     public UpstreamHealthCheckService(
-        IProxyConfigurationStore configurationStore,
+        IUpstreamHealthCheckTargetSource targetSource,
         UpstreamHealthCheckCoordinator coordinator,
         TimeProvider timeProvider)
     {
-        _configurationStore = configurationStore;
+        _targetSource = targetSource;
         _coordinator = coordinator;
         _timeProvider = timeProvider;
     }
@@ -26,12 +25,9 @@ public sealed class UpstreamHealthCheckService : BackgroundService
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            if (_configurationStore.TryGetSnapshot(out var snapshot) && snapshot is not null)
-            {
-                await _coordinator.RunDueChecksAsync(
-                    UpstreamHealthCheckTargetMapper.FromSnapshot(snapshot),
-                    stoppingToken);
-            }
+            await _coordinator.RunDueChecksAsync(
+                _targetSource.ReadTargets(),
+                stoppingToken);
 
             await Task.Delay(PollInterval, _timeProvider, stoppingToken);
         }
