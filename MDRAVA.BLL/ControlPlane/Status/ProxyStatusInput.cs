@@ -9,7 +9,7 @@ using MDRAVA.BLL.ControlPlane.Metrics;
 namespace MDRAVA.BLL.ControlPlane.Status;
 
 public sealed record ProxyStatusInput(
-    ProxyRuntimeSnapshot Runtime,
+    ProxyStatusRuntimeSummary Runtime,
     ProxyStatusConfigurationSummary? Configuration,
     ProxyMetricsSnapshot Metrics,
     IReadOnlyList<ProxyUpstreamStatusResponse> Upstreams,
@@ -21,6 +21,38 @@ public sealed record ProxyStatusInput(
     DateTimeOffset ObservedAtUtc,
     ProxyStatusReadinessInput Readiness,
     ConfigLintStatus ConfigLint);
+
+public sealed record ProxyStatusRuntimeSummary(
+    bool ListenerLive,
+    string? ListenerName,
+    string? Endpoint,
+    DateTimeOffset? StartedAt,
+    DateTimeOffset? StoppedAt,
+    string? LastError,
+    bool IsShuttingDown,
+    DateTimeOffset? ShutdownStartedAtUtc,
+    DateTimeOffset? ShutdownDeadlineUtc,
+    IReadOnlyList<ProxyListenerStatus> Listeners,
+    ProxyListenerReloadResult? LastListenerReload);
+
+public static class ProxyStatusRuntimeSummaryMapper
+{
+    public static ProxyStatusRuntimeSummary FromRuntime(ProxyRuntimeSnapshot runtime)
+    {
+        return new ProxyStatusRuntimeSummary(
+            runtime.IsRunning,
+            runtime.ListenerName,
+            runtime.Endpoint,
+            runtime.StartedAt,
+            runtime.StoppedAt,
+            runtime.LastError,
+            runtime.IsShuttingDown,
+            runtime.ShutdownStartedAtUtc,
+            runtime.ShutdownDeadlineUtc,
+            runtime.Listeners,
+            runtime.LastListenerReload);
+    }
+}
 
 public sealed record ProxyStatusConfigurationSummary(
     int Version,

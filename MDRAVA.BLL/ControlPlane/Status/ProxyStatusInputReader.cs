@@ -77,7 +77,7 @@ public sealed class ProxyStatusInputReader : IProxyStatusInputReader
             observedAtUtc);
 
         return new ProxyStatusInput(
-            runtime,
+            ProxyStatusRuntimeSummaryMapper.FromRuntime(runtime),
             ProxyStatusConfigurationSummaryMapper.FromSnapshot(configuration),
             metrics,
             upstreams,

@@ -15,7 +15,7 @@ public static class ProxyStatusResponseBuilder
         var (readiness, subsystems) = ProxyStatusReadinessBuilder.Build(input.Readiness);
 
         return new ProxyStatusResponse(
-            runtime.IsRunning,
+            runtime.ListenerLive,
             runtime.ListenerName,
             runtime.Endpoint,
             runtime.StartedAt,

@@ -61,6 +61,53 @@ internal static class OperatorStatusTests
         AssertEx.True(input.ConfigLint.Available);
     }
 
+    public static void StatusRuntimeSummaryMapperProjectsOnlyResponseRuntimeFacts()
+    {
+        var listener = Listener();
+        var startedAt = new DateTimeOffset(2026, 6, 10, 9, 10, 0, TimeSpan.Zero);
+        var stoppedAt = startedAt.AddMinutes(2);
+        var shutdownStartedAt = startedAt.AddMinutes(3);
+        var shutdownDeadline = startedAt.AddMinutes(4);
+        var reload = new ProxyListenerReloadResult(
+            Succeeded: false,
+            AttemptedAtUtc: startedAt,
+            Added: 1,
+            Removed: 0,
+            Changed: 0,
+            Unchanged: 0,
+            Changes: [],
+            Errors: ["bind_failed"]);
+        var runtime = new ProxyRuntimeSnapshot(
+            IsRunning: false,
+            ListenerName: "main",
+            Endpoint: "127.0.0.1:18080",
+            StartedAt: startedAt,
+            StoppedAt: stoppedAt,
+            LastError: "listener failed",
+            IsShuttingDown: true,
+            ShutdownStartedAtUtc: shutdownStartedAt,
+            ShutdownDeadlineUtc: shutdownDeadline)
+        {
+            Listeners = [ListenerStatus(listener, ProxyListenerState.Failed)],
+            LastListenerReload = reload
+        };
+
+        var summary = ProxyStatusRuntimeSummaryMapper.FromRuntime(runtime);
+
+        AssertEx.False(summary.ListenerLive);
+        AssertEx.Equal("main", summary.ListenerName);
+        AssertEx.Equal("127.0.0.1:18080", summary.Endpoint);
+        AssertEx.Equal(startedAt, summary.StartedAt);
+        AssertEx.Equal(stoppedAt, summary.StoppedAt);
+        AssertEx.Equal("listener failed", summary.LastError);
+        AssertEx.True(summary.IsShuttingDown);
+        AssertEx.Equal(shutdownStartedAt, summary.ShutdownStartedAtUtc);
+        AssertEx.Equal(shutdownDeadline, summary.ShutdownDeadlineUtc);
+        AssertEx.Equal(1, summary.Listeners.Count);
+        AssertEx.Equal(ProxyListenerState.Failed, summary.Listeners[0].State);
+        AssertEx.Equal(reload, summary.LastListenerReload);
+    }
+
     public static void StatusResponseBuilderBuildsResponseFromNamedInput()
     {
         var listener = Listener();
@@ -107,7 +154,7 @@ internal static class OperatorStatusTests
             preflight,
             observedAtUtc);
         var input = new ProxyStatusInput(
-            runtime,
+            ProxyStatusRuntimeSummaryMapper.FromRuntime(runtime),
             ProxyStatusConfigurationSummaryMapper.FromSnapshot(snapshot),
             metrics,
             [],

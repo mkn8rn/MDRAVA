@@ -22,6 +22,7 @@ internal static partial class TestRegistry
     Test("Log persistence status records last write failure without secrets", Sync(LogPersistenceTests.LogPersistenceStatusRecordsLastWriteFailureWithoutSecrets), TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),
     Test("Status controller includes log persistence health without secrets", Sync(LogPersistenceTests.StatusControllerIncludesLogPersistenceHealthWithoutSecrets), TestTaxonomy.Admin, TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),
     Test("Status input reader assembles named input from sources", Sync(OperatorStatusTests.StatusInputReaderAssemblesNamedInputFromSources), TestTaxonomy.Admin, TestTaxonomy.Config, TestTaxonomy.Metrics),
+    Test("Status runtime summary mapper projects response runtime facts", Sync(OperatorStatusTests.StatusRuntimeSummaryMapperProjectsOnlyResponseRuntimeFacts), TestTaxonomy.Admin, TestTaxonomy.Config),
     Test("Status response builder builds response from named input", Sync(OperatorStatusTests.StatusResponseBuilderBuildsResponseFromNamedInput), TestTaxonomy.Admin, TestTaxonomy.Config, TestTaxonomy.Metrics),
     Test("Status readiness reports healthy for active snapshot", Sync(OperatorStatusTests.StatusReadinessReportsHealthyForActiveSnapshot), TestTaxonomy.Admin, TestTaxonomy.Config, TestTaxonomy.Caching, TestTaxonomy.Metrics),
     Test("Readiness evaluator consumes narrow facts without runtime snapshots", Sync(OperatorStatusTests.ReadinessEvaluatorConsumesNarrowFactsWithoutRuntimeSnapshots), TestTaxonomy.Admin, TestTaxonomy.Config),
