@@ -86,12 +86,7 @@ public sealed class ProxyBackupService : IProxyBackupOperations
             .Select(ProxyRestoreValidationFindingPolicy.FromBackupWarning)
             .ToList();
 
-        foreach (var directory in manifest.Directories.Where(static directory =>
-            !directory.Exists
-            && string.Equals(directory.Classification, ProxyBackupFileClassificationPolicy.MustBackup, StringComparison.OrdinalIgnoreCase)))
-        {
-            errors.Add(ProxyRestoreValidationFindingPolicy.RequiredDirectoryMissing(directory.RelativePath));
-        }
+        errors.AddRange(ProxyRestoreValidationDirectoryPolicy.FindMissingRequiredDirectories(manifest.Directories));
 
         var configValidation = await _restoreConfigurationValidator.ValidateExistingLayoutAsync(cancellationToken);
         foreach (var fileError in configValidation.FileErrors)

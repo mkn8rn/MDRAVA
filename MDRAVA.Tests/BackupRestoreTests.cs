@@ -106,6 +106,24 @@ internal static class BackupRestoreTests
         AssertEx.Equal("manifest_truncated", manifest.Warnings[1].Code);
     }
 
+    public static void RestoreValidationDirectoryPolicyReportsOnlyMissingRequiredDirectories()
+    {
+        ProxyBackupDirectoryStatus[] directories =
+        [
+            new ProxyBackupDirectoryStatus("config", false, "must_backup", false),
+            new ProxyBackupDirectoryStatus("logs", false, "should_backup", false),
+            new ProxyBackupDirectoryStatus("config/sites", true, "must_backup", false)
+        ];
+
+        var findings = ProxyRestoreValidationDirectoryPolicy.FindMissingRequiredDirectories(directories);
+
+        AssertEx.Equal(1, findings.Count);
+        AssertEx.Equal(ProxyStatusText.Error, findings[0].Severity);
+        AssertEx.Equal("required_directory_missing", findings[0].Code);
+        AssertEx.Equal("A required restore directory is missing.", findings[0].Message);
+        AssertEx.Equal("config", findings[0].RelativePath);
+    }
+
     public static void BackupPathSafetyRejectsTraversalOutsideDataDirectory()
     {
         using var temp = TemporaryDirectory.Create();
