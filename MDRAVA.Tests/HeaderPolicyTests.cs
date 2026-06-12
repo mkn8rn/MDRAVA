@@ -117,6 +117,26 @@ internal static class HeaderPolicyTests
         AssertEx.False(result.Any(static header => header.Name == "Forwarded" && header.Value == "for=10.0.0.1"));
     }
 
+    public static void ForwardedAddressPolicyNamesNormalizedAddress()
+    {
+        var policy = new ProxyForwardedHeadersAddressPolicy();
+
+        var result = policy.NormalizeForwardedFor(["bad", "\"[2001:db8::10]\"", "203.0.113.10"]);
+
+        AssertEx.True(result is ForwardedForNormalizationResult.NormalizedResult);
+        var normalized = (ForwardedForNormalizationResult.NormalizedResult)result;
+        AssertEx.Equal("2001:db8::10", normalized.ClientAddress);
+    }
+
+    public static void ForwardedAddressPolicyNamesMissingAddress()
+    {
+        var policy = new ProxyForwardedHeadersAddressPolicy();
+
+        var result = policy.NormalizeForwardedFor(["", "not-an-ip"]);
+
+        AssertEx.Equal(ForwardedForNormalizationResult.Missing, result);
+    }
+
     public static void AppliesResponseHeaderMutationPolicy()
     {
         var policy = new RuntimeHeaderPolicy(

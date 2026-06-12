@@ -44,8 +44,9 @@ public sealed class ForwardedHeadersPolicy
         var incomingFor = immediatePeerTrusted
             ? SplitHeaderValues(requestHead.Headers, "X-Forwarded-For")
             : [];
-        var resolvedClientAddress = _addressPolicy.TryNormalizeForwardedFor(incomingFor, out var parsedForwardedFor)
-            ? parsedForwardedFor
+        var forwardedForNormalization = _addressPolicy.NormalizeForwardedFor(incomingFor);
+        var resolvedClientAddress = forwardedForNormalization is ForwardedForNormalizationResult.NormalizedResult normalizedForwardedFor
+            ? normalizedForwardedFor.ClientAddress
             : remoteAddress;
 
         List<string> forwardedFor = [];

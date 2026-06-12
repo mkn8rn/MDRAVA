@@ -56,6 +56,8 @@ internal static partial class TestRegistry
     Test("Header policy classifies managed HTTP/1 framing headers", Sync(HeaderPolicyTests.ClassifiesManagedHttp1FramingHeaders), TestTaxonomy.Headers),
     Test("Header policy classifies managed stored response headers", Sync(HeaderPolicyTests.ClassifiesManagedStoredResponseHeaders), TestTaxonomy.Headers, TestTaxonomy.Caching),
     Test("Header mutation policy applies request changes", Sync(HeaderPolicyTests.AppliesRequestHeaderMutationPolicy), TestTaxonomy.Headers),
+    Test("Forwarded address policy names normalized address", Sync(HeaderPolicyTests.ForwardedAddressPolicyNamesNormalizedAddress), TestTaxonomy.Headers),
+    Test("Forwarded address policy names missing address", Sync(HeaderPolicyTests.ForwardedAddressPolicyNamesMissingAddress), TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
     Test("Header mutation policy applies response changes", Sync(HeaderPolicyTests.AppliesResponseHeaderMutationPolicy), TestTaxonomy.Headers),
     Test("SingleUpstreamRouteMatcher matches wildcard route", Sync(RouteMatcherTests.MatchesWildcardRoute), TestTaxonomy.Routing),
     Test("SingleUpstreamRouteMatcher matches host without request port", Sync(RouteMatcherTests.MatchesHostWithoutRequestPort), TestTaxonomy.Routing, TestTaxonomy.Headers),

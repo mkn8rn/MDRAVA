@@ -32,11 +32,8 @@ public sealed class ProxyForwardedHeadersAddressPolicy
         return false;
     }
 
-    public bool TryNormalizeForwardedFor(
-        IReadOnlyList<string> forwardedFor,
-        out string? clientAddress)
+    public ForwardedForNormalizationResult NormalizeForwardedFor(IReadOnlyList<string> forwardedFor)
     {
-        clientAddress = null;
         foreach (var entry in forwardedFor)
         {
             var value = entry.Trim().Trim('"');
@@ -52,12 +49,11 @@ public sealed class ProxyForwardedHeadersAddressPolicy
 
             if (TryParseAddress(value, out var parsed))
             {
-                clientAddress = parsed.ToString();
-                return true;
+                return ForwardedForNormalizationResult.Normalized(parsed.ToString());
             }
         }
 
-        return false;
+        return ForwardedForNormalizationResult.Missing;
     }
 
     private static bool TryParseTrustedProxy(string entry, out TrustedProxyEntry trustedProxy)
