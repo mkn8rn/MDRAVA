@@ -85,14 +85,14 @@ public sealed class ResponseCacheStore : IProxyCacheControl
         var responseEligibility = ProxyCacheEligibilityPolicy.EvaluateStoredResponse(
             scope.Policy,
             responseHead,
-            body.LongLength,
-            out var ttl);
-        if (!responseEligibility.CanCache)
+            body.LongLength);
+        if (responseEligibility is not ProxyCacheStorageEligibilityResult.AcceptedResult acceptedStorage)
         {
-            RecordRejection(responseEligibility.RejectionReason ?? ProxyCacheEligibilityPolicy.ReasonTtl);
+            RecordRejection(((ProxyCacheStorageEligibilityResult.RejectedResult)responseEligibility).Reason);
             return;
         }
 
+        var ttl = acceptedStorage.Ttl;
         var storedHeaders = SanitizeStoredHeaders(responseHeaders);
         var sizeBytes = CalculateSize(storedHeaders, body);
         if (sizeBytes > scope.Policy.MaxEntryBytes || sizeBytes > scope.Policy.MaxTotalBytes)

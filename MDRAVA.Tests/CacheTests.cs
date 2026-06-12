@@ -205,11 +205,25 @@ internal static class CacheTests
     {
         var accepted = ProxyCacheEligibilityResult.Accept();
         var rejected = ProxyCacheEligibilityResult.Reject(ProxyCacheEligibilityPolicy.ReasonCookie);
+        var storageAccepted = ProxyCacheStorageEligibilityResult.Accepted(TimeSpan.FromSeconds(30));
+        var storageRejected = ProxyCacheStorageEligibilityResult.Rejected(ProxyCacheEligibilityPolicy.ReasonTtl);
 
         AssertEx.True(accepted.CanCache);
         AssertEx.Equal<string?>(null, accepted.RejectionReason);
         AssertEx.False(rejected.CanCache);
         AssertEx.Equal(ProxyCacheEligibilityPolicy.ReasonCookie, rejected.RejectionReason);
+        if (storageAccepted is not ProxyCacheStorageEligibilityResult.AcceptedResult acceptedStorage)
+        {
+            throw new InvalidOperationException("Expected accepted cache storage eligibility.");
+        }
+
+        AssertEx.Equal(TimeSpan.FromSeconds(30), acceptedStorage.Ttl);
+        if (storageRejected is not ProxyCacheStorageEligibilityResult.RejectedResult rejectedStorage)
+        {
+            throw new InvalidOperationException("Expected rejected cache storage eligibility.");
+        }
+
+        AssertEx.Equal(ProxyCacheEligibilityPolicy.ReasonTtl, rejectedStorage.Reason);
     }
 
     public static void SetCookieResponseIsNotCachedByDefault()

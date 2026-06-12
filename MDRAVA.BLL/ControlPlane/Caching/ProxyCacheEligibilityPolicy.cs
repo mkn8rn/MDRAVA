@@ -63,10 +63,10 @@ public static class ProxyCacheEligibilityPolicy
             return requestEligibility;
         }
 
-        var responseEligibility = EvaluateResponseMetadata(policy, responseHead, out _);
-        if (!responseEligibility.CanCache)
+        var metadataEligibility = EvaluateResponseMetadata(policy, responseHead);
+        if (metadataEligibility is CacheResponseMetadataEligibility.Rejected rejectedMetadata)
         {
-            return responseEligibility;
+            return ProxyCacheEligibilityResult.Reject(rejectedMetadata.Reason);
         }
 
         var framingEligibility = EvaluateResponseFraming(policy, responseHead);
@@ -78,24 +78,24 @@ public static class ProxyCacheEligibilityPolicy
         return ProxyCacheEligibilityResult.Accept();
     }
 
-    public static ProxyCacheEligibilityResult EvaluateStoredResponse(
+    public static ProxyCacheStorageEligibilityResult EvaluateStoredResponse(
         ProxyCachePolicyFacts policy,
         Http1ResponseHead responseHead,
-        long bodyLength,
-        out TimeSpan ttl)
+        long bodyLength)
     {
-        var responseEligibility = EvaluateResponseMetadata(policy, responseHead, out ttl);
-        if (!responseEligibility.CanCache)
+        var metadataEligibility = EvaluateResponseMetadata(policy, responseHead);
+        if (metadataEligibility is not CacheResponseMetadataEligibility.Accepted acceptedMetadata)
         {
-            return responseEligibility;
+            return ProxyCacheStorageEligibilityResult.Rejected(
+                ((CacheResponseMetadataEligibility.Rejected)metadataEligibility).Reason);
         }
 
         if (bodyLength > policy.MaxEntryBytes)
         {
-            return ProxyCacheEligibilityResult.Reject(ReasonOversized);
+            return ProxyCacheStorageEligibilityResult.Rejected(ReasonOversized);
         }
 
-        return ProxyCacheEligibilityResult.Accept();
+        return ProxyCacheStorageEligibilityResult.Accepted(acceptedMetadata.Ttl);
     }
 
     public static ProxyCacheResponseFramingEligibility EvaluateResponseFraming(
@@ -121,30 +121,27 @@ public static class ProxyCacheEligibilityPolicy
         return ProxyCacheResponseFramingEligibility.Accept();
     }
 
-    private static ProxyCacheEligibilityResult EvaluateResponseMetadata(
+    private static CacheResponseMetadataEligibility EvaluateResponseMetadata(
         ProxyCachePolicyFacts policy,
-        Http1ResponseHead responseHead,
-        out TimeSpan ttl)
+        Http1ResponseHead responseHead)
     {
-        ttl = policy.DefaultTtl;
         if (!ContainsStatus(policy.CacheableStatusCodes, responseHead.StatusCode))
         {
-            return ProxyCacheEligibilityResult.Reject(ReasonStatus);
+            return CacheResponseMetadataEligibility.Reject(ReasonStatus);
         }
 
         if (ContainsHeader(responseHead.Headers, "Set-Cookie"))
         {
-            return ProxyCacheEligibilityResult.Reject(ReasonSetCookie);
+            return CacheResponseMetadataEligibility.Reject(ReasonSetCookie);
         }
 
         var ttlResolution = ResolveTtl(policy, responseHead.Headers);
         if (ttlResolution is not CacheTtlResolution.Resolved resolvedTtl)
         {
-            return ProxyCacheEligibilityResult.Reject(((CacheTtlResolution.Rejected)ttlResolution).Reason);
+            return CacheResponseMetadataEligibility.Reject(((CacheTtlResolution.Rejected)ttlResolution).Reason);
         }
 
-        ttl = resolvedTtl.Ttl;
-        return ProxyCacheEligibilityResult.Accept();
+        return CacheResponseMetadataEligibility.Accept(resolvedTtl.Ttl);
     }
 
     private static CacheTtlResolution ResolveTtl(
@@ -232,6 +229,53 @@ public static class ProxyCacheEligibilityPolicy
                 if (string.IsNullOrWhiteSpace(reason))
                 {
                     throw new ArgumentException("Cache TTL rejection reason is required.", nameof(reason));
+                }
+
+                Reason = reason;
+            }
+
+            public string Reason { get; }
+        }
+    }
+
+    private abstract record CacheResponseMetadataEligibility
+    {
+        private CacheResponseMetadataEligibility()
+        {
+        }
+
+        public static CacheResponseMetadataEligibility Accept(TimeSpan ttl)
+        {
+            return new Accepted(ttl);
+        }
+
+        public static CacheResponseMetadataEligibility Reject(string reason)
+        {
+            return new Rejected(reason);
+        }
+
+        public sealed record Accepted : CacheResponseMetadataEligibility
+        {
+            public Accepted(TimeSpan ttl)
+            {
+                if (ttl <= TimeSpan.Zero)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(ttl), "Cache metadata TTL must be positive.");
+                }
+
+                Ttl = ttl;
+            }
+
+            public TimeSpan Ttl { get; }
+        }
+
+        public sealed record Rejected : CacheResponseMetadataEligibility
+        {
+            public Rejected(string reason)
+            {
+                if (string.IsNullOrWhiteSpace(reason))
+                {
+                    throw new ArgumentException("Cache metadata rejection reason is required.", nameof(reason));
                 }
 
                 Reason = reason;
