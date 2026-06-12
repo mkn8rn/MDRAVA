@@ -83,6 +83,7 @@ internal static class OperatorStatusTests
             Listeners: [],
             Routes: [],
             UpstreamHealthSources: [healthSource],
+            Http3Configuration: Http3SupportSourceMapper.FromConfiguration([], []),
             ReadinessConfiguration: ProxyStatusReadinessConfigurationSourceMapper.FromConfiguration(null));
         var upstreamHealthSource = new CapturingStatusUpstreamHealthSource();
         var reader = new ProxyStatusUpstreamHealthReader(
@@ -194,6 +195,8 @@ internal static class OperatorStatusTests
         AssertEx.Equal(snapshot.LoadedAtUtc, source.LoadedAtUtc);
         AssertEx.Equal(1, source.Listeners.Count);
         AssertEx.Equal(1, source.Routes.Count);
+        AssertEx.Equal(1, source.Http3Configuration.Listeners.Count);
+        AssertEx.False(source.Http3Configuration.UpstreamHttp3Configured);
         AssertEx.True(source.ReadinessConfiguration.HasActiveConfiguration);
         AssertEx.Equal(snapshot.Version, source.ReadinessConfiguration.ConfigGeneration!.Value);
         AssertEx.Equal(snapshot.LoadedAtUtc, source.ReadinessConfiguration.ConfigurationLoadedAtUtc!.Value);

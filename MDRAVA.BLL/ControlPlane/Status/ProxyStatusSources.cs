@@ -1,5 +1,6 @@
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.HealthChecks;
+using MDRAVA.BLL.ControlPlane.Http3;
 using MDRAVA.BLL.ControlPlane.Listeners;
 using MDRAVA.BLL.ControlPlane.Metrics;
 
@@ -21,6 +22,7 @@ public sealed record ProxyStatusConfigurationSourceSet(
     IReadOnlyList<RuntimeListener> Listeners,
     IReadOnlyList<RuntimeRoute> Routes,
     IReadOnlyList<ProxyUpstreamHealthSource> UpstreamHealthSources,
+    Http3SupportConfigurationSource Http3Configuration,
     ProxyStatusReadinessConfigurationSourceSet ReadinessConfiguration);
 
 public static class ProxyStatusConfigurationSourceMapper
@@ -34,6 +36,7 @@ public static class ProxyStatusConfigurationSourceMapper
             configuration.Listeners,
             configuration.Routes,
             ProxyUpstreamHealthSourceMapper.FromRoutes(configuration.Routes),
+            Http3SupportSourceMapper.FromConfiguration(configuration.Listeners, configuration.Routes),
             ProxyStatusReadinessConfigurationSourceMapper.FromConfiguration(configuration));
     }
 }
