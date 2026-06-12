@@ -1,5 +1,4 @@
 using MDRAVA.BLL.Configuration;
-using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 
 namespace MDRAVA.BLL.ControlPlane.ConfigLint;
 
@@ -56,22 +55,12 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
     public ConfigLintResult LintSubmitted(ConfigLintRequest? request)
     {
         var now = _timeProvider.GetUtcNow();
-        if (request is null)
+        if (!ConfigLintSubmittedRequestReader.TryRead(request, out var input, out var requestFailure))
         {
-            return BuildResult(now, [Error("missing_request", "A lint request body is required.", "lint-input", null, "Submit config text with an explicit format.")], []);
+            return BuildResult(now, [requestFailure!], []);
         }
 
-        if (!TryParseFormat(request.Format, out var format))
-        {
-            return BuildResult(now, [Error("invalid_format", "Format must be 'json' or 'yaml'.", "lint-input", "format", "Set format to 'json', 'yaml', or 'yml'.")], []);
-        }
-
-        if (string.IsNullOrWhiteSpace(request.Text))
-        {
-            return BuildResult(now, [Error("empty_config", "Submitted config text is required.", "lint-input", "text", "Submit one site configuration object.")], []);
-        }
-
-        var submitted = _submittedConfigurationSource.Read(request.Text, format, now);
+        var submitted = _submittedConfigurationSource.Read(input!.Text, input.Format, now);
         if (submitted.Failure is not null)
         {
             return BuildResult(now, [SubmittedFailure(submitted.Failure)], []);
@@ -191,27 +180,6 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
     {
         var sanitized = message.Replace('\r', ' ').Replace('\n', ' ');
         return sanitized.Length > 256 ? sanitized[..256] : sanitized;
-    }
-
-    private static bool TryParseFormat(
-        string? format,
-        out ProxyConfigurationNormalizeFormat parsed)
-    {
-        if (string.Equals(format, "json", StringComparison.OrdinalIgnoreCase))
-        {
-            parsed = ProxyConfigurationNormalizeFormat.Json;
-            return true;
-        }
-
-        if (string.Equals(format, "yaml", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(format, "yml", StringComparison.OrdinalIgnoreCase))
-        {
-            parsed = ProxyConfigurationNormalizeFormat.Yaml;
-            return true;
-        }
-
-        parsed = ProxyConfigurationNormalizeFormat.Json;
-        return false;
     }
 
     private static ConfigLintFinding Warning(
