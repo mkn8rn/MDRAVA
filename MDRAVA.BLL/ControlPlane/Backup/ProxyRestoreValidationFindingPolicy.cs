@@ -26,6 +26,16 @@ public static class ProxyRestoreValidationFindingPolicy
             relativePath);
     }
 
+    public static ProxyRestoreValidationFinding ConfigurationError(string error, string? relativePath)
+    {
+        var finding = ClassifyConfigurationError(error);
+        return new ProxyRestoreValidationFinding(
+            ProxyStatusText.Error,
+            finding.Code,
+            finding.Message,
+            relativePath);
+    }
+
     public static ProxyRestoreValidationFindingShape ClassifyConfigurationError(string error)
     {
         var code = ClassifyConfigurationErrorCode(error);

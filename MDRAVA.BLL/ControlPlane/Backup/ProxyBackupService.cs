@@ -1,6 +1,5 @@
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
-using MDRAVA.BLL.ControlPlane.Status;
 
 namespace MDRAVA.BLL.ControlPlane.Backup;
 
@@ -91,17 +90,14 @@ public sealed class ProxyBackupService : IProxyBackupOperations
         var configValidation = await _restoreConfigurationValidator.ValidateExistingLayoutAsync(cancellationToken);
         foreach (var fileError in configValidation.FileErrors)
         {
-            errors.Add(ClassifyConfigError(root, fileError));
+            errors.Add(ProxyRestoreValidationFindingPolicy.ConfigurationError(
+                fileError.Message,
+                SafeRelativeOrNull(root, fileError.Path)));
         }
 
         foreach (var error in configValidation.Errors.Except(configValidation.FileErrors.Select(static fileError => fileError.Message)))
         {
-            var finding = ProxyRestoreValidationFindingPolicy.ClassifyConfigurationError(error);
-            errors.Add(new ProxyRestoreValidationFinding(
-                ProxyStatusText.Error,
-                finding.Code,
-                finding.Message,
-                null));
+            errors.Add(ProxyRestoreValidationFindingPolicy.ConfigurationError(error, relativePath: null));
         }
 
         return new ProxyRestoreValidationResponse(
@@ -131,16 +127,6 @@ public sealed class ProxyBackupService : IProxyBackupOperations
             _backupFileSystem.DirectoryExists(root, requirement.RelativePath),
             requirement.Classification,
             requirement.Sensitive);
-    }
-
-    private ProxyRestoreValidationFinding ClassifyConfigError(string root, ProxyConfigurationFileError fileError)
-    {
-        var finding = ProxyRestoreValidationFindingPolicy.ClassifyConfigurationError(fileError.Message);
-        return new ProxyRestoreValidationFinding(
-            ProxyStatusText.Error,
-            finding.Code,
-            finding.Message,
-            SafeRelativeOrNull(root, fileError.Path));
     }
 
     private string? SafeRelativeOrNull(string root, string? path)

@@ -124,6 +124,18 @@ internal static class BackupRestoreTests
         AssertEx.Equal("config", findings[0].RelativePath);
     }
 
+    public static void RestoreValidationFindingPolicyBuildsConfigurationErrorFindings()
+    {
+        var finding = ProxyRestoreValidationFindingPolicy.ConfigurationError(
+            "Certificate file does not exist.",
+            "certs/home.pfx");
+
+        AssertEx.Equal(ProxyStatusText.Error, finding.Severity);
+        AssertEx.Equal("certificate_file_missing", finding.Code);
+        AssertEx.Equal("Referenced certificate material is missing.", finding.Message);
+        AssertEx.Equal("certs/home.pfx", finding.RelativePath);
+    }
+
     public static void BackupPathSafetyRejectsTraversalOutsideDataDirectory()
     {
         using var temp = TemporaryDirectory.Create();
