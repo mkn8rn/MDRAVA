@@ -20,6 +20,22 @@ internal static class ConfigurationTests
         AssertEx.Equal("path failure", path.Message);
     }
 
+    public static void NormalizeSiteParseResultNamesParsedAndFailedStates()
+    {
+        var site = new SiteOptions { Name = "parsed" };
+        var parsed = ProxyConfigurationNormalizeSiteParseResult.Parsed(site, "{}");
+        var failed = ProxyConfigurationNormalizeSiteParseResult.Failed("parse failed");
+
+        AssertEx.True(parsed.Succeeded);
+        AssertEx.Equal(site, parsed.Site);
+        AssertEx.Equal("{}", parsed.CanonicalJson);
+        AssertEx.Equal<string?>(null, parsed.Error);
+        AssertEx.False(failed.Succeeded);
+        AssertEx.Equal<SiteOptions?>(null, failed.Site);
+        AssertEx.Equal<string?>(null, failed.CanonicalJson);
+        AssertEx.Equal("parse failed", failed.Error);
+    }
+
     public static void DataDirectoryUsesConfiguredOverride()
     {
         var expected = Path.Combine(Path.GetTempPath(), $"mdrava-test-{Guid.NewGuid():N}");
@@ -790,15 +806,14 @@ internal static class ConfigurationTests
     public static void ConfigNormalizerShapesValidationFailuresFromParsedSite()
     {
         var parser = new FixedNormalizeSiteParser(
-            new ProxyConfigurationNormalizeSiteParseResult(
+            ProxyConfigurationNormalizeSiteParseResult.Parsed(
                 new SiteOptions
                 {
                     Name = "broken",
                     Host = "*",
                     PathPrefix = "/"
                 },
-                "{}",
-                null));
+                "{}"));
         var normalizer = new ProxyConfigurationNormalizer(
             parser,
             new ProxyEndpointAddressPolicy(),

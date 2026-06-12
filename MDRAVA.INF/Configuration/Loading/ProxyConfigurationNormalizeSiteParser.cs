@@ -28,15 +28,15 @@ public sealed class ProxyConfigurationNormalizeSiteParser
             var canonicalJson = site is null
                 ? null
                 : JsonSerializer.Serialize(site, SiteConfigurationParser.WriteJsonOptions);
-            return new ProxyConfigurationNormalizeSiteParseResult(site, canonicalJson, null);
+            return ProxyConfigurationNormalizeSiteParseResult.Parsed(site, canonicalJson);
         }
         catch (JsonException exception)
         {
-            return new ProxyConfigurationNormalizeSiteParseResult(null, null, $"JSON is invalid: {exception.Message}");
+            return ProxyConfigurationNormalizeSiteParseResult.Failed($"JSON is invalid: {exception.Message}");
         }
         catch (YamlException exception)
         {
-            return new ProxyConfigurationNormalizeSiteParseResult(null, null, $"YAML is invalid: {exception.Message}");
+            return ProxyConfigurationNormalizeSiteParseResult.Failed($"YAML is invalid: {exception.Message}");
         }
     }
 }
