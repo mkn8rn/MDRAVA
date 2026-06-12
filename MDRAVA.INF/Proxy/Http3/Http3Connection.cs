@@ -374,17 +374,16 @@ public sealed class Http3Connection
         ProxyRequestContext context,
         CancellationToken cancellationToken)
     {
-        if (!_cacheStore.TryGet(
-                ProxyCacheRuntimeMapper.ToRequestScope(route, _listener),
-                requestHead,
-                upstreamTarget,
-                out var cachedResponse)
-            || cachedResponse is null)
+        var cacheLookup = _cacheStore.Get(
+            ProxyCacheRuntimeMapper.ToRequestScope(route, _listener),
+            requestHead,
+            upstreamTarget);
+        if (cacheLookup is not ProxyCacheLookupResult.HitResult cacheHit)
         {
             return false;
         }
 
-        await WriteCachedResponseAsync(stream, requestHead, cachedResponse, context, cancellationToken);
+        await WriteCachedResponseAsync(stream, requestHead, cacheHit.Response, context, cancellationToken);
         return true;
     }
 

@@ -533,17 +533,16 @@ public sealed class Http2ClientConnection
         ProxyRequestContext context,
         CancellationToken cancellationToken)
     {
-        if (!_cacheStore.TryGet(
-                ProxyCacheRuntimeMapper.ToRequestScope(route, _listener),
-                requestHead,
-                upstreamTarget,
-                out var cachedResponse)
-            || cachedResponse is null)
+        var cacheLookup = _cacheStore.Get(
+            ProxyCacheRuntimeMapper.ToRequestScope(route, _listener),
+            requestHead,
+            upstreamTarget);
+        if (cacheLookup is not ProxyCacheLookupResult.HitResult cacheHit)
         {
             return false;
         }
 
-        await WriteCachedResponseAsync(streamId, requestHead, cachedResponse, context, cancellationToken);
+        await WriteCachedResponseAsync(streamId, requestHead, cacheHit.Response, context, cancellationToken);
         return true;
     }
 

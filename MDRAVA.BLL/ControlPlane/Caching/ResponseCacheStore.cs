@@ -25,16 +25,14 @@ public sealed class ResponseCacheStore : IProxyCacheControl
         _timeProvider = timeProvider;
     }
 
-    public bool TryGet(
+    public ProxyCacheLookupResult Get(
         ProxyCacheRequestScope scope,
         Http1RequestHead requestHead,
-        string upstreamTarget,
-        out CachedProxyResponse? response)
+        string upstreamTarget)
     {
-        response = null;
         if (CreateKey(scope, requestHead, upstreamTarget) is not CacheKeyCreation.Created createdKey)
         {
-            return false;
+            return ProxyCacheLookupResult.Miss;
         }
 
         var key = createdKey.Key;
@@ -44,20 +42,19 @@ public sealed class ResponseCacheStore : IProxyCacheControl
             if (!_entries.TryGetValue(key, out var entry))
             {
                 _misses++;
-                return false;
+                return ProxyCacheLookupResult.Miss;
             }
 
             if (entry.ExpiresAtUtc <= now)
             {
                 RemoveEntry(key, entry);
                 _misses++;
-                return false;
+                return ProxyCacheLookupResult.Miss;
             }
 
             entry.LastAccessedAtUtc = now;
             _hits++;
-            response = entry.ToResponse();
-            return true;
+            return ProxyCacheLookupResult.Hit(entry.ToResponse());
         }
     }
 

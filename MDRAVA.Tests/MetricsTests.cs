@@ -250,9 +250,9 @@ internal static class MetricsTests
         var request = Request("GET", "/cached", "cache.test");
         var response = Response("200 OK", []);
 
-        AssertEx.False(cache.TryGet(Scope(route, listener), request, "/cached", out _));
+        AssertEx.True(cache.Get(Scope(route, listener), request, "/cached") is ProxyCacheLookupResult.MissResult);
         cache.Store(Scope(route, listener), request, "/cached", response, response.Headers, Encoding.ASCII.GetBytes("cached"));
-        AssertEx.True(cache.TryGet(Scope(route, listener), request, "/cached", out _));
+        AssertEx.True(cache.Get(Scope(route, listener), request, "/cached") is ProxyCacheLookupResult.HitResult);
 
         var text = fixture.Export(store.Snapshot);
 

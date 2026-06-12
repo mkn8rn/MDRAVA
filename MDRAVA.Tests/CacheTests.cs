@@ -120,9 +120,9 @@ internal static class CacheTests
         var response = Response("200 OK", [new ProxyHeaderField("Content-Type", "text/plain")]);
         cache.Store(Scope(route, listener), Request("GET", "/item?id=1", "cache.test"), "/item?id=1", response, response.Headers, Encoding.ASCII.GetBytes("one"));
 
-        AssertEx.False(cache.TryGet(Scope(route, listener), Request("GET", "/item?id=2", "cache.test"), "/item?id=2", out _));
-        AssertEx.True(cache.TryGet(Scope(route, listener), Request("GET", "/item?id=1", "cache.test"), "/item?id=1", out var cached));
-        AssertEx.Equal("one", Encoding.ASCII.GetString(AssertEx.NotNull(cached).Body));
+        AssertCacheMiss(cache, route, listener, Request("GET", "/item?id=2", "cache.test"), "/item?id=2");
+        var cached = AssertCacheHit(cache, route, listener, Request("GET", "/item?id=1", "cache.test"), "/item?id=1");
+        AssertEx.Equal("one", Encoding.ASCII.GetString(cached.Body));
     }
 
     public static void RewriteTargetIsPartOfCacheKey()
@@ -135,9 +135,9 @@ internal static class CacheTests
 
         cache.Store(Scope(route, listener), request, "/internal/item?id=1", response, response.Headers, Encoding.ASCII.GetBytes("internal"));
 
-        AssertEx.False(cache.TryGet(Scope(route, listener), request, "/public/item?id=1", out _));
-        AssertEx.True(cache.TryGet(Scope(route, listener), request, "/internal/item?id=1", out var cached));
-        AssertEx.Equal("internal", Encoding.ASCII.GetString(AssertEx.NotNull(cached).Body));
+        AssertCacheMiss(cache, route, listener, request, "/public/item?id=1");
+        var cached = AssertCacheHit(cache, route, listener, request, "/internal/item?id=1");
+        AssertEx.Equal("internal", Encoding.ASCII.GetString(cached.Body));
     }
 
     public static void HostAndVaryHeadersAffectCacheKey()
@@ -154,10 +154,10 @@ internal static class CacheTests
             response.Headers,
             Encoding.ASCII.GetBytes("tenant-one"));
 
-        AssertEx.False(cache.TryGet(Scope(route, listener), Request("GET", "/resource", "b.test", [new ProxyHeaderField("X-Tenant", "one")]), "/resource", out _));
-        AssertEx.False(cache.TryGet(Scope(route, listener), Request("GET", "/resource", "a.test", [new ProxyHeaderField("X-Tenant", "two")]), "/resource", out _));
-        AssertEx.True(cache.TryGet(Scope(route, listener), Request("GET", "/resource", "a.test", [new ProxyHeaderField("x-tenant", "one")]), "/resource", out var cached));
-        AssertEx.Equal("tenant-one", Encoding.ASCII.GetString(AssertEx.NotNull(cached).Body));
+        AssertCacheMiss(cache, route, listener, Request("GET", "/resource", "b.test", [new ProxyHeaderField("X-Tenant", "one")]), "/resource");
+        AssertCacheMiss(cache, route, listener, Request("GET", "/resource", "a.test", [new ProxyHeaderField("X-Tenant", "two")]), "/resource");
+        var cached = AssertCacheHit(cache, route, listener, Request("GET", "/resource", "a.test", [new ProxyHeaderField("x-tenant", "one")]), "/resource");
+        AssertEx.Equal("tenant-one", Encoding.ASCII.GetString(cached.Body));
     }
 
     public static void AuthorizationRequestIsNotCachedByDefault()
@@ -170,7 +170,7 @@ internal static class CacheTests
 
         cache.Store(Scope(route, listener), request, "/private", response, response.Headers, Encoding.ASCII.GetBytes("private"));
 
-        AssertEx.False(cache.TryGet(Scope(route, listener), request, "/private", out _));
+        AssertCacheMiss(cache, route, listener, request, "/private");
         AssertEx.True(CacheStatus(cache, null).StoreRejectionCount > 0);
     }
 
@@ -184,7 +184,7 @@ internal static class CacheTests
 
         cache.Store(Scope(route, listener), request, "/private", response, response.Headers, Encoding.ASCII.GetBytes("private"));
 
-        AssertEx.False(cache.TryGet(Scope(route, listener), request, "/private", out _));
+        AssertCacheMiss(cache, route, listener, request, "/private");
         var snapshot = CacheStatus(cache, null);
         AssertEx.True(snapshot.Rejections.Any(static rejection => rejection.Reason == "cookie" && rejection.Count == 1));
     }
@@ -274,9 +274,9 @@ internal static class CacheTests
 
         cache.Store(Scope(route, listener), request, "/ttl", response, response.Headers, Encoding.ASCII.GetBytes("fresh"));
 
-        AssertEx.True(cache.TryGet(Scope(route, listener), request, "/ttl", out _));
+        AssertCacheHit(cache, route, listener, request, "/ttl");
         clock.Advance(TimeSpan.FromSeconds(2));
-        AssertEx.False(cache.TryGet(Scope(route, listener), request, "/ttl", out _));
+        AssertCacheMiss(cache, route, listener, request, "/ttl");
     }
 
     public static void CacheAgeUsesElapsedWholeSecondsAndClampsFutureStoredTime()
@@ -357,8 +357,8 @@ internal static class CacheTests
 
         cache.Store(Scope(route, listener), request, "/headers", response, response.Headers, Encoding.ASCII.GetBytes("headers"));
 
-        AssertEx.True(cache.TryGet(Scope(route, listener), request, "/headers", out var cached));
-        var headers = AssertEx.NotNull(cached).Headers;
+        var cached = AssertCacheHit(cache, route, listener, request, "/headers");
+        var headers = cached.Headers;
         AssertEx.False(headers.Any(static header => string.Equals(header.Name, "Connection", StringComparison.OrdinalIgnoreCase)));
         AssertEx.False(headers.Any(static header => string.Equals(header.Name, "Transfer-Encoding", StringComparison.OrdinalIgnoreCase)));
         AssertEx.True(headers.Any(static header => string.Equals(header.Name, "X-Stored", StringComparison.OrdinalIgnoreCase)));
@@ -385,8 +385,10 @@ internal static class CacheTests
             response.Headers,
             Encoding.ASCII.GetBytes("tenant"));
 
-        AssertEx.True(cache.TryGet(
-            Scope(route, listener),
+        var cached = AssertCacheHit(
+            cache,
+            route,
+            listener,
             Request(
                 "GET",
                 "/resource",
@@ -395,14 +397,14 @@ internal static class CacheTests
                     new ProxyHeaderField("x-tenant", "one"),
                     new ProxyHeaderField("X-Tenant", "two")
                 ]),
-            "/resource",
-            out var cached));
-        AssertEx.Equal("tenant", Encoding.ASCII.GetString(AssertEx.NotNull(cached).Body));
-        AssertEx.False(cache.TryGet(
-            Scope(route, listener),
+            "/resource");
+        AssertEx.Equal("tenant", Encoding.ASCII.GetString(cached.Body));
+        AssertCacheMiss(
+            cache,
+            route,
+            listener,
             Request("GET", "/resource", "cache.test", [new ProxyHeaderField("X-Tenant", "one")]),
-            "/resource",
-            out _));
+            "/resource");
     }
 
     public static void CacheEvictsOldestEntriesAtMaxTotalBytes()
@@ -419,8 +421,8 @@ internal static class CacheTests
 
         var snapshot = CacheStatus(cache, CreateStoreWithRoute(route).Snapshot);
         AssertEx.Equal(1L, snapshot.EvictionCount);
-        AssertEx.False(cache.TryGet(Scope(route, listener), Request("GET", "/one", "cache.test"), "/one", out _));
-        AssertEx.True(cache.TryGet(Scope(route, listener), Request("GET", "/two", "cache.test"), "/two", out _));
+        AssertCacheMiss(cache, route, listener, Request("GET", "/one", "cache.test"), "/one");
+        AssertCacheHit(cache, route, listener, Request("GET", "/two", "cache.test"), "/two");
     }
 
     public static async Task PartialUpstreamResponseIsNotCached()
@@ -682,7 +684,7 @@ internal static class CacheTests
 
         cache.Store(Scope(route, listener), request, "/reject", response, response.Headers, Encoding.ASCII.GetBytes("reject"));
 
-        AssertEx.False(cache.TryGet(Scope(route, listener), request, "/reject", out _));
+        AssertCacheMiss(cache, route, listener, request, "/reject");
         AssertEx.True(CacheStatus(cache, null).StoreRejectionCount > 0);
     }
 
@@ -1170,6 +1172,33 @@ internal static class CacheTests
         {
             _snapshot = snapshot;
         }
+    }
+
+    private static CachedProxyResponse AssertCacheHit(
+        ResponseCacheStore cache,
+        RuntimeRoute route,
+        RuntimeListener listener,
+        Http1RequestHead request,
+        string upstreamTarget)
+    {
+        var lookup = cache.Get(Scope(route, listener), request, upstreamTarget);
+        if (lookup is ProxyCacheLookupResult.HitResult hit)
+        {
+            return hit.Response;
+        }
+
+        throw new InvalidOperationException("Expected cached response hit.");
+    }
+
+    private static void AssertCacheMiss(
+        ResponseCacheStore cache,
+        RuntimeRoute route,
+        RuntimeListener listener,
+        Http1RequestHead request,
+        string upstreamTarget)
+    {
+        var lookup = cache.Get(Scope(route, listener), request, upstreamTarget);
+        AssertEx.True(lookup is ProxyCacheLookupResult.MissResult);
     }
 
     private sealed class FixedProxyCacheControl : IProxyCacheControl

@@ -292,17 +292,20 @@ internal static class PerformanceSmokeRunner
 
         for (var index = 0; index < warmup; index++)
         {
-            cache.TryGet(cacheScope, request, request.Target, out _);
+            cache.Get(cacheScope, request, request.Target);
         }
 
         var stopwatch = Stopwatch.StartNew();
         CachedProxyResponse? cached = null;
         for (var index = 0; index < operations; index++)
         {
-            if (!cache.TryGet(cacheScope, request, request.Target, out cached))
+            var lookup = cache.Get(cacheScope, request, request.Target);
+            if (lookup is not ProxyCacheLookupResult.HitResult hit)
             {
                 throw new InvalidOperationException("Cache hot-path smoke missed a stored response.");
             }
+
+            cached = hit.Response;
         }
 
         stopwatch.Stop();
