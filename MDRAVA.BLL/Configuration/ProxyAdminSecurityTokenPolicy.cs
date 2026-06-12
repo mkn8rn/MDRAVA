@@ -19,13 +19,13 @@ public static class ProxyAdminSecurityTokenPolicy
         var tokenEnvironmentVariable = NormalizeTokenEnvironmentVariable(options.TokenEnvironmentVariable);
         if (!string.IsNullOrEmpty(options.Token))
         {
-            return new ProxyAdminTokenResolution(options.Token, tokenEnvironmentVariable, "direct");
+            return ProxyAdminTokenResolution.Direct(options.Token, tokenEnvironmentVariable);
         }
 
         var environmentToken = readEnvironmentVariable(tokenEnvironmentVariable);
         return string.IsNullOrEmpty(environmentToken)
-            ? new ProxyAdminTokenResolution(null, tokenEnvironmentVariable, "none")
-            : new ProxyAdminTokenResolution(environmentToken, tokenEnvironmentVariable, "environment");
+            ? ProxyAdminTokenResolution.None(tokenEnvironmentVariable)
+            : ProxyAdminTokenResolution.Environment(environmentToken, tokenEnvironmentVariable);
     }
 
     public static string NormalizeTokenEnvironmentVariable(string? tokenEnvironmentVariable)
@@ -44,7 +44,42 @@ public static class ProxyAdminSecurityTokenPolicy
     }
 }
 
-public sealed record ProxyAdminTokenResolution(
-    string? Token,
-    string TokenEnvironmentVariable,
-    string TokenSource);
+public sealed record ProxyAdminTokenResolution
+{
+    private ProxyAdminTokenResolution(string? token, string tokenEnvironmentVariable, string tokenSource)
+    {
+        Token = token;
+        TokenEnvironmentVariable = tokenEnvironmentVariable;
+        TokenSource = tokenSource;
+    }
+
+    public string? Token { get; }
+
+    public string TokenEnvironmentVariable { get; }
+
+    public string TokenSource { get; }
+
+    public static ProxyAdminTokenResolution Direct(string token, string tokenEnvironmentVariable)
+    {
+        return new ProxyAdminTokenResolution(
+            token: token,
+            tokenEnvironmentVariable: tokenEnvironmentVariable,
+            tokenSource: "direct");
+    }
+
+    public static ProxyAdminTokenResolution Environment(string token, string tokenEnvironmentVariable)
+    {
+        return new ProxyAdminTokenResolution(
+            token: token,
+            tokenEnvironmentVariable: tokenEnvironmentVariable,
+            tokenSource: "environment");
+    }
+
+    public static ProxyAdminTokenResolution None(string tokenEnvironmentVariable)
+    {
+        return new ProxyAdminTokenResolution(
+            token: null,
+            tokenEnvironmentVariable: tokenEnvironmentVariable,
+            tokenSource: "none");
+    }
+}

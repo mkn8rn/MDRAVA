@@ -20,6 +20,7 @@ internal static partial class TestRegistry
     Test("Sensitive admin projections redact configured secrets", Sync(AdminSecurityTests.SensitiveProjectionRedactsConfiguredAdminSecrets), TestTaxonomy.Config, TestTaxonomy.Admin, TestTaxonomy.SecurityNegativePaths),
     Test("Effective config does not expose admin token", Sync(AdminSecurityTests.EffectiveConfigDoesNotExposeAdminToken), TestTaxonomy.Config, TestTaxonomy.Admin, TestTaxonomy.SecurityNegativePaths),
     Test("Generated placeholder config does not contain real secret", Sync(AdminSecurityTests.GeneratedPlaceholderConfigDoesNotContainRealSecret), TestTaxonomy.Config, TestTaxonomy.Admin),
+    Test("Admin token resolution names direct environment and none", Sync(AdminSecurityTests.AdminTokenResolutionNamesDirectEnvironmentAndNone), TestTaxonomy.Config, TestTaxonomy.Admin),
     Test("Admin audit does not log token values", AdminSecurityTests.AdminAuditDoesNotLogTokenValues, TestTaxonomy.Admin),
     Test("TLS certificate selector chooses SNI before default and falls back safely", Sync(TlsCertificateSelectorTests.SelectsSniCertificateBeforeDefaultAndFallsBackSafely), TestTaxonomy.Tls),
     Test("Manual PFX certificate behavior remains valid", AcmeTests.ManualPfxCertificateBehaviorRemainsValid, TestTaxonomy.Tls),

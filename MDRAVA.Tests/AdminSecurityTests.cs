@@ -335,6 +335,36 @@ internal static class AdminSecurityTests
         AssertEx.False(proxyConfig.Contains(ProxyAdminSecurityTokenPolicy.DefaultTokenEnvironmentVariable, StringComparison.Ordinal));
     }
 
+    public static void AdminTokenResolutionNamesDirectEnvironmentAndNone()
+    {
+        var direct = ProxyAdminSecurityTokenPolicy.Resolve(
+            new ProxyAdminOptions
+            {
+                Token = "direct-token",
+                TokenEnvironmentVariable = " DIRECT_TOKEN "
+            },
+            static _ => "environment-token");
+        var environment = ProxyAdminSecurityTokenPolicy.Resolve(
+            new ProxyAdminOptions
+            {
+                TokenEnvironmentVariable = "MDRAVA_TEST_TOKEN"
+            },
+            static name => name == "MDRAVA_TEST_TOKEN" ? "environment-token" : null);
+        var none = ProxyAdminSecurityTokenPolicy.Resolve(
+            new ProxyAdminOptions(),
+            static _ => null);
+
+        AssertEx.Equal("direct-token", direct.Token);
+        AssertEx.Equal("DIRECT_TOKEN", direct.TokenEnvironmentVariable);
+        AssertEx.Equal("direct", direct.TokenSource);
+        AssertEx.Equal("environment-token", environment.Token);
+        AssertEx.Equal("MDRAVA_TEST_TOKEN", environment.TokenEnvironmentVariable);
+        AssertEx.Equal("environment", environment.TokenSource);
+        AssertEx.Equal<string?>(null, none.Token);
+        AssertEx.Equal(ProxyAdminSecurityTokenPolicy.DefaultTokenEnvironmentVariable, none.TokenEnvironmentVariable);
+        AssertEx.Equal("none", none.TokenSource);
+    }
+
     public static async Task AdminAuditDoesNotLogTokenValues()
     {
         var store = CreateStoreWithAdminAuthentication();
