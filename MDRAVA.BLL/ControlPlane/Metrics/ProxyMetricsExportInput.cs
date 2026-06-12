@@ -33,24 +33,26 @@ public sealed record ProxyMetricsExportConfiguration(
 
 public static class ProxyMetricsExportLabelOptionsMapper
 {
-    public static ProxyMetricsExportLabelOptions FromSnapshot(ProxyConfigurationSnapshot snapshot)
+    public static ProxyMetricsExportLabelOptions FromMetrics(RuntimeMetricsOptions metrics)
     {
         return new ProxyMetricsExportLabelOptions(
-            snapshot.Metrics.IncludePerRouteLabels,
-            snapshot.Metrics.IncludePerUpstreamLabels);
+            metrics.IncludePerRouteLabels,
+            metrics.IncludePerUpstreamLabels);
     }
 }
 
 public static class ProxyMetricsExportHttp3FactsMapper
 {
-    public static ProxyMetricsExportHttp3Facts FromSnapshot(ProxyConfigurationSnapshot snapshot)
+    public static ProxyMetricsExportHttp3Facts FromRuntimeConfiguration(
+        IReadOnlyList<RuntimeListener> listeners,
+        IReadOnlyList<RuntimeRoute> routes)
     {
         return new ProxyMetricsExportHttp3Facts(
-            snapshot.Listeners.Count(static listener =>
+            listeners.Count(static listener =>
                 listener.Http3.EnabledForTraffic
                 && string.Equals(listener.Http3.EnablementLevel, "default", StringComparison.OrdinalIgnoreCase)),
-            snapshot.Listeners.Any(static listener => listener.Http3.EnabledForTraffic),
-            snapshot.Routes.Any(static route =>
+            listeners.Any(static listener => listener.Http3.EnabledForTraffic),
+            routes.Any(static route =>
                 route.Upstreams.Any(static upstream => RuntimeUpstreamProtocol.IsHttp3(upstream.Protocol))));
     }
 }
@@ -108,8 +110,8 @@ public sealed class ProxyConfigurationMetricsExportConfigurationSource
 
         return new ProxyMetricsExportConfiguration(
             snapshot.Metrics.Enabled,
-            ProxyMetricsExportLabelOptionsMapper.FromSnapshot(snapshot),
-            ProxyMetricsExportHttp3FactsMapper.FromSnapshot(snapshot));
+            ProxyMetricsExportLabelOptionsMapper.FromMetrics(snapshot.Metrics),
+            ProxyMetricsExportHttp3FactsMapper.FromRuntimeConfiguration(snapshot.Listeners, snapshot.Routes));
     }
 }
 

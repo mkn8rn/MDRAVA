@@ -79,6 +79,45 @@ internal static class MetricsTests
         AssertEx.Equal(0, input.CacheStatus.Routes.Count);
     }
 
+    public static void MetricsExportConfigurationMappersReadNarrowRuntimeFacts()
+    {
+        var metrics = new RuntimeMetricsOptions(
+            true,
+            RuntimeMetricsOptions.FixedAdminEndpointPath,
+            true,
+            false,
+            true,
+            false);
+        var listener = Listener() with
+        {
+            Transport = RuntimeListenerTransport.Https,
+            DefaultCertificateId = "metrics-cert",
+            Protocols = RuntimeListenerProtocols.Http3
+        };
+        var upstream = new RuntimeUpstream(
+            "metrics",
+            "h3",
+            "https",
+            RuntimeUpstreamProtocol.Http3,
+            "upstream.internal",
+            443,
+            1,
+            RuntimeUpstreamTlsOptions.Default);
+        var route = Route(RuntimeCachePolicy.Disabled) with
+        {
+            Upstreams = [upstream]
+        };
+
+        var labelOptions = ProxyMetricsExportLabelOptionsMapper.FromMetrics(metrics);
+        var http3Facts = ProxyMetricsExportHttp3FactsMapper.FromRuntimeConfiguration([listener], [route]);
+
+        AssertEx.False(labelOptions.IncludePerRouteLabels);
+        AssertEx.True(labelOptions.IncludePerUpstreamLabels);
+        AssertEx.Equal(1, http3Facts.DefaultEnabledListenerCount);
+        AssertEx.True(http3Facts.RequestBodyStreamingEnabled);
+        AssertEx.True(http3Facts.UpstreamMultiplexingConfigured);
+    }
+
     public static void MetricsEndpointReturnsNotFoundWhenMetricsDisabled()
     {
         using var fixture = MetricsFixture.Create();
@@ -690,8 +729,8 @@ internal static class MetricsTests
         {
             return ProxyMetricsExportInputMapper.FromSources(
                 metrics,
-                ProxyMetricsExportLabelOptionsMapper.FromSnapshot(snapshot),
-                ProxyMetricsExportHttp3FactsMapper.FromSnapshot(snapshot),
+                ProxyMetricsExportLabelOptionsMapper.FromMetrics(snapshot.Metrics),
+                ProxyMetricsExportHttp3FactsMapper.FromRuntimeConfiguration(snapshot.Listeners, snapshot.Routes),
                 ProxyCacheStatusReader.Project(
                     ProxyCacheStatusRouteSourceMapper.ToRouteSources(snapshot),
                     cacheRuntime),
