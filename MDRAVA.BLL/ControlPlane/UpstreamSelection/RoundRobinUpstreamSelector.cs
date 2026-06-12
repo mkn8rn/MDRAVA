@@ -22,7 +22,7 @@ public sealed class RoundRobinUpstreamSelector : IUpstreamSelector
         _metrics = metrics;
     }
 
-    public UpstreamSelection? Select(RuntimeRoute route)
+    public UpstreamSelection? Select(UpstreamSelectionRoute route)
     {
         if (route.Upstreams.Count == 0)
         {
@@ -34,7 +34,7 @@ public sealed class RoundRobinUpstreamSelector : IUpstreamSelector
         List<RuntimeUpstream> candidates = [];
         foreach (var upstream in route.Upstreams)
         {
-            if (route.HealthCheck.Enabled && !_healthStore.IsUsable(upstream))
+            if (route.HealthCheckEnabled && !_healthStore.IsUsable(upstream))
             {
                 continue;
             }
@@ -66,7 +66,7 @@ public sealed class RoundRobinUpstreamSelector : IUpstreamSelector
                     selected.Scheme,
                     selected.Protocol));
                 _healthStore.RecordSelection(selected);
-                return new UpstreamSelection(route, selected, lease);
+                return new UpstreamSelection(selected, lease);
             }
 
             candidates.Remove(selected);
@@ -76,7 +76,7 @@ public sealed class RoundRobinUpstreamSelector : IUpstreamSelector
         return null;
     }
 
-    private RuntimeUpstream SelectWeighted(RuntimeRoute route, IReadOnlyList<RuntimeUpstream> candidates)
+    private RuntimeUpstream SelectWeighted(UpstreamSelectionRoute route, IReadOnlyList<RuntimeUpstream> candidates)
     {
         var totalWeight = candidates.Sum(static upstream => upstream.Weight);
         if (totalWeight <= 0)

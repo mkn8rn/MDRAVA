@@ -619,7 +619,7 @@ public sealed class ClientConnection
         ForwardingResult? lastResult = null;
         for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
-            var selection = _upstreamSelector.Select(route);
+            var selection = _upstreamSelector.Select(UpstreamSelectionRoute.FromRuntime(route));
             if (selection is null)
             {
                 if (attempt > 1)
@@ -774,7 +774,7 @@ public sealed class ClientConnection
             return false;
         }
 
-        var upgradeSelection = _upstreamSelector.Select(upgradeRouteMatch.Route);
+        var upgradeSelection = _upstreamSelector.Select(UpstreamSelectionRoute.FromRuntime(upgradeRouteMatch.Route));
         if (upgradeSelection is null)
         {
             _metrics.UpgradeRequestRejected();

@@ -605,7 +605,7 @@ public sealed class Http3Connection
         ForwardingResult? lastResult = null;
         for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
-            var selection = _upstreamSelector.Select(route);
+            var selection = _upstreamSelector.Select(UpstreamSelectionRoute.FromRuntime(route));
             if (selection is null)
             {
                 if (attempt > 1)
