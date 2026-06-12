@@ -117,61 +117,16 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
         string? sourceName)
     {
         List<ConfigLintFinding> findings = [];
-        AddListenerFindings(snapshot, activeRuntime, sourceName, findings);
+        var runtimeListeners = activeRuntime ? _runtimeStateSource.GetListenerStates() : [];
+        findings.AddRange(ConfigLintListenerAnalyzer.Analyze(
+            snapshot,
+            activeRuntime,
+            runtimeListeners,
+            sourceName));
         findings.AddRange(ConfigLintRouteAnalyzer.Analyze(snapshot, sourceName));
         AddAdminFindings(snapshot, sourceName, findings);
         AddMetricsFindings(snapshot, sourceName, findings);
         return findings;
-    }
-
-    private void AddListenerFindings(
-        ProxyConfigLintConfigurationSnapshot snapshot,
-        bool activeRuntime,
-        string? sourceName,
-        List<ConfigLintFinding> findings)
-    {
-        var httpsListenerExists = snapshot.Listeners.Any(static listener =>
-            listener.Enabled && string.Equals(listener.Transport, "Https", StringComparison.OrdinalIgnoreCase));
-        foreach (var group in snapshot.Listeners
-            .Where(static listener => listener.Enabled)
-            .GroupBy(static listener => $"{listener.Address}|{listener.Port}|{listener.Transport}", StringComparer.OrdinalIgnoreCase)
-            .Where(static group => group.Count() > 1))
-        {
-            findings.Add(Warning("overlapping_listener_bind", $"Multiple enabled listeners share bind identity {group.Key}.", sourceName, "listeners", "Keep only one enabled listener per address, port, and transport."));
-        }
-
-        IReadOnlyList<ProxyConfigLintRuntimeListenerState> runtimeListeners = activeRuntime ? _runtimeStateSource.GetListenerStates() : [];
-        foreach (var listener in snapshot.Listeners)
-        {
-            var path = $"listeners[{listener.Name}]";
-            if (listener.Http3Configured && !listener.Http3EnabledForTraffic)
-            {
-                findings.Add(Warning("http3_configured_not_ready", $"Listener '{listener.Name}' has HTTP/3 configured but it is not ready for traffic: {listener.Http3DisabledReason}.", sourceName, path, "Keep HTTP/3 disabled or satisfy the TLS and certificate requirements."));
-            }
-
-            if (listener.Http3EnabledForTraffic && !listener.Http3AltSvcEnabled)
-            {
-                findings.Add(Warning("http3_alt_svc_disabled", $"Listener '{listener.Name}' has HTTP/3 {listener.Http3EnablementLevel} enabled but Alt-Svc advertisement is disabled.", sourceName, path, "Enable Http3AltSvcEnabled only after the QUIC listener is reachable."));
-            }
-
-            if (listener.Http3AltSvcEnabled)
-            {
-                var ready = activeRuntime
-                    && listener.QuicIdentityKey is not null
-                    && runtimeListeners.Any(runtime => string.Equals(runtime.Kind, "quic", StringComparison.OrdinalIgnoreCase)
-                        && runtime.Active
-                        && string.Equals(runtime.Identity, listener.QuicIdentityKey, StringComparison.OrdinalIgnoreCase));
-                if (!ready)
-                {
-                    findings.Add(Warning("http3_alt_svc_not_ready", $"Listener '{listener.Name}' configures Alt-Svc but no matching active QUIC listener is currently ready.", sourceName, path, "MDRAVA only emits Alt-Svc when the HTTP/3 QUIC listener is active."));
-                }
-            }
-        }
-
-        foreach (var route in snapshot.Routes.Where(route => route.HttpsRedirectEnabled && !httpsListenerExists))
-        {
-            findings.Add(Warning("https_redirect_without_https_listener", $"Route '{route.Name}' enables HTTP to HTTPS redirect but no enabled HTTPS listener exists.", sourceName, RoutePath(route), "Add an HTTPS listener or disable the redirect for this route."));
-        }
     }
 
     private void AddAdminFindings(
@@ -232,11 +187,6 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
         return _sourceNameFormatter.FormatSourceName(path);
     }
 
-    private static string RoutePath(ProxyConfigLintRoute route)
-    {
-        return $"sites[{route.SiteName}].routes[{route.Name}]";
-    }
-
     private static string SafeMessage(string message)
     {
         var sanitized = message.Replace('\r', ' ').Replace('\n', ' ');
@@ -262,16 +212,6 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
 
         parsed = ProxyConfigurationNormalizeFormat.Json;
         return false;
-    }
-
-    private static ConfigLintFinding Info(
-        string code,
-        string message,
-        string? source,
-        string? path,
-        string? suggestedFix)
-    {
-        return new ConfigLintFinding("info", code, message, source, path, suggestedFix);
     }
 
     private static ConfigLintFinding Warning(
