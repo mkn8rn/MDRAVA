@@ -205,6 +205,43 @@ internal static class RouteDiagnosticsTests
         AssertEx.Equal(410, staticResult.GeneratedStatusCode!.Value);
     }
 
+    public static void DryRunPolicyExplainerUsesNamedPolicyOutcomes()
+    {
+        var route = RouteDiagnosticsRoute(
+            "api",
+            "diag.test",
+            "/api",
+            cacheEnabled: true,
+            retryEnabled: true,
+            circuitBreakerEnabled: true);
+        var getRequest = new ProxyRouteDiagnosticsRequestHead(
+            "GET",
+            "/api",
+            "/api",
+            "HTTP/1.1",
+            "diag.test",
+            ProxyRouteDiagnosticsRequestFraming.None,
+            []);
+        var postRequest = new ProxyRouteDiagnosticsRequestHead(
+            "POST",
+            "/api",
+            "/api",
+            "HTTP/1.1",
+            "diag.test",
+            ProxyRouteDiagnosticsRequestFraming.None,
+            []);
+
+        var disabled = ProxyRouteDiagnosticsPolicyExplainer.Disabled("no_route");
+        var cacheEligible = ProxyRouteDiagnosticsPolicyExplainer.ExplainCache(route, getRequest, wouldProxy: true);
+        var retryBlocked = ProxyRouteDiagnosticsPolicyExplainer.ExplainRetry(route, postRequest, wouldProxy: true);
+        var circuitBlocked = ProxyRouteDiagnosticsPolicyExplainer.ExplainCircuitBreaker(route, wouldProxy: false);
+
+        AssertEx.Equal(RouteMatchDryRunPolicy.Disabled("no_route"), disabled);
+        AssertEx.Equal(RouteMatchDryRunPolicy.EnabledAndApplies("eligible_before_origin_response"), cacheEligible);
+        AssertEx.Equal(RouteMatchDryRunPolicy.EnabledButBlocked("method_not_retryable"), retryBlocked);
+        AssertEx.Equal(RouteMatchDryRunPolicy.EnabledButBlocked("not_proxy_action"), circuitBlocked);
+    }
+
     public static void DryRunRedactsSensitiveHeaders()
     {
         var service = CreateRouteService(BaseOptions([ProxyRoute("private", "diag.test", "/private", cache: CachePolicy())]), out _, out _);
@@ -1019,7 +1056,9 @@ internal static class RouteDiagnosticsTests
         string name,
         string host,
         string pathPrefix,
-        bool cacheEnabled = false)
+        bool cacheEnabled = false,
+        bool retryEnabled = false,
+        bool circuitBreakerEnabled = false)
     {
         return new FixedRouteDiagnosticsRoute(
             "diag",
@@ -1035,10 +1074,10 @@ internal static class RouteDiagnosticsTests
             new ProxyRouteDiagnosticsStaticResponse(200, "text/plain", ""),
             new ProxyRouteDiagnosticsPathRewrite("", "", ""),
             10 * 1024 * 1024,
-            [new FixedRouteDiagnosticsUpstream("local", "http", RuntimeUpstreamProtocol.Http1, "127.0.0.1:5000", 1, false)],
+            [new FixedRouteDiagnosticsUpstream("local", "http", RuntimeUpstreamProtocol.Http1, "127.0.0.1:5000", 1, circuitBreakerEnabled)],
             cacheEnabled,
             ["GET", "HEAD"],
-            false,
+            retryEnabled,
             ["GET", "HEAD"]);
     }
 

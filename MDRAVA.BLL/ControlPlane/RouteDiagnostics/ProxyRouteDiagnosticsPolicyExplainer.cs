@@ -6,7 +6,7 @@ public static class ProxyRouteDiagnosticsPolicyExplainer
 {
     public static RouteMatchDryRunPolicy Disabled(string reason)
     {
-        return new RouteMatchDryRunPolicy(false, false, reason);
+        return RouteMatchDryRunPolicy.Disabled(reason);
     }
 
     public static RouteMatchDryRunPolicy ExplainCache(
@@ -21,25 +21,25 @@ public static class ProxyRouteDiagnosticsPolicyExplainer
 
         if (!wouldProxy)
         {
-            return new RouteMatchDryRunPolicy(true, false, "not_proxy_action");
+            return RouteMatchDryRunPolicy.EnabledButBlocked("not_proxy_action");
         }
 
         if (!route.CacheMethods.Any(method => string.Equals(method, requestHead.Method, StringComparison.OrdinalIgnoreCase)))
         {
-            return new RouteMatchDryRunPolicy(true, false, "method_not_cacheable");
+            return RouteMatchDryRunPolicy.EnabledButBlocked("method_not_cacheable");
         }
 
         if (requestHead.Framing.Kind != ProxyRouteDiagnosticsBodyKind.None)
         {
-            return new RouteMatchDryRunPolicy(true, false, "request_body");
+            return RouteMatchDryRunPolicy.EnabledButBlocked("request_body");
         }
 
         if (ContainsHeader(requestHead.Headers, "Authorization"))
         {
-            return new RouteMatchDryRunPolicy(true, false, "authorization");
+            return RouteMatchDryRunPolicy.EnabledButBlocked("authorization");
         }
 
-        return new RouteMatchDryRunPolicy(true, true, "eligible_before_origin_response");
+        return RouteMatchDryRunPolicy.EnabledAndApplies("eligible_before_origin_response");
     }
 
     public static RouteMatchDryRunPolicy ExplainRetry(
@@ -54,20 +54,20 @@ public static class ProxyRouteDiagnosticsPolicyExplainer
 
         if (!wouldProxy)
         {
-            return new RouteMatchDryRunPolicy(true, false, "not_proxy_action");
+            return RouteMatchDryRunPolicy.EnabledButBlocked("not_proxy_action");
         }
 
         if (!route.RetryMethods.Any(method => string.Equals(method, requestHead.Method, StringComparison.OrdinalIgnoreCase)))
         {
-            return new RouteMatchDryRunPolicy(true, false, "method_not_retryable");
+            return RouteMatchDryRunPolicy.EnabledButBlocked("method_not_retryable");
         }
 
         if (requestHead.Framing.Kind != ProxyRouteDiagnosticsBodyKind.None)
         {
-            return new RouteMatchDryRunPolicy(true, false, "request_body_not_replayable");
+            return RouteMatchDryRunPolicy.EnabledButBlocked("request_body_not_replayable");
         }
 
-        return new RouteMatchDryRunPolicy(true, true, "eligible_for_configured_transport_or_status_failures");
+        return RouteMatchDryRunPolicy.EnabledAndApplies("eligible_for_configured_transport_or_status_failures");
     }
 
     public static RouteMatchDryRunPolicy ExplainCircuitBreaker(
@@ -80,10 +80,9 @@ public static class ProxyRouteDiagnosticsPolicyExplainer
             return Disabled("disabled");
         }
 
-        return new RouteMatchDryRunPolicy(
-            enabled,
-            wouldProxy,
-            wouldProxy ? "configured_for_one_or_more_upstreams" : "not_proxy_action");
+        return wouldProxy
+            ? RouteMatchDryRunPolicy.EnabledAndApplies("configured_for_one_or_more_upstreams")
+            : RouteMatchDryRunPolicy.EnabledButBlocked("not_proxy_action");
     }
 
     private static bool ContainsHeader(IReadOnlyList<ProxyHeaderField> headers, string name)
