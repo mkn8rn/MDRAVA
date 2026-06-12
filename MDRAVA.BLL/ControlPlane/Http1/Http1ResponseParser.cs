@@ -142,8 +142,10 @@ public static class Http1ResponseParser
 
         if (transferEncodingValues.Count > 0)
         {
-            if (!Http1RequestParser.TryAnalyzeTransferEncoding(transferEncodingValues, out error))
+            var transferEncodingAnalysis = Http1RequestParser.AnalyzeTransferEncoding(transferEncodingValues);
+            if (transferEncodingAnalysis is Http1TransferEncodingAnalysisResult.Rejected rejectedTransferEncoding)
             {
+                error = rejectedTransferEncoding.Error;
                 return false;
             }
 

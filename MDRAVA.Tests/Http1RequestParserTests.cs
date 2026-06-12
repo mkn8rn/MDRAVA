@@ -119,6 +119,24 @@ internal static class Http1RequestParserTests
         AssertEx.Equal(Http1ParseError.ConflictingContentLength, ((Http1ContentLengthAnalysisResult.Rejected)conflicting).Error);
     }
 
+    public static void TransferEncodingAnalysisNamesAcceptedChunked()
+    {
+        var result = Http1RequestParser.AnalyzeTransferEncoding(["chunked"]);
+
+        AssertEx.Equal(Http1TransferEncodingAnalysisResult.Accepted, result);
+    }
+
+    public static void TransferEncodingAnalysisNamesRejectedCodings()
+    {
+        var invalid = Http1RequestParser.AnalyzeTransferEncoding([""]);
+        var unsupported = Http1RequestParser.AnalyzeTransferEncoding(["gzip", "chunked"]);
+
+        AssertEx.True(invalid is Http1TransferEncodingAnalysisResult.Rejected);
+        AssertEx.Equal(Http1ParseError.InvalidTransferEncoding, ((Http1TransferEncodingAnalysisResult.Rejected)invalid).Error);
+        AssertEx.True(unsupported is Http1TransferEncodingAnalysisResult.Rejected);
+        AssertEx.Equal(Http1ParseError.UnsupportedTransferEncoding, ((Http1TransferEncodingAnalysisResult.Rejected)unsupported).Error);
+    }
+
     private static byte[] Bytes(string value)
     {
         return Encoding.ASCII.GetBytes(value);

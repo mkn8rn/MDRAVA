@@ -197,8 +197,10 @@ public static class Http1RequestParser
 
         if (transferEncodingValues.Count > 0)
         {
-            if (!TryAnalyzeTransferEncoding(transferEncodingValues, out error))
+            var transferEncodingAnalysis = AnalyzeTransferEncoding(transferEncodingValues);
+            if (transferEncodingAnalysis is Http1TransferEncodingAnalysisResult.Rejected rejectedTransferEncoding)
             {
+                error = rejectedTransferEncoding.Error;
                 return false;
             }
 
@@ -255,11 +257,9 @@ public static class Http1RequestParser
         return Http1ContentLengthAnalysisResult.Accept(observed.Value);
     }
 
-    internal static bool TryAnalyzeTransferEncoding(
-        IReadOnlyList<string> transferEncodingValues,
-        out Http1ParseError error)
+    public static Http1TransferEncodingAnalysisResult AnalyzeTransferEncoding(
+        IReadOnlyList<string> transferEncodingValues)
     {
-        error = Http1ParseError.None;
         List<string> codings = [];
 
         foreach (var headerValue in transferEncodingValues)
@@ -270,17 +270,15 @@ public static class Http1RequestParser
 
         if (codings.Count == 0)
         {
-            error = Http1ParseError.InvalidTransferEncoding;
-            return false;
+            return Http1TransferEncodingAnalysisResult.Reject(Http1ParseError.InvalidTransferEncoding);
         }
 
         if (codings.Count != 1 || !string.Equals(codings[0], "chunked", StringComparison.OrdinalIgnoreCase))
         {
-            error = Http1ParseError.UnsupportedTransferEncoding;
-            return false;
+            return Http1TransferEncodingAnalysisResult.Reject(Http1ParseError.UnsupportedTransferEncoding);
         }
 
-        return true;
+        return Http1TransferEncodingAnalysisResult.Accepted;
     }
 
     private static string ExtractPath(string target)
@@ -425,4 +423,27 @@ public abstract record Http1ContentLengthAnalysisResult
     public sealed record Accepted(long ContentLength) : Http1ContentLengthAnalysisResult;
 
     public sealed record Rejected(Http1ParseError Error) : Http1ContentLengthAnalysisResult;
+}
+
+public abstract record Http1TransferEncodingAnalysisResult
+{
+    private Http1TransferEncodingAnalysisResult()
+    {
+    }
+
+    public static Http1TransferEncodingAnalysisResult Accepted { get; } = new AcceptedResult();
+
+    public static Http1TransferEncodingAnalysisResult Reject(Http1ParseError error)
+    {
+        if (error == Http1ParseError.None)
+        {
+            throw new ArgumentException("Transfer-Encoding rejection requires a parse error.", nameof(error));
+        }
+
+        return new Rejected(error);
+    }
+
+    public sealed record Rejected(Http1ParseError Error) : Http1TransferEncodingAnalysisResult;
+
+    private sealed record AcceptedResult : Http1TransferEncodingAnalysisResult;
 }
