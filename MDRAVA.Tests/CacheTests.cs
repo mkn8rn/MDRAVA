@@ -580,6 +580,27 @@ internal static class CacheTests
         AssertEx.Equal(0, status.Routes.Count);
     }
 
+    public static void CacheStatusRouteSourceMapperReadsRoutesWithoutConfigurationSnapshot()
+    {
+        var disabled = Route(RuntimeCachePolicy.Disabled);
+        var enabled = Route(CachePolicy(maxEntryBytes: 4096, maxTotalBytes: 8192)) with
+        {
+            Name = "enabled-cache"
+        };
+
+        var sources = ProxyCacheStatusRouteSourceMapper.ToRouteSources([disabled, enabled]);
+
+        AssertEx.Equal(2, sources.Count);
+        AssertEx.Equal("cache", sources[0].RouteName);
+        AssertEx.False(sources[0].Enabled);
+        AssertEx.Equal(RuntimeCachePolicy.Disabled.MaxEntryBytes, sources[0].MaxEntryBytes);
+        AssertEx.Equal(RuntimeCachePolicy.Disabled.MaxTotalBytes, sources[0].MaxTotalBytes);
+        AssertEx.Equal("enabled-cache", sources[1].RouteName);
+        AssertEx.True(sources[1].Enabled);
+        AssertEx.Equal(4096L, sources[1].MaxEntryBytes);
+        AssertEx.Equal(8192L, sources[1].MaxTotalBytes);
+    }
+
     public static void CacheAdministrationClearReturnsPostClearStatus()
     {
         var clearedAtUtc = new DateTimeOffset(2026, 6, 7, 10, 0, 0, TimeSpan.Zero);
@@ -652,7 +673,9 @@ internal static class CacheTests
         ProxyConfigurationSnapshot? configuration)
     {
         return ProxyCacheStatusReader.Project(
-            ProxyCacheStatusRouteSourceMapper.ToRouteSources(configuration),
+            configuration is null
+                ? []
+                : ProxyCacheStatusRouteSourceMapper.ToRouteSources(configuration.Routes),
             cache.ReadStatusSnapshot());
     }
 

@@ -732,7 +732,7 @@ internal static class MetricsTests
                 ProxyMetricsExportLabelOptionsMapper.FromMetrics(snapshot.Metrics),
                 ProxyMetricsExportHttp3FactsMapper.FromRuntimeConfiguration(snapshot.Listeners, snapshot.Routes),
                 ProxyCacheStatusReader.Project(
-                    ProxyCacheStatusRouteSourceMapper.ToRouteSources(snapshot),
+                    ProxyCacheStatusRouteSourceMapper.ToRouteSources(snapshot.Routes),
                     cacheRuntime),
                 upstreamHealth,
                 acmeCertificates);

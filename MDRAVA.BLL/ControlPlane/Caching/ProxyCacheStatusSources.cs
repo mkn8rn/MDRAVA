@@ -41,14 +41,14 @@ public sealed record ProxyCacheRuntimeEntrySnapshot(
 
 public static class ProxyCacheStatusRouteSourceMapper
 {
-    public static IReadOnlyList<ProxyCacheStatusRouteSource> ToRouteSources(ProxyConfigurationSnapshot? snapshot)
+    public static IReadOnlyList<ProxyCacheStatusRouteSource> ToRouteSources(IReadOnlyList<RuntimeRoute> routes)
     {
-        return snapshot?.Routes
+        return routes
             .Select(static route => new ProxyCacheStatusRouteSource(
                 route.Name,
                 route.Cache.Enabled,
                 route.Cache.MaxEntryBytes,
                 route.Cache.MaxTotalBytes))
-            .ToArray() ?? [];
+            .ToArray();
     }
 }

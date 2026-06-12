@@ -618,7 +618,9 @@ internal static class RouteDiagnosticsTests
         ProxyConfigurationSnapshot? configuration)
     {
         return ProxyCacheStatusReader.Project(
-            ProxyCacheStatusRouteSourceMapper.ToRouteSources(configuration),
+            configuration is null
+                ? []
+                : ProxyCacheStatusRouteSourceMapper.ToRouteSources(configuration.Routes),
             cache.ReadStatusSnapshot());
     }
 
