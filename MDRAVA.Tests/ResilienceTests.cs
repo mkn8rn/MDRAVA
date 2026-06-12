@@ -1011,12 +1011,38 @@ internal static class ResilienceTests
 
         public string Export()
         {
-            return Exporter.Export(ProxyMetricsExportInputMapper.FromRuntime(
+            return Exporter.Export(MetricsExportInput(
                 Store.Snapshot,
                 Metrics.Snapshot(),
                 Cache.ReadStatusSnapshot(),
                 Health.ReadUpstreams(ProxyUpstreamHealthSourceMapper.FromSnapshot(Store.Snapshot)),
                 Acme.Snapshot()));
+        }
+
+        private static ProxyMetricsExportInput MetricsExportInput(
+            ProxyConfigurationSnapshot snapshot,
+            ProxyMetricsSnapshot metrics,
+            ProxyCacheRuntimeStatusSnapshot cacheRuntime,
+            IReadOnlyList<ProxyUpstreamStatusResponse> upstreamHealth,
+            IReadOnlyList<AcmeCertificateLifecycleStatus> acmeCertificates)
+        {
+            return ProxyMetricsExportInputMapper.FromSources(
+                metrics,
+                new ProxyMetricsExportLabelOptions(
+                    snapshot.Metrics.IncludePerRouteLabels,
+                    snapshot.Metrics.IncludePerUpstreamLabels),
+                new ProxyMetricsExportHttp3Facts(
+                    snapshot.Listeners.Count(static listener =>
+                        listener.Http3.EnabledForTraffic
+                        && string.Equals(listener.Http3.EnablementLevel, "default", StringComparison.OrdinalIgnoreCase)),
+                    snapshot.Listeners.Any(static listener => listener.Http3.EnabledForTraffic),
+                    snapshot.Routes.Any(static route =>
+                        route.Upstreams.Any(static upstream => RuntimeUpstreamProtocol.IsHttp3(upstream.Protocol)))),
+                ProxyCacheStatusReader.Project(
+                    ProxyCacheStatusRouteSourceMapper.ToRouteSources(snapshot),
+                    cacheRuntime),
+                upstreamHealth,
+                acmeCertificates);
         }
 
         public static SelectorFixture Create(bool includePerUpstreamLabels = false)

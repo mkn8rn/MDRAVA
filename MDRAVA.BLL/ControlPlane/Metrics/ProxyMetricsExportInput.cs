@@ -18,6 +18,15 @@ public sealed record ProxyMetricsExportInput(
     IReadOnlyList<ProxyUpstreamStatusResponse> UpstreamHealth,
     IReadOnlyList<AcmeCertificateLifecycleStatus> AcmeCertificates);
 
+public sealed record ProxyMetricsExportLabelOptions(
+    bool IncludePerRouteLabels,
+    bool IncludePerUpstreamLabels);
+
+public sealed record ProxyMetricsExportHttp3Facts(
+    int DefaultEnabledListenerCount,
+    bool RequestBodyStreamingEnabled,
+    bool UpstreamMultiplexingConfigured);
+
 public interface IProxyMetricsExportInputSource
 {
     ProxyMetricsExportInput? ReadInput();
@@ -25,28 +34,21 @@ public interface IProxyMetricsExportInputSource
 
 public static class ProxyMetricsExportInputMapper
 {
-    public static ProxyMetricsExportInput FromRuntime(
-        ProxyConfigurationSnapshot snapshot,
+    public static ProxyMetricsExportInput FromSources(
         ProxyMetricsSnapshot metrics,
-        ProxyCacheRuntimeStatusSnapshot cacheRuntime,
+        ProxyMetricsExportLabelOptions labelOptions,
+        ProxyMetricsExportHttp3Facts http3Facts,
+        ProxyCacheStatusResponse cacheStatus,
         IReadOnlyList<ProxyUpstreamStatusResponse> upstreamHealth,
         IReadOnlyList<AcmeCertificateLifecycleStatus> acmeCertificates)
     {
-        var metricOptions = snapshot.Metrics;
-        var cacheStatus = ProxyCacheStatusReader.Project(
-            ProxyCacheStatusRouteSourceMapper.ToRouteSources(snapshot),
-            cacheRuntime);
-
         return new ProxyMetricsExportInput(
             metrics,
-            metricOptions.IncludePerRouteLabels,
-            metricOptions.IncludePerUpstreamLabels,
-            snapshot.Listeners.Count(static listener =>
-                listener.Http3.EnabledForTraffic
-                && string.Equals(listener.Http3.EnablementLevel, "default", StringComparison.OrdinalIgnoreCase)),
-            snapshot.Listeners.Any(static listener => listener.Http3.EnabledForTraffic),
-            snapshot.Routes.Any(static route =>
-                route.Upstreams.Any(static upstream => RuntimeUpstreamProtocol.IsHttp3(upstream.Protocol))),
+            labelOptions.IncludePerRouteLabels,
+            labelOptions.IncludePerUpstreamLabels,
+            http3Facts.DefaultEnabledListenerCount,
+            http3Facts.RequestBodyStreamingEnabled,
+            http3Facts.UpstreamMultiplexingConfigured,
             cacheStatus,
             upstreamHealth,
             acmeCertificates);
@@ -82,10 +84,23 @@ public sealed class ProxyMetricsExportInputSource : IProxyMetricsExportInputSour
             return null;
         }
 
-        return ProxyMetricsExportInputMapper.FromRuntime(
-            snapshot,
+        var cacheStatus = ProxyCacheStatusReader.Project(
+            ProxyCacheStatusRouteSourceMapper.ToRouteSources(snapshot),
+            _cacheRuntimeSource.ReadSnapshot());
+
+        return ProxyMetricsExportInputMapper.FromSources(
             _metricsSource.ReadMetrics(),
-            _cacheRuntimeSource.ReadSnapshot(),
+            new ProxyMetricsExportLabelOptions(
+                snapshot.Metrics.IncludePerRouteLabels,
+                snapshot.Metrics.IncludePerUpstreamLabels),
+            new ProxyMetricsExportHttp3Facts(
+                snapshot.Listeners.Count(static listener =>
+                    listener.Http3.EnabledForTraffic
+                    && string.Equals(listener.Http3.EnablementLevel, "default", StringComparison.OrdinalIgnoreCase)),
+                snapshot.Listeners.Any(static listener => listener.Http3.EnabledForTraffic),
+                snapshot.Routes.Any(static route =>
+                    route.Upstreams.Any(static upstream => RuntimeUpstreamProtocol.IsHttp3(upstream.Protocol)))),
+            cacheStatus,
             _upstreamHealthSource.ReadUpstreams(ProxyUpstreamHealthSourceMapper.FromSnapshot(snapshot)),
             _acmeStatusSource.GetLifecycleStatuses());
     }
