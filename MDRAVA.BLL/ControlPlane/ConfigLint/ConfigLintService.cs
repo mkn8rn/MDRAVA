@@ -40,7 +40,7 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
         {
             var result = BuildResult(
                 now,
-                [Error("no_active_config", "No active proxy configuration is loaded.", null, null, "Load a valid config before linting the active runtime snapshot.")],
+                [ConfigLintFindingFactory.Error("no_active_config", "No active proxy configuration is loaded.", null, null, "Load a valid config before linting the active runtime snapshot.")],
                 []);
             StoreActiveStatus(result);
             return result;
@@ -68,13 +68,13 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
 
         if (submitted.Snapshot is null)
         {
-            return BuildResult(now, [Error("empty_config", "Submitted config did not contain a site object.", "lint-input", null, "Submit one site configuration object.")], []);
+            return BuildResult(now, [ConfigLintFindingFactory.Error("empty_config", "Submitted config did not contain a site object.", "lint-input", null, "Submit one site configuration object.")], []);
         }
 
         List<ConfigLintFinding> findings = [];
         foreach (var error in submitted.ValidationErrors)
         {
-            findings.Add(Error("validation_error", error.Message, SourceName(error.Path), null, "Fix the validation error before applying this config."));
+            findings.Add(ConfigLintFindingFactory.Error("validation_error", error.Message, SourceName(error.Path), null, "Fix the validation error before applying this config."));
         }
 
         findings.AddRange(Analyze(submitted.Snapshot, activeRuntime: false, sourceName: "lint-input"));
@@ -123,9 +123,9 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
     {
         return failure.Kind switch
         {
-            ProxyConfigLintSubmittedConfigurationFailureKind.JsonParseError => Error("parse_error", $"JSON is invalid: {SafeMessage(failure.Message ?? "")}", "lint-input", null, "Fix the JSON syntax and retry linting."),
-            ProxyConfigLintSubmittedConfigurationFailureKind.YamlParseError => Error("parse_error", $"YAML is invalid: {SafeMessage(failure.Message ?? "")}", "lint-input", null, "Fix the YAML syntax and retry linting."),
-            _ => Error("empty_config", "Submitted config did not contain a site object.", "lint-input", null, "Submit one site configuration object.")
+            ProxyConfigLintSubmittedConfigurationFailureKind.JsonParseError => ConfigLintFindingFactory.Error("parse_error", $"JSON is invalid: {SafeMessage(failure.Message ?? "")}", "lint-input", null, "Fix the JSON syntax and retry linting."),
+            ProxyConfigLintSubmittedConfigurationFailureKind.YamlParseError => ConfigLintFindingFactory.Error("parse_error", $"YAML is invalid: {SafeMessage(failure.Message ?? "")}", "lint-input", null, "Fix the YAML syntax and retry linting."),
+            _ => ConfigLintFindingFactory.Error("empty_config", "Submitted config did not contain a site object.", "lint-input", null, "Submit one site configuration object.")
         };
     }
 
@@ -147,13 +147,4 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
         return sanitized.Length > 256 ? sanitized[..256] : sanitized;
     }
 
-    private static ConfigLintFinding Error(
-        string code,
-        string message,
-        string? source,
-        string? path,
-        string? suggestedFix)
-    {
-        return new ConfigLintFinding("error", code, message, source, path, suggestedFix);
-    }
 }

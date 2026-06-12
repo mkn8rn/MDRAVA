@@ -29,7 +29,7 @@ public static class ConfigLintExposureAnalyzer
             }
 
             var severity = snapshot.AdminSecurity.RequireAuthentication ? "warning" : "error";
-            findings.Add(new ConfigLintFinding(
+            findings.Add(ConfigLintFindingFactory.Create(
                 severity,
                 snapshot.AdminSecurity.RequireAuthentication ? "admin_nonlocal_bind" : "admin_nonlocal_bind_without_auth",
                 snapshot.AdminSecurity.RequireAuthentication
@@ -48,17 +48,7 @@ public static class ConfigLintExposureAnalyzer
     {
         if (snapshot.Metrics.PublicMetricsEnabled)
         {
-            findings.Add(Warning("metrics_public_exposure", "Public metrics exposure is configured.", sourceName, "metrics.publicMetricsEnabled", "Prefer the protected /admin/proxy/metrics endpoint."));
+            findings.Add(ConfigLintFindingFactory.Warning("metrics_public_exposure", "Public metrics exposure is configured.", sourceName, "metrics.publicMetricsEnabled", "Prefer the protected /admin/proxy/metrics endpoint."));
         }
-    }
-
-    private static ConfigLintFinding Warning(
-        string code,
-        string message,
-        string? source,
-        string? path,
-        string? suggestedFix)
-    {
-        return new ConfigLintFinding("warning", code, message, source, path, suggestedFix);
     }
 }

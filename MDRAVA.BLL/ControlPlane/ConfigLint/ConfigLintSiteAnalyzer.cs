@@ -11,20 +11,10 @@ public static class ConfigLintSiteAnalyzer
         {
             if (!group.Any(static route => route.PathPrefix == "/"))
             {
-                findings.Add(Info("site_without_fallback_route", $"Site '{group.Key}' has no '/' fallback route.", sourceName, $"sites[{group.Key}]", "Add an explicit fallback route if unmatched paths should have controlled behavior."));
+                findings.Add(ConfigLintFindingFactory.Info("site_without_fallback_route", $"Site '{group.Key}' has no '/' fallback route.", sourceName, $"sites[{group.Key}]", "Add an explicit fallback route if unmatched paths should have controlled behavior."));
             }
         }
 
         return findings;
-    }
-
-    private static ConfigLintFinding Info(
-        string code,
-        string message,
-        string? source,
-        string? path,
-        string? suggestedFix)
-    {
-        return new ConfigLintFinding("info", code, message, source, path, suggestedFix);
     }
 }

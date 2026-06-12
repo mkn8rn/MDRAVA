@@ -16,19 +16,19 @@ public static class ConfigLintSubmittedRequestReader
         input = null;
         if (request is null)
         {
-            failure = Error("missing_request", "A lint request body is required.", "lint-input", null, "Submit config text with an explicit format.");
+            failure = ConfigLintFindingFactory.Error("missing_request", "A lint request body is required.", "lint-input", null, "Submit config text with an explicit format.");
             return false;
         }
 
         if (!TryParseFormat(request.Format, out var format))
         {
-            failure = Error("invalid_format", "Format must be 'json' or 'yaml'.", "lint-input", "format", "Set format to 'json', 'yaml', or 'yml'.");
+            failure = ConfigLintFindingFactory.Error("invalid_format", "Format must be 'json' or 'yaml'.", "lint-input", "format", "Set format to 'json', 'yaml', or 'yml'.");
             return false;
         }
 
         if (string.IsNullOrWhiteSpace(request.Text))
         {
-            failure = Error("empty_config", "Submitted config text is required.", "lint-input", "text", "Submit one site configuration object.");
+            failure = ConfigLintFindingFactory.Error("empty_config", "Submitted config text is required.", "lint-input", "text", "Submit one site configuration object.");
             return false;
         }
 
@@ -56,15 +56,5 @@ public static class ConfigLintSubmittedRequestReader
 
         parsed = ProxyConfigurationNormalizeFormat.Json;
         return false;
-    }
-
-    private static ConfigLintFinding Error(
-        string code,
-        string message,
-        string? source,
-        string? path,
-        string? suggestedFix)
-    {
-        return new ConfigLintFinding("error", code, message, source, path, suggestedFix);
     }
 }
