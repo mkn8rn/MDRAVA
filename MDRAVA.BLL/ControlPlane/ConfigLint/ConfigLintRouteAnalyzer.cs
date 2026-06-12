@@ -1,4 +1,3 @@
-using MDRAVA.BLL.Http;
 using System.Text;
 
 namespace MDRAVA.BLL.ControlPlane.ConfigLint;
@@ -35,17 +34,7 @@ public static class ConfigLintRouteAnalyzer
                 findings.Add(ConfigLintFindingFactory.Warning("cache_private_path", $"Route '{route.Name}' enables cache on a path or header pattern that commonly serves private content.", sourceName, routePath, "Keep caching disabled for authenticated or user-specific resources."));
             }
 
-            if (route.RetryEnabled && route.RetryMethods.Any(static method => !ProxyRequestMethodPolicy.IsSafeReadMethod(method)))
-            {
-                findings.Add(ConfigLintFindingFactory.Error("retry_unsafe_method", $"Route '{route.Name}' allows retry for an unsafe method.", sourceName, routePath, "Restrict retry methods to GET and HEAD."));
-            }
-
-            if (route.Upstreams.Any(static upstream => upstream.CircuitBreakerEnabled)
-                && (route.Upstreams.Count < 2 || !route.HealthCheckEnabled))
-            {
-                findings.Add(ConfigLintFindingFactory.Warning("circuit_breaker_low_redundancy", $"Route '{route.Name}' configures a circuit breaker without multiple upstreams or active health checks.", sourceName, routePath, "Circuit breakers are most useful with redundant upstreams and health checks."));
-            }
-
+            findings.AddRange(ConfigLintRouteResilienceAnalyzer.Analyze(route, routePath, sourceName));
             findings.AddRange(ConfigLintUpstreamAnalyzer.Analyze(snapshot, route, routePath, sourceName));
 
             if (string.Equals(route.Action, "StaticResponse", StringComparison.Ordinal)
