@@ -14,13 +14,11 @@ public interface IAcmeRenewalScheduleInputSource
 
 public static class AcmeRenewalScheduleInputMapper
 {
-    public static AcmeRenewalScheduleInput? FromSnapshot(ProxyConfigurationSnapshot? snapshot)
+    public static AcmeRenewalScheduleInput FromRuntimeConfiguration(RuntimeAcmeOptions acme)
     {
-        return snapshot is null
-            ? null
-            : new AcmeRenewalScheduleInput(
-                snapshot.Acme.Enabled,
-                snapshot.Acme.CheckIntervalMinutes);
+        return new AcmeRenewalScheduleInput(
+            acme.Enabled,
+            acme.CheckIntervalMinutes);
     }
 }
 
@@ -35,8 +33,9 @@ public sealed class ProxyConfigurationAcmeRenewalScheduleInputSource : IAcmeRene
 
     public AcmeRenewalScheduleInput? ReadInput()
     {
-        _configurationStore.TryGetSnapshot(out var snapshot);
-        return AcmeRenewalScheduleInputMapper.FromSnapshot(snapshot);
+        return _configurationStore.TryGetSnapshot(out var snapshot) && snapshot is not null
+            ? AcmeRenewalScheduleInputMapper.FromRuntimeConfiguration(snapshot.Acme)
+            : null;
     }
 }
 
