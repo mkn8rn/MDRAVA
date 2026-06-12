@@ -30,7 +30,7 @@ public static class ProxyStatusReadinessSourceMapper
 {
     public static ProxyStatusReadinessSourceSet FromSources(
         ProxyConfigurationSnapshot? configuration,
-        ProxyRuntimeSnapshot runtime,
+        ProxyStatusRuntimeSummary runtime,
         ProxyMetricsSnapshot metrics,
         IReadOnlyList<ProxyUpstreamStatusResponse> upstreams,
         RuntimeHttp3SupportProjection http3,
@@ -43,7 +43,7 @@ public static class ProxyStatusReadinessSourceMapper
             runtime.LastListenerReload?.Succeeded,
             runtime.LastListenerReload is { Succeeded: false },
             ProxyConfiguredListenerSummarySourceMapper.FromSnapshot(configuration),
-            ProxyRuntimeListenerSummarySourceMapper.FromRuntime(runtime),
+            ProxyRuntimeListenerSummarySourceMapper.FromRuntimeSummary(runtime),
             ProxyRouteSummarySourceMapper.FromSnapshot(configuration),
             ProxyCertificateSummarySourceMapper.FromSnapshot(configuration),
             ProxyAcmeSummaryConfigurationSourceMapper.FromSnapshot(configuration),
@@ -53,7 +53,7 @@ public static class ProxyStatusReadinessSourceMapper
             http3.EnabledForTraffic,
             http3.QuicListenerReady,
             ProxyLogSummarySourceMapper.FromStatus(logPersistence),
-            ProxyShutdownSummarySourceMapper.FromRuntime(runtime));
+            ProxyShutdownSummarySourceMapper.FromRuntimeSummary(runtime));
     }
 }
 

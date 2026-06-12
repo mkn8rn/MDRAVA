@@ -125,6 +125,7 @@ internal static class OperatorStatusTests
         };
         var metrics = new ProxyMetrics().Snapshot();
         var observedAtUtc = new DateTimeOffset(2026, 6, 10, 9, 5, 0, TimeSpan.Zero);
+        var runtimeSummary = ProxyStatusRuntimeSummaryMapper.FromRuntime(runtime);
         var http3 = Http3RuntimeSupport.ProjectRuntime(
             Http3SupportSourceMapper.FromConfiguration(snapshot.Listeners, snapshot.Routes),
             TestHttp3PlatformSupport.Supported,
@@ -144,7 +145,7 @@ internal static class OperatorStatusTests
         var readiness = ProxyStatusReadinessInputMapper.FromSources(
             ProxyStatusReadinessSourceMapper.FromSources(
                 snapshot,
-                runtime,
+                runtimeSummary,
                 metrics,
                 [],
                 http3,
@@ -154,7 +155,7 @@ internal static class OperatorStatusTests
             preflight,
             observedAtUtc);
         var input = new ProxyStatusInput(
-            ProxyStatusRuntimeSummaryMapper.FromRuntime(runtime),
+            runtimeSummary,
             ProxyStatusConfigurationSummaryMapper.FromSnapshot(snapshot),
             metrics,
             [],
@@ -178,6 +179,65 @@ internal static class OperatorStatusTests
         AssertEx.Equal("healthy", status.Readiness.State);
         AssertEx.Equal(observedAtUtc, status.Readiness.GeneratedAtUtc);
         AssertEx.Equal(ConfigLintStatus.Empty, status.ConfigLint);
+    }
+
+    public static void StatusReadinessSourceMapperConsumesRuntimeSummaryWithoutRuntimeSnapshot()
+    {
+        var listener = Listener();
+        var reload = new ProxyListenerReloadResult(
+            Succeeded: false,
+            AttemptedAtUtc: DateTimeOffset.UnixEpoch,
+            Added: 0,
+            Removed: 0,
+            Changed: 1,
+            Unchanged: 0,
+            Changes: [],
+            Errors: ["bind_failed"]);
+        var runtime = new ProxyStatusRuntimeSummary(
+            ListenerLive: false,
+            ListenerName: null,
+            Endpoint: null,
+            StartedAt: null,
+            StoppedAt: DateTimeOffset.UnixEpoch,
+            LastError: "bind_failed",
+            IsShuttingDown: true,
+            ShutdownStartedAtUtc: DateTimeOffset.UnixEpoch.AddMinutes(1),
+            ShutdownDeadlineUtc: DateTimeOffset.UnixEpoch.AddMinutes(2),
+            Listeners: [ListenerStatus(listener, ProxyListenerState.Failed)],
+            LastListenerReload: reload);
+        var metrics = new ProxyMetrics().Snapshot();
+        var http3 = new RuntimeHttp3SupportProjection(
+            "unknown",
+            QuicListenerSupported: false,
+            QuicConnectionSupported: false,
+            "disabled",
+            "disabled",
+            EnabledForTraffic: false,
+            QuicListenerReady: false,
+            AltSvcConfigured: false,
+            AltSvcActive: false,
+            AltSvcMaxAgeSeconds: null,
+            "not_configured",
+            UdpQuicListenerIdentityModeled: true,
+            "client_http3_default_enabled_for_eligible_tls_proxy_listeners");
+        var logPersistence = ProxyLogPersistenceStatus.Unknown;
+
+        var sources = ProxyStatusReadinessSourceMapper.FromSources(
+            configuration: null,
+            runtime,
+            metrics,
+            upstreams: [],
+            http3,
+            logPersistence);
+
+        AssertEx.False(sources.HasActiveConfiguration);
+        AssertEx.False(sources.LastListenerReloadSucceeded!.Value);
+        AssertEx.True(sources.LastListenerReloadFailed);
+        AssertEx.Equal(1, sources.RuntimeListeners.Count);
+        AssertEx.Equal(ProxyListenerState.Failed, sources.RuntimeListeners[0].State);
+        AssertEx.False(sources.Shutdown.IsRunning);
+        AssertEx.True(sources.Shutdown.IsShuttingDown);
+        AssertEx.Equal(DateTimeOffset.UnixEpoch.AddMinutes(1), sources.Shutdown.ShutdownStartedAtUtc);
     }
 
     public static void ReadinessEvaluatorConsumesNarrowFactsWithoutRuntimeSnapshots()

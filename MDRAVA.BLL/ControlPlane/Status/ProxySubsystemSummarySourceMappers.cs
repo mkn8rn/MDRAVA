@@ -23,8 +23,8 @@ public static class ProxyConfiguredListenerSummarySourceMapper
 
 public static class ProxyRuntimeListenerSummarySourceMapper
 {
-    public static IReadOnlyList<ProxyRuntimeListenerSummarySource> FromRuntime(
-        ProxyRuntimeSnapshot runtime)
+    public static IReadOnlyList<ProxyRuntimeListenerSummarySource> FromRuntimeSummary(
+        ProxyStatusRuntimeSummary runtime)
     {
         return runtime.Listeners
             .Select(static listener => new ProxyRuntimeListenerSummarySource(
@@ -149,10 +149,10 @@ public static class ProxyLogSummarySourceMapper
 
 public static class ProxyShutdownSummarySourceMapper
 {
-    public static ProxyShutdownSummarySource FromRuntime(ProxyRuntimeSnapshot runtime)
+    public static ProxyShutdownSummarySource FromRuntimeSummary(ProxyStatusRuntimeSummary runtime)
     {
         return new ProxyShutdownSummarySource(
-            runtime.IsRunning,
+            runtime.ListenerLive,
             runtime.IsShuttingDown,
             runtime.ShutdownStartedAtUtc,
             runtime.ShutdownDeadlineUtc);
