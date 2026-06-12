@@ -330,6 +330,23 @@ internal static class AcmeTests
         AssertEx.Equal(17, input.CheckIntervalMinutes);
     }
 
+    public static void AcmeRenewalConfigurationSourceProjectsRenewalInput()
+    {
+        using var temp = TemporaryDirectory.Create();
+        var store = CreateStore(temp.Path);
+        var source = new ProxyConfigurationAcmeRenewalConfigurationSource(store);
+
+        var input = AssertEx.NotNull(source.ReadInput());
+
+        AssertEx.True(input.Enabled);
+        AssertEx.Equal("acme", input.StoragePath);
+        AssertEx.Equal(60, input.RetryAfterMinutes);
+        AssertEx.Equal(1, input.Certificates.Count);
+        AssertEx.Equal("home-acme", input.Certificates[0].Id);
+        AssertEx.Equal("home.example.test", input.Certificates[0].Domains[0]);
+        AssertEx.Equal(30, input.Certificates[0].RenewBeforeDays);
+    }
+
     private static Http1RequestHead Request(string method, string path)
     {
         return new Http1RequestHead(
@@ -399,7 +416,8 @@ internal static class AcmeTests
         TimeProvider? timeProvider = null)
     {
         return new AcmeCertificateManager(
-            store,
+            new ProxyConfigurationAcmeRenewalConfigurationSource(store),
+            new ProxyConfigurationAcmeCertificateActivator(store),
             new MdravaDataDirectoryProvider(new MdravaDataDirectoryOptions
             {
                 DataDirectory = dataDirectory

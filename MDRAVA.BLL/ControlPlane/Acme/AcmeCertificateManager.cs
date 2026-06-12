@@ -1,11 +1,11 @@
 using MDRAVA.BLL.Configuration;
-using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 
 namespace MDRAVA.BLL.ControlPlane.Acme;
 
 public sealed class AcmeCertificateManager
 {
-    private readonly IProxyConfigurationStore _configurationStore;
+    private readonly IAcmeRenewalConfigurationSource _configurationSource;
+    private readonly IAcmeCertificateActivator _certificateActivator;
     private readonly IMdravaDataDirectoryProvider _dataDirectoryProvider;
     private readonly IAcmeCertificateIssuer _issuer;
     private readonly IAcmeCertificateMaterialWriter _materialWriter;
@@ -16,7 +16,8 @@ public sealed class AcmeCertificateManager
     private readonly IAcmeCertificateRenewalEventSink _events;
 
     public AcmeCertificateManager(
-        IProxyConfigurationStore configurationStore,
+        IAcmeRenewalConfigurationSource configurationSource,
+        IAcmeCertificateActivator certificateActivator,
         IMdravaDataDirectoryProvider dataDirectoryProvider,
         IAcmeCertificateIssuer issuer,
         IAcmeCertificateMaterialWriter materialWriter,
@@ -26,7 +27,8 @@ public sealed class AcmeCertificateManager
         IProxyAcmeMetricsSink metrics,
         IAcmeCertificateRenewalEventSink events)
     {
-        _configurationStore = configurationStore;
+        _configurationSource = configurationSource;
+        _certificateActivator = certificateActivator;
         _dataDirectoryProvider = dataDirectoryProvider;
         _issuer = issuer;
         _materialWriter = materialWriter;
@@ -39,44 +41,42 @@ public sealed class AcmeCertificateManager
 
     public async ValueTask CheckRenewalsAsync(CancellationToken cancellationToken)
     {
-        if (!_configurationStore.TryGetSnapshot(out var snapshot) || snapshot is null || !snapshot.Acme.Enabled)
+        var input = _configurationSource.ReadInput();
+        if (input is null || !input.Enabled)
         {
             return;
         }
 
-        _materialWriter.EnsureLayout(_dataDirectoryProvider.GetDataDirectory(), snapshot.Acme.StoragePath);
+        _materialWriter.EnsureLayout(_dataDirectoryProvider.GetDataDirectory(), input.StoragePath);
         var nowUtc = _timeProvider.GetUtcNow();
-        foreach (var certificateOptions in snapshot.Acme.Certificates)
+        foreach (var certificate in input.Certificates)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            await CheckCertificateAsync(snapshot, certificateOptions, nowUtc, cancellationToken);
+            await CheckCertificateAsync(input, certificate, nowUtc, cancellationToken);
         }
     }
 
     private async ValueTask CheckCertificateAsync(
-        ProxyConfigurationSnapshot snapshot,
-        RuntimeAcmeCertificateOptions certificateOptions,
+        AcmeRenewalConfigurationInput input,
+        AcmeRenewalCertificateInput certificate,
         DateTimeOffset nowUtc,
         CancellationToken cancellationToken)
     {
-        if (!certificateOptions.Enabled)
+        if (!certificate.Enabled)
         {
-            _statusStore.Upsert(CreateStatus(snapshot, certificateOptions, nowUtc, "disabled", null, null));
+            _statusStore.Upsert(CreateStatus(certificate, certificate.ActiveCertificate, nowUtc, "disabled", null, null));
             return;
         }
 
-        var activeCertificate = snapshot.Certificates.TryGetValue(certificateOptions.Id, out var certificate)
-            && string.Equals(certificate.Source, "acme", StringComparison.OrdinalIgnoreCase)
-            ? certificate
-            : null;
-        var renewalDueAtUtc = CalculateRenewalDueAt(activeCertificate, certificateOptions);
-        var existingStatus = _statusStore.Get(certificateOptions.Id);
+        var activeCertificate = certificate.ActiveCertificate;
+        var renewalDueAtUtc = CalculateRenewalDueAt(activeCertificate, certificate.RenewBeforeDays);
+        var existingStatus = _statusStore.Get(certificate.Id);
         if (existingStatus?.NextAttemptNotBeforeUtc is not null
             && existingStatus.NextAttemptNotBeforeUtc > nowUtc
             && (activeCertificate is null || renewalDueAtUtc <= nowUtc))
         {
             _statusStore.Upsert(CopyHistory(
-                CreateStatus(snapshot, certificateOptions, nowUtc, existingStatus.LastResult, existingStatus.ErrorSummary, existingStatus.NextAttemptNotBeforeUtc),
+                CreateStatus(certificate, activeCertificate, nowUtc, existingStatus.LastResult, existingStatus.ErrorSummary, existingStatus.NextAttemptNotBeforeUtc),
                 existingStatus));
             return;
         }
@@ -84,24 +84,24 @@ public sealed class AcmeCertificateManager
         if (activeCertificate is not null && renewalDueAtUtc > nowUtc)
         {
             _statusStore.Upsert(CopyHistory(
-                CreateStatus(snapshot, certificateOptions, nowUtc, "not-due", null, renewalDueAtUtc),
+                CreateStatus(certificate, activeCertificate, nowUtc, "not-due", null, renewalDueAtUtc),
                 existingStatus));
             return;
         }
 
         var attemptStartedAtUtc = nowUtc;
         _metrics.AcmeRenewalAttempted();
-        _statusStore.Upsert(CreateStatus(snapshot, certificateOptions, nowUtc, "attempting", null, null) with
+        _statusStore.Upsert(CreateStatus(certificate, activeCertificate, nowUtc, "attempting", null, null) with
         {
             LastAttemptAtUtc = attemptStartedAtUtc
         });
 
         var request = new AcmeCertificateIssueRequest(
-            certificateOptions.Id,
-            certificateOptions.Domains,
-            snapshot.Acme.DirectoryUrl,
-            snapshot.Acme.ContactEmails,
-            snapshot.Acme.TermsAccepted);
+            certificate.Id,
+            certificate.Domains,
+            input.DirectoryUrl,
+            input.ContactEmails,
+            input.TermsAccepted);
         AcmeCertificateIssueResult result;
         try
         {
@@ -115,9 +115,9 @@ public sealed class AcmeCertificateManager
         if (!result.Succeeded || result.PfxBytes is null)
         {
             _metrics.AcmeRenewalFailed();
-            var nextAttempt = attemptStartedAtUtc.AddMinutes(snapshot.Acme.RetryAfterMinutes);
-            _events.RenewalFailed(certificateOptions.Id, result.ErrorSummary);
-            _statusStore.Upsert(CreateStatus(snapshot, certificateOptions, nowUtc, "failed", SafeError(result.ErrorSummary), nextAttempt) with
+            var nextAttempt = attemptStartedAtUtc.AddMinutes(input.RetryAfterMinutes);
+            _events.RenewalFailed(certificate.Id, result.ErrorSummary);
+            _statusStore.Upsert(CreateStatus(certificate, activeCertificate, nowUtc, "failed", SafeError(result.ErrorSummary), nextAttempt) with
             {
                 LastAttemptAtUtc = attemptStartedAtUtc,
                 LastFailedAtUtc = attemptStartedAtUtc
@@ -129,9 +129,9 @@ public sealed class AcmeCertificateManager
         try
         {
             renewedCertificate = _materialWriter.WriteAndLoad(new AcmeCertificateMaterialWriteRequest(
-                snapshot.Acme.StoragePath,
-                certificateOptions.Id,
-                certificateOptions.Domains,
+                input.StoragePath,
+                certificate.Id,
+                certificate.Domains,
                 _dataDirectoryProvider.GetDataDirectory(),
                 attemptStartedAtUtc,
                 result.PfxBytes));
@@ -139,8 +139,8 @@ public sealed class AcmeCertificateManager
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             _metrics.AcmeRenewalFailed();
-            var nextAttempt = attemptStartedAtUtc.AddMinutes(snapshot.Acme.RetryAfterMinutes);
-            _statusStore.Upsert(CreateStatus(snapshot, certificateOptions, nowUtc, "failed", SafeError(exception.Message), nextAttempt) with
+            var nextAttempt = attemptStartedAtUtc.AddMinutes(input.RetryAfterMinutes);
+            _statusStore.Upsert(CreateStatus(certificate, activeCertificate, nowUtc, "failed", SafeError(exception.Message), nextAttempt) with
             {
                 LastAttemptAtUtc = attemptStartedAtUtc,
                 LastFailedAtUtc = attemptStartedAtUtc
@@ -148,46 +148,33 @@ public sealed class AcmeCertificateManager
             return;
         }
 
-        ReplaceCertificate(renewedCertificate);
+        _certificateActivator.Activate(renewedCertificate);
         _metrics.AcmeRenewalSucceeded();
-        var refreshedSnapshot = _configurationStore.Snapshot;
-        _statusStore.Upsert(CreateStatus(refreshedSnapshot, certificateOptions, nowUtc, "succeeded", null, CalculateRenewalDueAt(renewedCertificate, certificateOptions)) with
+        _statusStore.Upsert(CreateStatus(certificate, renewedCertificate, nowUtc, "succeeded", null, CalculateRenewalDueAt(renewedCertificate, certificate.RenewBeforeDays)) with
         {
             LastAttemptAtUtc = attemptStartedAtUtc,
             LastSucceededAtUtc = attemptStartedAtUtc
         });
     }
 
-    private void ReplaceCertificate(RuntimeCertificate renewedCertificate)
-    {
-        var snapshot = _configurationStore.Snapshot;
-        Dictionary<string, RuntimeCertificate> certificates = new(snapshot.Certificates, StringComparer.OrdinalIgnoreCase)
-        {
-            [renewedCertificate.Id] = renewedCertificate
-        };
-
-        _configurationStore.Replace(snapshot with { Certificates = certificates });
-    }
-
     private AcmeCertificateLifecycleStatus CreateStatus(
-        ProxyConfigurationSnapshot snapshot,
-        RuntimeAcmeCertificateOptions certificateOptions,
+        AcmeRenewalCertificateInput certificate,
+        RuntimeCertificate? activeCertificate,
         DateTimeOffset nowUtc,
         string result,
         string? errorSummary,
         DateTimeOffset? nextAttemptNotBeforeUtc)
     {
-        var active = snapshot.Certificates.TryGetValue(certificateOptions.Id, out var certificate)
-            && string.Equals(certificate.Source, "acme", StringComparison.OrdinalIgnoreCase);
-        var renewalDueAtUtc = CalculateRenewalDueAt(active ? certificate : null, certificateOptions);
+        var active = activeCertificate is not null;
+        var renewalDueAtUtc = CalculateRenewalDueAt(activeCertificate, certificate.RenewBeforeDays);
         return new AcmeCertificateLifecycleStatus(
-            certificateOptions.Id,
-            certificateOptions.Enabled,
-            certificateOptions.Domains,
+            certificate.Id,
+            certificate.Enabled,
+            certificate.Domains,
             active,
             active ? "acme" : "none",
-            active ? certificate!.Certificate.NotBefore.ToUniversalTime() : null,
-            active ? certificate!.Certificate.NotAfter.ToUniversalTime() : null,
+            active ? activeCertificate!.Certificate.NotBefore.ToUniversalTime() : null,
+            active ? activeCertificate!.Certificate.NotAfter.ToUniversalTime() : null,
             active ? renewalDueAtUtc : nowUtc,
             null,
             null,
@@ -199,7 +186,7 @@ public sealed class AcmeCertificateManager
 
     private static DateTimeOffset CalculateRenewalDueAt(
         RuntimeCertificate? certificate,
-        RuntimeAcmeCertificateOptions certificateOptions)
+        int renewBeforeDays)
     {
         if (certificate is null)
         {
@@ -207,7 +194,7 @@ public sealed class AcmeCertificateManager
         }
 
         return new DateTimeOffset(certificate.Certificate.NotAfter.ToUniversalTime())
-            .AddDays(-certificateOptions.RenewBeforeDays);
+            .AddDays(-renewBeforeDays);
     }
 
     private static string? SafeError(string? error)

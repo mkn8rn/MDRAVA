@@ -35,6 +35,7 @@ internal static partial class TestRegistry
     Test("ACME renewal schedule uses disabled backoff without active config", Sync(AcmeTests.AcmeRenewalScheduleUsesDisabledBackoffWithoutActiveConfig), TestTaxonomy.Tls, TestTaxonomy.Config),
     Test("ACME renewal schedule clamps configured interval", Sync(AcmeTests.AcmeRenewalScheduleClampsConfiguredInterval), TestTaxonomy.Tls, TestTaxonomy.Config),
     Test("ACME renewal schedule source reads narrow active input", Sync(AcmeTests.AcmeRenewalScheduleSourceReadsNarrowActiveInput), TestTaxonomy.Tls, TestTaxonomy.Config),
+    Test("ACME renewal configuration source projects renewal input", Sync(AcmeTests.AcmeRenewalConfigurationSourceProjectsRenewalInput), TestTaxonomy.Tls, TestTaxonomy.Config),
     Test("Existing HTTP upstream config remains valid", UpstreamTlsTests.ExistingHttpUpstreamConfigRemainsValid, TestTaxonomy.UpstreamHttp1, TestTaxonomy.Tls),
     Test("HTTPS upstream config parses and validates", UpstreamTlsTests.HttpsUpstreamConfigParsesAndValidates, TestTaxonomy.UpstreamHttp1, TestTaxonomy.Tls),
     Test("Unsupported upstream scheme is rejected", UpstreamTlsTests.UnsupportedUpstreamSchemeIsRejected, TestTaxonomy.UpstreamHttp1, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
