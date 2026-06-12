@@ -486,6 +486,21 @@ internal static class RouteDiagnosticsTests
         AssertEx.True(result.Findings[0].Message.Contains("request body is required", StringComparison.Ordinal));
     }
 
+    public static void ConfigLintControllerRejectsMissingSubmittedRequestBody()
+    {
+        var service = CreateLintService(BaseOptions([ProxyRoute("active", "active.test", "/")]));
+        var controller = new ProxyConfigLintController(
+            new ProxyConfigLintAdministrationService(service));
+
+        var actionResult = controller.Submitted(null);
+
+        var badRequest = (BadRequestObjectResult)AssertEx.NotNull(actionResult.Result);
+        var result = (ConfigLintResult)AssertEx.NotNull(badRequest.Value);
+        AssertEx.False(result.Succeeded);
+        AssertFinding(result, "missing_request", "error");
+        AssertEx.True(result.Findings[0].Message.Contains("request body is required", StringComparison.Ordinal));
+    }
+
     public static void RouteDiagnosticsControllerRejectsMissingMatchRequestBody()
     {
         var service = CreateRouteService(BaseOptions([ProxyRoute("active", "active.test", "/")]), out _, out _);
