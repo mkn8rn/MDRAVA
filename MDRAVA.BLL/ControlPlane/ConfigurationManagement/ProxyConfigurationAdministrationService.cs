@@ -13,7 +13,7 @@ public sealed class ProxyConfigurationAdministrationService
         _validationOperations = validationOperations;
     }
 
-    public ProxyConfigurationNormalizeResult Normalize(ProxyConfigurationNormalizeRequest request)
+    public ProxyConfigurationNormalizeResult Normalize(ProxyConfigurationNormalizeRequest? request)
     {
         return _normalizeOperations.Normalize(request);
     }

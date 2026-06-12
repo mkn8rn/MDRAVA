@@ -803,6 +803,19 @@ internal static class ConfigurationTests
         AssertEx.True(result.FileErrors.All(static error => error.Path is null));
     }
 
+    public static void ConfigNormalizerRejectsMissingRequestBody()
+    {
+        var normalizer = CreateNormalizer();
+
+        var result = normalizer.Normalize(null);
+
+        AssertEx.False(result.Succeeded);
+        AssertEx.Equal("unknown", result.Format);
+        AssertEx.Equal(null, result.CanonicalJson);
+        AssertEx.True(result.Errors.Any(static error => error.Contains("request body is required", StringComparison.Ordinal)), string.Join("; ", result.Errors));
+        AssertEx.True(result.FileErrors.All(static error => error.Path is null));
+    }
+
     public static async Task EffectiveConfigProjectionRedactsCertificateSecrets()
     {
         using var temp = TemporaryDirectory.Create();

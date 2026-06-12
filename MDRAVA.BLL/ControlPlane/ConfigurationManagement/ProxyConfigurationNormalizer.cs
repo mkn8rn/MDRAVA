@@ -19,8 +19,15 @@ public sealed class ProxyConfigurationNormalizer
         _urlSyntaxPolicy = urlSyntaxPolicy;
     }
 
-    public ProxyConfigurationNormalizeResult Normalize(ProxyConfigurationNormalizeRequest request)
+    public ProxyConfigurationNormalizeResult Normalize(ProxyConfigurationNormalizeRequest? request)
     {
+        if (request is null)
+        {
+            return Failure(
+                "unknown",
+                [new ProxyConfigurationFileError(null, "A normalize request body is required.")]);
+        }
+
         if (!TryParseFormat(request.Format, out var format))
         {
             var error = new ProxyConfigurationFileError(null, "Format must be 'json' or 'yaml'.");
