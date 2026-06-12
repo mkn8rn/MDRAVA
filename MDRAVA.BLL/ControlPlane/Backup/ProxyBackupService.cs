@@ -100,15 +100,14 @@ public sealed class ProxyBackupService : IProxyBackupOperations
             errors.Add(ProxyRestoreValidationFindingPolicy.ConfigurationError(error, relativePath: null));
         }
 
-        return new ProxyRestoreValidationResponse(
-            configValidation.Succeeded && errors.Count == 0,
+        return ProxyRestoreValidationResponseBuilder.Build(
             generatedAtUtc,
             _activeConfigurationVersionReader.ActiveConfigVersion,
-            configValidation.Succeeded,
-            configValidation.WouldBeVersion,
+            configValidation,
             manifest,
-            errors.Take(MaxWarnings).ToArray(),
-            warnings.Take(MaxWarnings).ToArray());
+            errors,
+            warnings,
+            MaxWarnings);
     }
 
     private IReadOnlyList<ProxyBackupDirectoryStatus> ExpectedDirectories(string root)
@@ -140,5 +139,4 @@ public sealed class ProxyBackupService : IProxyBackupOperations
             ? relativePath
             : null;
     }
-
 }

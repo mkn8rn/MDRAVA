@@ -136,6 +136,52 @@ internal static class BackupRestoreTests
         AssertEx.Equal("certs/home.pfx", finding.RelativePath);
     }
 
+    public static void RestoreValidationResponseBuilderBoundsFindingsAndRequiresNoErrors()
+    {
+        var generatedAtUtc = new DateTimeOffset(2026, 6, 12, 11, 0, 0, TimeSpan.Zero);
+        var manifest = new ProxyBackupManifestResponse(
+            generatedAtUtc,
+            [],
+            [],
+            [],
+            [],
+            Truncated: false);
+        var configValidation = new ProxyRestoreConfigurationValidationResult(
+            Succeeded: true,
+            Errors: [],
+            FileErrors: [],
+            WouldBeVersion: 7);
+        ProxyRestoreValidationFinding[] errors =
+        [
+            new ProxyRestoreValidationFinding(ProxyStatusText.Error, "first", "First.", null),
+            new ProxyRestoreValidationFinding(ProxyStatusText.Error, "second", "Second.", null)
+        ];
+        ProxyRestoreValidationFinding[] warnings =
+        [
+            new ProxyRestoreValidationFinding(ProxyStatusText.Warning, "first_warning", "First warning.", null),
+            new ProxyRestoreValidationFinding(ProxyStatusText.Warning, "second_warning", "Second warning.", null)
+        ];
+
+        var response = ProxyRestoreValidationResponseBuilder.Build(
+            generatedAtUtc,
+            activeConfigVersion: 3,
+            configValidation,
+            manifest,
+            errors,
+            warnings,
+            maxFindings: 1);
+
+        AssertEx.False(response.Succeeded);
+        AssertEx.Equal(generatedAtUtc, response.GeneratedAtUtc);
+        AssertEx.Equal(3, response.ActiveConfigVersion);
+        AssertEx.True(response.ConfigValidationSucceeded);
+        AssertEx.Equal(7, response.WouldBeConfigVersion);
+        AssertEx.Equal(1, response.Errors.Count);
+        AssertEx.Equal("first", response.Errors[0].Code);
+        AssertEx.Equal(1, response.Warnings.Count);
+        AssertEx.Equal("first_warning", response.Warnings[0].Code);
+    }
+
     public static void BackupPathSafetyRejectsTraversalOutsideDataDirectory()
     {
         using var temp = TemporaryDirectory.Create();
