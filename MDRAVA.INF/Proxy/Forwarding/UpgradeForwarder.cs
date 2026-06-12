@@ -68,7 +68,10 @@ public sealed class UpgradeForwarder
                     timeouts.DownstreamWriteTimeout,
                     _metrics,
                     cancellationToken);
-                return new ForwardingResult(false, responseStarted, false, 503, ProxyFailureKind.UpgradeRejected);
+                return ForwardingResult.Failure(
+                    responseStarted,
+                    503,
+                    ProxyFailureKind.UpgradeRejected);
             }
 
             try
@@ -112,7 +115,10 @@ public sealed class UpgradeForwarder
                         requestId,
                         cancellationToken);
                     responseStarted = true;
-                    return new ForwardingResult(true, responseStarted, false, responseHead.StatusCode);
+                    return ForwardingResult.Success(
+                        responseStarted,
+                        keepClientConnectionOpen: false,
+                        responseHead.StatusCode);
                 }
 
                 if (!IsValidSwitchingProtocolsResponse(responseHead, upgrade))
@@ -136,7 +142,10 @@ public sealed class UpgradeForwarder
                     : tunnelResult.CloseReason == "RelayFailure"
                         ? ProxyFailureKind.TunnelRelayFailure
                         : ProxyFailureKind.None;
-                return new ForwardingResult(true, responseStarted, false, 101, failureKind, tunnelResult);
+                return ForwardingResult.TunnelCompleted(
+                    responseStatusCode: 101,
+                    tunnelFailureKind: failureKind,
+                    tunnel: tunnelResult);
             }
             finally
             {
@@ -151,10 +160,8 @@ public sealed class UpgradeForwarder
         {
             var timeoutFailure = ProxyTimeoutFailurePolicy.ClassifyForwardingTimeout(exception.Kind, responseStarted);
             await HandleTimeoutAsync(clientStream, requestHead, upstream, responseStarted, exception, timeouts, requestId, cancellationToken);
-            return new ForwardingResult(
-                false,
+            return ForwardingResult.Failure(
                 responseStarted,
-                false,
                 timeoutFailure.ResponseStatusCode,
                 timeoutFailure.FailureKind);
         }
@@ -181,7 +188,10 @@ public sealed class UpgradeForwarder
                     cancellationToken);
             }
 
-            return new ForwardingResult(false, responseStarted, false, responseStarted ? null : 502, ProxyFailureKind.UpstreamMalformedResponse);
+            return ForwardingResult.Failure(
+                responseStarted,
+                responseStarted ? null : 502,
+                ProxyFailureKind.UpstreamMalformedResponse);
         }
         catch (Exception exception) when (exception is SocketException or IOException)
         {
@@ -205,7 +215,10 @@ public sealed class UpgradeForwarder
                     cancellationToken);
             }
 
-            return new ForwardingResult(false, responseStarted, false, responseStarted ? null : 502, ProxyFailureKind.UpstreamConnectFailed);
+            return ForwardingResult.Failure(
+                responseStarted,
+                responseStarted ? null : 502,
+                ProxyFailureKind.UpstreamConnectFailed);
         }
         finally
         {

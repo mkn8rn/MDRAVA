@@ -635,7 +635,10 @@ public sealed class ClientConnection
                     context,
                     ProxyFailureKind.NoHealthyUpstream,
                     cancellationToken);
-                return new ForwardingResult(false, true, false, 503, ProxyFailureKind.NoHealthyUpstream);
+                return ForwardingResult.Failure(
+                    responseStarted: true,
+                    responseStatusCode: 503,
+                    failureKind: ProxyFailureKind.NoHealthyUpstream);
             }
 
             context.SetUpstream(ProxyRequestContextRuntimeMapper.ToRequestUpstream(selection.Upstream));
@@ -695,7 +698,10 @@ public sealed class ClientConnection
             return await WriteSuppressedFailureAsync(clientStream, lastResult, context, cancellationToken);
         }
 
-        return lastResult ?? new ForwardingResult(false, false, false, null, ProxyFailureKind.NoHealthyUpstream);
+        return lastResult ?? ForwardingResult.Failure(
+            responseStarted: false,
+            responseStatusCode: null,
+            failureKind: ProxyFailureKind.NoHealthyUpstream);
     }
 
     private async ValueTask<bool> HandleUpgradeAsync(
@@ -875,12 +881,10 @@ public sealed class ClientConnection
             context,
             result.FailureKind,
             cancellationToken);
-        return result with
-        {
-            ResponseStarted = true,
-            KeepClientConnectionOpen = false,
-            ResponseStatusCode = statusCode
-        };
+        return ForwardingResult.Failure(
+            responseStarted: true,
+            responseStatusCode: statusCode,
+            failureKind: result.FailureKind);
     }
 
     private async ValueTask<Http1HeadReadResult> ReadRequestHeadAsync(

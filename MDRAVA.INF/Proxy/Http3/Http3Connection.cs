@@ -620,7 +620,10 @@ public sealed class Http3Connection
                     context,
                     requestHead.Method,
                     cancellationToken);
-                return new ForwardingResult(false, true, false, 503, ProxyFailureKind.NoHealthyUpstream);
+                return ForwardingResult.Failure(
+                    responseStarted: true,
+                    responseStatusCode: 503,
+                    failureKind: ProxyFailureKind.NoHealthyUpstream);
             }
 
             context.SetUpstream(ProxyRequestContextRuntimeMapper.ToRequestUpstream(selection.Upstream));
@@ -687,7 +690,10 @@ public sealed class Http3Connection
             return await WriteSuppressedFailureAsync(stream, lastResult, context, requestHead.Method, cancellationToken);
         }
 
-        return lastResult ?? new ForwardingResult(false, false, false, null, ProxyFailureKind.NoHealthyUpstream);
+        return lastResult ?? ForwardingResult.Failure(
+            responseStarted: false,
+            responseStatusCode: null,
+            failureKind: ProxyFailureKind.NoHealthyUpstream);
     }
 
     private async ValueTask<ForwardingResult> WriteSuppressedFailureAsync(
@@ -715,12 +721,10 @@ public sealed class Http3Connection
             context,
             method,
             cancellationToken);
-        return result with
-        {
-            ResponseStarted = true,
-            KeepClientConnectionOpen = false,
-            ResponseStatusCode = statusCode
-        };
+        return ForwardingResult.Failure(
+            responseStarted: true,
+            responseStatusCode: statusCode,
+            failureKind: result.FailureKind);
     }
 
     private void RecordUpstreamAttemptResult(UpstreamSelection selection, ForwardingResult result)

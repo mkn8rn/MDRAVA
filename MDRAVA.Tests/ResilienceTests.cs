@@ -573,6 +573,40 @@ internal static class ResilienceTests
         AssertEx.False(ProxyRetryPolicy.ShouldSuppressRetryableStatusResponse(retry with { Enabled = false }, 503, true));
     }
 
+    public static void ForwardingResultNamesSuccessAndFailureOutcomes()
+    {
+        var success = ForwardingResult.Success(
+            responseStarted: true,
+            keepClientConnectionOpen: true,
+            responseStatusCode: 200);
+        var failure = ForwardingResult.Failure(
+            responseStarted: false,
+            responseStatusCode: 502,
+            failureKind: ProxyFailureKind.UpstreamConnectFailed);
+        var tunnelRelay = new TunnelRelayResult("RelayFailure", 10, 8, TimeSpan.FromSeconds(1));
+        var tunnel = ForwardingResult.TunnelCompleted(
+            responseStatusCode: 101,
+            tunnelFailureKind: ProxyFailureKind.TunnelRelayFailure,
+            tunnel: tunnelRelay);
+
+        AssertEx.True(success.Succeeded);
+        AssertEx.True(success.ResponseStarted);
+        AssertEx.True(success.KeepClientConnectionOpen);
+        AssertEx.Equal(200, success.ResponseStatusCode!.Value);
+        AssertEx.Equal(ProxyFailureKind.None, success.FailureKind);
+        AssertEx.False(failure.Succeeded);
+        AssertEx.False(failure.ResponseStarted);
+        AssertEx.False(failure.KeepClientConnectionOpen);
+        AssertEx.Equal(502, failure.ResponseStatusCode!.Value);
+        AssertEx.Equal(ProxyFailureKind.UpstreamConnectFailed, failure.FailureKind);
+        AssertEx.True(tunnel.Succeeded);
+        AssertEx.True(tunnel.ResponseStarted);
+        AssertEx.False(tunnel.KeepClientConnectionOpen);
+        AssertEx.Equal(101, tunnel.ResponseStatusCode!.Value);
+        AssertEx.Equal(ProxyFailureKind.TunnelRelayFailure, tunnel.FailureKind);
+        AssertEx.Equal(tunnelRelay, tunnel.Tunnel);
+    }
+
     public static void TimeoutPolicyAppliesRouteAndRetryAttemptTimeouts()
     {
         var baseTimeouts = Timeouts();
