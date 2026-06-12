@@ -1,6 +1,5 @@
 using MDRAVA.BLL.Http;
 using MDRAVA.BLL.ControlPlane.Headers;
-using System.Diagnostics.CodeAnalysis;
 using MDRAVA.BLL.ControlPlane.Routing;
 
 namespace MDRAVA.BLL.ControlPlane.Http1;
@@ -12,31 +11,27 @@ public sealed record FramedUpstreamResponseTranslationInput(
 
 public static class FramedUpstreamResponsePolicy
 {
-    public static bool TryBuildHttp1ResponseHead(
+    public static FramedUpstreamResponseTranslationResult BuildHttp1ResponseHead(
         Http1RequestHead requestHead,
-        FramedUpstreamResponseTranslationInput upstreamResponse,
-        [NotNullWhen(true)] out Http1ResponseHead? responseHead,
-        out string rejectionReason)
+        FramedUpstreamResponseTranslationInput upstreamResponse)
     {
         ArgumentNullException.ThrowIfNull(requestHead);
         ArgumentNullException.ThrowIfNull(upstreamResponse);
 
-        responseHead = null;
         var framingDecision = DetermineFraming(requestHead, upstreamResponse);
         if (framingDecision is not UpstreamResponseFramingDecision.Accepted acceptedFraming)
         {
-            rejectionReason = ((UpstreamResponseFramingDecision.Rejected)framingDecision).Reason;
-            return false;
+            return FramedUpstreamResponseTranslationResult.Rejected(
+                ((UpstreamResponseFramingDecision.Rejected)framingDecision).Reason);
         }
 
-        rejectionReason = "";
-        responseHead = new Http1ResponseHead(
-            "HTTP/1.1",
-            upstreamResponse.StatusCode,
-            ProxyRouteActionPolicy.ReasonPhrase(upstreamResponse.StatusCode),
-            acceptedFraming.Framing,
-            upstreamResponse.Headers);
-        return true;
+        return FramedUpstreamResponseTranslationResult.Accepted(
+            new Http1ResponseHead(
+                "HTTP/1.1",
+                upstreamResponse.StatusCode,
+                ProxyRouteActionPolicy.ReasonPhrase(upstreamResponse.StatusCode),
+                acceptedFraming.Framing,
+                upstreamResponse.Headers));
     }
 
     private static UpstreamResponseFramingDecision DetermineFraming(
@@ -109,5 +104,49 @@ public static class FramedUpstreamResponsePolicy
 
             public string Reason { get; }
         }
+    }
+}
+
+public abstract record FramedUpstreamResponseTranslationResult
+{
+    private FramedUpstreamResponseTranslationResult()
+    {
+    }
+
+    public static FramedUpstreamResponseTranslationResult Accepted(Http1ResponseHead responseHead)
+    {
+        ArgumentNullException.ThrowIfNull(responseHead);
+        return new AcceptedResult(responseHead);
+    }
+
+    public static FramedUpstreamResponseTranslationResult Rejected(string reason)
+    {
+        return new RejectedResult(reason);
+    }
+
+    public sealed record AcceptedResult : FramedUpstreamResponseTranslationResult
+    {
+        public AcceptedResult(Http1ResponseHead responseHead)
+        {
+            ArgumentNullException.ThrowIfNull(responseHead);
+            ResponseHead = responseHead;
+        }
+
+        public Http1ResponseHead ResponseHead { get; }
+    }
+
+    public sealed record RejectedResult : FramedUpstreamResponseTranslationResult
+    {
+        public RejectedResult(string reason)
+        {
+            if (string.IsNullOrWhiteSpace(reason))
+            {
+                throw new ArgumentException("Upstream response translation rejection reason is required.", nameof(reason));
+            }
+
+            Reason = reason;
+        }
+
+        public string Reason { get; }
     }
 }

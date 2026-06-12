@@ -506,18 +506,20 @@ public sealed class ProxyForwarder
             listener.MaxResponseHeadBytes,
             timeouts,
             cancellationToken);
-        if (!FramedUpstreamResponsePolicy.TryBuildHttp1ResponseHead(
+        var responseHeadTranslation = FramedUpstreamResponsePolicy.BuildHttp1ResponseHead(
             requestHead,
             new FramedUpstreamResponseTranslationInput(
                 upstreamResponse.StatusCode,
                 upstreamResponse.Headers,
-                upstreamResponse.EndStream),
-            out var responseHead,
-            out var responseHeadRejectionReason))
+                upstreamResponse.EndStream));
+        var responseHead = responseHeadTranslation switch
         {
-            throw new Http2UpstreamProtocolException(
-                $"Upstream HTTP/2 response framing was invalid: {responseHeadRejectionReason}.");
-        }
+            FramedUpstreamResponseTranslationResult.AcceptedResult accepted => accepted.ResponseHead,
+            FramedUpstreamResponseTranslationResult.RejectedResult rejected => throw new Http2UpstreamProtocolException(
+                $"Upstream HTTP/2 response framing was invalid: {rejected.Reason}."),
+            _ => throw new InvalidOperationException(
+                $"Unexpected upstream response translation result {responseHeadTranslation.GetType().Name}.")
+        };
 
         if (ProxyRetryPolicy.ShouldSuppressRetryableStatusResponse(route.Retry, responseHead.StatusCode, suppressRetryableStatusResponse))
         {
@@ -627,18 +629,20 @@ public sealed class ProxyForwarder
             listener.MaxResponseHeadBytes,
             timeouts,
             cancellationToken);
-        if (!FramedUpstreamResponsePolicy.TryBuildHttp1ResponseHead(
+        var responseHeadTranslation = FramedUpstreamResponsePolicy.BuildHttp1ResponseHead(
             requestHead,
             new FramedUpstreamResponseTranslationInput(
                 upstreamResponse.StatusCode,
                 upstreamResponse.Headers,
-                ResponseEndedWithHead: false),
-            out var responseHead,
-            out var responseHeadRejectionReason))
+                ResponseEndedWithHead: false));
+        var responseHead = responseHeadTranslation switch
         {
-            throw new Http3UpstreamProtocolException(
-                $"Upstream HTTP/3 response framing was invalid: {responseHeadRejectionReason}.");
-        }
+            FramedUpstreamResponseTranslationResult.AcceptedResult accepted => accepted.ResponseHead,
+            FramedUpstreamResponseTranslationResult.RejectedResult rejected => throw new Http3UpstreamProtocolException(
+                $"Upstream HTTP/3 response framing was invalid: {rejected.Reason}."),
+            _ => throw new InvalidOperationException(
+                $"Unexpected upstream response translation result {responseHeadTranslation.GetType().Name}.")
+        };
 
         if (ProxyRetryPolicy.ShouldSuppressRetryableStatusResponse(route.Retry, responseHead.StatusCode, suppressRetryableStatusResponse))
         {

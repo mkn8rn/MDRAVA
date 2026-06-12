@@ -62,26 +62,32 @@ internal static class FramedUpstreamResponsePolicyTests
         string method,
         FramedUpstreamResponseTranslationInput input)
     {
-        AssertEx.True(FramedUpstreamResponsePolicy.TryBuildHttp1ResponseHead(
+        var result = FramedUpstreamResponsePolicy.BuildHttp1ResponseHead(
             CreateRequestHead(method),
-            input,
-            out var responseHead,
-            out var rejectionReason),
-            rejectionReason);
-        return AssertEx.NotNull(responseHead);
+            input);
+        if (result is FramedUpstreamResponseTranslationResult.AcceptedResult accepted)
+        {
+            return accepted.ResponseHead;
+        }
+
+        throw new InvalidOperationException(
+            $"Expected accepted upstream response translation, got {result.GetType().Name}.");
     }
 
     private static string Reject(
         string method,
         FramedUpstreamResponseTranslationInput input)
     {
-        AssertEx.False(FramedUpstreamResponsePolicy.TryBuildHttp1ResponseHead(
+        var result = FramedUpstreamResponsePolicy.BuildHttp1ResponseHead(
             CreateRequestHead(method),
-            input,
-            out var responseHead,
-            out var rejectionReason));
-        AssertEx.Equal(null, responseHead);
-        return rejectionReason;
+            input);
+        if (result is FramedUpstreamResponseTranslationResult.RejectedResult rejected)
+        {
+            return rejected.Reason;
+        }
+
+        throw new InvalidOperationException(
+            $"Expected rejected upstream response translation, got {result.GetType().Name}.");
     }
 
     private static Http1RequestHead CreateRequestHead(string method)
