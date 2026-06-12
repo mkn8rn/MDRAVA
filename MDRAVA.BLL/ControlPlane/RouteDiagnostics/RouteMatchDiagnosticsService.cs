@@ -38,17 +38,16 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
             return Complete(Failure(evaluatedAtUtc, "no_active_config", "No active proxy configuration is loaded."));
         }
 
-        if (!ProxyRouteDiagnosticsRequestReader.TryRead(
+        var requestDecision = ProxyRouteDiagnosticsRequestReader.Read(
             request,
             evaluatedAtUtc,
-            _clientAddressSyntaxPolicy,
-            out var input,
-            out var invalidResult))
+            _clientAddressSyntaxPolicy);
+        if (requestDecision is ProxyRouteDiagnosticsRequestDecision.RejectedDecision rejectedRequest)
         {
-            return Complete(invalidResult!);
+            return Complete(rejectedRequest.Failure);
         }
 
-        var requestInput = input!;
+        var requestInput = ((ProxyRouteDiagnosticsRequestDecision.AcceptedDecision)requestDecision).Input;
         var listener = ProxyRouteDiagnosticsListenerSelector.Select(
             snapshot.Listeners,
             requestInput.ListenerName,

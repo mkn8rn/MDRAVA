@@ -722,6 +722,55 @@ internal static class RouteDiagnosticsTests
             finding.Code == "missing_request" && finding.Severity == "error"));
     }
 
+    public static void RouteDiagnosticsRequestReaderAcceptsNormalizedInput()
+    {
+        var evaluatedAt = new DateTimeOffset(2026, 6, 13, 10, 0, 0, TimeSpan.Zero);
+        var request = new RouteMatchDryRunRequest(
+            "HTTPS",
+            " diag.test ",
+            8443,
+            "post",
+            "/api",
+            "id=1",
+            new Dictionary<string, string?>
+            {
+                ["Authorization"] = "secret",
+                ["X-Test"] = "value"
+            },
+            "127.0.0.1",
+            "tls",
+            "HTTP3");
+
+        var decision = ProxyRouteDiagnosticsRequestReader.Read(
+            request,
+            evaluatedAt,
+            new MDRAVA.INF.Proxy.RuntimeGuards.ProxyClientAddressSyntaxPolicy());
+
+        AssertEx.True(decision is ProxyRouteDiagnosticsRequestDecision.AcceptedDecision);
+        var accepted = (ProxyRouteDiagnosticsRequestDecision.AcceptedDecision)decision;
+        AssertEx.Equal("https", accepted.Input.Scheme);
+        AssertEx.Equal("http3", accepted.Input.Protocol!);
+        AssertEx.Equal("/api?id=1", accepted.Input.Target);
+        AssertEx.Equal("diag.test", accepted.Input.RequestHead.Host);
+        AssertEx.True(accepted.Input.Findings.Any(static finding => finding.Code == "sensitive_header_redacted"));
+    }
+
+    public static void RouteDiagnosticsRequestReaderRejectsInvalidScheme()
+    {
+        var evaluatedAt = new DateTimeOffset(2026, 6, 13, 10, 0, 0, TimeSpan.Zero);
+        var request = new RouteMatchDryRunRequest("ftp", "diag.test", null, "GET", "/", "", NoHeaders(), null, null);
+
+        var decision = ProxyRouteDiagnosticsRequestReader.Read(
+            request,
+            evaluatedAt,
+            new MDRAVA.INF.Proxy.RuntimeGuards.ProxyClientAddressSyntaxPolicy());
+
+        AssertEx.True(decision is ProxyRouteDiagnosticsRequestDecision.RejectedDecision);
+        var rejected = (ProxyRouteDiagnosticsRequestDecision.RejectedDecision)decision;
+        AssertEx.Equal("invalid_scheme", rejected.Failure.FailureReason!);
+        AssertEx.False(rejected.Failure.Succeeded);
+    }
+
     public static void RouteDiagnosticsControllerMapsMissingHeadersToEmptyInput()
     {
         var service = CreateRouteService(BaseOptions([ProxyRoute("active", "active.test", "/")]), out _, out _);

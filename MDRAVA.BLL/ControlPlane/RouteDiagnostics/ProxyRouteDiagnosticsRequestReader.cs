@@ -26,84 +26,80 @@ public static class ProxyRouteDiagnosticsRequestReader
         "X-MDRAVA-Admin-Key"
     };
 
-    public static bool TryRead(
+    public static ProxyRouteDiagnosticsRequestDecision Read(
         RouteMatchDryRunRequest? request,
         DateTimeOffset evaluatedAtUtc,
-        IProxyClientAddressSyntaxPolicy clientAddressSyntaxPolicy,
-        out ProxyRouteDiagnosticsRequestInput? input,
-        out RouteMatchDryRunResult? failure)
+        IProxyClientAddressSyntaxPolicy clientAddressSyntaxPolicy)
     {
-        input = null;
-        failure = Failure(evaluatedAtUtc, "invalid_input", "The dry-run request is invalid.");
         if (request is null)
         {
-            failure = Failure(evaluatedAtUtc, "missing_request", "A dry-run request body is required.");
-            return false;
+            return ProxyRouteDiagnosticsRequestDecision.Rejected(
+                Failure(evaluatedAtUtc, "missing_request", "A dry-run request body is required."));
         }
 
         var scheme = NormalizeScheme(request.Scheme);
         if (scheme is not "http" and not "https")
         {
-            failure = Failure(evaluatedAtUtc, "invalid_scheme", "Scheme must be 'http' or 'https'.");
-            return false;
+            return ProxyRouteDiagnosticsRequestDecision.Rejected(
+                Failure(evaluatedAtUtc, "invalid_scheme", "Scheme must be 'http' or 'https'."));
         }
 
         var protocol = NormalizeProtocol(request.Protocol);
         if (protocol is not null and not "http1" and not "http2" and not "http3")
         {
-            failure = Failure(evaluatedAtUtc, "invalid_protocol", "Protocol must be 'http1', 'http2', or 'http3' when supplied.");
-            return false;
+            return ProxyRouteDiagnosticsRequestDecision.Rejected(
+                Failure(evaluatedAtUtc, "invalid_protocol", "Protocol must be 'http1', 'http2', or 'http3' when supplied."));
         }
 
         if (protocol == "http3" && scheme != "https")
         {
-            failure = Failure(evaluatedAtUtc, "invalid_protocol", "HTTP/3 dry-runs must use the https scheme.");
-            return false;
+            return ProxyRouteDiagnosticsRequestDecision.Rejected(
+                Failure(evaluatedAtUtc, "invalid_protocol", "HTTP/3 dry-runs must use the https scheme."));
         }
 
         if (string.IsNullOrWhiteSpace(request.Host) || request.Host.Length > 253 || ContainsControl(request.Host))
         {
-            failure = Failure(evaluatedAtUtc, "invalid_host", "Host is required and must not contain control characters.");
-            return false;
+            return ProxyRouteDiagnosticsRequestDecision.Rejected(
+                Failure(evaluatedAtUtc, "invalid_host", "Host is required and must not contain control characters."));
         }
 
         if (request.Port is < 1 or > 65535)
         {
-            failure = Failure(evaluatedAtUtc, "invalid_port", "Port must be between 1 and 65535 when supplied.");
-            return false;
+            return ProxyRouteDiagnosticsRequestDecision.Rejected(
+                Failure(evaluatedAtUtc, "invalid_port", "Port must be between 1 and 65535 when supplied."));
         }
 
         var method = NormalizeMethod(request.Method);
         if (method.Length is 0 or > 32 || ContainsControl(method) || method.Any(static character => char.IsWhiteSpace(character)))
         {
-            failure = Failure(evaluatedAtUtc, "invalid_method", "Method must be a non-empty HTTP token.");
-            return false;
+            return ProxyRouteDiagnosticsRequestDecision.Rejected(
+                Failure(evaluatedAtUtc, "invalid_method", "Method must be a non-empty HTTP token."));
         }
 
         var path = NormalizePath(request.Path);
         if (path.Length is 0 or > MaxInputLength || !path.StartsWith('/'))
         {
-            failure = Failure(evaluatedAtUtc, "invalid_path", "Path must start with '/' and stay within the dry-run size limit.");
-            return false;
+            return ProxyRouteDiagnosticsRequestDecision.Rejected(
+                Failure(evaluatedAtUtc, "invalid_path", "Path must start with '/' and stay within the dry-run size limit."));
         }
 
         if (ContainsControl(path))
         {
-            failure = Failure(evaluatedAtUtc, "invalid_path", "Path must not contain control characters.");
-            return false;
+            return ProxyRouteDiagnosticsRequestDecision.Rejected(
+                Failure(evaluatedAtUtc, "invalid_path", "Path must not contain control characters."));
         }
 
         var query = NormalizeQuery(request.Query);
         if (query.Length > MaxInputLength || ContainsControl(query))
         {
-            failure = Failure(evaluatedAtUtc, "invalid_query", "Query must stay within the dry-run size limit and must not contain control characters.");
-            return false;
+            return ProxyRouteDiagnosticsRequestDecision.Rejected(
+                Failure(evaluatedAtUtc, "invalid_query", "Query must stay within the dry-run size limit and must not contain control characters."));
         }
 
         if (!string.IsNullOrWhiteSpace(request.ClientIp) && !clientAddressSyntaxPolicy.IsIpLiteral(request.ClientIp))
         {
-            failure = Failure(evaluatedAtUtc, "invalid_client_ip", "ClientIp must be an IPv4 or IPv6 literal when supplied.");
-            return false;
+            return ProxyRouteDiagnosticsRequestDecision.Rejected(
+                Failure(evaluatedAtUtc, "invalid_client_ip", "ClientIp must be an IPv4 or IPv6 literal when supplied."));
         }
 
         var findings = new List<RouteMatchDryRunFinding>();
@@ -118,18 +114,17 @@ public static class ProxyRouteDiagnosticsRequestReader
             ResolveFraming(headers),
             headers);
 
-        input = new ProxyRouteDiagnosticsRequestInput(
-            scheme,
-            protocol,
-            request.ListenerName,
-            request.Port,
-            target,
-            path,
-            requestHead,
-            IsUpgrade(headers),
-            findings);
-        failure = null;
-        return true;
+        return ProxyRouteDiagnosticsRequestDecision.Accepted(
+            new ProxyRouteDiagnosticsRequestInput(
+                scheme,
+                protocol,
+                request.ListenerName,
+                request.Port,
+                target,
+                path,
+                requestHead,
+                IsUpgrade(headers),
+                findings));
     }
 
     private static RouteMatchDryRunResult Failure(DateTimeOffset evaluatedAtUtc, string reason, string message)
@@ -234,4 +229,27 @@ public static class ProxyRouteDiagnosticsRequestReader
     {
         return value.Any(char.IsControl);
     }
+}
+
+public abstract record ProxyRouteDiagnosticsRequestDecision
+{
+    private ProxyRouteDiagnosticsRequestDecision()
+    {
+    }
+
+    public static ProxyRouteDiagnosticsRequestDecision Accepted(ProxyRouteDiagnosticsRequestInput input)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        return new AcceptedDecision(input);
+    }
+
+    public static ProxyRouteDiagnosticsRequestDecision Rejected(RouteMatchDryRunResult failure)
+    {
+        ArgumentNullException.ThrowIfNull(failure);
+        return new RejectedDecision(failure);
+    }
+
+    public sealed record AcceptedDecision(ProxyRouteDiagnosticsRequestInput Input) : ProxyRouteDiagnosticsRequestDecision;
+
+    public sealed record RejectedDecision(RouteMatchDryRunResult Failure) : ProxyRouteDiagnosticsRequestDecision;
 }
