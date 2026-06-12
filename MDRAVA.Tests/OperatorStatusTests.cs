@@ -460,7 +460,7 @@ internal static class OperatorStatusTests
         fixture.Store.Replace(Snapshot([listener], [route]));
         fixture.Runtime.ReplaceListeners([ListenerStatus(listener, ProxyListenerState.Active)], null);
 
-        AssertEx.True(fixture.Circuit.TryAcquire(upstream, out var lease));
+        AssertEx.True(fixture.Circuit.TryAcquire(CircuitBreakerStatusSourceMapper.FromUpstream(upstream), out var lease));
         fixture.Circuit.RecordFailure(AssertEx.NotNull(lease), "connect_failure");
         var status = fixture.Controller().Get();
 

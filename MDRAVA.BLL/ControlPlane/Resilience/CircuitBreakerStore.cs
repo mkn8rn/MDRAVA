@@ -16,40 +16,40 @@ public sealed class CircuitBreakerStore
         _timeProvider = timeProvider;
     }
 
-    public bool IsAvailable(RuntimeUpstream upstream)
+    public bool IsAvailable(CircuitBreakerStatusSource source)
     {
-        if (!upstream.CircuitBreaker.Enabled)
+        if (!source.Policy.Enabled)
         {
             return true;
         }
 
-        var state = GetOrCreate(upstream);
+        var state = GetOrCreate(source.UpstreamIdentity);
         lock (state.Gate)
         {
-            RefreshOpenState(upstream, state, _timeProvider.GetUtcNow());
+            RefreshOpenState(source.Policy, state, _timeProvider.GetUtcNow());
             return state.State switch
             {
                 CircuitBreakerRuntimeState.Open => false,
-                CircuitBreakerRuntimeState.HalfOpen => state.HalfOpenInFlight < upstream.CircuitBreaker.HalfOpenMaxAttempts,
+                CircuitBreakerRuntimeState.HalfOpen => state.HalfOpenInFlight < source.Policy.HalfOpenMaxAttempts,
                 _ => true
             };
         }
     }
 
-    public void RecordRejectedIfUnavailable(RuntimeUpstream upstream)
+    public void RecordRejectedIfUnavailable(CircuitBreakerStatusSource source)
     {
-        if (!upstream.CircuitBreaker.Enabled)
+        if (!source.Policy.Enabled)
         {
             return;
         }
 
-        var state = GetOrCreate(upstream);
+        var state = GetOrCreate(source.UpstreamIdentity);
         lock (state.Gate)
         {
-            RefreshOpenState(upstream, state, _timeProvider.GetUtcNow());
+            RefreshOpenState(source.Policy, state, _timeProvider.GetUtcNow());
             if (state.State == CircuitBreakerRuntimeState.Open
                 || (state.State == CircuitBreakerRuntimeState.HalfOpen
-                    && state.HalfOpenInFlight >= upstream.CircuitBreaker.HalfOpenMaxAttempts))
+                    && state.HalfOpenInFlight >= source.Policy.HalfOpenMaxAttempts))
             {
                 state.RejectedRequests++;
                 _metrics.CircuitRejected();
@@ -57,19 +57,18 @@ public sealed class CircuitBreakerStore
         }
     }
 
-    public bool TryAcquire(RuntimeUpstream upstream, [MaybeNullWhen(false)] out CircuitBreakerLease lease)
+    public bool TryAcquire(CircuitBreakerStatusSource source, [MaybeNullWhen(false)] out CircuitBreakerLease lease)
     {
-        var source = CircuitBreakerStatusSourceMapper.FromUpstream(upstream);
-        if (!upstream.CircuitBreaker.Enabled)
+        if (!source.Policy.Enabled)
         {
             lease = new CircuitBreakerLease(source, enabled: false, halfOpenProbe: false, _ => { });
             return true;
         }
 
-        var state = GetOrCreate(upstream);
+        var state = GetOrCreate(source.UpstreamIdentity);
         lock (state.Gate)
         {
-            RefreshOpenState(upstream, state, _timeProvider.GetUtcNow());
+            RefreshOpenState(source.Policy, state, _timeProvider.GetUtcNow());
             if (state.State == CircuitBreakerRuntimeState.Open)
             {
                 lease = null;
@@ -81,7 +80,7 @@ public sealed class CircuitBreakerStore
             var halfOpenProbe = state.State == CircuitBreakerRuntimeState.HalfOpen;
             if (halfOpenProbe)
             {
-                if (state.HalfOpenInFlight >= upstream.CircuitBreaker.HalfOpenMaxAttempts)
+                if (state.HalfOpenInFlight >= source.Policy.HalfOpenMaxAttempts)
                 {
                     lease = null;
                     state.RejectedRequests++;
@@ -198,11 +197,6 @@ public sealed class CircuitBreakerStore
         }
     }
 
-    private void RefreshOpenState(RuntimeUpstream upstream, MutableCircuitState state, DateTimeOffset now)
-    {
-        RefreshOpenState(upstream.CircuitBreaker, state, now);
-    }
-
     private void RefreshOpenState(RuntimeCircuitBreakerPolicy policy, MutableCircuitState state, DateTimeOffset now)
     {
         if (state.State != CircuitBreakerRuntimeState.Open || state.OpenedAtUtc is null)
@@ -251,11 +245,6 @@ public sealed class CircuitBreakerStore
         {
             state.HalfOpenInFlight = Math.Max(0, state.HalfOpenInFlight - 1);
         }
-    }
-
-    private MutableCircuitState GetOrCreate(RuntimeUpstream upstream)
-    {
-        return GetOrCreate(upstream.Identity);
     }
 
     private MutableCircuitState GetOrCreate(string upstreamIdentity)

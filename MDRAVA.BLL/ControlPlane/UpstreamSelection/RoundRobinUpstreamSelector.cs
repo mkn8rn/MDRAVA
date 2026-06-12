@@ -34,18 +34,19 @@ public sealed class RoundRobinUpstreamSelector : IUpstreamSelector
         List<RuntimeUpstream> candidates = [];
         foreach (var upstream in route.Upstreams)
         {
+            var circuitSource = CircuitBreakerStatusSourceMapper.FromUpstream(upstream);
             if (route.HealthCheckEnabled && !_healthStore.IsUsable(upstream))
             {
                 continue;
             }
 
-            if (_circuitBreakerStore.IsAvailable(upstream))
+            if (_circuitBreakerStore.IsAvailable(circuitSource))
             {
                 candidates.Add(upstream);
                 continue;
             }
 
-            _circuitBreakerStore.RecordRejectedIfUnavailable(upstream);
+            _circuitBreakerStore.RecordRejectedIfUnavailable(circuitSource);
         }
 
         if (candidates.Count == 0)
@@ -58,7 +59,7 @@ public sealed class RoundRobinUpstreamSelector : IUpstreamSelector
         while (candidates.Count > 0)
         {
             var selected = SelectWeighted(route, candidates);
-            if (_circuitBreakerStore.TryAcquire(selected, out var lease))
+            if (_circuitBreakerStore.TryAcquire(CircuitBreakerStatusSourceMapper.FromUpstream(selected), out var lease))
             {
                 _metrics.UpstreamSelected(new ProxyUpstreamSelectionMetric(
                     selected.RouteName,
