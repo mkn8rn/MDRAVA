@@ -764,7 +764,7 @@ internal static class ConfigurationTests
             CreateReadAdministration(store),
             reloadAdministration);
 
-        var actionResult = controller.Normalize(new ProxyConfigurationNormalizeRequest(
+        var actionResult = controller.Normalize(new ProxyConfigurationNormalizeSubmissionRequest(
             "yaml",
             YamlSiteText("normalized", port: 18081, upstreamPort: 15001)));
 
@@ -814,6 +814,29 @@ internal static class ConfigurationTests
         AssertEx.Equal(null, result.CanonicalJson);
         AssertEx.True(result.Errors.Any(static error => error.Contains("request body is required", StringComparison.Ordinal)), string.Join("; ", result.Errors));
         AssertEx.True(result.FileErrors.All(static error => error.Path is null));
+    }
+
+    public static void ConfigNormalizeControllerRejectsMissingRequestBody()
+    {
+        using var temp = TemporaryDirectory.Create();
+        var store = new ProxyConfigurationStore();
+        var service = CreateReloadService(temp.Path, store);
+        var reloadAdministration = new ProxyConfigurationReloadAdministrationService<ProxyConfigurationProjection>(
+            service);
+        var controller = new ProxyConfigurationController(
+            new ProxyConfigurationAdministrationService(
+                CreateNormalizer(),
+                service),
+            CreateReadAdministration(store),
+            reloadAdministration);
+
+        var actionResult = controller.Normalize(null);
+
+        var badRequest = (BadRequestObjectResult)AssertEx.NotNull(actionResult.Result);
+        var normalize = (ProxyConfigurationNormalizeResult)AssertEx.NotNull(badRequest.Value);
+        AssertEx.False(normalize.Succeeded);
+        AssertEx.Equal("unknown", normalize.Format);
+        AssertEx.True(normalize.Errors.Any(static error => error.Contains("request body is required", StringComparison.Ordinal)), string.Join("; ", normalize.Errors));
     }
 
     public static async Task EffectiveConfigProjectionRedactsCertificateSecrets()

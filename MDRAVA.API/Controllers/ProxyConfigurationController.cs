@@ -22,9 +22,9 @@ public sealed class ProxyConfigurationController : ControllerBase
     }
 
     [HttpPost("normalize")]
-    public ActionResult<ProxyConfigurationNormalizeResult> Normalize([FromBody] ProxyConfigurationNormalizeRequest? request)
+    public ActionResult<ProxyConfigurationNormalizeResult> Normalize([FromBody] ProxyConfigurationNormalizeSubmissionRequest? request)
     {
-        var result = _configurationAdministration.Normalize(request);
+        var result = _configurationAdministration.Normalize(request?.ToNormalizeRequest());
         return ProxyAdminHttpResultMapper.OkOrBadRequest(this, result, result.Succeeded);
     }
 
