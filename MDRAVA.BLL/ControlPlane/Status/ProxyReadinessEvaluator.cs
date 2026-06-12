@@ -103,9 +103,9 @@ public static class ProxyReadinessEvaluator
             ? ProxyStatusText.NotReady
             : degradedReasons.Count > 0 ? ProxyStatusText.Degraded : ProxyStatusText.Healthy;
         var reasons = notReadyReasons.Count > 0 ? notReadyReasons : degradedReasons;
-        return new ProxyReadinessStatus(
+        return ProxyReadinessStatus.Evaluated(
             state,
-            reasons.Distinct(StringComparer.OrdinalIgnoreCase).Take(12).ToArray(),
+            reasons,
             input.EvaluatedAtUtc,
             input.ConfigGeneration);
     }
