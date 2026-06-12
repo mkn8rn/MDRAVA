@@ -21,13 +21,13 @@ public sealed class ProxyBackupFileSystem : IProxyBackupFileSystem
     {
         if (!Directory.Exists(root))
         {
-            return new ProxyBackupFileSystemScanResult(false, [], []);
+            return ProxyBackupFileSystemScanResult.MissingRoot();
         }
 
         List<ProxyBackupFileSystemEntry> files = [];
         List<ProxyBackupFileSystemWarning> warnings = [];
         ScanDirectory(root, root, files, warnings);
-        return new ProxyBackupFileSystemScanResult(true, files, warnings);
+        return ProxyBackupFileSystemScanResult.Scanned(files, warnings);
     }
 
     public bool TryGetSafeRelativePath(string root, string path, out string relativePath)

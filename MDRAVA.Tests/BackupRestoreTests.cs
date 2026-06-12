@@ -124,6 +124,22 @@ internal static class BackupRestoreTests
         AssertEx.Equal(lastWriteTimeUtc, entry.LastWriteTimeUtc);
     }
 
+    public static void BackupFileSystemScanResultNamesMissingRootAndScannedOutcomes()
+    {
+        var lastWriteTimeUtc = new DateTimeOffset(2026, 6, 12, 12, 0, 0, TimeSpan.Zero);
+        var file = new ProxyBackupFileSystemEntry("config/proxy.json", 10, lastWriteTimeUtc);
+        var warning = new ProxyBackupFileSystemWarning("directory_unreadable", "logs");
+        var missing = ProxyBackupFileSystemScanResult.MissingRoot();
+        var scanned = ProxyBackupFileSystemScanResult.Scanned([file], [warning]);
+
+        AssertEx.False(missing.RootExists);
+        AssertEx.Equal(0, missing.Files.Count);
+        AssertEx.Equal(0, missing.Warnings.Count);
+        AssertEx.True(scanned.RootExists);
+        AssertEx.Equal(file, scanned.Files[0]);
+        AssertEx.Equal(warning, scanned.Warnings[0]);
+    }
+
     public static void RestoreValidationDirectoryPolicyReportsOnlyMissingRequiredDirectories()
     {
         ProxyBackupDirectoryStatus[] directories =
