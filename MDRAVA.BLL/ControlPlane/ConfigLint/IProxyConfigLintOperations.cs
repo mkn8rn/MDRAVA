@@ -6,6 +6,5 @@ public interface IProxyConfigLintOperations
 
     ConfigLintResult LintActive();
 
-    ConfigLintResult LintSubmitted(ConfigLintRequest request);
+    ConfigLintResult LintSubmitted(ConfigLintRequest? request);
 }
-

@@ -878,7 +878,7 @@ internal static class OperatorStatusTests
             return EmptyResult();
         }
 
-        public ConfigLintResult LintSubmitted(ConfigLintRequest request)
+        public ConfigLintResult LintSubmitted(ConfigLintRequest? request)
         {
             return EmptyResult();
         }

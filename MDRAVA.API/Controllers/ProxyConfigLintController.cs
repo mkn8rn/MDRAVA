@@ -22,7 +22,7 @@ public sealed class ProxyConfigLintController : ControllerBase
     }
 
     [HttpPost]
-    public ActionResult<ConfigLintResult> Submitted([FromBody] ConfigLintRequest request)
+    public ActionResult<ConfigLintResult> Submitted([FromBody] ConfigLintRequest? request)
     {
         var result = _configLintAdministration.LintSubmitted(request);
         return ProxyAdminHttpResultMapper.OkOrBadRequest(this, result, result.Succeeded);

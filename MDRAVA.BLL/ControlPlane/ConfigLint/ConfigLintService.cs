@@ -57,7 +57,7 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
         return resultWithMetrics;
     }
 
-    public ConfigLintResult LintSubmitted(ConfigLintRequest request)
+    public ConfigLintResult LintSubmitted(ConfigLintRequest? request)
     {
         var now = _timeProvider.GetUtcNow();
         if (request is null)

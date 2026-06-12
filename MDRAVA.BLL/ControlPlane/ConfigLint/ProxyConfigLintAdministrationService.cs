@@ -14,9 +14,8 @@ public sealed class ProxyConfigLintAdministrationService
         return _operations.LintActive();
     }
 
-    public ConfigLintResult LintSubmitted(ConfigLintRequest request)
+    public ConfigLintResult LintSubmitted(ConfigLintRequest? request)
     {
         return _operations.LintSubmitted(request);
     }
 }
-

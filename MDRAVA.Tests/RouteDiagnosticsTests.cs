@@ -474,6 +474,17 @@ internal static class RouteDiagnosticsTests
         AssertEx.Equal("lint-input", result.ValidationErrors[0].Path);
     }
 
+    public static void ConfigLintRejectsMissingSubmittedRequestBody()
+    {
+        var service = CreateLintService(BaseOptions([ProxyRoute("active", "active.test", "/")]));
+
+        var result = service.LintSubmitted(null);
+
+        AssertEx.False(result.Succeeded);
+        AssertFinding(result, "missing_request", "error");
+        AssertEx.True(result.Findings[0].Message.Contains("request body is required", StringComparison.Ordinal));
+    }
+
     public static async Task DiagnosticEndpointsRequireAdminAuth()
     {
         var store = CreateStore(BaseOptions([ProxyRoute("active", "active.test", "/")]));
