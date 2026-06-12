@@ -92,7 +92,7 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
         IReadOnlyList<ConfigLintFinding> findings,
         IReadOnlyList<ProxyConfigurationFileError> validationErrors)
     {
-        var result = ConfigLintResultBuilder.Build(lintedAtUtc, findings, validationErrors);
+        var result = ConfigLintResult.Completed(lintedAtUtc, findings, validationErrors);
         _metricsSink.ConfigLintRun(findings);
         return result;
     }

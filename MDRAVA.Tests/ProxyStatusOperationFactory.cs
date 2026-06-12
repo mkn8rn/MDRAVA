@@ -59,10 +59,8 @@ internal static class ProxyStatusOperationFactory
 
         private static ConfigLintResult EmptyResult()
         {
-            return new ConfigLintResult(
-                true,
+            return ConfigLintResult.Completed(
                 DateTimeOffset.UnixEpoch,
-                ConfigLintSummary.Empty,
                 [],
                 []);
         }
