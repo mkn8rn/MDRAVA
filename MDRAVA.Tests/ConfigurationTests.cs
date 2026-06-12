@@ -105,6 +105,49 @@ internal static class ConfigurationTests
         AssertEx.Equal(active, AssertEx.NotNull(reloaded.ActiveConfiguration));
     }
 
+    public static void ConfigurationValidationResultNamesValidationOutcomes()
+    {
+        var attemptedAtUtc = DateTimeOffset.UnixEpoch.AddMinutes(3);
+        var loadedAtUtc = DateTimeOffset.UnixEpoch.AddMinutes(2);
+        var discovery = new ProxyConfigurationDiscovery(
+            new ProxyFilesystemLayout("tests", "tests/config", "tests/config/sites", "tests/logs", "tests/certs", "tests/state", "tests/config/proxy.json"),
+            [],
+            [],
+            []);
+        var valid = ProxyConfigurationValidationResult.Valid(
+            sourceDirectory: "data",
+            attemptedAtUtc: attemptedAtUtc,
+            activeVersion: 4,
+            lastSuccessfulLoadAtUtc: loadedAtUtc,
+            wouldBeVersion: 5,
+            sourceFiles: ["sites/home.json"],
+            discovery: discovery);
+        var invalid = ProxyConfigurationValidationResult.Invalid(
+            sourceDirectory: "data",
+            attemptedAtUtc: attemptedAtUtc,
+            activeVersion: 4,
+            lastSuccessfulLoadAtUtc: loadedAtUtc,
+            wouldBeVersion: null,
+            sourceFiles: ["sites/broken.json"],
+            discovery: discovery,
+            errors: ["parse failed"],
+            fileErrors: [ProxyConfigurationFileError.ForPath("sites/broken.json", "parse failed")]);
+
+        AssertEx.True(valid.Succeeded);
+        AssertEx.Equal(4, valid.ActiveVersion!.Value);
+        AssertEx.Equal(loadedAtUtc, valid.LastSuccessfulLoadAtUtc!.Value);
+        AssertEx.Equal(5, valid.WouldBeVersion!.Value);
+        AssertEx.Equal("sites/home.json", valid.SourceFiles[0]);
+        AssertEx.Equal(0, valid.Errors.Count);
+        AssertEx.Equal(0, valid.FileErrors.Count);
+        AssertEx.False(invalid.Succeeded);
+        AssertEx.Equal(4, invalid.ActiveVersion!.Value);
+        AssertEx.Equal(loadedAtUtc, invalid.LastSuccessfulLoadAtUtc!.Value);
+        AssertEx.Equal<int?>(null, invalid.WouldBeVersion);
+        AssertEx.Equal("parse failed", invalid.Errors[0]);
+        AssertEx.Equal("sites/broken.json", invalid.FileErrors[0].Path);
+    }
+
     public static void DataDirectoryUsesConfiguredOverride()
     {
         var expected = Path.Combine(Path.GetTempPath(), $"mdrava-test-{Guid.NewGuid():N}");

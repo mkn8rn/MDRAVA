@@ -93,17 +93,30 @@ public sealed class ProxyConfigurationReloadService
     {
         var loadResult = await _loader.ValidateAsync(cancellationToken);
         var hasExisting = _store.TryGetSnapshot(out var existing);
-        return new ProxyConfigurationValidationResult(
-            loadResult.Succeeded,
-            loadResult.SourceDirectory,
-            loadResult.AttemptedAtUtc,
-            hasExisting && existing is not null ? existing.Version : null,
-            existing?.LoadedAtUtc,
-            loadResult.WouldBeVersion,
-            loadResult.SourceFiles,
-            loadResult.Discovery,
-            loadResult.Errors,
-            loadResult.FileErrors);
+        int? activeVersion = hasExisting && existing is not null ? existing.Version : null;
+        var lastSuccessfulLoadAtUtc = existing?.LoadedAtUtc;
+        if (loadResult.Succeeded)
+        {
+            return ProxyConfigurationValidationResult.Valid(
+                sourceDirectory: loadResult.SourceDirectory,
+                attemptedAtUtc: loadResult.AttemptedAtUtc,
+                activeVersion: activeVersion,
+                lastSuccessfulLoadAtUtc: lastSuccessfulLoadAtUtc,
+                wouldBeVersion: loadResult.WouldBeVersion,
+                sourceFiles: loadResult.SourceFiles,
+                discovery: loadResult.Discovery);
+        }
+
+        return ProxyConfigurationValidationResult.Invalid(
+            sourceDirectory: loadResult.SourceDirectory,
+            attemptedAtUtc: loadResult.AttemptedAtUtc,
+            activeVersion: activeVersion,
+            lastSuccessfulLoadAtUtc: lastSuccessfulLoadAtUtc,
+            wouldBeVersion: loadResult.WouldBeVersion,
+            sourceFiles: loadResult.SourceFiles,
+            discovery: loadResult.Discovery,
+            errors: loadResult.Errors,
+            fileErrors: loadResult.FileErrors);
     }
 
     private ProxyConfigurationProjection ToProjection(ProxyConfigurationSnapshot snapshot)
