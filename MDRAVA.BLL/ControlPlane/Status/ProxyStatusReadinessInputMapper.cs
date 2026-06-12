@@ -49,7 +49,11 @@ public static class ProxyStatusReadinessSourceMapper
             configuration is null
                 ? []
                 : ProxyRouteSummarySourceMapper.FromRoutes(configuration.Routes),
-            ProxyCertificateSummarySourceMapper.FromSnapshot(configuration),
+            configuration is null
+                ? null
+                : ProxyCertificateSummarySourceMapper.FromConfiguration(
+                    configuration.Listeners,
+                    configuration.Certificates),
             configuration is null
                 ? null
                 : ProxyAcmeSummaryConfigurationSourceMapper.FromConfiguration(configuration.Acme),

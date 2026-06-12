@@ -1,3 +1,4 @@
+using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using MDRAVA.API.Controllers;
 using MDRAVA.BLL.ControlPlane.Acme;
@@ -317,6 +318,41 @@ internal static class OperatorStatusTests
 
         AssertEx.True(source.Enabled);
         AssertEx.Equal(1, source.ConfiguredCertificates);
+    }
+
+    public static void StatusCertificateSummarySourceMapperReadsListenersAndCertificatesWithoutSnapshot()
+    {
+        using var certificate = X509CertificateLoader.LoadPkcs12(
+            TestCertificates.CreateSelfSignedPfxBytes("status-cert.example.test"),
+            null);
+        var runtimeCertificate = new RuntimeCertificate(
+            "default",
+            "default.pfx",
+            "pfx",
+            false,
+            certificate,
+            "manualPfx",
+            ["status-cert.example.test"]);
+        var listener = Listener() with
+        {
+            DefaultCertificateId = "default",
+            SniCertificates = [new RuntimeSniCertificateBinding("alt.example.test", "alt")]
+        };
+
+        var source = ProxyCertificateSummarySourceMapper.FromConfiguration(
+            [listener],
+            new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["default"] = runtimeCertificate
+            });
+
+        AssertEx.Equal(2, source.ReferencedCertificateIds.Count);
+        AssertEx.Equal("default", source.ReferencedCertificateIds[0]);
+        AssertEx.Equal("alt", source.ReferencedCertificateIds[1]);
+        AssertEx.Equal(1, source.LoadedCertificates.Count);
+        AssertEx.Equal("default", source.LoadedCertificates[0].Id);
+        AssertEx.Equal(certificate.NotBefore, source.LoadedCertificates[0].NotBefore);
+        AssertEx.Equal(certificate.NotAfter, source.LoadedCertificates[0].NotAfter);
     }
 
     public static void ReadinessEvaluatorConsumesNarrowFactsWithoutRuntimeSnapshots()

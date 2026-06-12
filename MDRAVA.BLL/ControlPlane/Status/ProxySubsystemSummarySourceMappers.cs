@@ -50,15 +50,12 @@ public static class ProxyRouteSummarySourceMapper
 
 public static class ProxyCertificateSummarySourceMapper
 {
-    public static ProxyCertificateSummarySource? FromSnapshot(ProxyConfigurationSnapshot? snapshot)
+    public static ProxyCertificateSummarySource FromConfiguration(
+        IReadOnlyList<RuntimeListener> listeners,
+        IReadOnlyDictionary<string, RuntimeCertificate> certificates)
     {
-        if (snapshot is null)
-        {
-            return null;
-        }
-
         List<string> referenced = [];
-        foreach (var listener in snapshot.Listeners)
+        foreach (var listener in listeners)
         {
             if (!string.IsNullOrWhiteSpace(listener.DefaultCertificateId))
             {
@@ -73,7 +70,7 @@ public static class ProxyCertificateSummarySourceMapper
 
         return new ProxyCertificateSummarySource(
             referenced,
-            snapshot.Certificates.Values
+            certificates.Values
                 .Select(static certificate => new ProxyCertificateValiditySource(
                     certificate.Id,
                     certificate.Certificate.NotBefore,
