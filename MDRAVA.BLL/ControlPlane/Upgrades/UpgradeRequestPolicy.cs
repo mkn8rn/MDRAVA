@@ -12,37 +12,27 @@ public sealed class UpgradeRequestPolicy
             || HasHeader(requestHead.Headers, "Upgrade");
     }
 
-    public bool TryValidate(
-        Http1RequestHead requestHead,
-        out UpgradeRequestInfo? upgrade,
-        out string rejectionReason)
+    public UpgradeRequestValidationDecision Validate(Http1RequestHead requestHead)
     {
-        upgrade = null;
-        rejectionReason = "";
-
         if (!string.Equals(requestHead.Version, "HTTP/1.1", StringComparison.OrdinalIgnoreCase))
         {
-            rejectionReason = "HTTP Upgrade requires HTTP/1.1.";
-            return false;
+            return UpgradeRequestValidationDecision.Rejected("HTTP Upgrade requires HTTP/1.1.");
         }
 
         if (!HopByHopHeaderPolicy.HasConnectionToken(requestHead.Headers, "upgrade"))
         {
-            rejectionReason = "HTTP Upgrade requires Connection: Upgrade.";
-            return false;
+            return UpgradeRequestValidationDecision.Rejected("HTTP Upgrade requires Connection: Upgrade.");
         }
 
         var protocol = GetHeaderValue(requestHead.Headers, "Upgrade");
         if (string.IsNullOrWhiteSpace(protocol))
         {
-            rejectionReason = "HTTP Upgrade requires an Upgrade header.";
-            return false;
+            return UpgradeRequestValidationDecision.Rejected("HTTP Upgrade requires an Upgrade header.");
         }
 
         if (requestHead.Framing.Kind != Http1BodyKind.None)
         {
-            rejectionReason = "HTTP Upgrade request bodies are not supported in Phase 7.";
-            return false;
+            return UpgradeRequestValidationDecision.Rejected("HTTP Upgrade request bodies are not supported in Phase 7.");
         }
 
         var isWebSocket = string.Equals(protocol, "websocket", StringComparison.OrdinalIgnoreCase);
@@ -51,26 +41,22 @@ public sealed class UpgradeRequestPolicy
         {
             if (!string.Equals(requestHead.Method, "GET", StringComparison.Ordinal))
             {
-                rejectionReason = "WebSocket Upgrade requires GET.";
-                return false;
+                return UpgradeRequestValidationDecision.Rejected("WebSocket Upgrade requires GET.");
             }
 
             webSocketKey = GetHeaderValue(requestHead.Headers, "Sec-WebSocket-Key");
             if (string.IsNullOrWhiteSpace(webSocketKey))
             {
-                rejectionReason = "WebSocket Upgrade requires Sec-WebSocket-Key.";
-                return false;
+                return UpgradeRequestValidationDecision.Rejected("WebSocket Upgrade requires Sec-WebSocket-Key.");
             }
 
             if (string.IsNullOrWhiteSpace(GetHeaderValue(requestHead.Headers, "Sec-WebSocket-Version")))
             {
-                rejectionReason = "WebSocket Upgrade requires Sec-WebSocket-Version.";
-                return false;
+                return UpgradeRequestValidationDecision.Rejected("WebSocket Upgrade requires Sec-WebSocket-Version.");
             }
         }
 
-        upgrade = new UpgradeRequestInfo(protocol, isWebSocket, webSocketKey);
-        return true;
+        return UpgradeRequestValidationDecision.Accepted(new UpgradeRequestInfo(protocol, isWebSocket, webSocketKey));
     }
 
     public static string? GetHeaderValue(IReadOnlyList<ProxyHeaderField> headers, string name)
@@ -105,5 +91,40 @@ public sealed class UpgradeRequestPolicy
     private static bool HasHeader(IReadOnlyList<ProxyHeaderField> headers, string name)
     {
         return headers.Any(header => string.Equals(header.Name, name, StringComparison.OrdinalIgnoreCase));
+    }
+}
+
+public abstract record UpgradeRequestValidationDecision
+{
+    private UpgradeRequestValidationDecision()
+    {
+    }
+
+    public static UpgradeRequestValidationDecision Accepted(UpgradeRequestInfo upgrade)
+    {
+        ArgumentNullException.ThrowIfNull(upgrade);
+        return new AcceptedDecision(upgrade);
+    }
+
+    public static UpgradeRequestValidationDecision Rejected(string reason)
+    {
+        return new RejectedDecision(reason);
+    }
+
+    public sealed record AcceptedDecision(UpgradeRequestInfo Upgrade) : UpgradeRequestValidationDecision;
+
+    public sealed record RejectedDecision : UpgradeRequestValidationDecision
+    {
+        public RejectedDecision(string reason)
+        {
+            if (string.IsNullOrWhiteSpace(reason))
+            {
+                throw new ArgumentException("Upgrade rejection reason is required.", nameof(reason));
+            }
+
+            Reason = reason;
+        }
+
+        public string Reason { get; }
     }
 }

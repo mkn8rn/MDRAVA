@@ -726,7 +726,8 @@ public sealed class ClientConnection
             return false;
         }
 
-        if (!_upgradeRequestPolicy.TryValidate(requestHead, out var upgrade, out var rejectionReason) || upgrade is null)
+        var validation = _upgradeRequestPolicy.Validate(requestHead);
+        if (validation is UpgradeRequestValidationDecision.RejectedDecision rejectedUpgrade)
         {
             _metrics.UpgradeRequestRejected();
             _metrics.MalformedRequestRejected();
@@ -734,7 +735,7 @@ public sealed class ClientConnection
                 "Rejected Upgrade request for {Method} {Target}: {RejectionReason}",
                 requestHead.Method,
                 requestHead.Target,
-                rejectionReason);
+                rejectedUpgrade.Reason);
             await WriteGeneratedResponseAsync(
                 clientStream,
                 400,
@@ -746,6 +747,7 @@ public sealed class ClientConnection
             return false;
         }
 
+        var upgrade = ((UpgradeRequestValidationDecision.AcceptedDecision)validation).Upgrade;
         var upgradeRouteMatch = _routeMatcher.Match(_configurationSnapshot.Routes, requestHead);
         if (upgradeRouteMatch is null)
         {
