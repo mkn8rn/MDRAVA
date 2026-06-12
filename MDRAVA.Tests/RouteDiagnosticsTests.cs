@@ -566,13 +566,35 @@ internal static class RouteDiagnosticsTests
         AssertEx.Equal(summary, completed.LastActiveLintSummary);
     }
 
+    public static void ConfigLintSubmittedConfigurationResultNamesSourceOutcomes()
+    {
+        var snapshot = LintSnapshot("submitted.json");
+        var validationError = ProxyConfigurationFileError.ForPath("lint-input", "Proxy:Routes:0:Name is required.");
+        var loaded = ProxyConfigLintSubmittedConfigurationResult.Loaded(snapshot, [validationError]);
+        var failed = ProxyConfigLintSubmittedConfigurationResult.Failed(
+            ProxyConfigLintSubmittedConfigurationFailureKind.JsonParseError,
+            "bad json");
+        var empty = ProxyConfigLintSubmittedConfigurationResult.Empty();
+
+        AssertEx.Equal(snapshot, AssertEx.NotNull(loaded.Snapshot));
+        AssertEx.Equal(validationError, loaded.ValidationErrors[0]);
+        AssertEx.Equal<ProxyConfigLintSubmittedConfigurationFailure?>(null, loaded.Failure);
+        AssertEx.Equal<ProxyConfigLintConfigurationSnapshot?>(null, failed.Snapshot);
+        AssertEx.Equal(0, failed.ValidationErrors.Count);
+        var failure = AssertEx.NotNull(failed.Failure);
+        AssertEx.Equal(ProxyConfigLintSubmittedConfigurationFailureKind.JsonParseError, failure.Kind);
+        AssertEx.Equal("bad json", failure.Message);
+        AssertEx.Equal<ProxyConfigLintConfigurationSnapshot?>(null, empty.Snapshot);
+        AssertEx.Equal(0, empty.ValidationErrors.Count);
+        AssertEx.Equal<ProxyConfigLintSubmittedConfigurationFailure?>(null, empty.Failure);
+    }
+
     public static void ConfigLintServiceShapesSubmittedSourceFindings()
     {
         var source = new FixedConfigLintSubmittedConfigurationSource(
-            new ProxyConfigLintSubmittedConfigurationResult(
+            ProxyConfigLintSubmittedConfigurationResult.Loaded(
                 LintSnapshot("submitted.json"),
-                [ProxyConfigurationFileError.ForPath("lint-input", "Proxy:Routes:0:Name is required.")],
-                null));
+                [ProxyConfigurationFileError.ForPath("lint-input", "Proxy:Routes:0:Name is required.")]));
         var service = new ConfigLintService(
             new FixedConfigLintActiveConfigurationSource(null),
             source,
@@ -1039,7 +1061,7 @@ internal static class RouteDiagnosticsTests
             _ = text;
             _ = loadedAtUtc;
             LastFormat = format;
-            return _result ?? new ProxyConfigLintSubmittedConfigurationResult(null, [], null);
+            return _result ?? ProxyConfigLintSubmittedConfigurationResult.Empty();
         }
     }
 

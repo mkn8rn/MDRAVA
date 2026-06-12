@@ -43,16 +43,22 @@ public sealed class ProxyConfigLintSubmittedConfigurationSource
         }
         catch (JsonException exception)
         {
-            return Failure(ProxyConfigLintSubmittedConfigurationFailureKind.JsonParseError, exception.Message);
+            return ProxyConfigLintSubmittedConfigurationResult.Failed(
+                ProxyConfigLintSubmittedConfigurationFailureKind.JsonParseError,
+                exception.Message);
         }
         catch (YamlException exception)
         {
-            return Failure(ProxyConfigLintSubmittedConfigurationFailureKind.YamlParseError, exception.Message);
+            return ProxyConfigLintSubmittedConfigurationResult.Failed(
+                ProxyConfigLintSubmittedConfigurationFailureKind.YamlParseError,
+                exception.Message);
         }
 
         if (site is null)
         {
-            return Failure(ProxyConfigLintSubmittedConfigurationFailureKind.EmptySite, null);
+            return ProxyConfigLintSubmittedConfigurationResult.Failed(
+                ProxyConfigLintSubmittedConfigurationFailureKind.EmptySite,
+                null);
         }
 
         var options = SiteOptionsAggregator.ToProxyOptions([new SiteConfigurationSource("lint-input", site)]);
@@ -76,22 +82,11 @@ public sealed class ProxyConfigLintSubmittedConfigurationSource
                 [],
                 []));
 
-        return new ProxyConfigLintSubmittedConfigurationResult(
+        return ProxyConfigLintSubmittedConfigurationResult.Loaded(
             ProxyConfigLintConfigurationSnapshotMapper.ToLintSnapshot(
                 ProxyConfigLintRuntimeConfigurationSourceMapper.FromConfiguration(snapshot),
                 _http3PlatformSupportSource.Read()),
-            validationErrors,
-            null);
-    }
-
-    private static ProxyConfigLintSubmittedConfigurationResult Failure(
-        ProxyConfigLintSubmittedConfigurationFailureKind kind,
-        string? message)
-    {
-        return new ProxyConfigLintSubmittedConfigurationResult(
-            null,
-            [],
-            new ProxyConfigLintSubmittedConfigurationFailure(kind, message));
+            validationErrors);
     }
 
     private static string FormatName(ProxyConfigurationNormalizeFormat format)
