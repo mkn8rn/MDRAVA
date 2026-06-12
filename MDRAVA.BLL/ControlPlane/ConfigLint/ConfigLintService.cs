@@ -40,7 +40,7 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
         {
             var result = BuildResult(
                 now,
-                [ConfigLintFindingFactory.Error("no_active_config", "No active proxy configuration is loaded.", null, null, "Load a valid config before linting the active runtime snapshot.")],
+                [ConfigLintServiceFailureFindingFactory.NoActiveConfig()],
                 []);
             StoreActiveStatus(result);
             return result;
@@ -71,7 +71,7 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
 
         if (submitted.Snapshot is null)
         {
-            return BuildResult(now, [ConfigLintFindingFactory.Error("empty_config", "Submitted config did not contain a site object.", "lint-input", null, "Submit one site configuration object.")], []);
+            return BuildResult(now, [ConfigLintServiceFailureFindingFactory.EmptySubmittedConfig()], []);
         }
 
         List<ConfigLintFinding> findings = [.. ConfigLintValidationErrorMapper.ToFindings(
