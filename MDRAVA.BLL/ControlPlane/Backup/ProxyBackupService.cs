@@ -139,10 +139,11 @@ public sealed class ProxyBackupService : IProxyBackupOperations
 
         foreach (var error in configValidation.Errors.Except(configValidation.FileErrors.Select(static fileError => fileError.Message)))
         {
+            var finding = ProxyRestoreValidationFindingPolicy.ClassifyConfigurationError(error);
             errors.Add(new ProxyRestoreValidationFinding(
                 ProxyStatusText.Error,
-                ClassifyConfigErrorCode(error),
-                ClassifyConfigErrorMessage(error),
+                finding.Code,
+                finding.Message,
                 null));
         }
 
@@ -185,44 +186,12 @@ public sealed class ProxyBackupService : IProxyBackupOperations
 
     private ProxyRestoreValidationFinding ClassifyConfigError(string root, ProxyConfigurationFileError fileError)
     {
+        var finding = ProxyRestoreValidationFindingPolicy.ClassifyConfigurationError(fileError.Message);
         return new ProxyRestoreValidationFinding(
             ProxyStatusText.Error,
-            ClassifyConfigErrorCode(fileError.Message),
-            ClassifyConfigErrorMessage(fileError.Message),
+            finding.Code,
+            finding.Message,
             SafeRelativeOrNull(root, fileError.Path));
-    }
-
-    private static string ClassifyConfigErrorCode(string error)
-    {
-        if (error.Contains("Certificate", StringComparison.OrdinalIgnoreCase)
-            && error.Contains("file does not exist", StringComparison.OrdinalIgnoreCase))
-        {
-            return "certificate_file_missing";
-        }
-
-        if (error.Contains("unknown certificate", StringComparison.OrdinalIgnoreCase))
-        {
-            return "certificate_reference_missing";
-        }
-
-        if (error.Contains("JSON", StringComparison.OrdinalIgnoreCase)
-            || error.Contains("YAML", StringComparison.OrdinalIgnoreCase))
-        {
-            return "config_parse_failed";
-        }
-
-        return "config_validation_failed";
-    }
-
-    private static string ClassifyConfigErrorMessage(string error)
-    {
-        return ClassifyConfigErrorCode(error) switch
-        {
-            "certificate_file_missing" => "Referenced certificate material is missing.",
-            "certificate_reference_missing" => "A listener references an unknown configured certificate id.",
-            "config_parse_failed" => "A configuration file could not be parsed.",
-            _ => "Configuration validation failed."
-        };
     }
 
     private string? SafeRelativeOrNull(string root, string? path)
