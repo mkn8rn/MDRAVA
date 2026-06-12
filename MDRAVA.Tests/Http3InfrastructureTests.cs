@@ -411,9 +411,8 @@ internal static class Http3InfrastructureTests
         AssertEx.Equal("default_enabled", projection.Http3.DisabledReason);
         AssertEx.True(projection.Http3.UdpQuicListenerIdentityModeled);
         var statusProjection = Http3RuntimeSupport.ProjectConfiguration(
-            snapshot.Listeners,
-            TestHttp3PlatformSupport.Supported,
-            snapshot.Routes);
+            Http3SupportSourceMapper.FromConfiguration(snapshot.Listeners, snapshot.Routes),
+            TestHttp3PlatformSupport.Supported);
         AssertEx.Equal("default", statusProjection.Configured);
         AssertEx.True(statusProjection.EnabledForTraffic);
         AssertEx.Equal("default_enabled", statusProjection.DisabledReason);

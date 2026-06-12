@@ -9,7 +9,9 @@ public static class ProxyConfigLintConfigurationSnapshotMapper
         ProxyConfigurationSnapshot snapshot,
         RuntimeHttp3PlatformSupport platformSupport)
     {
-        var http3 = Http3RuntimeSupport.ProjectConfiguration(snapshot.Listeners, platformSupport, snapshot.Routes);
+        var http3 = Http3RuntimeSupport.ProjectConfiguration(
+            Http3SupportSourceMapper.FromConfiguration(snapshot.Listeners, snapshot.Routes),
+            platformSupport);
         return new ProxyConfigLintConfigurationSnapshot(
             snapshot.SourceFiles,
             new ProxyConfigLintAdminSecurity(

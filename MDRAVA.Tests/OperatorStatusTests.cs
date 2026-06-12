@@ -79,10 +79,9 @@ internal static class OperatorStatusTests
         var metrics = new ProxyMetrics().Snapshot();
         var observedAtUtc = new DateTimeOffset(2026, 6, 10, 9, 5, 0, TimeSpan.Zero);
         var http3 = Http3RuntimeSupport.ProjectRuntime(
-            snapshot.Listeners,
+            Http3SupportSourceMapper.FromConfiguration(snapshot.Listeners, snapshot.Routes),
             TestHttp3PlatformSupport.Supported,
-            runtime.Listeners,
-            snapshot.Routes);
+            Http3SupportSourceMapper.FromRuntimeListeners(runtime.Listeners));
         var logPersistence = new ProxyLogPersistenceStatus(
             true,
             true,
