@@ -292,7 +292,9 @@ public sealed class ClientConnection
 
                 var forwardedHeaders = _forwardedHeadersPolicy.Build(
                     requestHead,
-                    _listener,
+                    new ForwardedHeadersListener(
+                        _listener.Transport == RuntimeListenerTransport.Https ? "https" : "http",
+                        _listener.Port),
                     _configurationSnapshot.ForwardedHeaders,
                     ProxyClientAddressPolicy.ToForwardedHeadersPeer(GetRemoteEndPoint()));
                 currentContext.SetClientEndpoint(forwardedHeaders.ResolvedClientEndpoint);

@@ -25,7 +25,7 @@ public sealed class ForwardedHeadersPolicy
 
     public ForwardedHeadersContext Build(
         Http1RequestHead requestHead,
-        RuntimeListener listener,
+        ForwardedHeadersListener listener,
         RuntimeForwardedHeadersOptions options,
         ForwardedHeadersPeer remotePeer)
     {
@@ -63,8 +63,8 @@ public sealed class ForwardedHeadersPolicy
             ? FirstHeaderValue(requestHead.Headers, "X-Forwarded-Host") ?? requestHead.Host
             : requestHead.Host;
         var forwardedProto = immediatePeerTrusted
-            ? FirstHeaderValue(requestHead.Headers, "X-Forwarded-Proto") ?? Scheme(listener)
-            : Scheme(listener);
+            ? FirstHeaderValue(requestHead.Headers, "X-Forwarded-Proto") ?? listener.Scheme
+            : listener.Scheme;
         var forwardedPort = immediatePeerTrusted
             ? FirstHeaderValue(requestHead.Headers, "X-Forwarded-Port") ?? listener.Port.ToString(CultureInfo.InvariantCulture)
             : listener.Port.ToString(CultureInfo.InvariantCulture);
@@ -135,11 +135,6 @@ public sealed class ForwardedHeadersPolicy
         return value.Any(char.IsControl);
     }
 
-    private static string Scheme(RuntimeListener listener)
-    {
-        return listener.Transport == RuntimeListenerTransport.Https ? "https" : "http";
-    }
-
     private static string FormatForwardedFor(string value)
     {
         return value.Contains(":", StringComparison.Ordinal) && !value.StartsWith("[", StringComparison.Ordinal)
@@ -156,3 +151,7 @@ public sealed class ForwardedHeadersPolicy
         return $"\"{sanitized}\"";
     }
 }
+
+public sealed record ForwardedHeadersListener(
+    string Scheme,
+    int Port);
