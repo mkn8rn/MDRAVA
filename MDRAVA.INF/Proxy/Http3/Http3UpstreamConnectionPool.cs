@@ -1,6 +1,7 @@
 #pragma warning disable CA1416
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.Metrics;
+using MDRAVA.BLL.ControlPlane.Upstreams;
 
 namespace MDRAVA.INF.Proxy.Http3;
 
@@ -30,7 +31,8 @@ public sealed class Http3UpstreamConnectionPool : IDisposable
         int maxFramePayloadBytes,
         CancellationToken cancellationToken)
     {
-        var key = GetKey(upstream);
+        var endpoint = UpstreamTransportEndpointMapper.FromUpstream(upstream);
+        var key = GetKey(endpoint);
         var gate = GetKeyGate(key);
         await gate.WaitAsync(cancellationToken);
         try
@@ -61,7 +63,7 @@ public sealed class Http3UpstreamConnectionPool : IDisposable
             try
             {
                 transport = await Http3UpstreamConnection.OpenTransportAsync(
-                    upstream,
+                    endpoint,
                     timeouts,
                     _metrics,
                     cancellationToken);
@@ -101,9 +103,9 @@ public sealed class Http3UpstreamConnectionPool : IDisposable
         }
     }
 
-    public async ValueTask PruneIdleConnectionsAsync(RuntimeUpstream upstream, TimeSpan idleLifetime)
+    public async ValueTask PruneIdleConnectionsAsync(UpstreamTransportEndpoint endpoint, TimeSpan idleLifetime)
     {
-        var key = GetKey(upstream);
+        var key = GetKey(endpoint);
         var gate = GetKeyGate(key);
         await gate.WaitAsync();
         try
@@ -141,9 +143,9 @@ public sealed class Http3UpstreamConnectionPool : IDisposable
         }
     }
 
-    public static string GetKey(RuntimeUpstream upstream)
+    public static string GetKey(UpstreamTransportEndpoint endpoint)
     {
-        return $"{upstream.Protocol}|{upstream.Scheme}|{upstream.Address}|{upstream.Port}|sni={upstream.EffectiveSniHost}|validate={upstream.Tls.ValidateCertificate}|alpn=h3|qpack=static-zero";
+        return $"{endpoint.PoolKey}|alpn=h3|qpack=static-zero";
     }
 
     private bool TryReserveExistingConnection(

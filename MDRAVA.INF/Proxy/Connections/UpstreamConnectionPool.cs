@@ -1,6 +1,7 @@
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.HealthChecks;
 using MDRAVA.BLL.ControlPlane.Metrics;
+using MDRAVA.BLL.ControlPlane.Upstreams;
 
 namespace MDRAVA.INF.Proxy.Connections;
 
@@ -29,7 +30,8 @@ public sealed class UpstreamConnectionPool : IUpstreamConnectionPruner, IDisposa
         RuntimeConnectionLimits limits,
         CancellationToken cancellationToken)
     {
-        var key = GetKey(upstream);
+        var endpoint = UpstreamTransportEndpointMapper.FromUpstream(upstream);
+        var key = GetKey(endpoint);
         var nowUtc = _timeProvider.GetUtcNow();
         PooledUpstreamConnection? connection = null;
 
@@ -64,12 +66,12 @@ public sealed class UpstreamConnectionPool : IUpstreamConnectionPruner, IDisposa
         }
 
         var transport = await _connectionFactory.ConnectAsync(
-            upstream,
+            endpoint,
             timeouts.UpstreamConnectTimeout,
             cancellationToken);
         connection = new PooledUpstreamConnection(
             key,
-            upstream,
+            endpoint,
             transport.Socket,
             transport.Stream,
             _timeProvider.GetUtcNow());
@@ -139,9 +141,9 @@ public sealed class UpstreamConnectionPool : IUpstreamConnectionPruner, IDisposa
         }
     }
 
-    public void PruneIdleConnections(RuntimeUpstream upstream)
+    public void PruneIdleConnections(UpstreamTransportEndpoint endpoint)
     {
-        var key = GetKey(upstream);
+        var key = GetKey(endpoint);
         lock (_gate)
         {
             if (!_idleConnections.TryGetValue(key, out var queue))
@@ -180,9 +182,9 @@ public sealed class UpstreamConnectionPool : IUpstreamConnectionPruner, IDisposa
         return nowUtc - connection.LastUsedUtc > idleLifetime;
     }
 
-    public static string GetKey(RuntimeUpstream upstream)
+    public static string GetKey(UpstreamTransportEndpoint endpoint)
     {
-        return $"{upstream.Protocol}|{upstream.Scheme}|{upstream.Address}|{upstream.Port}|sni={upstream.EffectiveSniHost}|validate={upstream.Tls.ValidateCertificate}";
+        return endpoint.PoolKey;
     }
 
     private void ThrowIfDisposed()

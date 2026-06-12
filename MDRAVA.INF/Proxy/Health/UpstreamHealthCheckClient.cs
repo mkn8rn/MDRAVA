@@ -5,6 +5,7 @@ using MDRAVA.BLL.ControlPlane.HealthChecks;
 using MDRAVA.BLL.ControlPlane.Timeouts;
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.Metrics;
+using MDRAVA.BLL.ControlPlane.Upstreams;
 using System.Buffers;
 using System.Net.Sockets;
 using System.Text;
@@ -34,8 +35,8 @@ public sealed class UpstreamHealthCheckClient : IUpstreamHealthCheckClient
         UpstreamHealthCheckTarget target,
         CancellationToken cancellationToken)
     {
-        var upstream = target.Upstream;
-        if (RuntimeUpstreamProtocol.IsHttp3(upstream.Protocol))
+        var endpoint = target.TransportEndpoint;
+        if (RuntimeUpstreamProtocol.IsHttp3(endpoint.Protocol))
         {
             return await CheckHttp3Async(target, cancellationToken);
         }
@@ -45,18 +46,18 @@ public sealed class UpstreamHealthCheckClient : IUpstreamHealthCheckClient
         try
         {
             connection = await _connectionFactory.ConnectAsync(
-                upstream,
+                endpoint,
                 target.Timeout,
                 cancellationToken);
             var stream = connection.Stream;
 
-            if (RuntimeUpstreamProtocol.IsHttp2(upstream.Protocol))
+            if (RuntimeUpstreamProtocol.IsHttp2(endpoint.Protocol))
             {
                 return await CheckHttp2Async(target, stream, cancellationToken);
             }
 
             var requestBytes = Encoding.ASCII.GetBytes(
-                $"GET {target.Path} HTTP/1.1\r\nHost: {upstream.Address}\r\nConnection: close\r\n\r\n");
+                $"GET {target.Path} HTTP/1.1\r\nHost: {endpoint.Address}\r\nConnection: close\r\n\r\n");
             await ProxyTimeoutPolicy.RunAsync(
                 async timeoutToken => await stream.WriteAsync(requestBytes, timeoutToken),
                 target.Timeout,
@@ -95,12 +96,12 @@ public sealed class UpstreamHealthCheckClient : IUpstreamHealthCheckClient
         UpstreamHealthCheckTarget target,
         CancellationToken cancellationToken)
     {
-        var upstream = target.Upstream;
+        var endpoint = target.TransportEndpoint;
         try
         {
             var timeouts = HealthCheckTimeouts(target.Timeout);
             await using var http3 = await Http3UpstreamConnection.ConnectAsync(
-                upstream,
+                endpoint,
                 timeouts,
                 _metrics,
                 maxFramePayloadBytes: 16 * 1024,
@@ -108,8 +109,8 @@ public sealed class UpstreamHealthCheckClient : IUpstreamHealthCheckClient
             await http3.SendHeadersAsync(
                 [
                     new ProxyHeaderField(":method", "GET"),
-                    new ProxyHeaderField(":scheme", upstream.Scheme),
-                    new ProxyHeaderField(":authority", upstream.Address),
+                    new ProxyHeaderField(":scheme", endpoint.Scheme),
+                    new ProxyHeaderField(":authority", endpoint.Address),
                     new ProxyHeaderField(":path", target.Path)
                 ],
                 endStream: true,
@@ -138,15 +139,15 @@ public sealed class UpstreamHealthCheckClient : IUpstreamHealthCheckClient
         Stream stream,
         CancellationToken cancellationToken)
     {
-        var upstream = target.Upstream;
+        var endpoint = target.TransportEndpoint;
         var timeouts = HealthCheckTimeouts(target.Timeout);
         var http2 = new Http2UpstreamConnection(stream, _metrics, maxFrameSize: 16 * 1024);
         await http2.InitializeAsync(timeouts, cancellationToken);
         await http2.SendHeadersAsync(
             [
                 new ProxyHeaderField(":method", "GET"),
-                new ProxyHeaderField(":scheme", upstream.Scheme),
-                new ProxyHeaderField(":authority", upstream.Address),
+                new ProxyHeaderField(":scheme", endpoint.Scheme),
+                new ProxyHeaderField(":authority", endpoint.Address),
                 new ProxyHeaderField(":path", target.Path)
             ],
             endStream: true,

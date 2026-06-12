@@ -5,6 +5,7 @@ using MDRAVA.BLL.ControlPlane.Timeouts;
 using MDRAVA.BLL.ControlPlane.Upgrades;
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.Metrics;
+using MDRAVA.BLL.ControlPlane.Upstreams;
 using Microsoft.Extensions.Logging;
 using System.Buffers;
 using System.Net.Sockets;
@@ -73,7 +74,7 @@ public sealed class UpgradeForwarder
             try
             {
                 upstreamConnection = await _connectionFactory.ConnectAsync(
-                    upstream,
+                    UpstreamTransportEndpointMapper.FromUpstream(upstream),
                     timeouts.UpstreamConnectTimeout,
                     cancellationToken);
                 var upstreamStream = upstreamConnection.Stream;

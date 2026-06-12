@@ -30,13 +30,13 @@ public sealed class UpstreamHealthCheckCoordinator
         var now = _timeProvider.GetUtcNow();
         foreach (var target in targets)
         {
-            if (_nextChecks.TryGetValue(target.Upstream.Identity, out var nextCheck)
+            if (_nextChecks.TryGetValue(target.UpstreamIdentity, out var nextCheck)
                 && nextCheck > now)
             {
                 continue;
             }
 
-            _nextChecks[target.Upstream.Identity] = now + target.Interval;
+            _nextChecks[target.UpstreamIdentity] = now + target.Interval;
             await CheckUpstreamAsync(target, cancellationToken);
         }
     }
@@ -60,6 +60,6 @@ public sealed class UpstreamHealthCheckCoordinator
             target,
             sample,
             _timeProvider.GetUtcNow());
-        _events.Checked(target.RouteName, target.Upstream.Name, target.Upstream.Endpoint, sample.Result, state);
+        _events.Checked(target.RouteName, target.UpstreamName, target.UpstreamEndpoint, sample.Result, state);
     }
 }

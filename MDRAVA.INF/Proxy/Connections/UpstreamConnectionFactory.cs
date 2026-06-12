@@ -5,6 +5,7 @@ using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane.Upstreams;
 using MDRAVA.BLL.ControlPlane.Timeouts;
 
 namespace MDRAVA.INF.Proxy.Connections;
@@ -12,12 +13,12 @@ namespace MDRAVA.INF.Proxy.Connections;
 public sealed class UpstreamConnectionFactory
 {
     public async ValueTask<UpstreamTransportConnection> ConnectAsync(
-        RuntimeUpstream upstream,
+        UpstreamTransportEndpoint endpoint,
         TimeSpan connectTimeout,
         CancellationToken cancellationToken)
     {
         var addresses = await ProxyTimeoutPolicy.RunAsync(
-            timeoutToken => ResolveAddressesAsync(upstream, timeoutToken),
+            timeoutToken => ResolveAddressesAsync(endpoint, timeoutToken),
             connectTimeout,
             ProxyTimeoutKind.UpstreamConnect,
             cancellationToken);
@@ -35,13 +36,13 @@ public sealed class UpstreamConnectionFactory
                 await ProxyTimeoutPolicy.RunAsync(
                     async timeoutToken =>
                     {
-                        await socket.ConnectAsync(new IPEndPoint(address, upstream.Port), timeoutToken);
+                        await socket.ConnectAsync(new IPEndPoint(address, endpoint.Port), timeoutToken);
                     },
                     connectTimeout,
                     ProxyTimeoutKind.UpstreamConnect,
                     cancellationToken);
-                var stream = await CreateStreamAsync(socket, upstream, connectTimeout, cancellationToken);
-                return new UpstreamTransportConnection(upstream, socket, stream);
+                var stream = await CreateStreamAsync(socket, endpoint, connectTimeout, cancellationToken);
+                return new UpstreamTransportConnection(endpoint, socket, stream);
             }
             catch (OperationCanceledException)
             {
@@ -61,18 +62,18 @@ public sealed class UpstreamConnectionFactory
         }
 
         throw new IOException(
-            $"Unable to connect to upstream '{upstream.Name}' at {upstream.Address}:{upstream.Port}.",
+            $"Unable to connect to upstream '{endpoint.Name}' at {endpoint.Address}:{endpoint.Port}.",
             lastException);
     }
 
     private static async ValueTask<Stream> CreateStreamAsync(
         Socket socket,
-        RuntimeUpstream upstream,
+        UpstreamTransportEndpoint endpoint,
         TimeSpan connectTimeout,
         CancellationToken cancellationToken)
     {
         var networkStream = new NetworkStream(socket, ownsSocket: false);
-        if (!string.Equals(upstream.Scheme, "https", StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(endpoint.Scheme, "https", StringComparison.OrdinalIgnoreCase))
         {
             return networkStream;
         }
@@ -80,10 +81,10 @@ public sealed class UpstreamConnectionFactory
         var tlsStream = new SslStream(
             networkStream,
             leaveInnerStreamOpen: false,
-            upstream.Tls.ValidateCertificate
+            endpoint.ValidateCertificate
                 ? null
                 : static (_, _, _, _) => true);
-        var targetHost = upstream.EffectiveSniHost;
+        var targetHost = endpoint.EffectiveSniHost;
 
         try
         {
@@ -96,18 +97,18 @@ public sealed class UpstreamConnectionFactory
                             TargetHost = targetHost,
                             EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
                             CertificateRevocationCheckMode = X509RevocationMode.NoCheck,
-                            ApplicationProtocols = BuildApplicationProtocols(upstream)
+                            ApplicationProtocols = BuildApplicationProtocols(endpoint)
                         },
                         timeoutToken);
                 },
                 connectTimeout,
                 ProxyTimeoutKind.UpstreamConnect,
                 cancellationToken);
-            if (RuntimeUpstreamProtocol.IsHttp2(upstream.Protocol)
+            if (RuntimeUpstreamProtocol.IsHttp2(endpoint.Protocol)
                 && tlsStream.NegotiatedApplicationProtocol != SslApplicationProtocol.Http2)
             {
                 throw new UpstreamTlsException(
-                    $"TLS ALPN negotiation for upstream '{upstream.Name}' selected '{FormatNegotiatedProtocol(tlsStream.NegotiatedApplicationProtocol)}' instead of 'h2'.",
+                    $"TLS ALPN negotiation for upstream '{endpoint.Name}' selected '{FormatNegotiatedProtocol(tlsStream.NegotiatedApplicationProtocol)}' instead of 'h2'.",
                     new AuthenticationException("Upstream did not negotiate HTTP/2."));
             }
 
@@ -121,30 +122,30 @@ public sealed class UpstreamConnectionFactory
         catch (Exception exception) when (exception is AuthenticationException or IOException)
         {
             await tlsStream.DisposeAsync();
-            throw new UpstreamTlsException($"TLS authentication failed for upstream '{upstream.Name}'.", exception);
+            throw new UpstreamTlsException($"TLS authentication failed for upstream '{endpoint.Name}'.", exception);
         }
     }
 
     private static async ValueTask<IPAddress[]> ResolveAddressesAsync(
-        RuntimeUpstream upstream,
+        UpstreamTransportEndpoint endpoint,
         CancellationToken cancellationToken)
     {
-        if (IPAddress.TryParse(upstream.Address, out var address))
+        if (IPAddress.TryParse(endpoint.Address, out var address))
         {
             return [address];
         }
 
-        return await Dns.GetHostAddressesAsync(upstream.Address, cancellationToken);
+        return await Dns.GetHostAddressesAsync(endpoint.Address, cancellationToken);
     }
 
-    private static List<SslApplicationProtocol>? BuildApplicationProtocols(RuntimeUpstream upstream)
+    private static List<SslApplicationProtocol>? BuildApplicationProtocols(UpstreamTransportEndpoint endpoint)
     {
-        if (RuntimeUpstreamProtocol.IsHttp3(upstream.Protocol))
+        if (RuntimeUpstreamProtocol.IsHttp3(endpoint.Protocol))
         {
             throw new InvalidOperationException("HTTP/3 upstreams use the QUIC upstream transport, not the TCP upstream connection factory.");
         }
 
-        return RuntimeUpstreamProtocol.IsHttp2(upstream.Protocol)
+        return RuntimeUpstreamProtocol.IsHttp2(endpoint.Protocol)
             ? [SslApplicationProtocol.Http2]
             : null;
     }

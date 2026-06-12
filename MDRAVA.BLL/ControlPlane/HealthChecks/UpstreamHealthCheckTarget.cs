@@ -1,10 +1,14 @@
 using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane.Upstreams;
 
 namespace MDRAVA.BLL.ControlPlane.HealthChecks;
 
 public sealed record UpstreamHealthCheckTarget(
     string RouteName,
-    RuntimeUpstream Upstream,
+    string UpstreamName,
+    string UpstreamEndpoint,
+    string UpstreamIdentity,
+    UpstreamTransportEndpoint TransportEndpoint,
     string Path,
     TimeSpan Interval,
     TimeSpan Timeout,
@@ -19,7 +23,10 @@ public static class UpstreamHealthCheckTargetMapper
             .Where(static route => route.HealthCheck.Enabled)
             .SelectMany(static route => route.Upstreams.Select(upstream => new UpstreamHealthCheckTarget(
                 route.Name,
-                upstream,
+                upstream.Name,
+                upstream.Endpoint,
+                upstream.Identity,
+                UpstreamTransportEndpointMapper.FromUpstream(upstream),
                 route.HealthCheck.Path,
                 route.HealthCheck.Interval,
                 route.HealthCheck.Timeout,

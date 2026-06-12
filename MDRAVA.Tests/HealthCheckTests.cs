@@ -184,7 +184,10 @@ internal static class HealthCheckTests
 
         AssertEx.Equal(1, targets.Count);
         AssertEx.Equal("test", targets[0].RouteName);
-        AssertEx.Equal(enabledUpstream.Identity, targets[0].Upstream.Identity);
+        AssertEx.Equal(enabledUpstream.Identity, targets[0].UpstreamIdentity);
+        AssertEx.Equal(enabledUpstream.Name, targets[0].UpstreamName);
+        AssertEx.Equal(enabledUpstream.Endpoint, targets[0].UpstreamEndpoint);
+        AssertEx.Equal(enabledUpstream.Address, targets[0].TransportEndpoint.Address);
         AssertEx.Equal("/health", targets[0].Path);
     }
 
@@ -299,7 +302,10 @@ internal static class HealthCheckTests
     {
         return new UpstreamHealthCheckTarget(
             route.Name,
-            upstream,
+            upstream.Name,
+            upstream.Endpoint,
+            upstream.Identity,
+            UpstreamTransportEndpointMapper.FromUpstream(upstream),
             route.HealthCheck.Path,
             route.HealthCheck.Interval,
             route.HealthCheck.Timeout,

@@ -944,7 +944,10 @@ internal static class ResilienceTests
     {
         return new UpstreamHealthCheckTarget(
             route.Name,
-            upstream,
+            upstream.Name,
+            upstream.Endpoint,
+            upstream.Identity,
+            UpstreamTransportEndpointMapper.FromUpstream(upstream),
             route.HealthCheck.Path,
             route.HealthCheck.Interval,
             route.HealthCheck.Timeout,

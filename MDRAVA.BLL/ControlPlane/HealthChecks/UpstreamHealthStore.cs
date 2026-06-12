@@ -46,8 +46,11 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
         HealthCheckSample sample,
         DateTimeOffset checkedAtUtc)
     {
-        var upstream = target.Upstream;
-        var state = GetOrCreate(upstream);
+        var state = GetOrCreate(
+            target.UpstreamIdentity,
+            target.RouteName,
+            target.UpstreamName,
+            target.UpstreamEndpoint);
         lock (state.Gate)
         {
             state.HealthCheckEnabled = true;
@@ -81,7 +84,7 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
                 _metrics.UpstreamHealthTransition();
                 if (state.State == UpstreamHealthState.Unhealthy)
                 {
-                    _connectionPruner.PruneIdleConnections(upstream);
+                    _connectionPruner.PruneIdleConnections(target.TransportEndpoint);
                 }
             }
 
@@ -143,9 +146,18 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
 
     private MutableUpstreamHealth GetOrCreate(RuntimeUpstream upstream)
     {
+        return GetOrCreate(upstream.Identity, upstream.RouteName, upstream.Name, upstream.Endpoint);
+    }
+
+    private MutableUpstreamHealth GetOrCreate(
+        string upstreamIdentity,
+        string routeName,
+        string upstreamName,
+        string endpoint)
+    {
         return _states.GetOrAdd(
-            upstream.Identity,
-            _ => new MutableUpstreamHealth(upstream.RouteName, upstream.Name, upstream.Endpoint));
+            upstreamIdentity,
+            _ => new MutableUpstreamHealth(routeName, upstreamName, endpoint));
     }
 
     private sealed class MutableUpstreamHealth

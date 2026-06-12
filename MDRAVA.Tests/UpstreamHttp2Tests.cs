@@ -123,8 +123,8 @@ internal static class UpstreamHttp2Tests
         var http2 = Upstream(5001, RuntimeUpstreamProtocol.Http2);
 
         AssertEx.False(string.Equals(
-            UpstreamConnectionPool.GetKey(http1),
-            UpstreamConnectionPool.GetKey(http2),
+            UpstreamConnectionPool.GetKey(UpstreamTransportEndpointMapper.FromUpstream(http1)),
+            UpstreamConnectionPool.GetKey(UpstreamTransportEndpointMapper.FromUpstream(http2)),
             StringComparison.Ordinal));
     }
 
@@ -142,7 +142,7 @@ internal static class UpstreamHttp2Tests
         var upstream = Upstream(port, RuntimeUpstreamProtocol.Http2);
 
         using var transport = await new UpstreamConnectionFactory()
-            .ConnectAsync(upstream, TimeSpan.FromSeconds(2), timeout.Token);
+            .ConnectAsync(UpstreamTransportEndpointMapper.FromUpstream(upstream), TimeSpan.FromSeconds(2), timeout.Token);
         transport.Dispose();
         var observation = await serverTask.WaitAsync(timeout.Token);
 
@@ -166,7 +166,7 @@ internal static class UpstreamHttp2Tests
         await AssertEx.ThrowsAsync<UpstreamTlsException>(async () =>
         {
             using var _ = await new UpstreamConnectionFactory()
-                .ConnectAsync(upstream, TimeSpan.FromSeconds(2), timeout.Token);
+                .ConnectAsync(UpstreamTransportEndpointMapper.FromUpstream(upstream), TimeSpan.FromSeconds(2), timeout.Token);
         });
         var observation = await serverTask.WaitAsync(timeout.Token);
 
@@ -636,7 +636,10 @@ internal static class UpstreamHttp2Tests
     {
         return new UpstreamHealthCheckTarget(
             route.Name,
-            upstream,
+            upstream.Name,
+            upstream.Endpoint,
+            upstream.Identity,
+            UpstreamTransportEndpointMapper.FromUpstream(upstream),
             route.HealthCheck.Path,
             route.HealthCheck.Interval,
             route.HealthCheck.Timeout,

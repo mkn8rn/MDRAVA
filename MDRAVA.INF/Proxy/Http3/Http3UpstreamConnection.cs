@@ -4,6 +4,7 @@ using MDRAVA.BLL.ControlPlane.Timeouts;
 #pragma warning disable CA1416
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.Metrics;
+using MDRAVA.BLL.ControlPlane.Upstreams;
 using System.Globalization;
 using System.Net;
 using System.Net.Quic;
@@ -46,7 +47,7 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
     private QuicStream Stream { get; }
 
     public static async ValueTask<Http3UpstreamConnection> ConnectAsync(
-        RuntimeUpstream upstream,
+        UpstreamTransportEndpoint endpoint,
         RuntimeTimeouts timeouts,
         ProxyMetrics metrics,
         int maxFramePayloadBytes,
@@ -60,13 +61,13 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
                 Http3UpstreamFailureKind.ConnectFailure);
         }
 
-        var remoteEndPoint = await ResolveEndPointAsync(upstream, cancellationToken);
+        var remoteEndPoint = await ResolveEndPointAsync(endpoint, cancellationToken);
         Http3UpstreamTransport? transport = null;
         QuicStream? stream = null;
         var streamStarted = false;
         try
         {
-            transport = await OpenTransportAsync(upstream, remoteEndPoint, timeouts, metrics, cancellationToken);
+            transport = await OpenTransportAsync(endpoint, remoteEndPoint, timeouts, metrics, cancellationToken);
             stream = await ProxyTimeoutPolicy.RunAsync(
                 async timeoutToken => await transport.Connection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional, timeoutToken),
                 timeouts.UpstreamConnectTimeout,
@@ -96,7 +97,7 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
     }
 
     internal static async ValueTask<Http3UpstreamTransport> OpenTransportAsync(
-        RuntimeUpstream upstream,
+        UpstreamTransportEndpoint endpoint,
         RuntimeTimeouts timeouts,
         ProxyMetrics metrics,
         CancellationToken cancellationToken)
@@ -110,8 +111,8 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
                 Http3UpstreamFailureKind.ConnectFailure);
         }
 
-        var remoteEndPoint = await ResolveEndPointAsync(upstream, cancellationToken);
-        return await OpenTransportAsync(upstream, remoteEndPoint, timeouts, metrics, cancellationToken);
+        var remoteEndPoint = await ResolveEndPointAsync(endpoint, cancellationToken);
+        return await OpenTransportAsync(endpoint, remoteEndPoint, timeouts, metrics, cancellationToken);
     }
 
     internal static async ValueTask<Http3UpstreamConnection> OpenStreamAsync(
@@ -287,7 +288,7 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
     }
 
     private static async ValueTask<Http3UpstreamTransport> OpenTransportAsync(
-        RuntimeUpstream upstream,
+        UpstreamTransportEndpoint endpoint,
         IPEndPoint remoteEndPoint,
         RuntimeTimeouts timeouts,
         ProxyMetrics metrics,
@@ -303,11 +304,11 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
                         RemoteEndPoint = remoteEndPoint,
                         ClientAuthenticationOptions = new SslClientAuthenticationOptions
                         {
-                            TargetHost = upstream.EffectiveSniHost,
+                            TargetHost = endpoint.EffectiveSniHost,
                             EnabledSslProtocols = SslProtocols.Tls13,
                             ApplicationProtocols = [Http3Alpn],
                             CertificateRevocationCheckMode = X509RevocationMode.NoCheck,
-                            RemoteCertificateValidationCallback = upstream.Tls.ValidateCertificate
+                            RemoteCertificateValidationCallback = endpoint.ValidateCertificate
                                 ? null
                                 : static (_, _, _, _) => true
                         },
@@ -511,21 +512,21 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
     }
 
     private static async ValueTask<IPEndPoint> ResolveEndPointAsync(
-        RuntimeUpstream upstream,
+        UpstreamTransportEndpoint endpoint,
         CancellationToken cancellationToken)
     {
-        if (IPAddress.TryParse(upstream.Address, out var address))
+        if (IPAddress.TryParse(endpoint.Address, out var address))
         {
-            return new IPEndPoint(address, upstream.Port);
+            return new IPEndPoint(address, endpoint.Port);
         }
 
-        var addresses = await Dns.GetHostAddressesAsync(upstream.Address, cancellationToken);
+        var addresses = await Dns.GetHostAddressesAsync(endpoint.Address, cancellationToken);
         if (addresses.Length == 0)
         {
-            throw new IOException($"Unable to resolve upstream '{upstream.Name}' at {upstream.Address}.");
+            throw new IOException($"Unable to resolve upstream '{endpoint.Name}' at {endpoint.Address}.");
         }
 
-        return new IPEndPoint(addresses[0], upstream.Port);
+        return new IPEndPoint(addresses[0], endpoint.Port);
     }
 
     private static async ValueTask DisposePartialConnectionAsync(

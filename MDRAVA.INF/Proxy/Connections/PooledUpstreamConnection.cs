@@ -1,5 +1,5 @@
 using System.Net.Sockets;
-using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane.Upstreams;
 
 namespace MDRAVA.INF.Proxy.Connections;
 
@@ -7,13 +7,13 @@ internal sealed class PooledUpstreamConnection : IDisposable
 {
     public PooledUpstreamConnection(
         string key,
-        RuntimeUpstream upstream,
+        UpstreamTransportEndpoint endpoint,
         Socket socket,
         Stream stream,
         DateTimeOffset lastUsedUtc)
     {
         Key = key;
-        Upstream = upstream;
+        Endpoint = endpoint;
         Socket = socket;
         Stream = stream;
         LastUsedUtc = lastUsedUtc;
@@ -21,7 +21,7 @@ internal sealed class PooledUpstreamConnection : IDisposable
 
     public string Key { get; }
 
-    public RuntimeUpstream Upstream { get; }
+    public UpstreamTransportEndpoint Endpoint { get; }
 
     public Socket Socket { get; }
 

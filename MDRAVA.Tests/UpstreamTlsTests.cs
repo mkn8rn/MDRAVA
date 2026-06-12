@@ -89,8 +89,8 @@ internal static class UpstreamTlsTests
         var https = Upstream(5001, "https", RuntimeUpstreamTlsOptions.Default);
 
         AssertEx.False(string.Equals(
-            UpstreamConnectionPool.GetKey(http),
-            UpstreamConnectionPool.GetKey(https),
+            UpstreamConnectionPool.GetKey(UpstreamTransportEndpointMapper.FromUpstream(http)),
+            UpstreamConnectionPool.GetKey(UpstreamTransportEndpointMapper.FromUpstream(https)),
             StringComparison.Ordinal));
     }
 
@@ -101,12 +101,12 @@ internal static class UpstreamTlsTests
         var unsafeValidation = Upstream(5001, "https", new RuntimeUpstreamTlsOptions(false, "first.internal"));
 
         AssertEx.False(string.Equals(
-            UpstreamConnectionPool.GetKey(firstSni),
-            UpstreamConnectionPool.GetKey(secondSni),
+            UpstreamConnectionPool.GetKey(UpstreamTransportEndpointMapper.FromUpstream(firstSni)),
+            UpstreamConnectionPool.GetKey(UpstreamTransportEndpointMapper.FromUpstream(secondSni)),
             StringComparison.Ordinal));
         AssertEx.False(string.Equals(
-            UpstreamConnectionPool.GetKey(firstSni),
-            UpstreamConnectionPool.GetKey(unsafeValidation),
+            UpstreamConnectionPool.GetKey(UpstreamTransportEndpointMapper.FromUpstream(firstSni)),
+            UpstreamConnectionPool.GetKey(UpstreamTransportEndpointMapper.FromUpstream(unsafeValidation)),
             StringComparison.Ordinal));
     }
 
@@ -119,7 +119,7 @@ internal static class UpstreamTlsTests
         var upstream = Upstream(port, "https", new RuntimeUpstreamTlsOptions(false, "upstream.test"));
 
         using var transport = await new UpstreamConnectionFactory()
-            .ConnectAsync(upstream, Timeouts().UpstreamConnectTimeout, timeout.Token);
+            .ConnectAsync(UpstreamTransportEndpointMapper.FromUpstream(upstream), Timeouts().UpstreamConnectTimeout, timeout.Token);
 
         AssertEx.True(transport.Stream is SslStream, transport.Stream.GetType().FullName);
         transport.Dispose();
@@ -240,7 +240,7 @@ internal static class UpstreamTlsTests
         await AssertEx.ThrowsAsync<UpstreamTlsException>(async () =>
         {
             using var _ = await new UpstreamConnectionFactory()
-                .ConnectAsync(upstream, Timeouts().UpstreamConnectTimeout, timeout.Token);
+                .ConnectAsync(UpstreamTransportEndpointMapper.FromUpstream(upstream), Timeouts().UpstreamConnectTimeout, timeout.Token);
         });
         var observation = await upstreamTask.WaitAsync(timeout.Token);
 
@@ -335,7 +335,10 @@ internal static class UpstreamTlsTests
     {
         return new UpstreamHealthCheckTarget(
             route.Name,
-            upstream,
+            upstream.Name,
+            upstream.Endpoint,
+            upstream.Identity,
+            UpstreamTransportEndpointMapper.FromUpstream(upstream),
             route.HealthCheck.Path,
             route.HealthCheck.Interval,
             route.HealthCheck.Timeout,

@@ -1,21 +1,21 @@
 using System.Net.Sockets;
-using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane.Upstreams;
 
 namespace MDRAVA.INF.Proxy.Connections;
 
 public sealed class UpstreamTransportConnection : IDisposable
 {
     public UpstreamTransportConnection(
-        RuntimeUpstream upstream,
+        UpstreamTransportEndpoint endpoint,
         Socket socket,
         Stream stream)
     {
-        Upstream = upstream;
+        Endpoint = endpoint;
         Socket = socket;
         Stream = stream;
     }
 
-    public RuntimeUpstream Upstream { get; }
+    public UpstreamTransportEndpoint Endpoint { get; }
 
     public Socket Socket { get; }
 

@@ -80,8 +80,14 @@ internal static class UpstreamHttp3Tests
         var http2 = Upstream(5001, RuntimeUpstreamProtocol.Http2);
         var http3 = Upstream(5001, RuntimeUpstreamProtocol.Http3);
 
-        AssertEx.False(string.Equals(UpstreamConnectionPool.GetKey(http1), Http3UpstreamConnectionPool.GetKey(http3), StringComparison.Ordinal));
-        AssertEx.False(string.Equals(UpstreamConnectionPool.GetKey(http2), Http3UpstreamConnectionPool.GetKey(http3), StringComparison.Ordinal));
+        AssertEx.False(string.Equals(
+            UpstreamConnectionPool.GetKey(UpstreamTransportEndpointMapper.FromUpstream(http1)),
+            Http3UpstreamConnectionPool.GetKey(UpstreamTransportEndpointMapper.FromUpstream(http3)),
+            StringComparison.Ordinal));
+        AssertEx.False(string.Equals(
+            UpstreamConnectionPool.GetKey(UpstreamTransportEndpointMapper.FromUpstream(http2)),
+            Http3UpstreamConnectionPool.GetKey(UpstreamTransportEndpointMapper.FromUpstream(http3)),
+            StringComparison.Ordinal));
     }
 
     public static void PoolKeyIncludesHttp3SniAndValidation()
@@ -90,8 +96,14 @@ internal static class UpstreamHttp3Tests
         var second = Upstream(5001, RuntimeUpstreamProtocol.Http3, validateCertificate: true, sniHost: "two.test");
         var third = Upstream(5001, RuntimeUpstreamProtocol.Http3, validateCertificate: false, sniHost: "one.test");
 
-        AssertEx.False(string.Equals(Http3UpstreamConnectionPool.GetKey(first), Http3UpstreamConnectionPool.GetKey(second), StringComparison.Ordinal));
-        AssertEx.False(string.Equals(Http3UpstreamConnectionPool.GetKey(first), Http3UpstreamConnectionPool.GetKey(third), StringComparison.Ordinal));
+        AssertEx.False(string.Equals(
+            Http3UpstreamConnectionPool.GetKey(UpstreamTransportEndpointMapper.FromUpstream(first)),
+            Http3UpstreamConnectionPool.GetKey(UpstreamTransportEndpointMapper.FromUpstream(second)),
+            StringComparison.Ordinal));
+        AssertEx.False(string.Equals(
+            Http3UpstreamConnectionPool.GetKey(UpstreamTransportEndpointMapper.FromUpstream(first)),
+            Http3UpstreamConnectionPool.GetKey(UpstreamTransportEndpointMapper.FromUpstream(third)),
+            StringComparison.Ordinal));
     }
 
     public static async Task Http3UpstreamProxyMapsHeadersQueryAndResponse()
@@ -1177,7 +1189,10 @@ internal static class UpstreamHttp3Tests
     {
         return new UpstreamHealthCheckTarget(
             route.Name,
-            upstream,
+            upstream.Name,
+            upstream.Endpoint,
+            upstream.Identity,
+            UpstreamTransportEndpointMapper.FromUpstream(upstream),
             route.HealthCheck.Path,
             route.HealthCheck.Interval,
             route.HealthCheck.Timeout,
