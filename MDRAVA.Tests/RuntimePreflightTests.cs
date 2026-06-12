@@ -130,6 +130,28 @@ internal static class RuntimePreflightTests
         AssertEx.Equal(ProxyStatusText.Ok, healthy.Reason);
     }
 
+    public static void RuntimePreflightDirectoryPolicyListsExpectedDirectories()
+    {
+        var directories = ProxyRuntimePreflightDirectoryPolicy.ExpectedDirectories();
+
+        AssertEx.Equal(6, directories.Count);
+        AssertEx.True(directories.Any(static directory =>
+            directory.Kind == ProxyRuntimePreflightDirectoryKind.Data
+            && directory.Name == "data_directory"
+            && directory.RelativePath == "."
+            && directory.Critical));
+        AssertEx.True(directories.Any(static directory =>
+            directory.Kind == ProxyRuntimePreflightDirectoryKind.Sites
+            && directory.Name == "sites_directory"
+            && directory.RelativePath == "config/sites"
+            && directory.Critical));
+        AssertEx.True(directories.Any(static directory =>
+            directory.Kind == ProxyRuntimePreflightDirectoryKind.Logs
+            && directory.Name == "logs_directory"
+            && directory.RelativePath == "logs"
+            && !directory.Critical));
+    }
+
     private static MdravaDataDirectoryProvider Provider(string dataDirectory)
     {
         return new MdravaDataDirectoryProvider(new MdravaDataDirectoryOptions

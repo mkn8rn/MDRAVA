@@ -63,13 +63,13 @@ public sealed class ProxyRuntimePreflightService : IProxyStatusRuntimePreflightS
         var dataDirectory = _dataDirectoryProvider.GetDataDirectory();
         List<ProxyRuntimePreflightCheck> checks = [];
 
-        var data = Check("data_directory", dataDirectory, ".", critical: true, createMissingOwnedDirectories);
-        checks.Add(data);
-        checks.Add(Check("config_directory", _dataDirectoryProvider.GetProxyConfigDirectory(), "config", critical: true, createMissingOwnedDirectories));
-        checks.Add(Check("sites_directory", _dataDirectoryProvider.GetSitesConfigDirectory(), "config/sites", critical: true, createMissingOwnedDirectories));
-        checks.Add(Check("logs_directory", _dataDirectoryProvider.GetLogsDirectory(), "logs", critical: false, createMissingOwnedDirectories));
-        checks.Add(Check("certificates_directory", _dataDirectoryProvider.GetCertificatesDirectory(), "certs", critical: false, createMissingOwnedDirectories));
-        checks.Add(Check("state_directory", _dataDirectoryProvider.GetStateDirectory(), "state", critical: false, createMissingOwnedDirectories));
+        foreach (var requirement in ProxyRuntimePreflightDirectoryPolicy.ExpectedDirectories())
+        {
+            checks.Add(Check(
+                requirement,
+                ResolveDirectoryPath(requirement.Kind),
+                createMissingOwnedDirectories));
+        }
 
         var failed = checks.Any(static check => string.Equals(check.Severity, ProxyStatusText.Error, StringComparison.OrdinalIgnoreCase));
         var degraded = checks.Any(static check => string.Equals(check.Severity, ProxyStatusText.Warning, StringComparison.OrdinalIgnoreCase));
@@ -83,31 +83,29 @@ public sealed class ProxyRuntimePreflightService : IProxyStatusRuntimePreflightS
         return new ProxyRuntimePreflightStatus(state, generatedAtUtc, reasons, checks);
 
         ProxyRuntimePreflightCheck Check(
-            string name,
+            ProxyRuntimePreflightDirectoryRequirement requirement,
             string path,
-            string relativePath,
-            bool critical,
             bool createMissing)
         {
-            if (name != "data_directory"
+            if (requirement.Kind != ProxyRuntimePreflightDirectoryKind.Data
                 && !_pathSafety.TryGetSafeRelativePath(dataDirectory, path, out _))
             {
                 return new ProxyRuntimePreflightCheck(
-                    name,
-                    relativePath,
+                    requirement.Name,
+                    requirement.RelativePath,
                     Exists: false,
                     Created: false,
                     CanRead: false,
                     CanWrite: false,
-                    critical ? ProxyStatusText.Error : ProxyStatusText.Warning,
+                    requirement.Critical ? ProxyStatusText.Error : ProxyStatusText.Warning,
                     "unsafe_path");
             }
 
             var result = _directoryProbe.Probe(path, createMissing);
-            var classification = ProxyRuntimePreflightProbePolicy.Classify(result, critical);
+            var classification = ProxyRuntimePreflightProbePolicy.Classify(result, requirement.Critical);
             return new ProxyRuntimePreflightCheck(
-                name,
-                name == "data_directory" ? "." : relativePath,
+                requirement.Name,
+                requirement.RelativePath,
                 result.Exists,
                 result.Created,
                 result.CanRead,
@@ -115,5 +113,19 @@ public sealed class ProxyRuntimePreflightService : IProxyStatusRuntimePreflightS
                 classification.Severity,
                 classification.Reason);
         }
+    }
+
+    private string ResolveDirectoryPath(ProxyRuntimePreflightDirectoryKind kind)
+    {
+        return kind switch
+        {
+            ProxyRuntimePreflightDirectoryKind.Data => _dataDirectoryProvider.GetDataDirectory(),
+            ProxyRuntimePreflightDirectoryKind.Config => _dataDirectoryProvider.GetProxyConfigDirectory(),
+            ProxyRuntimePreflightDirectoryKind.Sites => _dataDirectoryProvider.GetSitesConfigDirectory(),
+            ProxyRuntimePreflightDirectoryKind.Logs => _dataDirectoryProvider.GetLogsDirectory(),
+            ProxyRuntimePreflightDirectoryKind.Certificates => _dataDirectoryProvider.GetCertificatesDirectory(),
+            ProxyRuntimePreflightDirectoryKind.State => _dataDirectoryProvider.GetStateDirectory(),
+            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown runtime preflight directory kind.")
+        };
     }
 }
