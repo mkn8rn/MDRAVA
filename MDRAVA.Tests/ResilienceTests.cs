@@ -314,9 +314,9 @@ internal static class ResilienceTests
         using var fixture = SelectorFixture.Create();
         var route = Route([Upstream("first", weight: 1, circuit: Circuit(threshold: 2))]);
 
-        var first = AssertEx.NotNull(fixture.Selector.Select(UpstreamSelectionRoute.FromRuntime(route)));
+        var first = AssertEx.NotNull(fixture.Selector.Select(SelectionRoute(route)));
         fixture.Circuit.RecordFailure(first.CircuitBreakerLease, "connect_failure");
-        var second = AssertEx.NotNull(fixture.Selector.Select(UpstreamSelectionRoute.FromRuntime(route)));
+        var second = AssertEx.NotNull(fixture.Selector.Select(SelectionRoute(route)));
         fixture.Circuit.RecordFailure(second.CircuitBreakerLease, "connect_failure");
 
         AssertEx.Equal(CircuitBreakerRuntimeState.Open, fixture.Circuit.Snapshot(StatusSource(route.Upstreams[0])).State);
@@ -326,10 +326,10 @@ internal static class ResilienceTests
     {
         using var fixture = SelectorFixture.Create();
         var route = Route([Upstream("first", weight: 1, circuit: Circuit(threshold: 1))]);
-        var first = AssertEx.NotNull(fixture.Selector.Select(UpstreamSelectionRoute.FromRuntime(route)));
+        var first = AssertEx.NotNull(fixture.Selector.Select(SelectionRoute(route)));
         fixture.Circuit.RecordFailure(first.CircuitBreakerLease, "connect_failure");
 
-        var second = fixture.Selector.Select(UpstreamSelectionRoute.FromRuntime(route));
+        var second = fixture.Selector.Select(SelectionRoute(route));
 
         AssertEx.Equal(null, second);
         AssertEx.Equal(1L, fixture.Metrics.Snapshot().CircuitRejections);
@@ -339,11 +339,11 @@ internal static class ResilienceTests
     {
         using var fixture = SelectorFixture.Create();
         var route = Route([Upstream("first", weight: 1, circuit: Circuit(threshold: 1, openSeconds: 5))]);
-        var first = AssertEx.NotNull(fixture.Selector.Select(UpstreamSelectionRoute.FromRuntime(route)));
+        var first = AssertEx.NotNull(fixture.Selector.Select(SelectionRoute(route)));
         fixture.Circuit.RecordFailure(first.CircuitBreakerLease, "connect_failure");
 
         fixture.Clock.Advance(TimeSpan.FromSeconds(5));
-        var second = AssertEx.NotNull(fixture.Selector.Select(UpstreamSelectionRoute.FromRuntime(route)));
+        var second = AssertEx.NotNull(fixture.Selector.Select(SelectionRoute(route)));
 
         AssertEx.True(AssertEx.NotNull(second.CircuitBreakerLease).HalfOpenProbe);
         AssertEx.Equal(CircuitBreakerRuntimeState.HalfOpen, fixture.Circuit.Snapshot(StatusSource(route.Upstreams[0])).State);
@@ -353,12 +353,12 @@ internal static class ResilienceTests
     {
         using var fixture = SelectorFixture.Create();
         var route = Route([Upstream("first", weight: 1, circuit: Circuit(threshold: 1, openSeconds: 1))]);
-        var first = AssertEx.NotNull(fixture.Selector.Select(UpstreamSelectionRoute.FromRuntime(route)));
+        var first = AssertEx.NotNull(fixture.Selector.Select(SelectionRoute(route)));
         fixture.Circuit.RecordFailure(first.CircuitBreakerLease, "connect_failure");
         fixture.Clock.Advance(TimeSpan.FromSeconds(1));
 
-        var probe = AssertEx.NotNull(fixture.Selector.Select(UpstreamSelectionRoute.FromRuntime(route)));
-        var rejected = fixture.Selector.Select(UpstreamSelectionRoute.FromRuntime(route));
+        var probe = AssertEx.NotNull(fixture.Selector.Select(SelectionRoute(route)));
+        var rejected = fixture.Selector.Select(SelectionRoute(route));
 
         AssertEx.True(AssertEx.NotNull(probe.CircuitBreakerLease).HalfOpenProbe);
         AssertEx.Equal(null, rejected);
@@ -369,10 +369,10 @@ internal static class ResilienceTests
     {
         using var fixture = SelectorFixture.Create();
         var route = Route([Upstream("first", weight: 1, circuit: Circuit(threshold: 1, openSeconds: 1))]);
-        var first = AssertEx.NotNull(fixture.Selector.Select(UpstreamSelectionRoute.FromRuntime(route)));
+        var first = AssertEx.NotNull(fixture.Selector.Select(SelectionRoute(route)));
         fixture.Circuit.RecordFailure(first.CircuitBreakerLease, "connect_failure");
         fixture.Clock.Advance(TimeSpan.FromSeconds(1));
-        var probe = AssertEx.NotNull(fixture.Selector.Select(UpstreamSelectionRoute.FromRuntime(route)));
+        var probe = AssertEx.NotNull(fixture.Selector.Select(SelectionRoute(route)));
 
         fixture.Circuit.RecordSuccess(probe.CircuitBreakerLease);
 
@@ -383,10 +383,10 @@ internal static class ResilienceTests
     {
         using var fixture = SelectorFixture.Create();
         var route = Route([Upstream("first", weight: 1, circuit: Circuit(threshold: 1, openSeconds: 1))]);
-        var first = AssertEx.NotNull(fixture.Selector.Select(UpstreamSelectionRoute.FromRuntime(route)));
+        var first = AssertEx.NotNull(fixture.Selector.Select(SelectionRoute(route)));
         fixture.Circuit.RecordFailure(first.CircuitBreakerLease, "connect_failure");
         fixture.Clock.Advance(TimeSpan.FromSeconds(1));
-        var probe = AssertEx.NotNull(fixture.Selector.Select(UpstreamSelectionRoute.FromRuntime(route)));
+        var probe = AssertEx.NotNull(fixture.Selector.Select(SelectionRoute(route)));
 
         fixture.Circuit.RecordFailure(probe.CircuitBreakerLease, "connect_failure");
 
@@ -400,9 +400,9 @@ internal static class ResilienceTests
 
         var selected = new[]
         {
-            AssertEx.NotNull(fixture.Selector.Select(UpstreamSelectionRoute.FromRuntime(route))).Upstream.Name,
-            AssertEx.NotNull(fixture.Selector.Select(UpstreamSelectionRoute.FromRuntime(route))).Upstream.Name,
-            AssertEx.NotNull(fixture.Selector.Select(UpstreamSelectionRoute.FromRuntime(route))).Upstream.Name
+            AssertEx.NotNull(fixture.Selector.Select(SelectionRoute(route))).Upstream.Name,
+            AssertEx.NotNull(fixture.Selector.Select(SelectionRoute(route))).Upstream.Name,
+            AssertEx.NotNull(fixture.Selector.Select(SelectionRoute(route))).Upstream.Name
         };
 
         AssertEx.Equal("first,first,second", string.Join(',', selected));
@@ -415,9 +415,9 @@ internal static class ResilienceTests
 
         var selected = new[]
         {
-            AssertEx.NotNull(fixture.Selector.Select(UpstreamSelectionRoute.FromRuntime(route))).Upstream.Name,
-            AssertEx.NotNull(fixture.Selector.Select(UpstreamSelectionRoute.FromRuntime(route))).Upstream.Name,
-            AssertEx.NotNull(fixture.Selector.Select(UpstreamSelectionRoute.FromRuntime(route))).Upstream.Name
+            AssertEx.NotNull(fixture.Selector.Select(SelectionRoute(route))).Upstream.Name,
+            AssertEx.NotNull(fixture.Selector.Select(SelectionRoute(route))).Upstream.Name,
+            AssertEx.NotNull(fixture.Selector.Select(SelectionRoute(route))).Upstream.Name
         };
 
         AssertEx.Equal("first,second,first", string.Join(',', selected));
@@ -431,14 +431,14 @@ internal static class ResilienceTests
         using var healthFixture = SelectorFixture.Create();
         var route = Route([first, second], healthEnabled: true);
         healthFixture.Health.RecordHealthCheckResult(HealthTarget(route, first), new HealthCheckSample(false, "failed"), healthFixture.Clock.GetUtcNow());
-        var firstSelection = AssertEx.NotNull(healthFixture.Selector.Select(UpstreamSelectionRoute.FromRuntime(route)));
+        var firstSelection = AssertEx.NotNull(healthFixture.Selector.Select(SelectionRoute(route)));
         AssertEx.Equal("second", firstSelection.Upstream.Name);
 
         using var circuitFixture = SelectorFixture.Create();
         var routeWithoutHealth = Route([first, second]);
-        var openSelection = AssertEx.NotNull(circuitFixture.Selector.Select(UpstreamSelectionRoute.FromRuntime(routeWithoutHealth)));
+        var openSelection = AssertEx.NotNull(circuitFixture.Selector.Select(SelectionRoute(routeWithoutHealth)));
         circuitFixture.Circuit.RecordFailure(openSelection.CircuitBreakerLease, "connect_failure");
-        var afterOpen = AssertEx.NotNull(circuitFixture.Selector.Select(UpstreamSelectionRoute.FromRuntime(routeWithoutHealth)));
+        var afterOpen = AssertEx.NotNull(circuitFixture.Selector.Select(SelectionRoute(routeWithoutHealth)));
 
         AssertEx.Equal("second", afterOpen.Upstream.Name);
     }
@@ -454,10 +454,10 @@ internal static class ResilienceTests
             Tls = new RuntimeUpstreamTlsOptions(true, "h3.internal")
         };
         var route = Route([http1, http3]);
-        var first = AssertEx.NotNull(fixture.Selector.Select(UpstreamSelectionRoute.FromRuntime(route)));
+        var first = AssertEx.NotNull(fixture.Selector.Select(SelectionRoute(route)));
         fixture.Circuit.RecordFailure(first.CircuitBreakerLease, "connect_failure");
 
-        var second = AssertEx.NotNull(fixture.Selector.Select(UpstreamSelectionRoute.FromRuntime(route)));
+        var second = AssertEx.NotNull(fixture.Selector.Select(SelectionRoute(route)));
 
         AssertEx.Equal("http3", second.Upstream.Name);
         AssertEx.Equal(CircuitBreakerRuntimeState.Open, fixture.Circuit.Snapshot(StatusSource(http1)).State);
@@ -468,10 +468,10 @@ internal static class ResilienceTests
     {
         using var fixture = SelectorFixture.Create();
         var route = Route([Upstream("first", weight: 1, circuit: Circuit(threshold: 1))]);
-        var first = AssertEx.NotNull(fixture.Selector.Select(UpstreamSelectionRoute.FromRuntime(route)));
+        var first = AssertEx.NotNull(fixture.Selector.Select(SelectionRoute(route)));
         fixture.Circuit.RecordFailure(first.CircuitBreakerLease, "connect_failure");
 
-        AssertEx.True(fixture.Selector.Select(UpstreamSelectionRoute.FromRuntime(route)) is null);
+        AssertEx.True(fixture.Selector.Select(SelectionRoute(route)) is null);
         AssertEx.Equal(1L, fixture.Metrics.Snapshot().NoAvailableUpstreamFailures);
     }
 
@@ -514,7 +514,7 @@ internal static class ResilienceTests
         var route = Route([Upstream("first", weight: 1, circuit: Circuit(threshold: 1))]);
         fixture.Metrics.RetryAttempted();
         fixture.Metrics.RetryExhausted();
-        var selection = AssertEx.NotNull(fixture.Selector.Select(UpstreamSelectionRoute.FromRuntime(route)));
+        var selection = AssertEx.NotNull(fixture.Selector.Select(SelectionRoute(route)));
         fixture.Circuit.RecordFailure(selection.CircuitBreakerLease, "connect_failure");
 
         var text = fixture.Export();
@@ -534,7 +534,7 @@ internal static class ResilienceTests
             Retry = new RuntimeRetryPolicy(true, 2, null, true, false, [], ["GET", "HEAD"], TimeSpan.Zero)
         };
         fixture.Store.Replace(fixture.Store.Snapshot with { Routes = [route] });
-        var selection = AssertEx.NotNull(fixture.Selector.Select(UpstreamSelectionRoute.FromRuntime(route)));
+        var selection = AssertEx.NotNull(fixture.Selector.Select(SelectionRoute(route)));
         fixture.Circuit.RecordFailure(selection.CircuitBreakerLease, "connect_failure");
 
         var projection = ProxyConfigurationProjectionMapper.ToProjection(
@@ -832,6 +832,14 @@ internal static class ResilienceTests
         {
             SiteName = "site"
         };
+    }
+
+    private static UpstreamSelectionRoute SelectionRoute(RuntimeRoute route)
+    {
+        return new UpstreamSelectionRoute(
+            route.Name,
+            route.HealthCheck.Enabled,
+            route.Upstreams);
     }
 
     private static RuntimeUpstream Upstream(

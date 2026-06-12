@@ -22,6 +22,7 @@ using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using MDRAVA.INF.Proxy;
 using MDRAVA.INF.Proxy.Forwarding;
 using MDRAVA.INF.Proxy.Health;
 using MDRAVA.INF.Proxy.Http3;
@@ -683,7 +684,7 @@ public sealed class Http2ClientConnection
         ForwardingResult? lastResult = null;
         for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
-            var selection = _upstreamSelector.Select(UpstreamSelectionRoute.FromRuntime(route));
+            var selection = _upstreamSelector.Select(ProxyUpstreamSelectionRuntimeMapper.ToSelectionRoute(route));
             if (selection is null)
             {
                 if (attempt > 1)

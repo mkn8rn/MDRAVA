@@ -20,6 +20,7 @@ using System.Buffers;
 using System.Net.Sockets;
 using System.Net.Security;
 using System.Text;
+using MDRAVA.INF.Proxy;
 using MDRAVA.INF.Proxy.Forwarding;
 using MDRAVA.INF.Proxy.Health;
 using MDRAVA.INF.Proxy.Http2;
@@ -619,7 +620,7 @@ public sealed class ClientConnection
         ForwardingResult? lastResult = null;
         for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
-            var selection = _upstreamSelector.Select(UpstreamSelectionRoute.FromRuntime(route));
+            var selection = _upstreamSelector.Select(ProxyUpstreamSelectionRuntimeMapper.ToSelectionRoute(route));
             if (selection is null)
             {
                 if (attempt > 1)
@@ -774,7 +775,7 @@ public sealed class ClientConnection
             return false;
         }
 
-        var upgradeSelection = _upstreamSelector.Select(UpstreamSelectionRoute.FromRuntime(upgradeRouteMatch.Route));
+        var upgradeSelection = _upstreamSelector.Select(ProxyUpstreamSelectionRuntimeMapper.ToSelectionRoute(upgradeRouteMatch.Route));
         if (upgradeSelection is null)
         {
             _metrics.UpgradeRequestRejected();
