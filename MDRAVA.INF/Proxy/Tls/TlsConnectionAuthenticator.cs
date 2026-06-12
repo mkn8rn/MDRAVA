@@ -62,7 +62,7 @@ public sealed class TlsConnectionAuthenticator
                 ProxyTimeoutKind.TlsHandshake,
                 cancellationToken);
             _metrics.TlsHandshakeSucceeded();
-            return new TlsAuthenticationResult(sslStream, sslStream.NegotiatedApplicationProtocol);
+            return TlsAuthenticationResult.Succeeded(sslStream);
         }
         catch (ProxyTimeoutException)
         {

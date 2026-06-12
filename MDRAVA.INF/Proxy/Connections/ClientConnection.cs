@@ -18,7 +18,6 @@ using MDRAVA.BLL.ControlPlane.Caching;
 using Microsoft.Extensions.Logging;
 using System.Buffers;
 using System.Net.Sockets;
-using System.Net.Security;
 using System.Text;
 using MDRAVA.INF.Proxy;
 using MDRAVA.INF.Proxy.Forwarding;
@@ -132,7 +131,7 @@ public sealed class ClientConnection
         }
 
         await using var ownedClientStream = clientStream;
-        if (tlsResult?.NegotiatedProtocol == SslApplicationProtocol.Http2)
+        if (tlsResult?.NegotiatedHttp2 == true)
         {
             var http2Connection = new Http2ClientConnection(
                 clientStream,
