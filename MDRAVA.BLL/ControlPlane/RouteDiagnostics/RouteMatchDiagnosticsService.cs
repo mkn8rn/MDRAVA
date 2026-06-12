@@ -79,9 +79,9 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
                 target,
                 null,
                 null,
-                DisabledPolicy("no_route"),
-                DisabledPolicy("no_route"),
-                DisabledPolicy("no_route"),
+                ProxyRouteDiagnosticsPolicyExplainer.Disabled("no_route"),
+                ProxyRouteDiagnosticsPolicyExplainer.Disabled("no_route"),
+                ProxyRouteDiagnosticsPolicyExplainer.Disabled("no_route"),
                 [new RouteMatchDryRunFinding("warning", "no_matching_listener", "No enabled listener matches the supplied scheme, port, or listener identity.")]));
         }
 
@@ -113,9 +113,9 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
                 target,
                 null,
                 null,
-                DisabledPolicy("no_route"),
-                DisabledPolicy("no_route"),
-                DisabledPolicy("no_route"),
+                ProxyRouteDiagnosticsPolicyExplainer.Disabled("no_route"),
+                ProxyRouteDiagnosticsPolicyExplainer.Disabled("no_route"),
+                ProxyRouteDiagnosticsPolicyExplainer.Disabled("no_route"),
                 [new RouteMatchDryRunFinding("info", "no_matching_route", "No configured route matched the supplied host and path.")]));
         }
 
@@ -156,9 +156,9 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
             target,
             rewrittenTarget,
             upstream,
-            ExplainCache(route, requestHead, actionDecision.ShouldProxy),
-            ExplainRetry(route, requestHead, actionDecision.ShouldProxy),
-            ExplainCircuitBreaker(route, actionDecision.ShouldProxy),
+            ProxyRouteDiagnosticsPolicyExplainer.ExplainCache(route, requestHead, actionDecision.ShouldProxy),
+            ProxyRouteDiagnosticsPolicyExplainer.ExplainRetry(route, requestHead, actionDecision.ShouldProxy),
+            ProxyRouteDiagnosticsPolicyExplainer.ExplainCircuitBreaker(route, actionDecision.ShouldProxy),
             findings));
     }
 
@@ -184,9 +184,9 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
             null,
             null,
             null,
-            DisabledPolicy(reason),
-            DisabledPolicy(reason),
-            DisabledPolicy(reason),
+            ProxyRouteDiagnosticsPolicyExplainer.Disabled(reason),
+            ProxyRouteDiagnosticsPolicyExplainer.Disabled(reason),
+            ProxyRouteDiagnosticsPolicyExplainer.Disabled(reason),
             [new RouteMatchDryRunFinding("error", reason, message)]);
     }
 
@@ -373,83 +373,6 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
                 "first_configured_candidate_no_state_mutation");
     }
 
-    private static RouteMatchDryRunPolicy ExplainCache(
-        IProxyRouteDiagnosticsRoute route,
-        ProxyRouteDiagnosticsRequestHead requestHead,
-        bool wouldProxy)
-    {
-        if (!route.CacheEnabled)
-        {
-            return DisabledPolicy("disabled");
-        }
-
-        if (!wouldProxy)
-        {
-            return new RouteMatchDryRunPolicy(true, false, "not_proxy_action");
-        }
-
-        if (!route.CacheMethods.Any(method => string.Equals(method, requestHead.Method, StringComparison.OrdinalIgnoreCase)))
-        {
-            return new RouteMatchDryRunPolicy(true, false, "method_not_cacheable");
-        }
-
-        if (requestHead.Framing.Kind != ProxyRouteDiagnosticsBodyKind.None)
-        {
-            return new RouteMatchDryRunPolicy(true, false, "request_body");
-        }
-
-        if (ContainsHeader(requestHead.Headers, "Authorization"))
-        {
-            return new RouteMatchDryRunPolicy(true, false, "authorization");
-        }
-
-        return new RouteMatchDryRunPolicy(true, true, "eligible_before_origin_response");
-    }
-
-    private static RouteMatchDryRunPolicy ExplainRetry(
-        IProxyRouteDiagnosticsRoute route,
-        ProxyRouteDiagnosticsRequestHead requestHead,
-        bool wouldProxy)
-    {
-        if (!route.RetryEnabled)
-        {
-            return DisabledPolicy("disabled");
-        }
-
-        if (!wouldProxy)
-        {
-            return new RouteMatchDryRunPolicy(true, false, "not_proxy_action");
-        }
-
-        if (!route.RetryMethods.Any(method => string.Equals(method, requestHead.Method, StringComparison.OrdinalIgnoreCase)))
-        {
-            return new RouteMatchDryRunPolicy(true, false, "method_not_retryable");
-        }
-
-        if (requestHead.Framing.Kind != ProxyRouteDiagnosticsBodyKind.None)
-        {
-            return new RouteMatchDryRunPolicy(true, false, "request_body_not_replayable");
-        }
-
-        return new RouteMatchDryRunPolicy(true, true, "eligible_for_configured_transport_or_status_failures");
-    }
-
-    private static RouteMatchDryRunPolicy ExplainCircuitBreaker(IProxyRouteDiagnosticsRoute route, bool wouldProxy)
-    {
-        var enabled = route.Upstreams.Any(static upstream => upstream.CircuitBreakerEnabled);
-        if (!enabled)
-        {
-            return DisabledPolicy("disabled");
-        }
-
-        return new RouteMatchDryRunPolicy(enabled, wouldProxy, wouldProxy ? "configured_for_one_or_more_upstreams" : "not_proxy_action");
-    }
-
-    private static bool ContainsHeader(IReadOnlyList<ProxyHeaderField> headers, string name)
-    {
-        return headers.Any(header => string.Equals(header.Name, name, StringComparison.OrdinalIgnoreCase));
-    }
-
     private static bool IsUpgrade(IReadOnlyList<ProxyHeaderField> headers)
     {
         return headers.Any(static header => string.Equals(header.Name, "Upgrade", StringComparison.OrdinalIgnoreCase));
@@ -500,11 +423,6 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
             listener.Address,
             listener.Port,
             listener.Protocols.ToString());
-    }
-
-    private static RouteMatchDryRunPolicy DisabledPolicy(string reason)
-    {
-        return new RouteMatchDryRunPolicy(false, false, reason);
     }
 
     private static string NormalizeScheme(string value)
