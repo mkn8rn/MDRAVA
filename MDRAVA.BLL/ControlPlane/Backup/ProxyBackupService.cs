@@ -40,10 +40,7 @@ public sealed class ProxyBackupService : IProxyBackupOperations
         var scan = _backupFileSystem.ScanDataDirectory(root);
         if (!scan.RootExists)
         {
-            warnings.Add(new ProxyBackupWarning(
-                "data_directory_missing",
-                "The MDRAVA data directory does not exist.",
-                null));
+            warnings.Add(ProxyBackupWarningPolicy.DataDirectoryMissing());
         }
         else
         {
@@ -61,16 +58,13 @@ public sealed class ProxyBackupService : IProxyBackupOperations
 
             foreach (var warning in scan.Warnings)
             {
-                AddWarning(warnings, ToManifestWarning(warning));
+                AddWarning(warnings, ProxyBackupWarningPolicy.FromFileSystemWarning(warning));
             }
         }
 
         foreach (var directory in directories.Where(static directory => !directory.Exists))
         {
-            AddWarning(warnings, new ProxyBackupWarning(
-                "missing_directory",
-                "An expected data-directory child is missing.",
-                directory.RelativePath));
+            AddWarning(warnings, ProxyBackupWarningPolicy.MissingDirectory(directory.RelativePath));
         }
 
         var truncated = entries.Count > MaxEntries;
@@ -80,10 +74,7 @@ public sealed class ProxyBackupService : IProxyBackupOperations
                 .OrderBy(static entry => entry.RelativePath, StringComparer.OrdinalIgnoreCase)
                 .Take(MaxEntries)
                 .ToList();
-            AddWarning(warnings, new ProxyBackupWarning(
-                "manifest_truncated",
-                "The backup manifest reached its bounded entry limit.",
-                null));
+            AddWarning(warnings, ProxyBackupWarningPolicy.ManifestTruncated());
         }
 
         var counts = entries
@@ -196,29 +187,6 @@ public sealed class ProxyBackupService : IProxyBackupOperations
         return _backupFileSystem.TryGetSafeRelativePath(root, path, out var relativePath)
             ? relativePath
             : null;
-    }
-
-    private static ProxyBackupWarning ToManifestWarning(ProxyBackupFileSystemWarning warning)
-    {
-        return warning.Code switch
-        {
-            "directory_unreadable" => new ProxyBackupWarning(
-                warning.Code,
-                "A directory could not be inspected.",
-                warning.RelativePath),
-            "reparse_point_skipped" => new ProxyBackupWarning(
-                warning.Code,
-                "A reparse point was skipped during backup manifest generation.",
-                warning.RelativePath),
-            "unsafe_path_skipped" => new ProxyBackupWarning(
-                warning.Code,
-                "A file path could not be represented as a safe data-directory relative path.",
-                warning.RelativePath),
-            _ => new ProxyBackupWarning(
-                warning.Code,
-                "A backup filesystem path could not be inspected.",
-                warning.RelativePath)
-        };
     }
 
     private static void AddWarning(List<ProxyBackupWarning> warnings, ProxyBackupWarning warning)
