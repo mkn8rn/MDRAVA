@@ -209,6 +209,20 @@ internal static class LogPersistenceTests
         AssertEx.Equal(5, settings.MaxFiles);
     }
 
+    public static void LogPersistenceSettingsReaderUsesNamedDisabledDefaultsWhenSourceMissing()
+    {
+        var reader = new ProxyLogPersistenceSettingsReader(MissingLogPersistenceSettingsSource.Instance);
+
+        var found = reader.TryGetLogPersistenceSettings(out var settings);
+
+        AssertEx.False(found);
+        AssertEx.Equal(ProxyLogPersistenceSettings.DisabledOperationalDefaults, settings);
+        AssertEx.False(settings.AccessLogEnabled);
+        AssertEx.False(settings.AdminAuditEnabled);
+        AssertEx.Equal(1_048_576L, settings.MaxFileBytes);
+        AssertEx.Equal(8, settings.MaxFiles);
+    }
+
     public static void LogPersistenceStatusReportsDisabledSettings()
     {
         using var temp = TemporaryDirectory.Create();
@@ -440,6 +454,17 @@ internal static class LogPersistenceTests
                 _utcNow = _utcNow.Add(interval);
                 _timestamp += interval.Ticks;
             }
+        }
+    }
+
+    private sealed class MissingLogPersistenceSettingsSource : IProxyLogPersistenceSettingsSource
+    {
+        public static MissingLogPersistenceSettingsSource Instance { get; } = new();
+
+        public bool TryGetLogPersistenceSettings(out ProxyLogPersistenceSettings settings)
+        {
+            settings = ProxyLogPersistenceSettings.Unavailable;
+            return false;
         }
     }
 

@@ -19,6 +19,7 @@ internal static partial class TestRegistry
     Test("Log persistence write failure does not crash", Sync(LogPersistenceTests.LogPersistenceWriteFailureDoesNotCrash), TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),
     Test("Log persistence status reports enabled settings", Sync(LogPersistenceTests.LogPersistenceStatusReportsEnabledSettings), TestTaxonomy.Config, TestTaxonomy.Metrics),
     Test("Log persistence settings mapper reads runtime options without configuration snapshot", Sync(LogPersistenceTests.LogPersistenceSettingsMapperReadsRuntimeOptionsWithoutConfigurationSnapshot), TestTaxonomy.Config, TestTaxonomy.Metrics),
+    Test("Log persistence settings reader uses named disabled defaults when source missing", Sync(LogPersistenceTests.LogPersistenceSettingsReaderUsesNamedDisabledDefaultsWhenSourceMissing), TestTaxonomy.Config, TestTaxonomy.Metrics),
     Test("Log persistence status reports disabled settings", Sync(LogPersistenceTests.LogPersistenceStatusReportsDisabledSettings), TestTaxonomy.Config, TestTaxonomy.Metrics),
     Test("Log persistence status records last write failure without secrets", Sync(LogPersistenceTests.LogPersistenceStatusRecordsLastWriteFailureWithoutSecrets), TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),
     Test("Status controller includes log persistence health without secrets", Sync(LogPersistenceTests.StatusControllerIncludesLogPersistenceHealthWithoutSecrets), TestTaxonomy.Admin, TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),

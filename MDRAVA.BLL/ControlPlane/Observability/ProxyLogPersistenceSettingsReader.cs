@@ -31,11 +31,7 @@ public sealed class ProxyLogPersistenceSettingsReader : IProxyLogPersistenceSett
             return true;
         }
 
-        settings = new ProxyLogPersistenceSettings(
-            AccessLogEnabled: false,
-            AdminAuditEnabled: false,
-            MaxFileBytes: 1_048_576,
-            MaxFiles: 8);
+        settings = ProxyLogPersistenceSettings.DisabledOperationalDefaults;
         return false;
     }
 }
@@ -58,11 +54,7 @@ public sealed class ProxyConfigurationLogPersistenceSettingsSource
             return true;
         }
 
-        settings = new ProxyLogPersistenceSettings(
-            AccessLogEnabled: false,
-            AdminAuditEnabled: false,
-            MaxFileBytes: 0,
-            MaxFiles: 0);
+        settings = ProxyLogPersistenceSettings.Unavailable;
         return false;
     }
 }
