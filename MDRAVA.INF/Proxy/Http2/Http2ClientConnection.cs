@@ -323,8 +323,10 @@ public sealed class Http2ClientConnection
         var context = CreateRequestContext();
         try
         {
-            if (!TryBuildRequest(stream, context, out var requestHead, out var rejectionReason))
+            var requestBuildResult = BuildRequest(stream);
+            if (requestBuildResult is not Http2RequestBuildResult.Accepted acceptedRequest)
             {
+                var rejectionReason = ((Http2RequestBuildResult.Rejected)requestBuildResult).Reason;
                 _metrics.Http2ProtocolError(rejectionReason);
                 await WriteGeneratedResponseAsync(
                     stream.Id,
@@ -338,6 +340,7 @@ public sealed class Http2ClientConnection
                 return;
             }
 
+            var requestHead = acceptedRequest.RequestHead;
             _metrics.RequestReceived();
             _metrics.Http2RequestReceived();
             context.SetRequest(
@@ -543,17 +546,11 @@ public sealed class Http2ClientConnection
         return true;
     }
 
-    private bool TryBuildRequest(
-        StreamState stream,
-        ProxyRequestContext context,
-        out Http1RequestHead requestHead,
-        out string rejectionReason)
+    private Http2RequestBuildResult BuildRequest(StreamState stream)
     {
-        requestHead = null!;
-        rejectionReason = "invalid_headers";
-        if (!HpackCodec.TryDecodeRequestHeaders(stream.HeaderBlock.ToArray(), out var headers, out rejectionReason))
+        if (!HpackCodec.TryDecodeRequestHeaders(stream.HeaderBlock.ToArray(), out var headers, out var rejectionReason))
         {
-            return false;
+            return Http2RequestBuildResult.Reject(rejectionReason);
         }
 
         Dictionary<string, string> pseudo = new(StringComparer.Ordinal);
@@ -563,14 +560,12 @@ public sealed class Http2ClientConnection
         {
             if (header.Name.Length == 0)
             {
-                rejectionReason = "empty_header_name";
-                return false;
+                return Http2RequestBuildResult.Reject("empty_header_name");
             }
 
             if (header.Name.Any(static character => char.IsAsciiLetterUpper(character)))
             {
-                rejectionReason = "uppercase_header_name";
-                return false;
+                return Http2RequestBuildResult.Reject("uppercase_header_name");
             }
 
             if (header.Name[0] == ':')
@@ -579,8 +574,7 @@ public sealed class Http2ClientConnection
                     || pseudo.ContainsKey(header.Name)
                     || !Http2HeaderPolicy.IsAllowedRequestPseudoHeader(header.Name))
                 {
-                    rejectionReason = "invalid_pseudo_header";
-                    return false;
+                    return Http2RequestBuildResult.Reject("invalid_pseudo_header");
                 }
 
                 pseudo[header.Name] = header.Value;
@@ -590,8 +584,7 @@ public sealed class Http2ClientConnection
             regularHeaderSeen = true;
             if (Http2HeaderPolicy.IsForbiddenRequestHeader(header.Name, header.Value))
             {
-                rejectionReason = "forbidden_header";
-                return false;
+                return Http2RequestBuildResult.Reject("forbidden_header");
             }
 
             regularHeaders.Add(new ProxyHeaderField(header.Name, header.Value));
@@ -601,26 +594,22 @@ public sealed class Http2ClientConnection
             || !pseudo.TryGetValue(":scheme", out var scheme)
             || !pseudo.TryGetValue(":path", out var target))
         {
-            rejectionReason = "missing_pseudo_header";
-            return false;
+            return Http2RequestBuildResult.Reject("missing_pseudo_header");
         }
 
         if (!string.Equals(scheme, "https", StringComparison.OrdinalIgnoreCase))
         {
-            rejectionReason = "invalid_scheme";
-            return false;
+            return Http2RequestBuildResult.Reject("invalid_scheme");
         }
 
         if (pseudo.ContainsKey(":protocol") || ProxyRequestMethodPolicy.IsConnectTunnelMethod(method))
         {
-            rejectionReason = "extended_connect_unsupported";
-            return false;
+            return Http2RequestBuildResult.Reject("extended_connect_unsupported");
         }
 
         if (!target.StartsWith('/'))
         {
-            rejectionReason = "invalid_path";
-            return false;
+            return Http2RequestBuildResult.Reject("invalid_path");
         }
 
         var authority = pseudo.TryGetValue(":authority", out var value)
@@ -628,15 +617,13 @@ public sealed class Http2ClientConnection
             : regularHeaders.FirstOrDefault(static header => string.Equals(header.Name, "host", StringComparison.OrdinalIgnoreCase))?.Value;
         if (string.IsNullOrWhiteSpace(authority))
         {
-            rejectionReason = "missing_authority";
-            return false;
+            return Http2RequestBuildResult.Reject("missing_authority");
         }
 
         var hostHeader = regularHeaders.FirstOrDefault(static header => string.Equals(header.Name, "host", StringComparison.OrdinalIgnoreCase));
         if (hostHeader is not null && !string.Equals(hostHeader.Value, authority, StringComparison.OrdinalIgnoreCase))
         {
-            rejectionReason = "authority_host_mismatch";
-            return false;
+            return Http2RequestBuildResult.Reject("authority_host_mismatch");
         }
 
         regularHeaders.RemoveAll(static header => string.Equals(header.Name, "host", StringComparison.OrdinalIgnoreCase));
@@ -650,15 +637,59 @@ public sealed class Http2ClientConnection
             regularHeaders.Add(new ProxyHeaderField("Content-Length", bodyLength.ToString(CultureInfo.InvariantCulture)));
         }
 
-        requestHead = new Http1RequestHead(
-            method,
-            target,
-            ExtractPath(target),
-            "HTTP/2",
-            authority,
-            framing,
-            regularHeaders);
-        return true;
+        return Http2RequestBuildResult.Accept(
+            new Http1RequestHead(
+                method,
+                target,
+                ExtractPath(target),
+                "HTTP/2",
+                authority,
+                framing,
+                regularHeaders));
+    }
+
+    private abstract record Http2RequestBuildResult
+    {
+        private Http2RequestBuildResult()
+        {
+        }
+
+        public static Http2RequestBuildResult Accept(Http1RequestHead requestHead)
+        {
+            return new Accepted(requestHead);
+        }
+
+        public static Http2RequestBuildResult Reject(string reason)
+        {
+            return new Rejected(reason);
+        }
+
+        public sealed record Accepted : Http2RequestBuildResult
+        {
+            public Accepted(Http1RequestHead requestHead)
+            {
+                ArgumentNullException.ThrowIfNull(requestHead);
+
+                RequestHead = requestHead;
+            }
+
+            public Http1RequestHead RequestHead { get; }
+        }
+
+        public sealed record Rejected : Http2RequestBuildResult
+        {
+            public Rejected(string reason)
+            {
+                if (string.IsNullOrWhiteSpace(reason))
+                {
+                    throw new ArgumentException("HTTP/2 request rejection reason is required.", nameof(reason));
+                }
+
+                Reason = reason;
+            }
+
+            public string Reason { get; }
+        }
     }
 
     private async ValueTask<ForwardingResult> ForwardWithRetriesAsync(
