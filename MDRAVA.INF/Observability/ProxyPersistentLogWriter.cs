@@ -42,7 +42,7 @@ public sealed class ProxyPersistentLogWriter : IProxyLogPersistenceStore
 
     public void WriteAccess(ProxyAccessLogEntry accessEntry)
     {
-        if (!TryGetOptions(out var options) || !options.AccessLogEnabled)
+        if (!TryGetSettings(out var settings) || !settings.AccessLogEnabled)
         {
             return;
         }
@@ -73,12 +73,12 @@ public sealed class ProxyPersistentLogWriter : IProxyLogPersistenceStore
             tunnel = accessEntry.TunnelEstablished
         };
 
-        WriteLine("access", JsonSerializer.Serialize(entry, JsonOptions), options, _accessGate);
+        WriteLine("access", JsonSerializer.Serialize(entry, JsonOptions), settings, _accessGate);
     }
 
     public void WriteAdminAudit(ProxyAdminAuditEvent auditEvent)
     {
-        if (!TryGetOptions(out var options) || !options.AdminAuditEnabled)
+        if (!TryGetSettings(out var settings) || !settings.AdminAuditEnabled)
         {
             return;
         }
@@ -94,13 +94,13 @@ public sealed class ProxyPersistentLogWriter : IProxyLogPersistenceStore
             succeeded = auditEvent.Succeeded
         };
 
-        WriteLine("audit", JsonSerializer.Serialize(entry, JsonOptions), options, _auditGate);
+        WriteLine("audit", JsonSerializer.Serialize(entry, JsonOptions), settings, _auditGate);
     }
 
     public ProxyLogPersistenceStatus GetStatus()
     {
         var logDirectory = SafeValue(_dataDirectoryProvider.GetLogsDirectory(), MaxPathLength);
-        var hasSnapshot = _settingsReader.TryGetLogPersistenceOptions(out var options);
+        var hasSnapshot = _settingsReader.TryGetLogPersistenceSettings(out var settings);
 
         DateTimeOffset? lastSuccess;
         ProxyLogPersistenceFailureStatus? lastFailure;
@@ -117,7 +117,7 @@ public sealed class ProxyPersistentLogWriter : IProxyLogPersistenceStore
             state = ProxyStatusText.Unknown;
             reason = ProxyStatusText.NoActiveConfig;
         }
-        else if (!options.AccessLogEnabled && !options.AdminAuditEnabled)
+        else if (!settings.AccessLogEnabled && !settings.AdminAuditEnabled)
         {
             state = ProxyStatusText.Disabled;
             reason = ProxyStatusText.Disabled;
@@ -129,26 +129,26 @@ public sealed class ProxyPersistentLogWriter : IProxyLogPersistenceStore
         }
 
         return new ProxyLogPersistenceStatus(
-            options.AccessLogEnabled,
-            options.AdminAuditEnabled,
+            settings.AccessLogEnabled,
+            settings.AdminAuditEnabled,
             logDirectory,
-            options.MaxFileBytes,
-            options.MaxFiles,
+            settings.MaxFileBytes,
+            settings.MaxFiles,
             state,
             reason,
             lastSuccess,
             lastFailure);
     }
 
-    private bool TryGetOptions(out ProxyLogPersistenceOptions options)
+    private bool TryGetSettings(out ProxyLogPersistenceSettings settings)
     {
-        return _settingsReader.TryGetLogPersistenceOptions(out options);
+        return _settingsReader.TryGetLogPersistenceSettings(out settings);
     }
 
     private void WriteLine(
         string logName,
         string line,
-        ProxyLogPersistenceOptions options,
+        ProxyLogPersistenceSettings settings,
         object gate)
     {
         try
@@ -159,7 +159,7 @@ public sealed class ProxyPersistentLogWriter : IProxyLogPersistenceStore
                 Directory.CreateDirectory(logsDirectory);
                 var path = Path.Combine(logsDirectory, $"{logName}.log");
                 var lineBytes = LogEncoding.GetByteCount(line) + LogEncoding.GetByteCount(Environment.NewLine);
-                RotateIfNeeded(path, options.MaxFileBytes, options.MaxFiles, lineBytes);
+                RotateIfNeeded(path, settings.MaxFileBytes, settings.MaxFiles, lineBytes);
                 File.AppendAllText(path, line + Environment.NewLine, LogEncoding);
                 RecordWriteSuccess();
             }

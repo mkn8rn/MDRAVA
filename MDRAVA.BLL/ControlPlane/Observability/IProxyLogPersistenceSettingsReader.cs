@@ -1,8 +1,12 @@
-using MDRAVA.BLL.Configuration;
-
 namespace MDRAVA.BLL.ControlPlane.Observability;
 
 public interface IProxyLogPersistenceSettingsReader
 {
-    bool TryGetLogPersistenceOptions(out ProxyLogPersistenceOptions options);
+    bool TryGetLogPersistenceSettings(out ProxyLogPersistenceSettings settings);
 }
+
+public sealed record ProxyLogPersistenceSettings(
+    bool AccessLogEnabled,
+    bool AdminAuditEnabled,
+    long MaxFileBytes,
+    int MaxFiles);

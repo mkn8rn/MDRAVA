@@ -1,4 +1,3 @@
-using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 
 namespace MDRAVA.BLL.ControlPlane.Observability;
@@ -12,28 +11,24 @@ public sealed class ProxyLogPersistenceSettingsReader : IProxyLogPersistenceSett
         _configurationStore = configurationStore;
     }
 
-    public bool TryGetLogPersistenceOptions(out ProxyLogPersistenceOptions options)
+    public bool TryGetLogPersistenceSettings(out ProxyLogPersistenceSettings settings)
     {
         if (_configurationStore.TryGetSnapshot(out var snapshot) && snapshot is not null)
         {
             var runtimeOptions = snapshot.Observability.LogPersistence;
-            options = new ProxyLogPersistenceOptions
-            {
-                AccessLogEnabled = runtimeOptions.AccessLogEnabled,
-                AdminAuditEnabled = runtimeOptions.AdminAuditEnabled,
-                MaxFileBytes = runtimeOptions.MaxFileBytes,
-                MaxFiles = runtimeOptions.MaxFiles
-            };
+            settings = new ProxyLogPersistenceSettings(
+                runtimeOptions.AccessLogEnabled,
+                runtimeOptions.AdminAuditEnabled,
+                runtimeOptions.MaxFileBytes,
+                runtimeOptions.MaxFiles);
             return true;
         }
 
-        options = new ProxyLogPersistenceOptions
-        {
-            AccessLogEnabled = false,
-            AdminAuditEnabled = false,
-            MaxFileBytes = 1_048_576,
-            MaxFiles = 8
-        };
+        settings = new ProxyLogPersistenceSettings(
+            AccessLogEnabled: false,
+            AdminAuditEnabled: false,
+            MaxFileBytes: 1_048_576,
+            MaxFiles: 8);
         return false;
     }
 }
