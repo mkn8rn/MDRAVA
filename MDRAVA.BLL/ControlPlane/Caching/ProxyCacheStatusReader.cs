@@ -25,36 +25,16 @@ public sealed class ProxyCacheStatusReader : IProxyCacheStatusReader
         ProxyCacheRuntimeStatusSnapshot runtime)
     {
         var routeStatuses = routes
-            .Select(route =>
-            {
-                var routeEntries = runtime.Entries
-                    .Where(entry => string.Equals(entry.RouteName, route.RouteName, StringComparison.OrdinalIgnoreCase))
-                    .ToArray();
-                return new ProxyCacheRouteStatus(
-                    route.RouteName,
-                    route.Enabled,
-                    route.MaxEntryBytes,
-                    route.MaxTotalBytes,
-                    routeEntries.Length,
-                    routeEntries.Sum(static entry => entry.SizeBytes));
-            })
+            .Select(route => ProxyCacheRouteStatus.FromRuntimeEntries(route, runtime.Entries))
             .ToArray();
 
         var rejections = runtime.Rejections
             .OrderBy(static rejection => rejection.Reason, StringComparer.OrdinalIgnoreCase)
-            .Select(static rejection => new ProxyCacheRejectionStatus(rejection.Reason, rejection.Count))
+            .Select(ProxyCacheRejectionStatus.FromRuntimeRejection)
             .ToArray();
 
-        return new ProxyCacheStatusResponse(
-            runtime.EntryCount,
-            runtime.ApproximateBytes,
-            runtime.HitCount,
-            runtime.MissCount,
-            runtime.StoreCount,
-            runtime.EvictionCount,
-            runtime.StoreRejectionCount,
-            runtime.LastClearedAtUtc,
-            runtime.LastClearReason,
+        return ProxyCacheStatusResponse.FromRuntimeSnapshot(
+            runtime,
             rejections,
             routeStatuses);
     }

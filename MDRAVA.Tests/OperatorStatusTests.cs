@@ -235,7 +235,21 @@ internal static class OperatorStatusTests
                 MaxFiles: 0),
             lastSuccessfulWriteAtUtc: null,
             lastWriteFailure: null);
-        var cacheStatus = new ProxyCacheStatusResponse(3, 1024, 0, 0, 0, 0, 0, null, null, [], []);
+        var cacheStatus = ProxyCacheStatusResponse.FromRuntimeSnapshot(
+            new ProxyCacheRuntimeStatusSnapshot(
+                EntryCount: 3,
+                ApproximateBytes: 1024,
+                HitCount: 0,
+                MissCount: 0,
+                StoreCount: 0,
+                EvictionCount: 0,
+                StoreRejectionCount: 0,
+                LastClearedAtUtc: null,
+                LastClearReason: null,
+                Rejections: [],
+                Entries: []),
+            rejections: [],
+            routes: []);
         var preflight = ProxyRuntimePreflightStatus.Unknown;
         var readiness = ProxyStatusReadinessInputMapper.FromSources(
             ProxyStatusReadinessSourceMapper.FromSources(
@@ -608,7 +622,21 @@ internal static class OperatorStatusTests
                 IsShuttingDown: false,
                 ShutdownStartedAtUtc: null,
                 ShutdownDeadlineUtc: null),
-            CacheStatus: new ProxyCacheStatusResponse(1, 512, 0, 0, 0, 0, 0, null, null, [], []),
+            CacheStatus: ProxyCacheStatusResponse.FromRuntimeSnapshot(
+                new ProxyCacheRuntimeStatusSnapshot(
+                    EntryCount: 1,
+                    ApproximateBytes: 512,
+                    HitCount: 0,
+                    MissCount: 0,
+                    StoreCount: 0,
+                    EvictionCount: 0,
+                    StoreRejectionCount: 0,
+                    LastClearedAtUtc: null,
+                    LastClearReason: null,
+                    Rejections: [],
+                    Entries: []),
+                rejections: [],
+                routes: []),
             AcmeStatuses: [],
             RuntimePreflight: ProxyRuntimePreflightStatus.Unknown,
             ObservedAtUtc: observedAt);
