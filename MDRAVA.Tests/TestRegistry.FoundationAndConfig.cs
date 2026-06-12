@@ -4,6 +4,7 @@ internal static partial class TestRegistry
 {
     private static TestCase[] FoundationAndConfig() =>
     [
+    Test("Project references preserve layered dependency direction", Sync(ArchitectureBoundaryTests.ProjectReferencesPreserveLayeredDependencyDirection), TestTaxonomy.Config),
     Test("Http1RequestParser parses a valid GET request", Sync(Http1RequestParserTests.ParsesValidGet), TestTaxonomy.Http1),
     Test("Http1RequestParser rejects missing Host", Sync(Http1RequestParserTests.RejectsMissingHost), TestTaxonomy.Http1, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
     Test("Http1RequestParser rejects invalid Content-Length", Sync(Http1RequestParserTests.RejectsInvalidContentLength), TestTaxonomy.Http1, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
