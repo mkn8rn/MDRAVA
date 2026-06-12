@@ -58,12 +58,14 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
     public ConfigLintResult LintSubmitted(ConfigLintRequest? request)
     {
         var now = _timeProvider.GetUtcNow();
-        if (!ConfigLintSubmittedRequestReader.TryRead(request, out var input, out var requestFailure))
+        var requestDecision = ConfigLintSubmittedRequestReader.Read(request);
+        if (requestDecision is ConfigLintSubmittedRequestDecision.RejectedDecision rejectedRequest)
         {
-            return BuildResult(now, [requestFailure!], []);
+            return BuildResult(now, [rejectedRequest.Failure], []);
         }
 
-        var submitted = _submittedConfigurationSource.Read(input!.Text, input.Format, now);
+        var input = ((ConfigLintSubmittedRequestDecision.AcceptedDecision)requestDecision).Input;
+        var submitted = _submittedConfigurationSource.Read(input.Text, input.Format, now);
         if (submitted.Failure is not null)
         {
             return BuildResult(now, [ConfigLintSubmittedFailureMapper.ToFinding(submitted.Failure)], []);

@@ -654,6 +654,26 @@ internal static class RouteDiagnosticsTests
         AssertEx.True(result.Findings[0].Message.Contains("request body is required", StringComparison.Ordinal));
     }
 
+    public static void ConfigLintSubmittedRequestReaderAcceptsYamlInput()
+    {
+        var decision = ConfigLintSubmittedRequestReader.Read(new ConfigLintRequest("yml", "submitted"));
+
+        AssertEx.True(decision is ConfigLintSubmittedRequestDecision.AcceptedDecision);
+        var accepted = (ConfigLintSubmittedRequestDecision.AcceptedDecision)decision;
+        AssertEx.Equal("submitted", accepted.Input.Text);
+        AssertEx.Equal(ProxyConfigurationNormalizeFormat.Yaml, accepted.Input.Format);
+    }
+
+    public static void ConfigLintSubmittedRequestReaderRejectsMissingRequest()
+    {
+        var decision = ConfigLintSubmittedRequestReader.Read(null);
+
+        AssertEx.True(decision is ConfigLintSubmittedRequestDecision.RejectedDecision);
+        var rejected = (ConfigLintSubmittedRequestDecision.RejectedDecision)decision;
+        AssertEx.Equal("missing_request", rejected.Failure.Code);
+        AssertEx.Equal("error", rejected.Failure.Severity);
+    }
+
     public static void ConfigLintControllerRejectsMissingSubmittedRequestBody()
     {
         var service = CreateLintService(BaseOptions([ProxyRoute("active", "active.test", "/")]));

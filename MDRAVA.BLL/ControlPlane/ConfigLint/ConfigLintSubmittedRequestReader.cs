@@ -8,33 +8,27 @@ public sealed record ConfigLintSubmittedRequestInput(
 
 public static class ConfigLintSubmittedRequestReader
 {
-    public static bool TryRead(
-        ConfigLintRequest? request,
-        out ConfigLintSubmittedRequestInput? input,
-        out ConfigLintFinding? failure)
+    public static ConfigLintSubmittedRequestDecision Read(ConfigLintRequest? request)
     {
-        input = null;
         if (request is null)
         {
-            failure = ConfigLintFindingFactory.Error("missing_request", "A lint request body is required.", "lint-input", null, "Submit config text with an explicit format.");
-            return false;
+            return ConfigLintSubmittedRequestDecision.Rejected(
+                ConfigLintFindingFactory.Error("missing_request", "A lint request body is required.", "lint-input", null, "Submit config text with an explicit format."));
         }
 
         if (!TryParseFormat(request.Format, out var format))
         {
-            failure = ConfigLintFindingFactory.Error("invalid_format", "Format must be 'json' or 'yaml'.", "lint-input", "format", "Set format to 'json', 'yaml', or 'yml'.");
-            return false;
+            return ConfigLintSubmittedRequestDecision.Rejected(
+                ConfigLintFindingFactory.Error("invalid_format", "Format must be 'json' or 'yaml'.", "lint-input", "format", "Set format to 'json', 'yaml', or 'yml'."));
         }
 
         if (string.IsNullOrWhiteSpace(request.Text))
         {
-            failure = ConfigLintFindingFactory.Error("empty_config", "Submitted config text is required.", "lint-input", "text", "Submit one site configuration object.");
-            return false;
+            return ConfigLintSubmittedRequestDecision.Rejected(
+                ConfigLintFindingFactory.Error("empty_config", "Submitted config text is required.", "lint-input", "text", "Submit one site configuration object."));
         }
 
-        input = new ConfigLintSubmittedRequestInput(request.Text, format);
-        failure = null;
-        return true;
+        return ConfigLintSubmittedRequestDecision.Accepted(new ConfigLintSubmittedRequestInput(request.Text, format));
     }
 
     private static bool TryParseFormat(
@@ -57,4 +51,27 @@ public static class ConfigLintSubmittedRequestReader
         parsed = ProxyConfigurationNormalizeFormat.Json;
         return false;
     }
+}
+
+public abstract record ConfigLintSubmittedRequestDecision
+{
+    private ConfigLintSubmittedRequestDecision()
+    {
+    }
+
+    public static ConfigLintSubmittedRequestDecision Accepted(ConfigLintSubmittedRequestInput input)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        return new AcceptedDecision(input);
+    }
+
+    public static ConfigLintSubmittedRequestDecision Rejected(ConfigLintFinding failure)
+    {
+        ArgumentNullException.ThrowIfNull(failure);
+        return new RejectedDecision(failure);
+    }
+
+    public sealed record AcceptedDecision(ConfigLintSubmittedRequestInput Input) : ConfigLintSubmittedRequestDecision;
+
+    public sealed record RejectedDecision(ConfigLintFinding Failure) : ConfigLintSubmittedRequestDecision;
 }
