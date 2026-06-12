@@ -84,6 +84,7 @@ internal static partial class TestRegistry
     Test("Cache administration clear returns post-clear status", Sync(CacheTests.CacheAdministrationClearReturnsPostClearStatus), TestTaxonomy.Caching, TestTaxonomy.Admin),
     Test("Metrics endpoint is protected by admin auth", MetricsTests.MetricsEndpointIsProtectedByAdminAuth, TestTaxonomy.Admin, TestTaxonomy.Metrics),
     Test("Metrics endpoint returns Prometheus text", Sync(MetricsTests.MetricsEndpointReturnsPrometheusText), TestTaxonomy.Metrics),
+    Test("Metrics export input source reads active runtime facts", Sync(MetricsTests.MetricsExportInputSourceReadsActiveRuntimeFacts), TestTaxonomy.Metrics, TestTaxonomy.Config),
     Test("Metrics endpoint returns 404 when metrics disabled", Sync(MetricsTests.MetricsEndpointReturnsNotFoundWhenMetricsDisabled), TestTaxonomy.Metrics),
     Test("Metrics export availability requires active enabled config", Sync(MetricsTests.MetricsExportAvailabilityRequiresActiveEnabledConfig), TestTaxonomy.Metrics),
     Test("Metrics include request counters after proxied request", MetricsTests.MetricsIncludeRequestCountersAfterProxiedRequest, TestTaxonomy.Metrics),

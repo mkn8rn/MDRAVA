@@ -1,6 +1,8 @@
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.Acme;
 using MDRAVA.BLL.ControlPlane.Caching;
+using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
+using MDRAVA.BLL.ControlPlane.HealthChecks;
 using MDRAVA.BLL.ControlPlane.Status;
 
 namespace MDRAVA.BLL.ControlPlane.Metrics;
@@ -15,6 +17,11 @@ public sealed record ProxyMetricsExportInput(
     ProxyCacheStatusResponse CacheStatus,
     IReadOnlyList<ProxyUpstreamStatusResponse> UpstreamHealth,
     IReadOnlyList<AcmeCertificateLifecycleStatus> AcmeCertificates);
+
+public interface IProxyMetricsExportInputSource
+{
+    ProxyMetricsExportInput? ReadInput();
+}
 
 public static class ProxyMetricsExportInputMapper
 {
@@ -43,5 +50,43 @@ public static class ProxyMetricsExportInputMapper
             cacheStatus,
             upstreamHealth,
             acmeCertificates);
+    }
+}
+
+public sealed class ProxyMetricsExportInputSource : IProxyMetricsExportInputSource
+{
+    private readonly IProxyConfigurationStore _configurationStore;
+    private readonly IProxyStatusMetricsSource _metricsSource;
+    private readonly IProxyCacheRuntimeStatusSource _cacheRuntimeSource;
+    private readonly IProxyStatusUpstreamHealthSource _upstreamHealthSource;
+    private readonly IProxyAcmeCertificateLifecycleStatusSource _acmeStatusSource;
+
+    public ProxyMetricsExportInputSource(
+        IProxyConfigurationStore configurationStore,
+        IProxyStatusMetricsSource metricsSource,
+        IProxyCacheRuntimeStatusSource cacheRuntimeSource,
+        IProxyStatusUpstreamHealthSource upstreamHealthSource,
+        IProxyAcmeCertificateLifecycleStatusSource acmeStatusSource)
+    {
+        _configurationStore = configurationStore;
+        _metricsSource = metricsSource;
+        _cacheRuntimeSource = cacheRuntimeSource;
+        _upstreamHealthSource = upstreamHealthSource;
+        _acmeStatusSource = acmeStatusSource;
+    }
+
+    public ProxyMetricsExportInput? ReadInput()
+    {
+        if (!_configurationStore.TryGetSnapshot(out var snapshot) || snapshot is null)
+        {
+            return null;
+        }
+
+        return ProxyMetricsExportInputMapper.FromRuntime(
+            snapshot,
+            _metricsSource.ReadMetrics(),
+            _cacheRuntimeSource.ReadSnapshot(),
+            _upstreamHealthSource.ReadUpstreams(ProxyUpstreamHealthSourceMapper.FromSnapshot(snapshot)),
+            _acmeStatusSource.GetLifecycleStatuses());
     }
 }

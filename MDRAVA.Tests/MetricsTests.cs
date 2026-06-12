@@ -61,6 +61,21 @@ internal static class MetricsTests
         AssertEx.True(text.Contains("# TYPE mdrava_requests_total counter", StringComparison.Ordinal));
     }
 
+    public static void MetricsExportInputSourceReadsActiveRuntimeFacts()
+    {
+        using var fixture = MetricsFixture.Create();
+        var store = CreateStore();
+        var source = CreateExportInputSource(store, fixture);
+
+        var input = AssertEx.NotNull(source.ReadInput());
+
+        AssertEx.Equal(0L, input.Metrics.TotalRequests);
+        AssertEx.Equal(0L, input.Metrics.UpstreamFailures);
+        AssertEx.Equal(0, input.DefaultEnabledHttp3ListenerCount);
+        AssertEx.False(input.Http3RequestBodyStreamingEnabled);
+        AssertEx.Equal(0, input.CacheStatus.Routes.Count);
+    }
+
     public static void MetricsEndpointReturnsNotFoundWhenMetricsDisabled()
     {
         using var fixture = MetricsFixture.Create();
@@ -447,13 +462,21 @@ internal static class MetricsTests
         MetricsFixture fixture)
     {
         return new ProxyMetricsExportProvider(
+            CreateExportInputSource(store, fixture),
+            fixture.Exporter,
+            new ProxyMetricsExportAvailabilityService(new ProxyMetricsExportAvailabilityReader(store)));
+    }
+
+    private static ProxyMetricsExportInputSource CreateExportInputSource(
+        IProxyConfigurationStore store,
+        MetricsFixture fixture)
+    {
+        return new ProxyMetricsExportInputSource(
             store,
             fixture.Metrics,
             new ProxyCacheRuntimeStatusSource(fixture.Cache),
             fixture.Health,
-            new ProxyAcmeCertificateLifecycleStatusSource(fixture.Acme),
-            fixture.Exporter,
-            new ProxyMetricsExportAvailabilityService(new ProxyMetricsExportAvailabilityReader(store)));
+            new ProxyAcmeCertificateLifecycleStatusSource(fixture.Acme));
     }
 
     private static ProxyConfigurationStore CreateStoreWithAdminAuthentication()

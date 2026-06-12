@@ -130,6 +130,7 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<PrometheusMetricsExporter>();
         services.AddSingleton<IProxyMetricsExportAvailabilityReader, ProxyMetricsExportAvailabilityReader>();
         services.AddSingleton<ProxyMetricsExportAvailabilityService>();
+        services.AddSingleton<IProxyMetricsExportInputSource, ProxyMetricsExportInputSource>();
         services.AddSingleton<IProxyMetricsExportProvider, ProxyMetricsExportProvider>();
         services.AddSingleton<ProxyMetricsAdministrationService>();
         services.AddSingleton<IProxyLogPersistenceSettingsReader, ProxyLogPersistenceSettingsReader>();
