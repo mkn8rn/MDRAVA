@@ -133,6 +133,7 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<IProxyMetricsExportInputSource, ProxyMetricsExportInputSource>();
         services.AddSingleton<IProxyMetricsExportProvider, ProxyMetricsExportProvider>();
         services.AddSingleton<ProxyMetricsAdministrationService>();
+        services.AddSingleton<IProxyLogPersistenceSettingsSource, ProxyConfigurationLogPersistenceSettingsSource>();
         services.AddSingleton<IProxyLogPersistenceSettingsReader, ProxyLogPersistenceSettingsReader>();
         services.AddSingleton<ProxyPersistentLogWriter>();
         services.AddSingleton<IProxyLogPersistenceStore>(static services => services.GetRequiredService<ProxyPersistentLogWriter>());

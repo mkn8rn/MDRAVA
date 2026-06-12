@@ -318,7 +318,7 @@ internal static class LogPersistenceTests
             {
                 DataDirectory = dataDirectory
             }),
-            new ProxyLogPersistenceSettingsReader(store),
+            new ProxyLogPersistenceSettingsReader(new ProxyConfigurationLogPersistenceSettingsSource(store)),
             NullLogger<ProxyPersistentLogWriter>.Instance,
             timeProvider ?? TimeProvider.System);
     }
