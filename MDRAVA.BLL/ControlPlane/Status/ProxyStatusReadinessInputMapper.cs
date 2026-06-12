@@ -26,10 +26,52 @@ public sealed record ProxyStatusReadinessSourceSet(
     ProxyLogSummarySource Log,
     ProxyShutdownSummarySource Shutdown);
 
+public sealed record ProxyStatusReadinessConfigurationSourceSet(
+    bool HasActiveConfiguration,
+    int? ConfigGeneration,
+    DateTimeOffset? ConfigurationLoadedAtUtc,
+    IReadOnlyList<ProxyConfiguredListenerSummarySource> ConfiguredListeners,
+    IReadOnlyList<ProxyRouteSummarySource> Routes,
+    ProxyCertificateSummarySource? Certificates,
+    ProxyAcmeSummaryConfigurationSource? Acme,
+    ProxyLimitConfigurationSummarySource? LimitConfiguration);
+
+public static class ProxyStatusReadinessConfigurationSourceMapper
+{
+    public static ProxyStatusReadinessConfigurationSourceSet FromConfiguration(
+        ProxyConfigurationSnapshot? configuration)
+    {
+        if (configuration is null)
+        {
+            return new ProxyStatusReadinessConfigurationSourceSet(
+                false,
+                null,
+                null,
+                [],
+                [],
+                null,
+                null,
+                null);
+        }
+
+        return new ProxyStatusReadinessConfigurationSourceSet(
+            true,
+            configuration.Version,
+            configuration.LoadedAtUtc,
+            ProxyConfiguredListenerSummarySourceMapper.FromListeners(configuration.Listeners),
+            ProxyRouteSummarySourceMapper.FromRoutes(configuration.Routes),
+            ProxyCertificateSummarySourceMapper.FromConfiguration(
+                configuration.Listeners,
+                configuration.Certificates),
+            ProxyAcmeSummaryConfigurationSourceMapper.FromConfiguration(configuration.Acme),
+            ProxyLimitSummarySourceMapper.FromConfiguration(configuration.Limits));
+    }
+}
+
 public static class ProxyStatusReadinessSourceMapper
 {
     public static ProxyStatusReadinessSourceSet FromSources(
-        ProxyConfigurationSnapshot? configuration,
+        ProxyStatusReadinessConfigurationSourceSet configuration,
         ProxyStatusRuntimeSummary runtime,
         ProxyMetricsSnapshot metrics,
         IReadOnlyList<ProxyUpstreamStatusResponse> upstreams,
@@ -37,30 +79,18 @@ public static class ProxyStatusReadinessSourceMapper
         ProxyLogPersistenceStatus logPersistence)
     {
         return new ProxyStatusReadinessSourceSet(
-            configuration is not null,
-            configuration?.Version,
-            configuration?.LoadedAtUtc,
+            configuration.HasActiveConfiguration,
+            configuration.ConfigGeneration,
+            configuration.ConfigurationLoadedAtUtc,
             runtime.LastListenerReload?.Succeeded,
             runtime.LastListenerReload is { Succeeded: false },
-            configuration is null
-                ? []
-                : ProxyConfiguredListenerSummarySourceMapper.FromListeners(configuration.Listeners),
+            configuration.ConfiguredListeners,
             ProxyRuntimeListenerSummarySourceMapper.FromRuntimeSummary(runtime),
-            configuration is null
-                ? []
-                : ProxyRouteSummarySourceMapper.FromRoutes(configuration.Routes),
-            configuration is null
-                ? null
-                : ProxyCertificateSummarySourceMapper.FromConfiguration(
-                    configuration.Listeners,
-                    configuration.Certificates),
-            configuration is null
-                ? null
-                : ProxyAcmeSummaryConfigurationSourceMapper.FromConfiguration(configuration.Acme),
+            configuration.Routes,
+            configuration.Certificates,
+            configuration.Acme,
             ProxyUpstreamSummarySourceMapper.FromStatusResponses(upstreams),
-            configuration is null
-                ? null
-                : ProxyLimitSummarySourceMapper.FromConfiguration(configuration.Limits),
+            configuration.LimitConfiguration,
             ProxyLimitSummarySourceMapper.FromMetrics(metrics),
             http3.EnabledForTraffic,
             http3.QuicListenerReady,

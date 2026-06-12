@@ -51,6 +51,7 @@ public sealed class ProxyStatusInputReader : IProxyStatusInputReader
         var runtime = _runtimeSource.ReadRuntime();
         var runtimeSummary = ProxyStatusRuntimeSummaryMapper.FromRuntime(runtime);
         var configuration = _configurationSource.TryReadSnapshot(out var snapshot) ? snapshot : null;
+        var readinessConfiguration = ProxyStatusReadinessConfigurationSourceMapper.FromConfiguration(configuration);
         var upstreams = _upstreamReader.ReadUpstreams();
         var metrics = _metricsSource.ReadMetrics();
         var http3 = Http3RuntimeSupport.ProjectRuntime(
@@ -66,7 +67,7 @@ public sealed class ProxyStatusInputReader : IProxyStatusInputReader
         var observedAtUtc = _timeProvider.GetUtcNow();
         var readiness = ProxyStatusReadinessInputMapper.FromSources(
             ProxyStatusReadinessSourceMapper.FromSources(
-                configuration,
+                readinessConfiguration,
                 runtimeSummary,
                 metrics,
                 upstreams,

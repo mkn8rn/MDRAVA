@@ -163,7 +163,7 @@ internal static class OperatorStatusTests
         var preflight = ProxyRuntimePreflightStatus.Unknown;
         var readiness = ProxyStatusReadinessInputMapper.FromSources(
             ProxyStatusReadinessSourceMapper.FromSources(
-                snapshot,
+                ProxyStatusReadinessConfigurationSourceMapper.FromConfiguration(snapshot),
                 runtimeSummary,
                 metrics,
                 [],
@@ -246,7 +246,7 @@ internal static class OperatorStatusTests
         var logPersistence = ProxyLogPersistenceStatus.Unknown;
 
         var sources = ProxyStatusReadinessSourceMapper.FromSources(
-            configuration: null,
+            ProxyStatusReadinessConfigurationSourceMapper.FromConfiguration(null),
             runtime,
             metrics,
             upstreams: [],
@@ -261,6 +261,63 @@ internal static class OperatorStatusTests
         AssertEx.False(sources.Shutdown.IsRunning);
         AssertEx.True(sources.Shutdown.IsShuttingDown);
         AssertEx.Equal(DateTimeOffset.UnixEpoch.AddMinutes(1), sources.Shutdown.ShutdownStartedAtUtc);
+    }
+
+    public static void StatusReadinessSourceMapperConsumesConfigurationSourceSetWithoutConfigurationSnapshot()
+    {
+        var configuration = new ProxyStatusReadinessConfigurationSourceSet(
+            true,
+            42,
+            DateTimeOffset.UnixEpoch.AddHours(1),
+            [new ProxyConfiguredListenerSummarySource(true, true, false, false)],
+            [new ProxyRouteSummarySource("site-a", true, true, false)],
+            new ProxyCertificateSummarySource(["cert-a"], []),
+            new ProxyAcmeSummaryConfigurationSource(true, 1),
+            new ProxyLimitConfigurationSummarySource(100, 4, 600));
+        var runtime = new ProxyStatusRuntimeSummary(
+            ListenerLive: true,
+            ListenerName: "main",
+            Endpoint: "127.0.0.1:18080",
+            StartedAt: DateTimeOffset.UnixEpoch,
+            StoppedAt: null,
+            LastError: null,
+            IsShuttingDown: false,
+            ShutdownStartedAtUtc: null,
+            ShutdownDeadlineUtc: null,
+            Listeners: [],
+            LastListenerReload: null);
+        var http3 = new RuntimeHttp3SupportProjection(
+            "unknown",
+            QuicListenerSupported: false,
+            QuicConnectionSupported: false,
+            "disabled",
+            "disabled",
+            EnabledForTraffic: false,
+            QuicListenerReady: false,
+            AltSvcConfigured: false,
+            AltSvcActive: false,
+            AltSvcMaxAgeSeconds: null,
+            "not_configured",
+            UdpQuicListenerIdentityModeled: true,
+            "client_http3_default_enabled_for_eligible_tls_proxy_listeners");
+
+        var sources = ProxyStatusReadinessSourceMapper.FromSources(
+            configuration,
+            runtime,
+            new ProxyMetrics().Snapshot(),
+            upstreams: [],
+            http3,
+            ProxyLogPersistenceStatus.Unknown);
+
+        AssertEx.True(sources.HasActiveConfiguration);
+        AssertEx.Equal(42, sources.ConfigGeneration!.Value);
+        AssertEx.Equal(DateTimeOffset.UnixEpoch.AddHours(1), sources.ConfigurationLoadedAtUtc!.Value);
+        AssertEx.Equal(1, sources.ConfiguredListeners.Count);
+        AssertEx.Equal(1, sources.Routes.Count);
+        AssertEx.Equal("site-a", sources.Routes[0].SiteName);
+        AssertEx.Equal("cert-a", AssertEx.NotNull(sources.Certificates).ReferencedCertificateIds[0]);
+        AssertEx.True(AssertEx.NotNull(sources.Acme).Enabled);
+        AssertEx.Equal(600, AssertEx.NotNull(sources.LimitConfiguration).RequestsPerMinutePerIp);
     }
 
     public static void StatusListenerAndRouteSourceMappersReadCollectionsWithoutConfigurationSnapshot()
