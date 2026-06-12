@@ -273,6 +273,30 @@ internal static class OperatorStatusTests
         AssertEx.True(routes[0].HasHttp3Upstream);
     }
 
+    public static void StatusAcmeSummaryConfigurationMapperReadsAcmeOptionsWithoutConfigurationSnapshot()
+    {
+        var acme = new RuntimeAcmeOptions(
+            Enabled: true,
+            UseStaging: false,
+            DirectoryUrl: "https://acme.example/directory",
+            ContactEmails: ["ops@example.test"],
+            TermsAccepted: true,
+            StoragePath: "acme",
+            RenewBeforeDays: 30,
+            CheckIntervalMinutes: 720,
+            RetryAfterMinutes: 60,
+            Certificates:
+            [
+                new RuntimeAcmeCertificateOptions("first", true, ["first.example.test"], 30),
+                new RuntimeAcmeCertificateOptions("second", false, ["second.example.test"], 30)
+            ]);
+
+        var source = ProxyAcmeSummaryConfigurationSourceMapper.FromConfiguration(acme);
+
+        AssertEx.True(source.Enabled);
+        AssertEx.Equal(1, source.ConfiguredCertificates);
+    }
+
     public static void ReadinessEvaluatorConsumesNarrowFactsWithoutRuntimeSnapshots()
     {
         var evaluatedAt = new DateTimeOffset(2026, 6, 9, 12, 0, 0, TimeSpan.Zero);

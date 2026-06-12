@@ -50,7 +50,9 @@ public static class ProxyStatusReadinessSourceMapper
                 ? []
                 : ProxyRouteSummarySourceMapper.FromRoutes(configuration.Routes),
             ProxyCertificateSummarySourceMapper.FromSnapshot(configuration),
-            ProxyAcmeSummaryConfigurationSourceMapper.FromSnapshot(configuration),
+            configuration is null
+                ? null
+                : ProxyAcmeSummaryConfigurationSourceMapper.FromConfiguration(configuration.Acme),
             ProxyUpstreamSummarySourceMapper.FromStatusResponses(upstreams),
             ProxyLimitSummarySourceMapper.FromConfiguration(configuration),
             ProxyLimitSummarySourceMapper.FromMetrics(metrics),

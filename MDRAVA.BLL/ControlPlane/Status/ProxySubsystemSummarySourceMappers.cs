@@ -84,13 +84,11 @@ public static class ProxyCertificateSummarySourceMapper
 
 public static class ProxyAcmeSummaryConfigurationSourceMapper
 {
-    public static ProxyAcmeSummaryConfigurationSource? FromSnapshot(ProxyConfigurationSnapshot? snapshot)
+    public static ProxyAcmeSummaryConfigurationSource FromConfiguration(RuntimeAcmeOptions acme)
     {
-        return snapshot is null
-            ? null
-            : new ProxyAcmeSummaryConfigurationSource(
-                snapshot.Acme.Enabled,
-                snapshot.Acme.Certificates.Count(static certificate => certificate.Enabled));
+        return new ProxyAcmeSummaryConfigurationSource(
+            acme.Enabled,
+            acme.Certificates.Count(static certificate => certificate.Enabled));
     }
 }
 
