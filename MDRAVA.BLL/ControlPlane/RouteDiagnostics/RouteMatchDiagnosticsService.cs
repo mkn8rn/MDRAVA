@@ -57,47 +57,18 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
             requestInput.Protocol);
         if (listener is null)
         {
-            return Complete(new RouteMatchDryRunResult(
-                true,
+            return Complete(RouteMatchDryRunResult.NoMatchingListener(
                 evaluatedAtUtc,
-                null,
-                "no_matching_listener",
-                null,
-                null,
-                null,
-                null,
-                false,
-                null,
-                requestInput.Target,
-                null,
-                null,
-                ProxyRouteDiagnosticsPolicyExplainer.Disabled("no_route"),
-                ProxyRouteDiagnosticsPolicyExplainer.Disabled("no_route"),
-                ProxyRouteDiagnosticsPolicyExplainer.Disabled("no_route"),
-                [new RouteMatchDryRunFinding("warning", "no_matching_listener", "No enabled listener matches the supplied scheme, port, or listener identity.")]));
+                requestInput.Target));
         }
 
         var route = _routeMatcher.Match(snapshot.Routes, requestInput.RequestHead);
         if (route is null)
         {
-            return Complete(new RouteMatchDryRunResult(
-                true,
+            return Complete(RouteMatchDryRunResult.NoMatchingRoute(
                 evaluatedAtUtc,
-                null,
-                "no_matching_route",
                 ToListener(listener),
-                null,
-                null,
-                null,
-                false,
-                null,
-                requestInput.Target,
-                null,
-                null,
-                ProxyRouteDiagnosticsPolicyExplainer.Disabled("no_route"),
-                ProxyRouteDiagnosticsPolicyExplainer.Disabled("no_route"),
-                ProxyRouteDiagnosticsPolicyExplainer.Disabled("no_route"),
-                [new RouteMatchDryRunFinding("info", "no_matching_route", "No configured route matched the supplied host and path.")]));
+                requestInput.Target));
         }
 
         var actionDecision = _routeActionPolicy.Evaluate(
@@ -127,10 +98,8 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
             requestInput.Findings.Add(new RouteMatchDryRunFinding("warning", "no_configured_upstream", "The matched proxy route has no configured upstream candidate."));
         }
 
-        return Complete(new RouteMatchDryRunResult(
-            true,
+        return Complete(RouteMatchDryRunResult.MatchedRoute(
             evaluatedAtUtc,
-            null,
             noMatchReason,
             ToListener(listener),
             new RouteMatchDryRunRoute(route.SiteName, route.Name, route.Host, route.PathPrefix),
@@ -155,24 +124,7 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
 
     private static RouteMatchDryRunResult Failure(DateTimeOffset evaluatedAtUtc, string reason, string message)
     {
-        return new RouteMatchDryRunResult(
-            false,
-            evaluatedAtUtc,
-            reason,
-            null,
-            null,
-            null,
-            null,
-            null,
-            false,
-            null,
-            null,
-            null,
-            null,
-            ProxyRouteDiagnosticsPolicyExplainer.Disabled(reason),
-            ProxyRouteDiagnosticsPolicyExplainer.Disabled(reason),
-            ProxyRouteDiagnosticsPolicyExplainer.Disabled(reason),
-            [new RouteMatchDryRunFinding("error", reason, message)]);
+        return RouteMatchDryRunResult.Failed(evaluatedAtUtc, reason, message);
     }
 
     private static RouteMatchDryRunUpstream? SelectDiagnosticUpstream(IProxyRouteDiagnosticsRoute route)

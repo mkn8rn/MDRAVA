@@ -134,24 +134,7 @@ public static class ProxyRouteDiagnosticsRequestReader
 
     private static RouteMatchDryRunResult Failure(DateTimeOffset evaluatedAtUtc, string reason, string message)
     {
-        return new RouteMatchDryRunResult(
-            false,
-            evaluatedAtUtc,
-            reason,
-            null,
-            null,
-            null,
-            null,
-            null,
-            false,
-            null,
-            null,
-            null,
-            null,
-            ProxyRouteDiagnosticsPolicyExplainer.Disabled(reason),
-            ProxyRouteDiagnosticsPolicyExplainer.Disabled(reason),
-            ProxyRouteDiagnosticsPolicyExplainer.Disabled(reason),
-            [new RouteMatchDryRunFinding("error", reason, message)]);
+        return RouteMatchDryRunResult.Failed(evaluatedAtUtc, reason, message);
     }
 
     private static IReadOnlyList<ProxyHeaderField> BuildHeaders(
