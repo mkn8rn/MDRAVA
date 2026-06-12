@@ -110,11 +110,13 @@ public static class Http3RequestTranslator
             return Http3RequestTranslationResult.Rejected("authority_host_mismatch");
         }
 
-        if (!TryGetRequestFraming(regularHeaders, method, bodyMayFollow, out var framing, out var rejectionReason))
+        var framingDecision = GetRequestFraming(regularHeaders, method, bodyMayFollow);
+        if (framingDecision is Http3RequestFramingDecision.RejectedDecision rejectedFraming)
         {
-            return Http3RequestTranslationResult.Rejected(rejectionReason);
+            return Http3RequestTranslationResult.Rejected(rejectedFraming.Reason);
         }
 
+        var framing = ((Http3RequestFramingDecision.AcceptedDecision)framingDecision).Framing;
         regularHeaders.RemoveAll(static header => string.Equals(header.Name, "host", StringComparison.OrdinalIgnoreCase));
         var path = target.Split('?', 2)[0];
         regularHeaders.Insert(0, new ProxyHeaderField("Host", authority));
@@ -162,11 +164,13 @@ public static class Http3RequestTranslator
             return Http3RequestTranslationResult.Rejected("authority_host_mismatch");
         }
 
-        if (!TryGetRequestFraming(regularHeaders, method, bodyMayFollow: false, out var framing, out var rejectionReason))
+        var framingDecision = GetRequestFraming(regularHeaders, method, bodyMayFollow: false);
+        if (framingDecision is Http3RequestFramingDecision.RejectedDecision rejectedFraming)
         {
-            return Http3RequestTranslationResult.Rejected(rejectionReason);
+            return Http3RequestTranslationResult.Rejected(rejectedFraming.Reason);
         }
 
+        var framing = ((Http3RequestFramingDecision.AcceptedDecision)framingDecision).Framing;
         if (framing.Kind != Http1BodyKind.None)
         {
             return Http3RequestTranslationResult.Rejected("connect_body_unsupported");
@@ -239,15 +243,11 @@ public static class Http3RequestTranslator
                 || character is >= 'a' and <= 'z');
     }
 
-    private static bool TryGetRequestFraming(
+    private static Http3RequestFramingDecision GetRequestFraming(
         IReadOnlyList<ProxyHeaderField> headers,
         string method,
-        bool bodyMayFollow,
-        out Http1RequestFraming framing,
-        out string rejectionReason)
+        bool bodyMayFollow)
     {
-        framing = Http1RequestFraming.None;
-        rejectionReason = "";
         long? declared = null;
         foreach (var header in headers)
         {
@@ -260,8 +260,7 @@ public static class Http3RequestTranslator
                 || !long.TryParse(header.Value.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var parsed)
                 || parsed < 0)
             {
-                rejectionReason = "invalid_content_length";
-                return false;
+                return Http3RequestFramingDecision.Rejected("invalid_content_length");
             }
 
             declared = parsed;
@@ -269,16 +268,15 @@ public static class Http3RequestTranslator
 
         if (declared.HasValue)
         {
-            framing = Http1RequestFraming.FromContentLength(declared.Value);
-            return true;
+            return Http3RequestFramingDecision.Accepted(Http1RequestFraming.FromContentLength(declared.Value));
         }
 
         if (bodyMayFollow && MayCarryBody(method))
         {
-            framing = Http1RequestFraming.Chunked;
+            return Http3RequestFramingDecision.Accepted(Http1RequestFraming.Chunked);
         }
 
-        return true;
+        return Http3RequestFramingDecision.Accepted(Http1RequestFraming.None);
     }
 
     private static bool MayCarryBody(string method)
@@ -287,5 +285,40 @@ public static class Http3RequestTranslator
             || string.Equals(method, "PUT", StringComparison.OrdinalIgnoreCase)
             || string.Equals(method, "PATCH", StringComparison.OrdinalIgnoreCase)
             || string.Equals(method, "DELETE", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private abstract record Http3RequestFramingDecision
+    {
+        private Http3RequestFramingDecision()
+        {
+        }
+
+        public static Http3RequestFramingDecision Accepted(Http1RequestFraming framing)
+        {
+            ArgumentNullException.ThrowIfNull(framing);
+            return new AcceptedDecision(framing);
+        }
+
+        public static Http3RequestFramingDecision Rejected(string reason)
+        {
+            return new RejectedDecision(reason);
+        }
+
+        public sealed record AcceptedDecision(Http1RequestFraming Framing) : Http3RequestFramingDecision;
+
+        public sealed record RejectedDecision : Http3RequestFramingDecision
+        {
+            public RejectedDecision(string reason)
+            {
+                if (string.IsNullOrWhiteSpace(reason))
+                {
+                    throw new ArgumentException("HTTP/3 request framing rejection reason is required.", nameof(reason));
+                }
+
+                Reason = reason;
+            }
+
+            public string Reason { get; }
+        }
     }
 }
