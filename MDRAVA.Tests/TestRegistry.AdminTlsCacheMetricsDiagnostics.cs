@@ -115,6 +115,7 @@ internal static partial class TestRegistry
     Test("Config lint service shapes submitted source findings", Sync(RouteDiagnosticsTests.ConfigLintServiceShapesSubmittedSourceFindings), TestTaxonomy.Config, TestTaxonomy.Routing),
     Test("Config lint rejects missing submitted request body", Sync(RouteDiagnosticsTests.ConfigLintRejectsMissingSubmittedRequestBody), TestTaxonomy.Config, TestTaxonomy.Routing, TestTaxonomy.SecurityNegativePaths),
     Test("Config lint controller rejects missing submitted request body", Sync(RouteDiagnosticsTests.ConfigLintControllerRejectsMissingSubmittedRequestBody), TestTaxonomy.Config, TestTaxonomy.Routing, TestTaxonomy.SecurityNegativePaths),
+    Test("Config lint controller rejects incomplete submitted request fields", Sync(RouteDiagnosticsTests.ConfigLintControllerRejectsIncompleteSubmittedRequestFields), TestTaxonomy.Config, TestTaxonomy.Routing, TestTaxonomy.SecurityNegativePaths),
     Test("Route diagnostics controller rejects missing match request body", Sync(RouteDiagnosticsTests.RouteDiagnosticsControllerRejectsMissingMatchRequestBody), TestTaxonomy.Routing, TestTaxonomy.Admin, TestTaxonomy.SecurityNegativePaths),
     Test("Route diagnostics controller maps missing headers to empty input", Sync(RouteDiagnosticsTests.RouteDiagnosticsControllerMapsMissingHeadersToEmptyInput), TestTaxonomy.Routing, TestTaxonomy.Admin),
     Test("Diagnostic endpoints require admin auth", RouteDiagnosticsTests.DiagnosticEndpointsRequireAdminAuth, TestTaxonomy.Routing, TestTaxonomy.Admin, TestTaxonomy.Metrics),

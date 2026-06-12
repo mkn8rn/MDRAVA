@@ -31,10 +31,15 @@ public sealed class ProxyConfigurationNormalizer
         if (!TryParseFormat(request.Format, out var format))
         {
             var error = new ProxyConfigurationFileError(null, "Format must be 'json' or 'yaml'.");
-            return Failure(request.Format, [error]);
+            return Failure(RequestFormatName(request.Format), [error]);
         }
 
         var formatName = FormatName(format);
+        if (string.IsNullOrWhiteSpace(request.Text))
+        {
+            return Failure(formatName, [new ProxyConfigurationFileError(null, "Submitted config text is required.")]);
+        }
+
         var parsed = _siteParser.Parse(request.Text, format);
         if (!parsed.Succeeded)
         {
@@ -43,7 +48,7 @@ public sealed class ProxyConfigurationNormalizer
 
         if (parsed.Site is null)
         {
-            return Failure(request.Format, [new ProxyConfigurationFileError(null, "Site configuration did not contain an object.")]);
+            return Failure(formatName, [new ProxyConfigurationFileError(null, "Site configuration did not contain an object.")]);
         }
 
         var options = SiteOptionsAggregator.ToProxyOptions(
@@ -79,7 +84,7 @@ public sealed class ProxyConfigurationNormalizer
     }
 
     private static bool TryParseFormat(
-        string format,
+        string? format,
         out ProxyConfigurationNormalizeFormat parsed)
     {
         if (string.Equals(format, "json", StringComparison.OrdinalIgnoreCase))
@@ -102,5 +107,10 @@ public sealed class ProxyConfigurationNormalizer
     private static string FormatName(ProxyConfigurationNormalizeFormat format)
     {
         return format == ProxyConfigurationNormalizeFormat.Yaml ? "yaml" : "json";
+    }
+
+    private static string RequestFormatName(string? format)
+    {
+        return string.IsNullOrWhiteSpace(format) ? "unknown" : format;
     }
 }

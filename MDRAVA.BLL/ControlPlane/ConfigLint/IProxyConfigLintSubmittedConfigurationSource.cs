@@ -4,7 +4,7 @@ namespace MDRAVA.BLL.ControlPlane.ConfigLint;
 public interface IProxyConfigLintSubmittedConfigurationSource
 {
     ProxyConfigLintSubmittedConfigurationResult Read(
-        ConfigLintRequest request,
+        string text,
         ProxyConfigurationNormalizeFormat format,
         DateTimeOffset loadedAtUtc);
 }

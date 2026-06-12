@@ -28,7 +28,7 @@ public sealed class ProxyConfigLintSubmittedConfigurationSource
     }
 
     public ProxyConfigLintSubmittedConfigurationResult Read(
-        ConfigLintRequest request,
+        string text,
         ProxyConfigurationNormalizeFormat format,
         DateTimeOffset loadedAtUtc)
     {
@@ -39,7 +39,7 @@ public sealed class ProxyConfigLintSubmittedConfigurationSource
         SiteOptions? site;
         try
         {
-            site = _siteParser.ReadSiteText(request.Text, siteFormat);
+            site = _siteParser.ReadSiteText(text, siteFormat);
         }
         catch (JsonException exception)
         {

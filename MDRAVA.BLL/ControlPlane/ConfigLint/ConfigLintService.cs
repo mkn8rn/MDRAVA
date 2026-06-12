@@ -75,7 +75,7 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
             return BuildResult(now, [Error("empty_config", "Submitted config text is required.", "lint-input", "text", "Submit one site configuration object.")], []);
         }
 
-        var submitted = _submittedConfigurationSource.Read(request, format, now);
+        var submitted = _submittedConfigurationSource.Read(request.Text, format, now);
         if (submitted.Failure is not null)
         {
             return BuildResult(now, [SubmittedFailure(submitted.Failure)], []);
@@ -413,7 +413,7 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
     }
 
     private static bool TryParseFormat(
-        string format,
+        string? format,
         out ProxyConfigurationNormalizeFormat parsed)
     {
         if (string.Equals(format, "json", StringComparison.OrdinalIgnoreCase))

@@ -501,6 +501,24 @@ internal static class RouteDiagnosticsTests
         AssertEx.True(result.Findings[0].Message.Contains("request body is required", StringComparison.Ordinal));
     }
 
+    public static void ConfigLintControllerRejectsIncompleteSubmittedRequestFields()
+    {
+        var service = CreateLintService(BaseOptions([ProxyRoute("active", "active.test", "/")]));
+        var controller = new ProxyConfigLintController(
+            new ProxyConfigLintAdministrationService(service));
+
+        var missingFormat = controller.Submitted(new ProxyConfigLintSubmissionRequest(null, "submitted"));
+        var missingText = controller.Submitted(new ProxyConfigLintSubmissionRequest("json", null));
+
+        var formatResponse = (BadRequestObjectResult)AssertEx.NotNull(missingFormat.Result);
+        var formatResult = (ConfigLintResult)AssertEx.NotNull(formatResponse.Value);
+        AssertFinding(formatResult, "invalid_format", "error");
+        var textResponse = (BadRequestObjectResult)AssertEx.NotNull(missingText.Result);
+        var textResult = (ConfigLintResult)AssertEx.NotNull(textResponse.Value);
+        AssertFinding(textResult, "empty_config", "error");
+        AssertEx.True(textResult.Findings[0].Message.Contains("config text is required", StringComparison.Ordinal));
+    }
+
     public static void RouteDiagnosticsControllerRejectsMissingMatchRequestBody()
     {
         var service = CreateRouteService(BaseOptions([ProxyRoute("active", "active.test", "/")]), out _, out _);
@@ -895,11 +913,11 @@ internal static class RouteDiagnosticsTests
         public ProxyConfigurationNormalizeFormat? LastFormat { get; private set; }
 
         public ProxyConfigLintSubmittedConfigurationResult Read(
-            ConfigLintRequest request,
+            string text,
             ProxyConfigurationNormalizeFormat format,
             DateTimeOffset loadedAtUtc)
         {
-            _ = request;
+            _ = text;
             _ = loadedAtUtc;
             LastFormat = format;
             return _result ?? new ProxyConfigLintSubmittedConfigurationResult(null, [], null);

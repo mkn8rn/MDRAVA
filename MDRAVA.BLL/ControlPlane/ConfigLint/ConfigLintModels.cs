@@ -3,8 +3,8 @@ using MDRAVA.BLL.Configuration;
 namespace MDRAVA.BLL.ControlPlane.ConfigLint;
 
 public sealed record ConfigLintRequest(
-    string Format,
-    string Text);
+    string? Format,
+    string? Text);
 
 public sealed record ConfigLintResult(
     bool Succeeded,

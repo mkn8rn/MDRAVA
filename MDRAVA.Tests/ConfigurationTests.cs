@@ -816,6 +816,22 @@ internal static class ConfigurationTests
         AssertEx.True(result.FileErrors.All(static error => error.Path is null));
     }
 
+    public static void ConfigNormalizerRejectsIncompleteRequestFields()
+    {
+        var normalizer = CreateNormalizer();
+
+        var missingFormat = normalizer.Normalize(new ProxyConfigurationNormalizeRequest(null, "ignored"));
+        var missingText = normalizer.Normalize(new ProxyConfigurationNormalizeRequest("json", null));
+
+        AssertEx.False(missingFormat.Succeeded);
+        AssertEx.Equal("unknown", missingFormat.Format);
+        AssertEx.True(missingFormat.Errors.Any(static error => error.Contains("Format must be", StringComparison.Ordinal)), string.Join("; ", missingFormat.Errors));
+        AssertEx.False(missingText.Succeeded);
+        AssertEx.Equal("json", missingText.Format);
+        AssertEx.True(missingText.Errors.Any(static error => error.Contains("config text is required", StringComparison.Ordinal)), string.Join("; ", missingText.Errors));
+        AssertEx.True(missingText.FileErrors.All(static error => error.Path is null));
+    }
+
     public static void ConfigNormalizeControllerRejectsMissingRequestBody()
     {
         using var temp = TemporaryDirectory.Create();
