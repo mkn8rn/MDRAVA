@@ -16,7 +16,8 @@ public static class ConfigLintSubmittedRequestReader
                 ConfigLintFindingFactory.Error("missing_request", "A lint request body is required.", "lint-input", null, "Submit config text with an explicit format."));
         }
 
-        if (!TryParseFormat(request.Format, out var format))
+        var formatDecision = ParseFormat(request.Format);
+        if (formatDecision is ConfigLintSubmittedFormatDecision.RejectedDecision)
         {
             return ConfigLintSubmittedRequestDecision.Rejected(
                 ConfigLintFindingFactory.Error("invalid_format", "Format must be 'json' or 'yaml'.", "lint-input", "format", "Set format to 'json', 'yaml', or 'yml'."));
@@ -28,28 +29,42 @@ public static class ConfigLintSubmittedRequestReader
                 ConfigLintFindingFactory.Error("empty_config", "Submitted config text is required.", "lint-input", "text", "Submit one site configuration object."));
         }
 
+        var format = ((ConfigLintSubmittedFormatDecision.AcceptedDecision)formatDecision).Format;
         return ConfigLintSubmittedRequestDecision.Accepted(new ConfigLintSubmittedRequestInput(request.Text, format));
     }
 
-    private static bool TryParseFormat(
-        string? format,
-        out ProxyConfigurationNormalizeFormat parsed)
+    private static ConfigLintSubmittedFormatDecision ParseFormat(string? format)
     {
         if (string.Equals(format, "json", StringComparison.OrdinalIgnoreCase))
         {
-            parsed = ProxyConfigurationNormalizeFormat.Json;
-            return true;
+            return ConfigLintSubmittedFormatDecision.Accepted(ProxyConfigurationNormalizeFormat.Json);
         }
 
         if (string.Equals(format, "yaml", StringComparison.OrdinalIgnoreCase)
             || string.Equals(format, "yml", StringComparison.OrdinalIgnoreCase))
         {
-            parsed = ProxyConfigurationNormalizeFormat.Yaml;
-            return true;
+            return ConfigLintSubmittedFormatDecision.Accepted(ProxyConfigurationNormalizeFormat.Yaml);
         }
 
-        parsed = ProxyConfigurationNormalizeFormat.Json;
-        return false;
+        return ConfigLintSubmittedFormatDecision.Rejected;
+    }
+
+    private abstract record ConfigLintSubmittedFormatDecision
+    {
+        private ConfigLintSubmittedFormatDecision()
+        {
+        }
+
+        public static ConfigLintSubmittedFormatDecision Rejected { get; } = new RejectedDecision();
+
+        public static ConfigLintSubmittedFormatDecision Accepted(ProxyConfigurationNormalizeFormat format)
+        {
+            return new AcceptedDecision(format);
+        }
+
+        public sealed record AcceptedDecision(ProxyConfigurationNormalizeFormat Format) : ConfigLintSubmittedFormatDecision;
+
+        public sealed record RejectedDecision : ConfigLintSubmittedFormatDecision;
     }
 }
 
