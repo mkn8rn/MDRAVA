@@ -34,8 +34,8 @@ internal static class RuntimePreflightTests
         using var temp = TemporaryDirectory.Create();
         var probe = new DelegateProbe(path =>
             path.EndsWith("logs", StringComparison.OrdinalIgnoreCase)
-                ? new ProxyRuntimeDirectoryProbeResult(true, false, true, false, secret)
-                : new ProxyRuntimeDirectoryProbeResult(true, false, true, true, null));
+                ? ProxyRuntimeDirectoryProbeResult.NotWritable(created: false, secret)
+                : ProxyRuntimeDirectoryProbeResult.Probed(created: false, canRead: true, canWrite: true));
         var service = new ProxyRuntimePreflightService(
             Provider(temp.Path),
             new ProxyDataDirectoryPathSafety(),
@@ -64,7 +64,7 @@ internal static class RuntimePreflightTests
         var service = new ProxyRuntimePreflightService(
             provider,
             new ProxyDataDirectoryPathSafety(),
-            new DelegateProbe(_ => new ProxyRuntimeDirectoryProbeResult(true, false, true, true, null)),
+            new DelegateProbe(_ => ProxyRuntimeDirectoryProbeResult.Probed(created: false, canRead: true, canWrite: true)),
             TimeProvider.System);
 
         var status = service.RunStartupChecks();
@@ -98,28 +98,13 @@ internal static class RuntimePreflightTests
     public static void RuntimePreflightProbePolicyClassifiesReasonAndSeverity()
     {
         var criticalMissing = ProxyRuntimePreflightProbePolicy.Classify(
-            new ProxyRuntimeDirectoryProbeResult(
-                Exists: false,
-                Created: false,
-                CanRead: false,
-                CanWrite: false,
-                FailureReason: null),
+            ProxyRuntimeDirectoryProbeResult.Missing(),
             critical: true);
         var nonCriticalDenied = ProxyRuntimePreflightProbePolicy.Classify(
-            new ProxyRuntimeDirectoryProbeResult(
-                Exists: true,
-                Created: false,
-                CanRead: true,
-                CanWrite: true,
-                FailureReason: "access_denied"),
+            ProxyRuntimeDirectoryProbeResult.Failed(exists: true, created: false, "access_denied"),
             critical: false);
         var healthy = ProxyRuntimePreflightProbePolicy.Classify(
-            new ProxyRuntimeDirectoryProbeResult(
-                Exists: true,
-                Created: false,
-                CanRead: true,
-                CanWrite: true,
-                FailureReason: null),
+            ProxyRuntimeDirectoryProbeResult.Probed(created: false, canRead: true, canWrite: true),
             critical: true);
 
         AssertEx.Equal(ProxyStatusText.Error, criticalMissing.Severity);
@@ -128,6 +113,41 @@ internal static class RuntimePreflightTests
         AssertEx.Equal("directory_access_denied", nonCriticalDenied.Reason);
         AssertEx.Equal(ProxyStatusText.Info, healthy.Severity);
         AssertEx.Equal(ProxyStatusText.Ok, healthy.Reason);
+    }
+
+    public static void RuntimeDirectoryProbeResultNamesCommonOutcomes()
+    {
+        var missing = ProxyRuntimeDirectoryProbeResult.Missing();
+        var createdWritable = ProxyRuntimeDirectoryProbeResult.Probed(
+            created: true,
+            canRead: true,
+            canWrite: true);
+        var existingNotWritable = ProxyRuntimeDirectoryProbeResult.Probed(
+            created: false,
+            canRead: true,
+            canWrite: false);
+        var secretNotWritable = ProxyRuntimeDirectoryProbeResult.NotWritable(
+            created: false,
+            "secret-detail");
+        var accessDenied = ProxyRuntimeDirectoryProbeResult.Failed(
+            exists: true,
+            created: false,
+            "access_denied");
+
+        AssertEx.False(missing.Exists);
+        AssertEx.Equal("missing", missing.FailureReason);
+        AssertEx.True(createdWritable.Exists);
+        AssertEx.True(createdWritable.Created);
+        AssertEx.Equal(null, createdWritable.FailureReason);
+        AssertEx.True(existingNotWritable.Exists);
+        AssertEx.False(existingNotWritable.CanWrite);
+        AssertEx.Equal("not_writable", existingNotWritable.FailureReason);
+        AssertEx.True(secretNotWritable.CanRead);
+        AssertEx.False(secretNotWritable.CanWrite);
+        AssertEx.Equal("secret-detail", secretNotWritable.FailureReason);
+        AssertEx.True(accessDenied.Exists);
+        AssertEx.False(accessDenied.CanRead);
+        AssertEx.Equal("access_denied", accessDenied.FailureReason);
     }
 
     public static void RuntimePreflightDirectoryPolicyListsExpectedDirectories()
@@ -214,12 +234,7 @@ internal static class RuntimePreflightTests
         var unsafeCheck = ProxyRuntimePreflightCheckFactory.UnsafePath(logs);
         var probedCheck = ProxyRuntimePreflightCheckFactory.FromProbeResult(
             config,
-            new ProxyRuntimeDirectoryProbeResult(
-                Exists: false,
-                Created: false,
-                CanRead: false,
-                CanWrite: false,
-                FailureReason: null));
+            ProxyRuntimeDirectoryProbeResult.Missing());
 
         AssertEx.Equal("logs_directory", unsafeCheck.Name);
         AssertEx.Equal("logs", unsafeCheck.RelativePath);

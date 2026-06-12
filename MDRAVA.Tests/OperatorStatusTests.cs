@@ -975,8 +975,8 @@ internal static class OperatorStatusTests
             new ProxyDataDirectoryPathSafety(),
             new RuntimePreflightProbe(path =>
                 path.EndsWith("logs", StringComparison.OrdinalIgnoreCase)
-                    ? new ProxyRuntimeDirectoryProbeResult(true, false, true, false, secret)
-                    : new ProxyRuntimeDirectoryProbeResult(true, false, true, true, null)),
+                    ? ProxyRuntimeDirectoryProbeResult.NotWritable(created: false, secret)
+                    : ProxyRuntimeDirectoryProbeResult.Probed(created: false, canRead: true, canWrite: true)),
             TimeProvider.System);
         preflight.RunStartupChecks();
 

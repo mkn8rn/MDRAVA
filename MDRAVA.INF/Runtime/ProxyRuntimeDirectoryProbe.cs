@@ -13,7 +13,7 @@ public sealed class ProxyRuntimeDirectoryProbe : IProxyRuntimeDirectoryProbe
             {
                 if (!createIfMissing)
                 {
-                    return new ProxyRuntimeDirectoryProbeResult(false, false, false, false, "missing");
+                    return ProxyRuntimeDirectoryProbeResult.Missing();
                 }
 
                 Directory.CreateDirectory(path);
@@ -22,15 +22,15 @@ public sealed class ProxyRuntimeDirectoryProbe : IProxyRuntimeDirectoryProbe
 
             var canRead = CanRead(path);
             var canWrite = CanWrite(path);
-            return new ProxyRuntimeDirectoryProbeResult(true, created, canRead, canWrite, canWrite ? null : "not_writable");
+            return ProxyRuntimeDirectoryProbeResult.Probed(created, canRead, canWrite);
         }
         catch (UnauthorizedAccessException)
         {
-            return new ProxyRuntimeDirectoryProbeResult(Directory.Exists(path), created, false, false, "access_denied");
+            return ProxyRuntimeDirectoryProbeResult.Failed(Directory.Exists(path), created, "access_denied");
         }
         catch (IOException)
         {
-            return new ProxyRuntimeDirectoryProbeResult(Directory.Exists(path), created, false, false, "io_error");
+            return ProxyRuntimeDirectoryProbeResult.Failed(Directory.Exists(path), created, "io_error");
         }
     }
 
