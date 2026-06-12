@@ -191,6 +191,29 @@ internal static class HealthCheckTests
         AssertEx.Equal("/health", targets[0].Path);
     }
 
+    public static void HealthCheckTargetMapperReadsRoutesWithoutConfigurationSnapshot()
+    {
+        var first = Upstream(5001);
+        var second = Upstream(5002);
+        var routes = new[]
+        {
+            Route([first, second], timeoutSeconds: 3, healthyThreshold: 1, unhealthyThreshold: 4),
+            Route([Upstream(5003)], healthEnabled: false)
+        };
+
+        var targets = UpstreamHealthCheckTargetMapper.FromRoutes(routes);
+
+        AssertEx.Equal(2, targets.Count);
+        AssertEx.Equal("test", targets[0].RouteName);
+        AssertEx.Equal(first.Name, targets[0].UpstreamName);
+        AssertEx.Equal(first.Identity, targets[0].UpstreamIdentity);
+        AssertEx.Equal(first.Endpoint, targets[0].UpstreamEndpoint);
+        AssertEx.Equal(TimeSpan.FromSeconds(3), targets[0].Timeout);
+        AssertEx.Equal(1, targets[0].HealthyThreshold);
+        AssertEx.Equal(4, targets[0].UnhealthyThreshold);
+        AssertEx.Equal(second.Name, targets[1].UpstreamName);
+    }
+
     private static async Task<HealthCheckSample> RunHealthCheckAsync(string response)
     {
         var port = GetFreeTcpPort();

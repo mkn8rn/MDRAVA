@@ -19,7 +19,7 @@ public sealed class ProxyConfigurationUpstreamHealthCheckTargetSource : IUpstrea
     public IReadOnlyList<UpstreamHealthCheckTarget> ReadTargets()
     {
         return _configurationStore.TryGetSnapshot(out var snapshot) && snapshot is not null
-            ? UpstreamHealthCheckTargetMapper.FromSnapshot(snapshot)
+            ? UpstreamHealthCheckTargetMapper.FromRoutes(snapshot.Routes)
             : [];
     }
 }

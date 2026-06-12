@@ -17,9 +17,9 @@ public sealed record UpstreamHealthCheckTarget(
 
 public static class UpstreamHealthCheckTargetMapper
 {
-    public static IReadOnlyList<UpstreamHealthCheckTarget> FromSnapshot(ProxyConfigurationSnapshot snapshot)
+    public static IReadOnlyList<UpstreamHealthCheckTarget> FromRoutes(IReadOnlyList<RuntimeRoute> routes)
     {
-        return snapshot.Routes
+        return routes
             .Where(static route => route.HealthCheck.Enabled)
             .SelectMany(static route => route.Upstreams.Select(upstream => new UpstreamHealthCheckTarget(
                 route.Name,
