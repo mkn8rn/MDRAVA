@@ -26,6 +26,11 @@ public interface IProxyStatusUpstreamHealthSource
         IReadOnlyList<ProxyUpstreamHealthSource> upstreams);
 }
 
+public interface IProxyStatusUpstreamHealthReader
+{
+    IReadOnlyList<ProxyUpstreamStatusResponse> ReadUpstreams();
+}
+
 public interface IProxyStatusRuntimePreflightSource
 {
     ProxyRuntimePreflightStatus ReadRuntimePreflight();

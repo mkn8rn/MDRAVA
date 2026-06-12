@@ -868,7 +868,7 @@ internal static class OperatorStatusTests
                 Runtime,
                 Metrics,
                 Store,
-                Health,
+                new ProxyStatusUpstreamHealthReader(Store, Health),
                 FixedConfigLintOperations.Instance,
                 Writer,
                 new ProxyCacheStatusReader(

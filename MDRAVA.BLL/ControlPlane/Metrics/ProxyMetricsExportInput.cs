@@ -2,7 +2,6 @@ using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.Acme;
 using MDRAVA.BLL.ControlPlane.Caching;
 using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
-using MDRAVA.BLL.ControlPlane.HealthChecks;
 using MDRAVA.BLL.ControlPlane.Status;
 
 namespace MDRAVA.BLL.ControlPlane.Metrics;
@@ -84,20 +83,20 @@ public sealed class ProxyMetricsExportInputSource : IProxyMetricsExportInputSour
     private readonly IProxyConfigurationStore _configurationStore;
     private readonly IProxyStatusMetricsSource _metricsSource;
     private readonly IProxyCacheStatusReader _cacheStatusReader;
-    private readonly IProxyStatusUpstreamHealthSource _upstreamHealthSource;
+    private readonly IProxyStatusUpstreamHealthReader _upstreamHealthReader;
     private readonly IProxyAcmeCertificateLifecycleStatusSource _acmeStatusSource;
 
     public ProxyMetricsExportInputSource(
         IProxyConfigurationStore configurationStore,
         IProxyStatusMetricsSource metricsSource,
         IProxyCacheStatusReader cacheStatusReader,
-        IProxyStatusUpstreamHealthSource upstreamHealthSource,
+        IProxyStatusUpstreamHealthReader upstreamHealthReader,
         IProxyAcmeCertificateLifecycleStatusSource acmeStatusSource)
     {
         _configurationStore = configurationStore;
         _metricsSource = metricsSource;
         _cacheStatusReader = cacheStatusReader;
-        _upstreamHealthSource = upstreamHealthSource;
+        _upstreamHealthReader = upstreamHealthReader;
         _acmeStatusSource = acmeStatusSource;
     }
 
@@ -113,7 +112,7 @@ public sealed class ProxyMetricsExportInputSource : IProxyMetricsExportInputSour
             ProxyMetricsExportLabelOptionsMapper.FromSnapshot(snapshot),
             ProxyMetricsExportHttp3FactsMapper.FromSnapshot(snapshot),
             _cacheStatusReader.GetStatus(),
-            _upstreamHealthSource.ReadUpstreams(ProxyUpstreamHealthSourceMapper.FromSnapshot(snapshot)),
+            _upstreamHealthReader.ReadUpstreams(),
             _acmeStatusSource.GetLifecycleStatuses());
     }
 }

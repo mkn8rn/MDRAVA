@@ -228,6 +228,7 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<IProxyStatusRuntimeStateSource>(static services => services.GetRequiredService<ProxyRuntimeState>());
         services.AddSingleton<UpstreamHealthStore>();
         services.AddSingleton<IProxyStatusUpstreamHealthSource>(static services => services.GetRequiredService<UpstreamHealthStore>());
+        services.AddSingleton<IProxyStatusUpstreamHealthReader, ProxyStatusUpstreamHealthReader>();
     }
 
     private static void AddProxyForwardingServices(this IServiceCollection services)

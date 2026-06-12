@@ -28,7 +28,7 @@ internal static class ProxyStatusOperationFactory
             runtime,
             metrics,
             store,
-            health,
+            new ProxyStatusUpstreamHealthReader(store, health),
             lintOperations ?? FixedConfigLintOperations.Instance,
             logPersistenceStore ?? FixedLogPersistenceStore.Instance,
             new ProxyCacheStatusReader(

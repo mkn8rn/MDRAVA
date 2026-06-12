@@ -458,7 +458,7 @@ internal static class MetricsTests
     }
 
     private static ProxyMetricsExportProvider CreateExportProvider(
-        IProxyConfigurationStore store,
+        ProxyConfigurationStore store,
         MetricsFixture fixture)
     {
         return new ProxyMetricsExportProvider(
@@ -468,7 +468,7 @@ internal static class MetricsTests
     }
 
     private static ProxyMetricsExportInputSource CreateExportInputSource(
-        IProxyConfigurationStore store,
+        ProxyConfigurationStore store,
         MetricsFixture fixture)
     {
         return new ProxyMetricsExportInputSource(
@@ -477,7 +477,7 @@ internal static class MetricsTests
             new ProxyCacheStatusReader(
                 new ProxyCacheStatusConfigurationSource(store),
                 new ProxyCacheRuntimeStatusSource(fixture.Cache)),
-            fixture.Health,
+            new ProxyStatusUpstreamHealthReader(store, fixture.Health),
             new ProxyAcmeCertificateLifecycleStatusSource(fixture.Acme));
     }
 
