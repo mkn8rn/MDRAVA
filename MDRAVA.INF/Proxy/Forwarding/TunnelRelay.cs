@@ -112,19 +112,37 @@ public sealed class TunnelRelay
             }
         }
 
-        var closeReason = idleTimedOut
-            ? "IdleTimeout"
-            : relayFailed
-                ? "RelayFailure"
-                : cancellationToken.IsCancellationRequested
-                    ? "Shutdown"
-                    : "Closed";
+        var finalBytesClientToUpstream = Interlocked.Read(ref bytesClientToUpstream);
+        var finalBytesUpstreamToClient = Interlocked.Read(ref bytesUpstreamToClient);
+        var duration = _timeProvider.GetElapsedTime(started);
+        if (idleTimedOut)
+        {
+            return TunnelRelayResult.IdleTimedOut(
+                finalBytesClientToUpstream,
+                finalBytesUpstreamToClient,
+                duration);
+        }
 
-        return new TunnelRelayResult(
-            closeReason,
-            Interlocked.Read(ref bytesClientToUpstream),
-            Interlocked.Read(ref bytesUpstreamToClient),
-            _timeProvider.GetElapsedTime(started));
+        if (relayFailed)
+        {
+            return TunnelRelayResult.RelayFailed(
+                finalBytesClientToUpstream,
+                finalBytesUpstreamToClient,
+                duration);
+        }
+
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return TunnelRelayResult.Shutdown(
+                finalBytesClientToUpstream,
+                finalBytesUpstreamToClient,
+                duration);
+        }
+
+        return TunnelRelayResult.Closed(
+            finalBytesClientToUpstream,
+            finalBytesUpstreamToClient,
+            duration);
     }
 
     private async ValueTask RelayDirectionAsync(

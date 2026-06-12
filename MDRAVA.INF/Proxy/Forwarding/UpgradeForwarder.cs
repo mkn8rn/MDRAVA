@@ -137,14 +137,8 @@ public sealed class UpgradeForwarder
                     upgrade.Protocol,
                     upstream.Name);
                 var tunnelResult = await _tunnelRelay.RelayAsync(clientStream, upstreamStream, listener, timeouts, cancellationToken);
-                var failureKind = tunnelResult.CloseReason == "IdleTimeout"
-                    ? ProxyFailureKind.TunnelIdleTimeout
-                    : tunnelResult.CloseReason == "RelayFailure"
-                        ? ProxyFailureKind.TunnelRelayFailure
-                        : ProxyFailureKind.None;
                 return ForwardingResult.TunnelCompleted(
                     responseStatusCode: 101,
-                    tunnelFailureKind: failureKind,
                     tunnel: tunnelResult);
             }
             finally

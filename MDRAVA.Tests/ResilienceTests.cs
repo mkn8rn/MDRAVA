@@ -583,10 +583,9 @@ internal static class ResilienceTests
             responseStarted: false,
             responseStatusCode: 502,
             failureKind: ProxyFailureKind.UpstreamConnectFailed);
-        var tunnelRelay = new TunnelRelayResult("RelayFailure", 10, 8, TimeSpan.FromSeconds(1));
+        var tunnelRelay = TunnelRelayResult.RelayFailed(10, 8, TimeSpan.FromSeconds(1));
         var tunnel = ForwardingResult.TunnelCompleted(
             responseStatusCode: 101,
-            tunnelFailureKind: ProxyFailureKind.TunnelRelayFailure,
             tunnel: tunnelRelay);
 
         AssertEx.True(success.Succeeded);

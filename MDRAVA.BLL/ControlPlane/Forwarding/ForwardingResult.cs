@@ -46,7 +46,6 @@ public sealed record ForwardingResult
 
     public static ForwardingResult TunnelCompleted(
         int responseStatusCode,
-        ProxyFailureKind tunnelFailureKind,
         TunnelRelayResult tunnel)
     {
         return new ForwardingResult(
@@ -54,7 +53,7 @@ public sealed record ForwardingResult
             responseStarted: true,
             keepClientConnectionOpen: false,
             responseStatusCode: responseStatusCode,
-            failureKind: tunnelFailureKind,
+            failureKind: tunnel.FailureKind,
             tunnel: tunnel);
     }
 
