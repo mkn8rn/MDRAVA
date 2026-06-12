@@ -72,6 +72,18 @@ public interface IProxyRouteDiagnosticsRoute
 
     bool MaintenanceEnabled { get; }
 
+    ProxyRouteDiagnosticsMaintenancePolicy Maintenance { get; }
+
+    ProxyRouteDiagnosticsHttpsRedirectPolicy HttpsRedirect { get; }
+
+    ProxyRouteDiagnosticsCanonicalHostPolicy CanonicalHost { get; }
+
+    ProxyRouteDiagnosticsRedirectPolicy Redirect { get; }
+
+    ProxyRouteDiagnosticsStaticResponse StaticResponse { get; }
+
+    ProxyRouteDiagnosticsPathRewrite PathRewrite { get; }
+
     long MaxRequestBodyBytes { get; }
 
     IReadOnlyList<IProxyRouteDiagnosticsUpstream> Upstreams { get; }
@@ -162,3 +174,35 @@ public enum ProxyRouteDiagnosticsBodyKind
 public sealed record ProxyRouteDiagnosticsActionDecision(
     bool ShouldProxy,
     int? GeneratedStatusCode);
+
+public sealed record ProxyRouteDiagnosticsMaintenancePolicy(
+    bool Enabled,
+    int? RetryAfterSeconds,
+    string ContentType,
+    string Body);
+
+public sealed record ProxyRouteDiagnosticsHttpsRedirectPolicy(
+    bool Enabled,
+    int StatusCode,
+    int? HttpsPort);
+
+public sealed record ProxyRouteDiagnosticsCanonicalHostPolicy(
+    bool Enabled,
+    string TargetHost,
+    int StatusCode);
+
+public sealed record ProxyRouteDiagnosticsRedirectPolicy(
+    int StatusCode,
+    string TargetUrl,
+    string TargetPath,
+    bool PreserveQuery);
+
+public sealed record ProxyRouteDiagnosticsStaticResponse(
+    int StatusCode,
+    string ContentType,
+    string Body);
+
+public sealed record ProxyRouteDiagnosticsPathRewrite(
+    string StripPrefix,
+    string ReplacePrefix,
+    string Replacement);

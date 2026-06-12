@@ -1,7 +1,3 @@
-using MDRAVA.BLL.Http;
-using MDRAVA.BLL.ControlPlane.Headers;
-using MDRAVA.BLL.ControlPlane.Http1;
-using MDRAVA.BLL.ControlPlane.Routing;
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 
@@ -33,126 +29,189 @@ public sealed class ProxyRouteDiagnosticsConfigurationSource
 public sealed class ProxyRouteDiagnosticsMatcher
     : IProxyRouteDiagnosticsMatcher
 {
-    private readonly IRouteMatcher _routeMatcher;
-
-    public ProxyRouteDiagnosticsMatcher(IRouteMatcher routeMatcher)
-    {
-        _routeMatcher = routeMatcher;
-    }
-
     public IProxyRouteDiagnosticsRoute? Match(
         IProxyRouteDiagnosticsConfigurationSnapshot snapshot,
         ProxyRouteDiagnosticsRequestHead requestHead)
     {
-        var runtimeSnapshot = RequireRuntimeSnapshot(snapshot);
-        var match = _routeMatcher.Match(
-            runtimeSnapshot.RuntimeSnapshot,
-            ProxyRouteDiagnosticsRequestHeadMapper.ToHttp1RequestHead(requestHead));
-        return match is null
-            ? null
-            : runtimeSnapshot.GetRoute(match.Route);
+        foreach (var route in snapshot.Routes)
+        {
+            if (!HostMatches(route.Host, requestHead.Host))
+            {
+                continue;
+            }
+
+            if (!requestHead.Path.StartsWith(route.PathPrefix, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            return route;
+        }
+
+        return null;
     }
 
-    private static ProxyRouteDiagnosticsRuntimeConfigurationSnapshot RequireRuntimeSnapshot(
-        IProxyRouteDiagnosticsConfigurationSnapshot snapshot)
+    private static bool HostMatches(string configuredHost, string requestHost)
     {
-        return snapshot as ProxyRouteDiagnosticsRuntimeConfigurationSnapshot
-            ?? throw new InvalidOperationException("Route diagnostics matcher requires the runtime configuration snapshot source.");
+        if (configuredHost == "*")
+        {
+            return true;
+        }
+
+        if (string.Equals(configuredHost, requestHost, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        var requestHostWithoutPort = StripSimplePort(requestHost);
+        return string.Equals(configuredHost, requestHostWithoutPort, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string StripSimplePort(string host)
+    {
+        var colonIndex = host.LastIndexOf(':');
+        if (colonIndex <= 0 || host.Contains(']', StringComparison.Ordinal))
+        {
+            return host;
+        }
+
+        return host[..colonIndex];
     }
 }
 
 public sealed class ProxyRouteDiagnosticsActionPolicyAdapter
     : IProxyRouteDiagnosticsActionPolicy
 {
-    private readonly ProxyRouteActionPolicy _routeActionPolicy;
-
-    public ProxyRouteDiagnosticsActionPolicyAdapter(ProxyRouteActionPolicy routeActionPolicy)
-    {
-        _routeActionPolicy = routeActionPolicy;
-    }
-
     public ProxyRouteDiagnosticsActionDecision Evaluate(
         IProxyRouteDiagnosticsRoute route,
         ProxyRouteDiagnosticsRequestHead requestHead,
         IProxyRouteDiagnosticsListener listener,
         bool isUpgradeRequest)
     {
-        var runtimeRoute = RequireRuntimeRoute(route);
-        var runtimeListener = RequireRuntimeListener(listener);
-        var decision = _routeActionPolicy.Evaluate(
-            runtimeRoute.RuntimeRoute,
-            ProxyRouteDiagnosticsRequestHeadMapper.ToHttp1RequestHead(requestHead),
-            runtimeListener.RuntimeListener,
-            isUpgradeRequest);
-        return new ProxyRouteDiagnosticsActionDecision(
-            decision.ShouldProxy,
-            decision.Response?.StatusCode);
+        if (!isUpgradeRequest && TryBuildPolicyRedirect(route, requestHead, listener, out var policyRedirectStatusCode))
+        {
+            return new ProxyRouteDiagnosticsActionDecision(false, policyRedirectStatusCode);
+        }
+
+        if (route.Maintenance.Enabled)
+        {
+            return new ProxyRouteDiagnosticsActionDecision(false, 503);
+        }
+
+        if (string.Equals(route.Action, "Redirect", StringComparison.OrdinalIgnoreCase))
+        {
+            return new ProxyRouteDiagnosticsActionDecision(false, route.Redirect.StatusCode);
+        }
+
+        if (string.Equals(route.Action, "StaticResponse", StringComparison.OrdinalIgnoreCase))
+        {
+            return new ProxyRouteDiagnosticsActionDecision(false, route.StaticResponse.StatusCode);
+        }
+
+        return new ProxyRouteDiagnosticsActionDecision(true, null);
     }
 
-    private static ProxyRouteDiagnosticsRuntimeRoute RequireRuntimeRoute(
-        IProxyRouteDiagnosticsRoute route)
+    private static bool TryBuildPolicyRedirect(
+        IProxyRouteDiagnosticsRoute route,
+        ProxyRouteDiagnosticsRequestHead requestHead,
+        IProxyRouteDiagnosticsListener listener,
+        out int statusCode)
     {
-        return route as ProxyRouteDiagnosticsRuntimeRoute
-            ?? throw new InvalidOperationException("Route diagnostics action policy requires a runtime route source.");
+        statusCode = 308;
+        var shouldRedirect = false;
+
+        if (route.HttpsRedirect.Enabled && string.Equals(listener.Transport, "http", StringComparison.OrdinalIgnoreCase))
+        {
+            statusCode = route.HttpsRedirect.StatusCode;
+            shouldRedirect = true;
+        }
+
+        if (route.CanonicalHost.Enabled
+            && !string.IsNullOrWhiteSpace(route.CanonicalHost.TargetHost)
+            && !HostEquals(requestHead.Host, route.CanonicalHost.TargetHost))
+        {
+            statusCode = route.CanonicalHost.StatusCode;
+            shouldRedirect = true;
+        }
+
+        return shouldRedirect;
     }
 
-    private static ProxyRouteDiagnosticsRuntimeListener RequireRuntimeListener(
-        IProxyRouteDiagnosticsListener listener)
+    private static bool HostEquals(string requestHost, string targetHost)
     {
-        return listener as ProxyRouteDiagnosticsRuntimeListener
-            ?? throw new InvalidOperationException("Route diagnostics action policy requires a runtime listener source.");
+        return string.Equals(StripSimplePort(requestHost), StripSimplePort(targetHost), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string StripSimplePort(string host)
+    {
+        var colonIndex = host.LastIndexOf(':');
+        if (colonIndex <= 0 || host.Contains(']', StringComparison.Ordinal))
+        {
+            return host;
+        }
+
+        return host[..colonIndex];
     }
 }
 
 public sealed class ProxyRouteDiagnosticsPathRewritePolicyAdapter
     : IProxyRouteDiagnosticsPathRewritePolicy
 {
-    private readonly PathRewritePolicy _pathRewritePolicy;
-
-    public ProxyRouteDiagnosticsPathRewritePolicyAdapter(PathRewritePolicy pathRewritePolicy)
-    {
-        _pathRewritePolicy = pathRewritePolicy;
-    }
-
     public string Apply(IProxyRouteDiagnosticsRoute route, string target, string path)
     {
-        var runtimeRoute = route as ProxyRouteDiagnosticsRuntimeRoute
-            ?? throw new InvalidOperationException("Route diagnostics path rewrite policy requires a runtime route source.");
-        return _pathRewritePolicy.Apply(runtimeRoute.RuntimeRoute, target, path);
+        var rewrite = route.PathRewrite;
+        if (!string.IsNullOrWhiteSpace(rewrite.StripPrefix)
+            && path.StartsWith(rewrite.StripPrefix, StringComparison.Ordinal))
+        {
+            return RewriteTarget(target, rewrite.StripPrefix, "");
+        }
+
+        if (!string.IsNullOrWhiteSpace(rewrite.ReplacePrefix)
+            && path.StartsWith(rewrite.ReplacePrefix, StringComparison.Ordinal))
+        {
+            return RewriteTarget(target, rewrite.ReplacePrefix, rewrite.Replacement);
+        }
+
+        return target;
+    }
+
+    private static string RewriteTarget(string target, string oldPrefix, string newPrefix)
+    {
+        var queryIndex = target.IndexOf('?');
+        var path = queryIndex < 0 ? target : target[..queryIndex];
+        var query = queryIndex < 0 ? "" : target[queryIndex..];
+        var remainder = path[oldPrefix.Length..];
+        var rewrittenPath = string.IsNullOrEmpty(newPrefix) ? remainder : newPrefix + remainder;
+        if (string.IsNullOrEmpty(rewrittenPath))
+        {
+            rewrittenPath = "/";
+        }
+
+        if (!rewrittenPath.StartsWith('/'))
+        {
+            rewrittenPath = "/" + rewrittenPath;
+        }
+
+        return rewrittenPath + query;
     }
 }
 
 internal sealed class ProxyRouteDiagnosticsRuntimeConfigurationSnapshot
     : IProxyRouteDiagnosticsConfigurationSnapshot
 {
-    private readonly IReadOnlyList<ProxyRouteDiagnosticsRuntimeRoute> _runtimeRoutes;
-
     public ProxyRouteDiagnosticsRuntimeConfigurationSnapshot(ProxyConfigurationSnapshot runtimeSnapshot)
     {
-        RuntimeSnapshot = runtimeSnapshot;
         Listeners = runtimeSnapshot.Listeners
             .Select(static listener => new ProxyRouteDiagnosticsRuntimeListener(listener))
             .ToArray();
-        var routes = runtimeSnapshot.Routes
+        Routes = runtimeSnapshot.Routes
             .Select(static route => new ProxyRouteDiagnosticsRuntimeRoute(route))
             .ToArray();
-        _runtimeRoutes = routes;
-        Routes = routes;
     }
-
-    public ProxyConfigurationSnapshot RuntimeSnapshot { get; }
 
     public IReadOnlyList<IProxyRouteDiagnosticsListener> Listeners { get; }
 
     public IReadOnlyList<IProxyRouteDiagnosticsRoute> Routes { get; }
-
-    public IProxyRouteDiagnosticsRoute GetRoute(RuntimeRoute route)
-    {
-        var wrappedRoute = _runtimeRoutes.FirstOrDefault(candidate => ReferenceEquals(candidate.RuntimeRoute, route));
-        return wrappedRoute is not null
-            ? wrappedRoute
-            : new ProxyRouteDiagnosticsRuntimeRoute(route);
-    }
 }
 
 internal sealed class ProxyRouteDiagnosticsRuntimeListener
@@ -160,24 +219,28 @@ internal sealed class ProxyRouteDiagnosticsRuntimeListener
 {
     public ProxyRouteDiagnosticsRuntimeListener(RuntimeListener runtimeListener)
     {
-        RuntimeListener = runtimeListener;
+        Name = runtimeListener.Name;
+        Transport = runtimeListener.Transport == RuntimeListenerTransport.Https ? "https" : "http";
+        Address = runtimeListener.Address;
+        Port = runtimeListener.Port;
+        Enabled = runtimeListener.Enabled;
+        Protocols = runtimeListener.Protocols;
+        Http3EnabledForTraffic = runtimeListener.Http3.EnabledForTraffic;
     }
 
-    public RuntimeListener RuntimeListener { get; }
+    public string Name { get; }
 
-    public string Name => RuntimeListener.Name;
+    public string Transport { get; }
 
-    public string Transport => RuntimeListener.Transport == RuntimeListenerTransport.Https ? "https" : "http";
+    public string Address { get; }
 
-    public string Address => RuntimeListener.Address;
+    public int Port { get; }
 
-    public int Port => RuntimeListener.Port;
+    public bool Enabled { get; }
 
-    public bool Enabled => RuntimeListener.Enabled;
+    public RuntimeListenerProtocols Protocols { get; }
 
-    public RuntimeListenerProtocols Protocols => RuntimeListener.Protocols;
-
-    public bool Http3EnabledForTraffic => RuntimeListener.Http3.EnabledForTraffic;
+    public bool Http3EnabledForTraffic { get; }
 }
 
 internal sealed class ProxyRouteDiagnosticsRuntimeRoute
@@ -185,37 +248,83 @@ internal sealed class ProxyRouteDiagnosticsRuntimeRoute
 {
     public ProxyRouteDiagnosticsRuntimeRoute(RuntimeRoute runtimeRoute)
     {
-        RuntimeRoute = runtimeRoute;
+        SiteName = runtimeRoute.SiteName;
+        Name = runtimeRoute.Name;
+        Host = runtimeRoute.Host;
+        PathPrefix = runtimeRoute.PathPrefix;
+        Action = runtimeRoute.Action.ToString();
+        MaintenanceEnabled = runtimeRoute.Maintenance.Enabled;
+        Maintenance = new ProxyRouteDiagnosticsMaintenancePolicy(
+            runtimeRoute.Maintenance.Enabled,
+            runtimeRoute.Maintenance.RetryAfterSeconds,
+            runtimeRoute.Maintenance.ContentType,
+            runtimeRoute.Maintenance.Body);
+        HttpsRedirect = new ProxyRouteDiagnosticsHttpsRedirectPolicy(
+            runtimeRoute.HttpsRedirect.Enabled,
+            runtimeRoute.HttpsRedirect.StatusCode,
+            runtimeRoute.HttpsRedirect.HttpsPort);
+        CanonicalHost = new ProxyRouteDiagnosticsCanonicalHostPolicy(
+            runtimeRoute.CanonicalHost.Enabled,
+            runtimeRoute.CanonicalHost.TargetHost,
+            runtimeRoute.CanonicalHost.StatusCode);
+        Redirect = new ProxyRouteDiagnosticsRedirectPolicy(
+            runtimeRoute.Redirect.StatusCode,
+            runtimeRoute.Redirect.TargetUrl,
+            runtimeRoute.Redirect.TargetPath,
+            runtimeRoute.Redirect.PreserveQuery);
+        StaticResponse = new ProxyRouteDiagnosticsStaticResponse(
+            runtimeRoute.StaticResponse.StatusCode,
+            runtimeRoute.StaticResponse.ContentType,
+            runtimeRoute.StaticResponse.Body);
+        PathRewrite = new ProxyRouteDiagnosticsPathRewrite(
+            runtimeRoute.PathRewrite.StripPrefix,
+            runtimeRoute.PathRewrite.ReplacePrefix,
+            runtimeRoute.PathRewrite.Replacement);
+        MaxRequestBodyBytes = runtimeRoute.ResolvedOptions.MaxRequestBodyBytes;
         Upstreams = runtimeRoute.Upstreams
             .Select(static upstream => new ProxyRouteDiagnosticsRuntimeUpstream(upstream))
             .ToArray();
+        CacheEnabled = runtimeRoute.Cache.Enabled;
+        CacheMethods = runtimeRoute.Cache.Methods;
+        RetryEnabled = runtimeRoute.Retry.Enabled;
+        RetryMethods = runtimeRoute.Retry.RetryMethods;
     }
 
-    public RuntimeRoute RuntimeRoute { get; }
+    public string SiteName { get; }
 
-    public string SiteName => RuntimeRoute.SiteName;
+    public string Name { get; }
 
-    public string Name => RuntimeRoute.Name;
+    public string Host { get; }
 
-    public string Host => RuntimeRoute.Host;
+    public string PathPrefix { get; }
 
-    public string PathPrefix => RuntimeRoute.PathPrefix;
+    public string Action { get; }
 
-    public string Action => RuntimeRoute.Action.ToString();
+    public bool MaintenanceEnabled { get; }
 
-    public bool MaintenanceEnabled => RuntimeRoute.Maintenance.Enabled;
+    public ProxyRouteDiagnosticsMaintenancePolicy Maintenance { get; }
 
-    public long MaxRequestBodyBytes => RuntimeRoute.ResolvedOptions.MaxRequestBodyBytes;
+    public ProxyRouteDiagnosticsHttpsRedirectPolicy HttpsRedirect { get; }
+
+    public ProxyRouteDiagnosticsCanonicalHostPolicy CanonicalHost { get; }
+
+    public ProxyRouteDiagnosticsRedirectPolicy Redirect { get; }
+
+    public ProxyRouteDiagnosticsStaticResponse StaticResponse { get; }
+
+    public ProxyRouteDiagnosticsPathRewrite PathRewrite { get; }
+
+    public long MaxRequestBodyBytes { get; }
 
     public IReadOnlyList<IProxyRouteDiagnosticsUpstream> Upstreams { get; }
 
-    public bool CacheEnabled => RuntimeRoute.Cache.Enabled;
+    public bool CacheEnabled { get; }
 
-    public IReadOnlyList<string> CacheMethods => RuntimeRoute.Cache.Methods;
+    public IReadOnlyList<string> CacheMethods { get; }
 
-    public bool RetryEnabled => RuntimeRoute.Retry.Enabled;
+    public bool RetryEnabled { get; }
 
-    public IReadOnlyList<string> RetryMethods => RuntimeRoute.Retry.RetryMethods;
+    public IReadOnlyList<string> RetryMethods { get; }
 }
 
 internal sealed class ProxyRouteDiagnosticsRuntimeUpstream
@@ -223,47 +332,23 @@ internal sealed class ProxyRouteDiagnosticsRuntimeUpstream
 {
     public ProxyRouteDiagnosticsRuntimeUpstream(RuntimeUpstream runtimeUpstream)
     {
-        RuntimeUpstream = runtimeUpstream;
+        Name = runtimeUpstream.Name;
+        Scheme = runtimeUpstream.Scheme;
+        Protocol = runtimeUpstream.Protocol;
+        Endpoint = runtimeUpstream.Endpoint;
+        Weight = runtimeUpstream.Weight;
+        CircuitBreakerEnabled = runtimeUpstream.CircuitBreaker.Enabled;
     }
 
-    private RuntimeUpstream RuntimeUpstream { get; }
+    public string Name { get; }
 
-    public string Name => RuntimeUpstream.Name;
+    public string Scheme { get; }
 
-    public string Scheme => RuntimeUpstream.Scheme;
+    public string Protocol { get; }
 
-    public string Protocol => RuntimeUpstream.Protocol;
+    public string Endpoint { get; }
 
-    public string Endpoint => RuntimeUpstream.Endpoint;
+    public int Weight { get; }
 
-    public int Weight => RuntimeUpstream.Weight;
-
-    public bool CircuitBreakerEnabled => RuntimeUpstream.CircuitBreaker.Enabled;
-}
-
-internal static class ProxyRouteDiagnosticsRequestHeadMapper
-{
-    public static Http1RequestHead ToHttp1RequestHead(ProxyRouteDiagnosticsRequestHead requestHead)
-    {
-        return new Http1RequestHead(
-            requestHead.Method,
-            requestHead.Target,
-            requestHead.Path,
-            requestHead.Version,
-            requestHead.Host,
-            ToHttp1RequestFraming(requestHead.Framing),
-            requestHead.Headers
-                .Select(static header => new ProxyHeaderField(header.Name, header.Value))
-                .ToArray());
-    }
-
-    private static Http1RequestFraming ToHttp1RequestFraming(ProxyRouteDiagnosticsRequestFraming framing)
-    {
-        return framing.Kind switch
-        {
-            ProxyRouteDiagnosticsBodyKind.ContentLength => Http1RequestFraming.FromContentLength(framing.ContentLength.GetValueOrDefault()),
-            ProxyRouteDiagnosticsBodyKind.Chunked => Http1RequestFraming.Chunked,
-            _ => Http1RequestFraming.None
-        };
-    }
+    public bool CircuitBreakerEnabled { get; }
 }
