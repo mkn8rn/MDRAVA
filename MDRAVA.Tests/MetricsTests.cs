@@ -681,16 +681,8 @@ internal static class MetricsTests
         {
             return ProxyMetricsExportInputMapper.FromSources(
                 metrics,
-                new ProxyMetricsExportLabelOptions(
-                    snapshot.Metrics.IncludePerRouteLabels,
-                    snapshot.Metrics.IncludePerUpstreamLabels),
-                new ProxyMetricsExportHttp3Facts(
-                    snapshot.Listeners.Count(static listener =>
-                        listener.Http3.EnabledForTraffic
-                        && string.Equals(listener.Http3.EnablementLevel, "default", StringComparison.OrdinalIgnoreCase)),
-                    snapshot.Listeners.Any(static listener => listener.Http3.EnabledForTraffic),
-                    snapshot.Routes.Any(static route =>
-                        route.Upstreams.Any(static upstream => RuntimeUpstreamProtocol.IsHttp3(upstream.Protocol)))),
+                ProxyMetricsExportLabelOptionsMapper.FromSnapshot(snapshot),
+                ProxyMetricsExportHttp3FactsMapper.FromSnapshot(snapshot),
                 ProxyCacheStatusReader.Project(
                     ProxyCacheStatusRouteSourceMapper.ToRouteSources(snapshot),
                     cacheRuntime),
