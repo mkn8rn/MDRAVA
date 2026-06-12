@@ -7,6 +7,7 @@ using MDRAVA.INF.Proxy.Health;
 using MDRAVA.API.Proxy.Hosting;
 using MDRAVA.API.Proxy.Security;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace MDRAVA.Tests;
@@ -483,6 +484,21 @@ internal static class RouteDiagnosticsTests
         AssertEx.False(result.Succeeded);
         AssertFinding(result, "missing_request", "error");
         AssertEx.True(result.Findings[0].Message.Contains("request body is required", StringComparison.Ordinal));
+    }
+
+    public static void RouteDiagnosticsControllerRejectsMissingMatchRequestBody()
+    {
+        var service = CreateRouteService(BaseOptions([ProxyRoute("active", "active.test", "/")]), out _, out _);
+        var controller = new ProxyRouteDiagnosticsController(
+            new ProxyRouteDiagnosticsAdministrationService(service));
+
+        var actionResult = controller.Match(null);
+
+        var badRequest = (BadRequestObjectResult)AssertEx.NotNull(actionResult.Result);
+        var result = (RouteMatchDryRunResult)AssertEx.NotNull(badRequest.Value);
+        AssertEx.False(result.Succeeded);
+        AssertEx.True(result.Findings.Any(static finding =>
+            finding.Code == "missing_request" && finding.Severity == "error"));
     }
 
     public static async Task DiagnosticEndpointsRequireAdminAuth()
