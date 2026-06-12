@@ -2,7 +2,6 @@ using MDRAVA.BLL.Http;
 using MDRAVA.BLL.ControlPlane.Headers;
 using MDRAVA.BLL.ControlPlane.Http1;
 using System.Text;
-using MDRAVA.BLL.Configuration;
 
 namespace MDRAVA.BLL.ControlPlane.Caching;
 
@@ -27,14 +26,13 @@ public sealed class ResponseCacheStore : IProxyCacheControl
     }
 
     public bool TryGet(
-        RuntimeRoute route,
-        RuntimeListener listener,
+        ProxyCacheRequestScope scope,
         Http1RequestHead requestHead,
         string upstreamTarget,
         out CachedProxyResponse? response)
     {
         response = null;
-        if (!TryCreateKey(route, listener, requestHead, upstreamTarget, out var key, out _))
+        if (!TryCreateKey(scope, requestHead, upstreamTarget, out var key, out _))
         {
             return false;
         }
@@ -63,15 +61,14 @@ public sealed class ResponseCacheStore : IProxyCacheControl
     }
 
     public void Store(
-        RuntimeRoute route,
-        RuntimeListener listener,
+        ProxyCacheRequestScope scope,
         Http1RequestHead requestHead,
         string upstreamTarget,
         Http1ResponseHead responseHead,
         IReadOnlyList<ProxyHeaderField> responseHeaders,
         byte[] body)
     {
-        if (!TryCreateKey(route, listener, requestHead, upstreamTarget, out var key, out var rejectionReason))
+        if (!TryCreateKey(scope, requestHead, upstreamTarget, out var key, out var rejectionReason))
         {
             if (rejectionReason is not null)
             {
@@ -82,7 +79,7 @@ public sealed class ResponseCacheStore : IProxyCacheControl
         }
 
         var responseEligibility = ProxyCacheEligibilityPolicy.EvaluateStoredResponse(
-            route,
+            scope.Policy,
             responseHead,
             body.LongLength,
             out var ttl);
@@ -94,7 +91,7 @@ public sealed class ResponseCacheStore : IProxyCacheControl
 
         var storedHeaders = SanitizeStoredHeaders(responseHeaders);
         var sizeBytes = CalculateSize(storedHeaders, body);
-        if (sizeBytes > route.Cache.MaxEntryBytes || sizeBytes > route.Cache.MaxTotalBytes)
+        if (sizeBytes > scope.Policy.MaxEntryBytes || sizeBytes > scope.Policy.MaxTotalBytes)
         {
             RecordRejection(ProxyCacheEligibilityPolicy.ReasonOversized);
             return;
@@ -103,7 +100,7 @@ public sealed class ResponseCacheStore : IProxyCacheControl
         var now = _timeProvider.GetUtcNow();
         var entry = new CacheEntry(
             key,
-            route.Name,
+            scope.RouteName,
             responseHead.StatusCode,
             responseHead.ReasonPhrase,
             storedHeaders,
@@ -123,13 +120,13 @@ public sealed class ResponseCacheStore : IProxyCacheControl
             _entries[key] = entry;
             _approximateBytes += sizeBytes;
             _stores++;
-            EvictRouteOverCapacity(route.Name, route.Cache.MaxTotalBytes);
+            EvictRouteOverCapacity(scope.RouteName, scope.Policy.MaxTotalBytes);
         }
     }
 
-    public void RecordUncacheable(RuntimeRoute route, string reason)
+    public void RecordUncacheable(ProxyCachePolicyFacts policy, string reason)
     {
-        if (route.Cache.Enabled)
+        if (policy.Enabled)
         {
             RecordRejection(reason);
         }
@@ -170,8 +167,7 @@ public sealed class ResponseCacheStore : IProxyCacheControl
     }
 
     private bool TryCreateKey(
-        RuntimeRoute route,
-        RuntimeListener listener,
+        ProxyCacheRequestScope scope,
         Http1RequestHead requestHead,
         string upstreamTarget,
         out string key,
@@ -179,23 +175,22 @@ public sealed class ResponseCacheStore : IProxyCacheControl
     {
         key = "";
         rejectionReason = null;
-        var requestEligibility = ProxyCacheEligibilityPolicy.EvaluateRequest(route, requestHead);
+        var requestEligibility = ProxyCacheEligibilityPolicy.EvaluateRequest(scope.Policy, requestHead);
         if (!requestEligibility.CanCache)
         {
             rejectionReason = requestEligibility.RejectionReason;
             return false;
         }
 
-        var scheme = listener.Transport == RuntimeListenerTransport.Https ? "https" : "http";
         var builder = new StringBuilder();
-        AppendPart(builder, route.Name);
-        AppendPart(builder, route.Host);
+        AppendPart(builder, scope.RouteName);
+        AppendPart(builder, scope.RouteHost);
         AppendPart(builder, requestHead.Method.ToUpperInvariant());
-        AppendPart(builder, scheme);
+        AppendPart(builder, scope.Scheme);
         AppendPart(builder, requestHead.Host.ToLowerInvariant());
         AppendPart(builder, upstreamTarget);
 
-        foreach (var varyHeader in route.Cache.VaryByHeaders.OrderBy(static header => header, StringComparer.OrdinalIgnoreCase))
+        foreach (var varyHeader in scope.Policy.VaryByHeaders.OrderBy(static header => header, StringComparer.OrdinalIgnoreCase))
         {
             AppendPart(builder, varyHeader.ToLowerInvariant());
             AppendPart(builder, JoinHeaderValues(requestHead.Headers, varyHeader));

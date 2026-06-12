@@ -528,8 +528,7 @@ public sealed class Http2ClientConnection
         CancellationToken cancellationToken)
     {
         if (!_cacheStore.TryGet(
-                route,
-                _listener,
+                ProxyCacheRuntimeMapper.ToRequestScope(route, _listener),
                 requestHead,
                 upstreamTarget,
                 out var cachedResponse)

@@ -573,8 +573,7 @@ public sealed class ClientConnection
         CancellationToken cancellationToken)
     {
         if (!_cacheStore.TryGet(
-                route,
-                _listener,
+                ProxyCacheRuntimeMapper.ToRequestScope(route, _listener),
                 requestHead,
                 upstreamTarget,
                 out var cachedResponse)

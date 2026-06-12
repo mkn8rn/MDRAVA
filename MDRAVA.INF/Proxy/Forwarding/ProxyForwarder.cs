@@ -16,6 +16,7 @@ using System.Text;
 using MDRAVA.INF.Proxy.Connections;
 using MDRAVA.INF.Proxy.Http3;
 using MDRAVA.INF.Proxy.Http2;
+using MDRAVA.INF.Proxy;
 using MDRAVA.INF.Observability;
 
 namespace MDRAVA.INF.Proxy.Forwarding;
@@ -514,7 +515,7 @@ public sealed class ProxyForwarder
 
         var keepClientConnectionOpen = preferClientKeepAlive;
         var responseHeaders = BuildResponseHeaders(responseHead, route);
-        if (ProxyCacheEligibilityPolicy.EvaluateResponseForBuffering(route, requestHead, responseHead).CanCache)
+        if (ProxyCacheEligibilityPolicy.EvaluateResponseForBuffering(ProxyCacheRuntimeMapper.ToPolicyFacts(route.Cache), requestHead, responseHead).CanCache)
         {
             var body = await ReadFramedUpstreamCacheCandidateBodyAsync(
                 (readTimeouts, token) => ReadHttp2DataChunkAsync(upstreamHttp2, readTimeouts, token),
@@ -539,7 +540,7 @@ public sealed class ProxyForwarder
         }
         else
         {
-            RecordUncacheableFraming(route, responseHead);
+            RecordUncacheableFraming(route.Cache, responseHead);
             await WriteResponseHeadAsync(
                 clientStream,
                 responseHead,
@@ -635,7 +636,7 @@ public sealed class ProxyForwarder
 
         var keepClientConnectionOpen = preferClientKeepAlive;
         var responseHeaders = BuildResponseHeaders(responseHead, route);
-        if (ProxyCacheEligibilityPolicy.EvaluateResponseForBuffering(route, requestHead, responseHead).CanCache)
+        if (ProxyCacheEligibilityPolicy.EvaluateResponseForBuffering(ProxyCacheRuntimeMapper.ToPolicyFacts(route.Cache), requestHead, responseHead).CanCache)
         {
             var body = await ReadFramedUpstreamCacheCandidateBodyAsync(
                 (readTimeouts, token) => ReadHttp3DataChunkAsync(upstreamHttp3, readTimeouts, token),
@@ -660,7 +661,7 @@ public sealed class ProxyForwarder
         }
         else
         {
-            RecordUncacheableFraming(route, responseHead);
+            RecordUncacheableFraming(route.Cache, responseHead);
             await WriteResponseHeadAsync(
                 clientStream,
                 responseHead,
@@ -1216,7 +1217,7 @@ public sealed class ProxyForwarder
                 }
 
                 var responseHeaders = BuildResponseHeaders(responseHead, route);
-                if (ProxyCacheEligibilityPolicy.EvaluateResponseForBuffering(route, requestHead, responseHead).CanCache)
+                if (ProxyCacheEligibilityPolicy.EvaluateResponseForBuffering(ProxyCacheRuntimeMapper.ToPolicyFacts(route.Cache), requestHead, responseHead).CanCache)
                 {
                     var body = await ReadCacheCandidateBodyAsync(
                         upstreamStream,
@@ -1246,7 +1247,7 @@ public sealed class ProxyForwarder
                 }
                 else
                 {
-                    RecordUncacheableFraming(route, responseHead);
+                    RecordUncacheableFraming(route.Cache, responseHead);
                     await WriteResponseHeadAsync(clientStream, responseHead, responseHeaders, timeouts, keepClientConnectionOpen, requestId, listener, cancellationToken);
                     responseStarted = true;
                     markResponseStarted();
@@ -1383,7 +1384,7 @@ public sealed class ProxyForwarder
             timeouts,
             cancellationToken);
         markResponseStarted();
-        _cacheStore.Store(route, listener, requestHead, upstreamTarget, responseHead, responseHeaders, body);
+        _cacheStore.Store(ProxyCacheRuntimeMapper.ToRequestScope(route, listener), requestHead, upstreamTarget, responseHead, responseHeaders, body);
     }
 
     private IReadOnlyList<ProxyHeaderField> BuildResponseHeaders(
@@ -1408,11 +1409,12 @@ public sealed class ProxyForwarder
             SuppressedForRetry: true);
     }
 
-    private void RecordUncacheableFraming(RuntimeRoute route, Http1ResponseHead responseHead)
+    private void RecordUncacheableFraming(RuntimeCachePolicy policy, Http1ResponseHead responseHead)
     {
-        if (ProxyCacheEligibilityPolicy.TryGetResponseFramingRejection(route, responseHead, out var reason))
+        var policyFacts = ProxyCacheRuntimeMapper.ToPolicyFacts(policy);
+        if (ProxyCacheEligibilityPolicy.TryGetResponseFramingRejection(policyFacts, responseHead, out var reason))
         {
-            _cacheStore.RecordUncacheable(route, reason);
+            _cacheStore.RecordUncacheable(policyFacts, reason);
         }
     }
 

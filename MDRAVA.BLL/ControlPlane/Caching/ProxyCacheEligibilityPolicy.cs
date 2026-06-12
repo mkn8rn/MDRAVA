@@ -1,7 +1,6 @@
 using MDRAVA.BLL.Http;
 using MDRAVA.BLL.ControlPlane.Headers;
 using MDRAVA.BLL.ControlPlane.Http1;
-using MDRAVA.BLL.Configuration;
 
 namespace MDRAVA.BLL.ControlPlane.Caching;
 
@@ -22,15 +21,15 @@ public static class ProxyCacheEligibilityPolicy
     public const string ReasonTtl = "ttl";
 
     public static ProxyCacheEligibilityResult EvaluateRequest(
-        RuntimeRoute route,
+        ProxyCachePolicyFacts policy,
         Http1RequestHead requestHead)
     {
-        if (!route.Cache.Enabled)
+        if (!policy.Enabled)
         {
             return ProxyCacheEligibilityResult.Reject(null);
         }
 
-        if (!ContainsMethod(route.Cache.Methods, requestHead.Method))
+        if (!ContainsMethod(policy.Methods, requestHead.Method))
         {
             return ProxyCacheEligibilityResult.Reject(ReasonMethod);
         }
@@ -54,23 +53,23 @@ public static class ProxyCacheEligibilityPolicy
     }
 
     public static ProxyCacheEligibilityResult EvaluateResponseForBuffering(
-        RuntimeRoute route,
+        ProxyCachePolicyFacts policy,
         Http1RequestHead requestHead,
         Http1ResponseHead responseHead)
     {
-        var requestEligibility = EvaluateRequest(route, requestHead);
+        var requestEligibility = EvaluateRequest(policy, requestHead);
         if (!requestEligibility.CanCache)
         {
             return requestEligibility;
         }
 
-        var responseEligibility = EvaluateResponseMetadata(route.Cache, responseHead, out _);
+        var responseEligibility = EvaluateResponseMetadata(policy, responseHead, out _);
         if (!responseEligibility.CanCache)
         {
             return responseEligibility;
         }
 
-        if (TryGetResponseFramingRejection(route, responseHead, out var framingReason))
+        if (TryGetResponseFramingRejection(policy, responseHead, out var framingReason))
         {
             return ProxyCacheEligibilityResult.Reject(framingReason);
         }
@@ -79,18 +78,18 @@ public static class ProxyCacheEligibilityPolicy
     }
 
     public static ProxyCacheEligibilityResult EvaluateStoredResponse(
-        RuntimeRoute route,
+        ProxyCachePolicyFacts policy,
         Http1ResponseHead responseHead,
         long bodyLength,
         out TimeSpan ttl)
     {
-        var responseEligibility = EvaluateResponseMetadata(route.Cache, responseHead, out ttl);
+        var responseEligibility = EvaluateResponseMetadata(policy, responseHead, out ttl);
         if (!responseEligibility.CanCache)
         {
             return responseEligibility;
         }
 
-        if (bodyLength > route.Cache.MaxEntryBytes)
+        if (bodyLength > policy.MaxEntryBytes)
         {
             return ProxyCacheEligibilityResult.Reject(ReasonOversized);
         }
@@ -99,12 +98,12 @@ public static class ProxyCacheEligibilityPolicy
     }
 
     public static bool TryGetResponseFramingRejection(
-        RuntimeRoute route,
+        ProxyCachePolicyFacts policy,
         Http1ResponseHead responseHead,
         out string reason)
     {
         reason = "";
-        if (!route.Cache.Enabled)
+        if (!policy.Enabled)
         {
             return false;
         }
@@ -116,7 +115,7 @@ public static class ProxyCacheEligibilityPolicy
         }
 
         if (responseHead.Framing.Kind == Http1BodyKind.ContentLength
-            && responseHead.Framing.ContentLength.GetValueOrDefault() > route.Cache.MaxEntryBytes)
+            && responseHead.Framing.ContentLength.GetValueOrDefault() > policy.MaxEntryBytes)
         {
             reason = ReasonOversized;
             return true;
@@ -126,7 +125,7 @@ public static class ProxyCacheEligibilityPolicy
     }
 
     private static ProxyCacheEligibilityResult EvaluateResponseMetadata(
-        RuntimeCachePolicy policy,
+        ProxyCachePolicyFacts policy,
         Http1ResponseHead responseHead,
         out TimeSpan ttl)
     {
@@ -150,7 +149,7 @@ public static class ProxyCacheEligibilityPolicy
     }
 
     private static bool TryResolveTtl(
-        RuntimeCachePolicy policy,
+        ProxyCachePolicyFacts policy,
         IReadOnlyList<ProxyHeaderField> headers,
         out TimeSpan ttl,
         out string? rejectionReason)

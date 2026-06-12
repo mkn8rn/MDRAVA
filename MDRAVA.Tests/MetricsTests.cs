@@ -131,9 +131,9 @@ internal static class MetricsTests
         var request = Request("GET", "/cached", "cache.test");
         var response = Response("200 OK", []);
 
-        AssertEx.False(cache.TryGet(route, listener, request, "/cached", out _));
-        cache.Store(route, listener, request, "/cached", response, response.Headers, Encoding.ASCII.GetBytes("cached"));
-        AssertEx.True(cache.TryGet(route, listener, request, "/cached", out _));
+        AssertEx.False(cache.TryGet(Scope(route, listener), request, "/cached", out _));
+        cache.Store(Scope(route, listener), request, "/cached", response, response.Headers, Encoding.ASCII.GetBytes("cached"));
+        AssertEx.True(cache.TryGet(Scope(route, listener), request, "/cached", out _));
 
         var text = fixture.Export(store.Snapshot);
 
@@ -574,6 +574,23 @@ internal static class MetricsTests
             32768,
             8192,
             8192);
+    }
+
+    private static ProxyCacheRequestScope Scope(RuntimeRoute route, RuntimeListener listener)
+    {
+        return new ProxyCacheRequestScope(
+            route.Name,
+            route.Host,
+            listener.Transport == RuntimeListenerTransport.Https ? "https" : "http",
+            new ProxyCachePolicyFacts(
+                route.Cache.Enabled,
+                route.Cache.MaxEntryBytes,
+                route.Cache.MaxTotalBytes,
+                route.Cache.DefaultTtl,
+                route.Cache.RespectOriginCacheControl,
+                route.Cache.VaryByHeaders,
+                route.Cache.CacheableStatusCodes,
+                route.Cache.Methods));
     }
 
     private static Http1RequestHead Request(string method, string target, string host)

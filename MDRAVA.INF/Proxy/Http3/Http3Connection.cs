@@ -370,8 +370,7 @@ public sealed class Http3Connection
         CancellationToken cancellationToken)
     {
         if (!_cacheStore.TryGet(
-                route,
-                _listener,
+                ProxyCacheRuntimeMapper.ToRequestScope(route, _listener),
                 requestHead,
                 upstreamTarget,
                 out var cachedResponse)

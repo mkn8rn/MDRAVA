@@ -267,6 +267,7 @@ internal static class PerformanceSmokeRunner
         var snapshot = CreateSnapshot(routeCount: 1, cacheEnabled: true);
         var route = snapshot.Routes[0];
         var listener = snapshot.Listeners[0];
+        var cacheScope = CacheScope(route, listener);
         var request = new Http1RequestHead(
             "GET",
             "/svc0/resource?id=1",
@@ -287,18 +288,18 @@ internal static class PerformanceSmokeRunner
             Http1ResponseFraming.FromContentLength(6),
             responseHeaders);
 
-        cache.Store(route, listener, request, request.Target, response, responseHeaders, Encoding.ASCII.GetBytes("cached"));
+        cache.Store(cacheScope, request, request.Target, response, responseHeaders, Encoding.ASCII.GetBytes("cached"));
 
         for (var index = 0; index < warmup; index++)
         {
-            cache.TryGet(route, listener, request, request.Target, out _);
+            cache.TryGet(cacheScope, request, request.Target, out _);
         }
 
         var stopwatch = Stopwatch.StartNew();
         CachedProxyResponse? cached = null;
         for (var index = 0; index < operations; index++)
         {
-            if (!cache.TryGet(route, listener, request, request.Target, out cached))
+            if (!cache.TryGet(cacheScope, request, request.Target, out cached))
             {
                 throw new InvalidOperationException("Cache hot-path smoke missed a stored response.");
             }
@@ -312,6 +313,23 @@ internal static class PerformanceSmokeRunner
             stopwatch.Elapsed,
             TimeSpan.FromSeconds(5),
             "cache-safe GET hot path"));
+    }
+
+    private static ProxyCacheRequestScope CacheScope(RuntimeRoute route, RuntimeListener listener)
+    {
+        return new ProxyCacheRequestScope(
+            route.Name,
+            route.Host,
+            listener.Transport == RuntimeListenerTransport.Https ? "https" : "http",
+            new ProxyCachePolicyFacts(
+                route.Cache.Enabled,
+                route.Cache.MaxEntryBytes,
+                route.Cache.MaxTotalBytes,
+                route.Cache.DefaultTtl,
+                route.Cache.RespectOriginCacheControl,
+                route.Cache.VaryByHeaders,
+                route.Cache.CacheableStatusCodes,
+                route.Cache.Methods));
     }
 
     private static Task<PerformanceSmokeResult> RunHeadersAsync()
