@@ -2020,8 +2020,9 @@ internal static class ProxyIntegrationTests
             var secondRequests = await secondTask.WaitAsync(timeout.Token);
             var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
             var diagnostics = host.Services.GetRequiredService<RecentRequestDiagnosticsStore>().Recent(50);
+            var configuration = host.Services.GetRequiredService<MDRAVA.BLL.ControlPlane.ConfigurationManagement.IProxyConfigurationStore>().Snapshot;
             var upstreams = host.Services.GetRequiredService<UpstreamHealthStore>()
-                .Snapshot(host.Services.GetRequiredService<MDRAVA.BLL.ControlPlane.ConfigurationManagement.IProxyConfigurationStore>().Snapshot)
+                .Snapshot(ProxyUpstreamHealthSourceMapper.FromSnapshot(configuration))
                 .ToArray();
 
             return new TwoUpstreamHttpResult(firstRequests, secondRequests, metrics, upstreams, diagnostics);
@@ -2267,7 +2268,8 @@ internal static class ProxyIntegrationTests
         var configurationStore = host.Services.GetRequiredService<MDRAVA.BLL.ControlPlane.ConfigurationManagement.IProxyConfigurationStore>();
         while (true)
         {
-            var records = healthStore.Snapshot(configurationStore.Snapshot);
+            var records = healthStore.Snapshot(
+                ProxyUpstreamHealthSourceMapper.FromSnapshot(configurationStore.Snapshot));
             if (predicate(records))
             {
                 return records;

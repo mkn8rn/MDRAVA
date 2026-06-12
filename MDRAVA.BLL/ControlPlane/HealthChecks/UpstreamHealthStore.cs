@@ -89,55 +89,55 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
         }
     }
 
-    public IReadOnlyList<ProxyUpstreamStatusResponse> Snapshot(ProxyConfigurationSnapshot? configuration)
+    public IReadOnlyList<ProxyUpstreamStatusResponse> Snapshot(
+        IReadOnlyList<ProxyUpstreamHealthSource> upstreams)
     {
-        if (configuration is null)
+        if (upstreams.Count == 0)
         {
             return [];
         }
 
         List<ProxyUpstreamStatusResponse> records = [];
-        foreach (var route in configuration.Routes)
+        foreach (var source in upstreams)
         {
-            foreach (var upstream in route.Upstreams)
+            var upstream = source.Upstream;
+            var state = GetOrCreate(upstream);
+            lock (state.Gate)
             {
-                var state = GetOrCreate(upstream);
-                lock (state.Gate)
+                state.HealthCheckEnabled = source.HealthCheckEnabled;
+                records.Add(new ProxyUpstreamStatusResponse(
+                    upstream.RouteName,
+                    upstream.Name,
+                    upstream.Endpoint,
+                    upstream.Scheme,
+                    string.Equals(upstream.Scheme, "https", StringComparison.OrdinalIgnoreCase)
+                        && upstream.Tls.ValidateCertificate,
+                    string.Equals(upstream.Scheme, "https", StringComparison.OrdinalIgnoreCase)
+                        ? upstream.EffectiveSniHost
+                        : null,
+                    source.HealthCheckEnabled,
+                    state.State,
+                    state.LastResult,
+                    state.LastCheckedAtUtc,
+                    state.ConsecutiveSuccesses,
+                    state.ConsecutiveFailures,
+                    Interlocked.Read(ref state.SelectedRequests),
+                    Interlocked.Read(ref state.RequestFailures))
                 {
-                    state.HealthCheckEnabled = route.HealthCheck.Enabled;
-                    records.Add(new ProxyUpstreamStatusResponse(
-                        upstream.RouteName,
-                        upstream.Name,
-                        upstream.Endpoint,
-                        upstream.Scheme,
-                        string.Equals(upstream.Scheme, "https", StringComparison.OrdinalIgnoreCase)
-                            && upstream.Tls.ValidateCertificate,
-                        string.Equals(upstream.Scheme, "https", StringComparison.OrdinalIgnoreCase)
-                            ? upstream.EffectiveSniHost
-                            : null,
-                        route.HealthCheck.Enabled,
-                        state.State,
-                        state.LastResult,
-                        state.LastCheckedAtUtc,
-                        state.ConsecutiveSuccesses,
-                        state.ConsecutiveFailures,
-                        Interlocked.Read(ref state.SelectedRequests),
-                        Interlocked.Read(ref state.RequestFailures))
-                    {
-                        Protocol = upstream.Protocol,
-                        Weight = upstream.Weight,
-                        CircuitBreaker = _circuitBreakerStore.Snapshot(upstream)
-                    });
-                }
+                    Protocol = upstream.Protocol,
+                    Weight = upstream.Weight,
+                    CircuitBreaker = _circuitBreakerStore.Snapshot(upstream)
+                });
             }
         }
 
         return records;
     }
 
-    public IReadOnlyList<ProxyUpstreamStatusResponse> ReadUpstreams(ProxyConfigurationSnapshot? configuration)
+    public IReadOnlyList<ProxyUpstreamStatusResponse> ReadUpstreams(
+        IReadOnlyList<ProxyUpstreamHealthSource> upstreams)
     {
-        return Snapshot(configuration);
+        return Snapshot(upstreams);
     }
 
     private MutableUpstreamHealth GetOrCreate(RuntimeUpstream upstream)

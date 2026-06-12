@@ -1,6 +1,7 @@
 using MDRAVA.BLL.ControlPlane.Acme;
 using MDRAVA.BLL.ControlPlane.Caching;
 using MDRAVA.BLL.ControlPlane.ConfigLint;
+using MDRAVA.BLL.ControlPlane.HealthChecks;
 using MDRAVA.BLL.ControlPlane.Http3;
 using MDRAVA.BLL.ControlPlane.Observability;
 
@@ -50,7 +51,8 @@ public sealed class ProxyStatusInputReader : IProxyStatusInputReader
     {
         var runtime = _runtimeSource.ReadRuntime();
         var configuration = _configurationSource.TryReadSnapshot(out var snapshot) ? snapshot : null;
-        var upstreams = _upstreamSource.ReadUpstreams(configuration);
+        var upstreams = _upstreamSource.ReadUpstreams(
+            ProxyUpstreamHealthSourceMapper.FromSnapshot(configuration));
         var metrics = _metricsSource.ReadMetrics();
         var http3 = Http3RuntimeSupport.ProjectRuntime(
             configuration?.Listeners ?? [],

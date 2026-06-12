@@ -1,6 +1,7 @@
 using MDRAVA.BLL.ControlPlane.Acme;
 using MDRAVA.BLL.ControlPlane.Caching;
 using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
+using MDRAVA.BLL.ControlPlane.HealthChecks;
 using MDRAVA.BLL.ControlPlane.Status;
 
 namespace MDRAVA.BLL.ControlPlane.Metrics;
@@ -49,7 +50,7 @@ public sealed class ProxyMetricsExportProvider : IProxyMetricsExportProvider
             snapshot,
             _metricsSource.ReadMetrics(),
             _cacheRuntimeSource.ReadSnapshot(),
-            _upstreamHealthSource.ReadUpstreams(snapshot),
+            _upstreamHealthSource.ReadUpstreams(ProxyUpstreamHealthSourceMapper.FromSnapshot(snapshot)),
             _acmeStatusSource.GetLifecycleStatuses());
 
         return ProxyMetricsExportResult.Create(

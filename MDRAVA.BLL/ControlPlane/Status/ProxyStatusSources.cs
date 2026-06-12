@@ -1,4 +1,5 @@
 using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane.HealthChecks;
 using MDRAVA.BLL.ControlPlane.Listeners;
 using MDRAVA.BLL.ControlPlane.Metrics;
 
@@ -21,7 +22,8 @@ public interface IProxyStatusMetricsSource
 
 public interface IProxyStatusUpstreamHealthSource
 {
-    IReadOnlyList<ProxyUpstreamStatusResponse> ReadUpstreams(ProxyConfigurationSnapshot? configuration);
+    IReadOnlyList<ProxyUpstreamStatusResponse> ReadUpstreams(
+        IReadOnlyList<ProxyUpstreamHealthSource> upstreams);
 }
 
 public interface IProxyStatusRuntimePreflightSource
