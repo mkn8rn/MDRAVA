@@ -58,7 +58,9 @@ public static class ProxyStatusReadinessSourceMapper
                 ? null
                 : ProxyAcmeSummaryConfigurationSourceMapper.FromConfiguration(configuration.Acme),
             ProxyUpstreamSummarySourceMapper.FromStatusResponses(upstreams),
-            ProxyLimitSummarySourceMapper.FromConfiguration(configuration),
+            configuration is null
+                ? null
+                : ProxyLimitSummarySourceMapper.FromConfiguration(configuration.Limits),
             ProxyLimitSummarySourceMapper.FromMetrics(metrics),
             http3.EnabledForTraffic,
             http3.QuicListenerReady,

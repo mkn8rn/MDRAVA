@@ -106,17 +106,12 @@ public static class ProxyUpstreamSummarySourceMapper
 
 public static class ProxyLimitSummarySourceMapper
 {
-    public static ProxyLimitConfigurationSummarySource? FromConfiguration(ProxyConfigurationSnapshot? snapshot)
+    public static ProxyLimitConfigurationSummarySource FromConfiguration(RuntimeLimits limits)
     {
-        if (snapshot is null)
-        {
-            return null;
-        }
-
         return new ProxyLimitConfigurationSummarySource(
-            snapshot.Limits.MaxActiveClientConnections,
-            snapshot.Limits.MaxConcurrentTlsHandshakes,
-            snapshot.Limits.RequestsPerMinutePerIp);
+            limits.MaxActiveClientConnections,
+            limits.MaxConcurrentTlsHandshakes,
+            limits.RequestsPerMinutePerIp);
     }
 
     public static ProxyLimitRuntimeSummarySource FromMetrics(ProxyMetricsSnapshot metrics)

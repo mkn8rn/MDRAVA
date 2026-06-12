@@ -355,6 +355,27 @@ internal static class OperatorStatusTests
         AssertEx.Equal(certificate.NotAfter, source.LoadedCertificates[0].NotAfter);
     }
 
+    public static void StatusLimitSummaryConfigurationMapperReadsLimitsWithoutConfigurationSnapshot()
+    {
+        var limits = new RuntimeLimits(
+            MaxActiveClientConnections: 123,
+            MaxConcurrentTlsHandshakes: 7,
+            RequestsPerMinutePerIp: 45,
+            UpgradeRequestsPerMinutePerIp: 9,
+            MaxRequestHeadBytes: 32768,
+            MaxHeaderCount: 128,
+            MaxHeaderLineBytes: 8192,
+            MaxRequestBodyBytes: 104857600,
+            MaxPathBytes: 8192,
+            ShutdownGracePeriod: TimeSpan.FromSeconds(15));
+
+        var source = ProxyLimitSummarySourceMapper.FromConfiguration(limits);
+
+        AssertEx.Equal(123, source.MaxActiveClientConnections);
+        AssertEx.Equal(7, source.MaxConcurrentTlsHandshakes);
+        AssertEx.Equal(45, source.RequestsPerMinutePerIp);
+    }
+
     public static void ReadinessEvaluatorConsumesNarrowFactsWithoutRuntimeSnapshots()
     {
         var evaluatedAt = new DateTimeOffset(2026, 6, 9, 12, 0, 0, TimeSpan.Zero);
