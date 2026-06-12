@@ -62,6 +62,45 @@ internal static class OperatorStatusTests
         AssertEx.True(input.ConfigLint.Available);
     }
 
+    public static void StatusUpstreamHealthReaderConsumesConfiguredHealthSourcesWithoutRuntimeRoutes()
+    {
+        var healthSource = new ProxyUpstreamHealthSource(
+            new UpstreamHealthStateSource(
+                "site-a/upstream-a",
+                "site-a",
+                "upstream-a",
+                "https://upstream.internal:443"),
+            new CircuitBreakerStatusSource("site-a/upstream-a", RuntimeCircuitBreakerPolicy.Disabled),
+            "https",
+            RuntimeUpstreamProtocol.Http2,
+            7,
+            ValidateCertificate: false,
+            EffectiveSniHost: "sni.internal",
+            HealthCheckEnabled: true);
+        var configuration = new ProxyStatusConfigurationSourceSet(
+            Version: 9,
+            LoadedAtUtc: DateTimeOffset.UnixEpoch,
+            Listeners: [],
+            Routes: [],
+            UpstreamHealthSources: [healthSource],
+            ReadinessConfiguration: ProxyStatusReadinessConfigurationSourceMapper.FromConfiguration(null));
+        var upstreamHealthSource = new CapturingStatusUpstreamHealthSource();
+        var reader = new ProxyStatusUpstreamHealthReader(
+            new FixedStatusConfigurationSource(configuration),
+            upstreamHealthSource);
+
+        var upstreams = reader.ReadUpstreams();
+
+        AssertEx.Equal(1, upstreamHealthSource.LastUpstreams.Count);
+        AssertEx.Equal("site-a/upstream-a", upstreamHealthSource.LastUpstreams[0].HealthState.UpstreamIdentity);
+        AssertEx.Equal(RuntimeUpstreamProtocol.Http2, upstreamHealthSource.LastUpstreams[0].Protocol);
+        AssertEx.False(upstreamHealthSource.LastUpstreams[0].ValidateCertificate);
+        AssertEx.Equal("sni.internal", upstreamHealthSource.LastUpstreams[0].EffectiveSniHost);
+        AssertEx.Equal(1, upstreams.Count);
+        AssertEx.Equal("site-a", upstreams[0].RouteName);
+        AssertEx.Equal("upstream-a", upstreams[0].UpstreamName);
+    }
+
     public static void StatusRuntimeSummaryMapperProjectsOnlyResponseRuntimeFacts()
     {
         var listener = Listener();
@@ -1265,6 +1304,54 @@ internal static class OperatorStatusTests
         public ProxyRuntimePreflightStatus ReadRuntimePreflight()
         {
             return ProxyRuntimePreflightStatus.Unknown;
+        }
+    }
+
+    private sealed class FixedStatusConfigurationSource : IProxyStatusConfigurationSource
+    {
+        private readonly ProxyStatusConfigurationSourceSet? _configuration;
+
+        public FixedStatusConfigurationSource(ProxyStatusConfigurationSourceSet? configuration)
+        {
+            _configuration = configuration;
+        }
+
+        public bool TryReadConfiguration(out ProxyStatusConfigurationSourceSet? configuration)
+        {
+            configuration = _configuration;
+            return configuration is not null;
+        }
+    }
+
+    private sealed class CapturingStatusUpstreamHealthSource : IProxyStatusUpstreamHealthSource
+    {
+        public IReadOnlyList<ProxyUpstreamHealthSource> LastUpstreams { get; private set; } = [];
+
+        public IReadOnlyList<ProxyUpstreamStatusResponse> ReadUpstreams(
+            IReadOnlyList<ProxyUpstreamHealthSource> upstreams)
+        {
+            LastUpstreams = upstreams;
+            return upstreams
+                .Select(static upstream => new ProxyUpstreamStatusResponse(
+                    upstream.HealthState.RouteName,
+                    upstream.HealthState.UpstreamName,
+                    upstream.HealthState.UpstreamEndpoint,
+                    upstream.Scheme,
+                    upstream.ValidateCertificate,
+                    upstream.EffectiveSniHost,
+                    upstream.HealthCheckEnabled,
+                    UpstreamHealthState.Unknown,
+                    LastHealthCheckResult: null,
+                    LastHealthCheckAtUtc: null,
+                    ConsecutiveSuccesses: 0,
+                    ConsecutiveFailures: 0,
+                    SelectedRequests: 0,
+                    RequestFailures: 0)
+                {
+                    Protocol = upstream.Protocol,
+                    Weight = upstream.Weight
+                })
+                .ToArray();
         }
     }
 

@@ -20,6 +20,7 @@ public sealed record ProxyStatusConfigurationSourceSet(
     DateTimeOffset LoadedAtUtc,
     IReadOnlyList<RuntimeListener> Listeners,
     IReadOnlyList<RuntimeRoute> Routes,
+    IReadOnlyList<ProxyUpstreamHealthSource> UpstreamHealthSources,
     ProxyStatusReadinessConfigurationSourceSet ReadinessConfiguration);
 
 public static class ProxyStatusConfigurationSourceMapper
@@ -32,6 +33,7 @@ public static class ProxyStatusConfigurationSourceMapper
             configuration.LoadedAtUtc,
             configuration.Listeners,
             configuration.Routes,
+            ProxyUpstreamHealthSourceMapper.FromRoutes(configuration.Routes),
             ProxyStatusReadinessConfigurationSourceMapper.FromConfiguration(configuration));
     }
 }

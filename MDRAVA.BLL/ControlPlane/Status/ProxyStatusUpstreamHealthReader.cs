@@ -21,6 +21,6 @@ public sealed class ProxyStatusUpstreamHealthReader : IProxyStatusUpstreamHealth
         return _upstreamHealthSource.ReadUpstreams(
             configuration is null
                 ? []
-                : ProxyUpstreamHealthSourceMapper.FromRoutes(configuration.Routes));
+                : configuration.UpstreamHealthSources);
     }
 }
