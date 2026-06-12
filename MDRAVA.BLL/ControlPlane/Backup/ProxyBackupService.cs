@@ -160,28 +160,20 @@ public sealed class ProxyBackupService : IProxyBackupOperations
 
     private IReadOnlyList<ProxyBackupDirectoryStatus> ExpectedDirectories(string root)
     {
-        return
-        [
-            DirectoryStatus(root, "config", ProxyBackupFileClassificationPolicy.MustBackup, sensitive: false),
-            DirectoryStatus(root, "config/sites", ProxyBackupFileClassificationPolicy.MustBackup, sensitive: false),
-            DirectoryStatus(root, "logs", ProxyBackupFileClassificationPolicy.ShouldBackup, sensitive: false),
-            DirectoryStatus(root, "certs", ProxyBackupFileClassificationPolicy.NeverExportByDefaultSensitive, sensitive: true),
-            DirectoryStatus(root, "certs/acme", ProxyBackupFileClassificationPolicy.NeverExportByDefaultSensitive, sensitive: true),
-            DirectoryStatus(root, "state", ProxyBackupFileClassificationPolicy.ShouldBackup, sensitive: false)
-        ];
+        return ProxyBackupDirectoryLayoutPolicy.ExpectedDirectories()
+            .Select(requirement => DirectoryStatus(root, requirement))
+            .ToArray();
     }
 
     private ProxyBackupDirectoryStatus DirectoryStatus(
         string root,
-        string relativePath,
-        string classification,
-        bool sensitive)
+        ProxyBackupDirectoryRequirement requirement)
     {
         return new ProxyBackupDirectoryStatus(
-            relativePath,
-            _backupFileSystem.DirectoryExists(root, relativePath),
-            classification,
-            sensitive);
+            requirement.RelativePath,
+            _backupFileSystem.DirectoryExists(root, requirement.RelativePath),
+            requirement.Classification,
+            requirement.Sensitive);
     }
 
     private ProxyRestoreValidationFinding ClassifyConfigError(string root, ProxyConfigurationFileError fileError)
