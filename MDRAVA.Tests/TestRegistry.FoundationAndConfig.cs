@@ -20,6 +20,8 @@ internal static partial class TestRegistry
     Test("Http1RequestParser rejects conflicting Content-Length", Sync(Http1RequestParserTests.RejectsConflictingContentLength), TestTaxonomy.Http1, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
     Test("Http1RequestParser rejects Content-Length with Transfer-Encoding", Sync(Http1RequestParserTests.RejectsContentLengthWithTransferEncoding), TestTaxonomy.Http1, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
     Test("Http1RequestParser rejects unsupported Transfer-Encoding", Sync(Http1RequestParserTests.RejectsUnsupportedTransferEncoding), TestTaxonomy.Http1, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
+    Test("Http1 content length analysis names accepted length", Sync(Http1RequestParserTests.ContentLengthAnalysisNamesAcceptedLength), TestTaxonomy.Http1, TestTaxonomy.Headers),
+    Test("Http1 content length analysis names rejected length", Sync(Http1RequestParserTests.ContentLengthAnalysisNamesRejectedLength), TestTaxonomy.Http1, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
     Test("Http1ChunkSizeParser parses chunk size line", Sync(Http1ChunkSizeParserTests.ParsesChunkSizeLine), TestTaxonomy.Http1, TestTaxonomy.Headers),
     Test("Http1ChunkSizeParser parses chunk extension", Sync(Http1ChunkSizeParserTests.ParsesChunkSizeWithExtension), TestTaxonomy.Http1, TestTaxonomy.Headers),
     Test("Http1ChunkSizeParser rejects invalid line", Sync(Http1ChunkSizeParserTests.RejectsInvalidChunkSizeLine), TestTaxonomy.Http1, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),

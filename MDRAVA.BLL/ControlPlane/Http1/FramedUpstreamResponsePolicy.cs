@@ -56,11 +56,13 @@ public static class FramedUpstreamResponsePolicy
             .ToArray();
         if (contentLengthValues.Length > 0)
         {
-            if (!Http1RequestParser.TryAnalyzeContentLength(contentLengthValues, out var contentLength, out var error))
+            var contentLengthAnalysis = Http1RequestParser.AnalyzeContentLength(contentLengthValues);
+            if (contentLengthAnalysis is Http1ContentLengthAnalysisResult.Rejected rejectedContentLength)
             {
-                return UpstreamResponseFramingDecision.Reject(error.ToString());
+                return UpstreamResponseFramingDecision.Reject(rejectedContentLength.Error.ToString());
             }
 
+            var contentLength = ((Http1ContentLengthAnalysisResult.Accepted)contentLengthAnalysis).ContentLength;
             return UpstreamResponseFramingDecision.Accept(Http1ResponseFraming.FromContentLength(contentLength));
         }
 

@@ -211,22 +211,21 @@ public static class Http1RequestParser
             return true;
         }
 
-        if (!TryAnalyzeContentLength(contentLengthValues, out var contentLength, out error))
+        var contentLengthAnalysis = AnalyzeContentLength(contentLengthValues);
+        if (contentLengthAnalysis is Http1ContentLengthAnalysisResult.Rejected rejectedContentLength)
         {
+            error = rejectedContentLength.Error;
             return false;
         }
 
+        var contentLength = ((Http1ContentLengthAnalysisResult.Accepted)contentLengthAnalysis).ContentLength;
         framing = Http1RequestFraming.FromContentLength(contentLength);
         return true;
     }
 
-    internal static bool TryAnalyzeContentLength(
-        IReadOnlyList<string> contentLengthValues,
-        out long contentLength,
-        out Http1ParseError error)
+    public static Http1ContentLengthAnalysisResult AnalyzeContentLength(
+        IReadOnlyList<string> contentLengthValues)
     {
-        contentLength = 0;
-        error = Http1ParseError.None;
         long? observed = null;
 
         foreach (var headerValue in contentLengthValues)
@@ -236,14 +235,12 @@ public static class Http1RequestParser
             {
                 if (!TryParseNonNegativeInt64(Encoding.ASCII.GetBytes(part), out var parsed))
                 {
-                    error = Http1ParseError.InvalidContentLength;
-                    return false;
+                    return Http1ContentLengthAnalysisResult.Reject(Http1ParseError.InvalidContentLength);
                 }
 
                 if (observed.HasValue && observed.Value != parsed)
                 {
-                    error = Http1ParseError.ConflictingContentLength;
-                    return false;
+                    return Http1ContentLengthAnalysisResult.Reject(Http1ParseError.ConflictingContentLength);
                 }
 
                 observed = parsed;
@@ -252,12 +249,10 @@ public static class Http1RequestParser
 
         if (!observed.HasValue)
         {
-            error = Http1ParseError.InvalidContentLength;
-            return false;
+            return Http1ContentLengthAnalysisResult.Reject(Http1ParseError.InvalidContentLength);
         }
 
-        contentLength = observed.Value;
-        return true;
+        return Http1ContentLengthAnalysisResult.Accept(observed.Value);
     }
 
     internal static bool TryAnalyzeTransferEncoding(
@@ -399,4 +394,35 @@ public static class Http1RequestParser
             ? (byte)(value + 32)
             : value;
     }
+}
+
+public abstract record Http1ContentLengthAnalysisResult
+{
+    private Http1ContentLengthAnalysisResult()
+    {
+    }
+
+    public static Http1ContentLengthAnalysisResult Accept(long contentLength)
+    {
+        if (contentLength < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(contentLength), "Content-Length cannot be negative.");
+        }
+
+        return new Accepted(contentLength);
+    }
+
+    public static Http1ContentLengthAnalysisResult Reject(Http1ParseError error)
+    {
+        if (error == Http1ParseError.None)
+        {
+            throw new ArgumentException("Content-Length rejection requires a parse error.", nameof(error));
+        }
+
+        return new Rejected(error);
+    }
+
+    public sealed record Accepted(long ContentLength) : Http1ContentLengthAnalysisResult;
+
+    public sealed record Rejected(Http1ParseError Error) : Http1ContentLengthAnalysisResult;
 }

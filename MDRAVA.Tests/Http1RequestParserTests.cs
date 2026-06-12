@@ -100,6 +100,25 @@ internal static class Http1RequestParserTests
         AssertEx.Equal(Http1ParseError.UnsupportedTransferEncoding, error);
     }
 
+    public static void ContentLengthAnalysisNamesAcceptedLength()
+    {
+        var result = Http1RequestParser.AnalyzeContentLength(["12", "12"]);
+
+        AssertEx.True(result is Http1ContentLengthAnalysisResult.Accepted);
+        AssertEx.Equal(12L, ((Http1ContentLengthAnalysisResult.Accepted)result).ContentLength);
+    }
+
+    public static void ContentLengthAnalysisNamesRejectedLength()
+    {
+        var invalid = Http1RequestParser.AnalyzeContentLength(["nope"]);
+        var conflicting = Http1RequestParser.AnalyzeContentLength(["1", "2"]);
+
+        AssertEx.True(invalid is Http1ContentLengthAnalysisResult.Rejected);
+        AssertEx.Equal(Http1ParseError.InvalidContentLength, ((Http1ContentLengthAnalysisResult.Rejected)invalid).Error);
+        AssertEx.True(conflicting is Http1ContentLengthAnalysisResult.Rejected);
+        AssertEx.Equal(Http1ParseError.ConflictingContentLength, ((Http1ContentLengthAnalysisResult.Rejected)conflicting).Error);
+    }
+
     private static byte[] Bytes(string value)
     {
         return Encoding.ASCII.GetBytes(value);

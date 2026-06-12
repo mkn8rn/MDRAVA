@@ -153,11 +153,14 @@ public static class Http1ResponseParser
 
         if (contentLengthValues.Count > 0)
         {
-            if (!Http1RequestParser.TryAnalyzeContentLength(contentLengthValues, out var contentLength, out error))
+            var contentLengthAnalysis = Http1RequestParser.AnalyzeContentLength(contentLengthValues);
+            if (contentLengthAnalysis is Http1ContentLengthAnalysisResult.Rejected rejectedContentLength)
             {
+                error = rejectedContentLength.Error;
                 return false;
             }
 
+            var contentLength = ((Http1ContentLengthAnalysisResult.Accepted)contentLengthAnalysis).ContentLength;
             framing = Http1ResponseFraming.FromContentLength(contentLength);
             return true;
         }
