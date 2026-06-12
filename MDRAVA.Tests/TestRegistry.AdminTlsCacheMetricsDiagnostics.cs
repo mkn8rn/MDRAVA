@@ -35,6 +35,7 @@ internal static partial class TestRegistry
     Test("ACME renewal avoids tight retry loop after failure", AcmeTests.AcmeRenewalAvoidsTightRetryLoopAfterFailure, TestTaxonomy.Tls, TestTaxonomy.RetryCircuit, TestTaxonomy.SecurityNegativePaths),
     Test("ACME renewal schedule uses disabled backoff without active config", Sync(AcmeTests.AcmeRenewalScheduleUsesDisabledBackoffWithoutActiveConfig), TestTaxonomy.Tls, TestTaxonomy.Config),
     Test("ACME renewal schedule clamps configured interval", Sync(AcmeTests.AcmeRenewalScheduleClampsConfiguredInterval), TestTaxonomy.Tls, TestTaxonomy.Config),
+    Test("ACME renewal schedule input mapper consumes source without runtime configuration", Sync(AcmeTests.AcmeRenewalScheduleInputMapperConsumesSourceWithoutRuntimeConfiguration), TestTaxonomy.Tls, TestTaxonomy.Config),
     Test("ACME renewal schedule source reads narrow active input", Sync(AcmeTests.AcmeRenewalScheduleSourceReadsNarrowActiveInput), TestTaxonomy.Tls, TestTaxonomy.Config),
     Test("ACME renewal configuration source projects renewal input", Sync(AcmeTests.AcmeRenewalConfigurationSourceProjectsRenewalInput), TestTaxonomy.Tls, TestTaxonomy.Config),
     Test("ACME renewal configuration source mapper attaches only ACME active certificates", Sync(AcmeTests.AcmeRenewalConfigurationSourceMapperAttachesOnlyAcmeActiveCertificates), TestTaxonomy.Tls, TestTaxonomy.Config),

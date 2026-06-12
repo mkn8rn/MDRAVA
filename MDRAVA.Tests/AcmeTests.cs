@@ -333,13 +333,26 @@ internal static class AcmeTests
     {
         using var temp = TemporaryDirectory.Create();
         var policy = new AcmeRenewalSchedulePolicy();
-        var belowMinimum = AcmeRenewalScheduleInputMapper.FromRuntimeConfiguration(
-            CreateStore(temp.Path, checkIntervalMinutes: 1).Snapshot.Acme);
-        var aboveMaximum = AcmeRenewalScheduleInputMapper.FromRuntimeConfiguration(
-            CreateStore(temp.Path, checkIntervalMinutes: 2000).Snapshot.Acme);
+        var belowMinimum = AcmeRenewalScheduleInputMapper.FromSource(
+            AcmeRenewalScheduleSourceMapper.FromRuntimeConfiguration(
+                CreateStore(temp.Path, checkIntervalMinutes: 1).Snapshot.Acme));
+        var aboveMaximum = AcmeRenewalScheduleInputMapper.FromSource(
+            AcmeRenewalScheduleSourceMapper.FromRuntimeConfiguration(
+                CreateStore(temp.Path, checkIntervalMinutes: 2000).Snapshot.Acme));
 
         AssertEx.Equal(TimeSpan.FromMinutes(5), policy.ResolveDelay(belowMinimum));
         AssertEx.Equal(TimeSpan.FromMinutes(1440), policy.ResolveDelay(aboveMaximum));
+    }
+
+    public static void AcmeRenewalScheduleInputMapperConsumesSourceWithoutRuntimeConfiguration()
+    {
+        var input = AcmeRenewalScheduleInputMapper.FromSource(
+            new AcmeRenewalScheduleSource(
+                Enabled: true,
+                CheckIntervalMinutes: 17));
+
+        AssertEx.True(input.Enabled);
+        AssertEx.Equal(17, input.CheckIntervalMinutes);
     }
 
     public static void AcmeRenewalScheduleSourceReadsNarrowActiveInput()

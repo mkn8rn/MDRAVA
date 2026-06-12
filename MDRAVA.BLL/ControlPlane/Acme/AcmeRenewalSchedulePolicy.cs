@@ -7,6 +7,10 @@ public sealed record AcmeRenewalScheduleInput(
     bool Enabled,
     int CheckIntervalMinutes);
 
+public sealed record AcmeRenewalScheduleSource(
+    bool Enabled,
+    int CheckIntervalMinutes);
+
 public interface IAcmeRenewalScheduleInputSource
 {
     AcmeRenewalScheduleInput? ReadInput();
@@ -14,9 +18,19 @@ public interface IAcmeRenewalScheduleInputSource
 
 public static class AcmeRenewalScheduleInputMapper
 {
-    public static AcmeRenewalScheduleInput FromRuntimeConfiguration(RuntimeAcmeOptions acme)
+    public static AcmeRenewalScheduleInput FromSource(AcmeRenewalScheduleSource source)
     {
         return new AcmeRenewalScheduleInput(
+            source.Enabled,
+            source.CheckIntervalMinutes);
+    }
+}
+
+public static class AcmeRenewalScheduleSourceMapper
+{
+    public static AcmeRenewalScheduleSource FromRuntimeConfiguration(RuntimeAcmeOptions acme)
+    {
+        return new AcmeRenewalScheduleSource(
             acme.Enabled,
             acme.CheckIntervalMinutes);
     }
@@ -34,7 +48,8 @@ public sealed class ProxyConfigurationAcmeRenewalScheduleInputSource : IAcmeRene
     public AcmeRenewalScheduleInput? ReadInput()
     {
         return _configurationStore.TryGetSnapshot(out var snapshot) && snapshot is not null
-            ? AcmeRenewalScheduleInputMapper.FromRuntimeConfiguration(snapshot.Acme)
+            ? AcmeRenewalScheduleInputMapper.FromSource(
+                AcmeRenewalScheduleSourceMapper.FromRuntimeConfiguration(snapshot.Acme))
             : null;
     }
 }
