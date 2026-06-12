@@ -219,12 +219,14 @@ public static class Http3Codec
 
             if ((first & 0x20) != 0)
             {
-                if (!TryReadLiteralHeader(block, ref offset, out var literal, out reason))
+                var literalRead = ReadLiteralHeader(block, ref offset);
+                if (literalRead is not QpackLiteralHeaderReadResult.Decoded decodedLiteral)
                 {
+                    reason = ((QpackLiteralHeaderReadResult.Rejected)literalRead).Reason;
                     return false;
                 }
 
-                if (!TryAddDecodedHeader(decoded, literal, maxHeaderBytes, ref decodedHeaderBytes, out reason))
+                if (!TryAddDecodedHeader(decoded, decodedLiteral.Header, maxHeaderBytes, ref decodedHeaderBytes, out reason))
                 {
                     return false;
                 }
@@ -351,36 +353,75 @@ public static class Http3Codec
         return true;
     }
 
-    private static bool TryReadLiteralHeader(
+    private static QpackLiteralHeaderReadResult ReadLiteralHeader(
         ReadOnlySpan<byte> block,
-        ref int offset,
-        out ProxyHeaderField header,
-        out string reason)
+        ref int offset)
     {
-        header = null!;
-        reason = "invalid_qpack_literal";
         var nameHuffman = offset < block.Length && (block[offset] & 0x08) != 0;
         if (!TryReadPrefixedInteger(block, 3, ref offset, out var nameLength)
             || nameLength < 0
             || nameLength > int.MaxValue
             || offset + (int)nameLength > block.Length)
         {
-            return false;
+            return QpackLiteralHeaderReadResult.Reject("invalid_qpack_literal");
         }
 
-        if (!TryDecodeStringBytes(block.Slice(offset, (int)nameLength), nameHuffman, out var name, out reason))
+        if (!TryDecodeStringBytes(block.Slice(offset, (int)nameLength), nameHuffman, out var name, out var reason))
         {
-            return false;
+            return QpackLiteralHeaderReadResult.Reject(reason);
         }
 
         offset += (int)nameLength;
         if (!TryReadString(block, ref offset, out var value, out reason))
         {
-            return false;
+            return QpackLiteralHeaderReadResult.Reject(reason);
         }
 
-        header = new ProxyHeaderField(name, value);
-        return true;
+        return QpackLiteralHeaderReadResult.Decode(new ProxyHeaderField(name, value));
+    }
+
+    private abstract record QpackLiteralHeaderReadResult
+    {
+        private QpackLiteralHeaderReadResult()
+        {
+        }
+
+        public static QpackLiteralHeaderReadResult Decode(ProxyHeaderField header)
+        {
+            return new Decoded(header);
+        }
+
+        public static QpackLiteralHeaderReadResult Reject(string reason)
+        {
+            return new Rejected(reason);
+        }
+
+        public sealed record Decoded : QpackLiteralHeaderReadResult
+        {
+            public Decoded(ProxyHeaderField header)
+            {
+                ArgumentNullException.ThrowIfNull(header);
+
+                Header = header;
+            }
+
+            public ProxyHeaderField Header { get; }
+        }
+
+        public sealed record Rejected : QpackLiteralHeaderReadResult
+        {
+            public Rejected(string reason)
+            {
+                if (string.IsNullOrWhiteSpace(reason))
+                {
+                    throw new ArgumentException("QPACK literal header rejection reason is required.", nameof(reason));
+                }
+
+                Reason = reason;
+            }
+
+            public string Reason { get; }
+        }
     }
 
     private static void WriteLiteralHeader(Stream stream, string name, string value)
