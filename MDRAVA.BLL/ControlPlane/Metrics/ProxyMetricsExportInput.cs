@@ -31,6 +31,20 @@ public sealed record ProxyMetricsExportConfiguration(
     ProxyMetricsExportLabelOptions LabelOptions,
     ProxyMetricsExportHttp3Facts Http3Facts);
 
+public static class ProxyMetricsExportConfigurationMapper
+{
+    public static ProxyMetricsExportConfiguration FromSources(
+        bool metricsEnabled,
+        ProxyMetricsExportLabelOptions labelOptions,
+        ProxyMetricsExportHttp3Facts http3Facts)
+    {
+        return new ProxyMetricsExportConfiguration(
+            metricsEnabled,
+            labelOptions,
+            http3Facts);
+    }
+}
+
 public static class ProxyMetricsExportLabelOptionsMapper
 {
     public static ProxyMetricsExportLabelOptions FromMetrics(RuntimeMetricsOptions metrics)
@@ -108,7 +122,7 @@ public sealed class ProxyConfigurationMetricsExportConfigurationSource
             return null;
         }
 
-        return new ProxyMetricsExportConfiguration(
+        return ProxyMetricsExportConfigurationMapper.FromSources(
             snapshot.Metrics.Enabled,
             ProxyMetricsExportLabelOptionsMapper.FromMetrics(snapshot.Metrics),
             ProxyMetricsExportHttp3FactsMapper.FromRuntimeConfiguration(snapshot.Listeners, snapshot.Routes));

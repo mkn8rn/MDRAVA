@@ -91,6 +91,7 @@ internal static partial class TestRegistry
     Test("Metrics endpoint returns Prometheus text", Sync(MetricsTests.MetricsEndpointReturnsPrometheusText), TestTaxonomy.Metrics),
     Test("Metrics export input source reads active runtime facts", Sync(MetricsTests.MetricsExportInputSourceReadsActiveRuntimeFacts), TestTaxonomy.Metrics, TestTaxonomy.Config),
     Test("Metrics export configuration mappers read narrow runtime facts", Sync(MetricsTests.MetricsExportConfigurationMappersReadNarrowRuntimeFacts), TestTaxonomy.Metrics, TestTaxonomy.Config, TestTaxonomy.Http3),
+    Test("Metrics export configuration mapper consumes named facts without runtime configuration", Sync(MetricsTests.MetricsExportConfigurationMapperConsumesNamedFactsWithoutRuntimeConfiguration), TestTaxonomy.Metrics, TestTaxonomy.Config),
     Test("Metrics endpoint returns 404 when metrics disabled", Sync(MetricsTests.MetricsEndpointReturnsNotFoundWhenMetricsDisabled), TestTaxonomy.Metrics),
     Test("Metrics export availability requires active enabled config", Sync(MetricsTests.MetricsExportAvailabilityRequiresActiveEnabledConfig), TestTaxonomy.Metrics),
     Test("Metrics include request counters after proxied request", MetricsTests.MetricsIncludeRequestCountersAfterProxiedRequest, TestTaxonomy.Metrics),

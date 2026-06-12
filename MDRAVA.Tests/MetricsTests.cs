@@ -118,6 +118,29 @@ internal static class MetricsTests
         AssertEx.True(http3Facts.UpstreamMultiplexingConfigured);
     }
 
+    public static void MetricsExportConfigurationMapperConsumesNamedFactsWithoutRuntimeConfiguration()
+    {
+        var labelOptions = new ProxyMetricsExportLabelOptions(
+            IncludePerRouteLabels: false,
+            IncludePerUpstreamLabels: true);
+        var http3Facts = new ProxyMetricsExportHttp3Facts(
+            DefaultEnabledListenerCount: 2,
+            RequestBodyStreamingEnabled: true,
+            UpstreamMultiplexingConfigured: false);
+
+        var configuration = ProxyMetricsExportConfigurationMapper.FromSources(
+            metricsEnabled: true,
+            labelOptions,
+            http3Facts);
+
+        AssertEx.True(configuration.MetricsEnabled);
+        AssertEx.False(configuration.LabelOptions.IncludePerRouteLabels);
+        AssertEx.True(configuration.LabelOptions.IncludePerUpstreamLabels);
+        AssertEx.Equal(2, configuration.Http3Facts.DefaultEnabledListenerCount);
+        AssertEx.True(configuration.Http3Facts.RequestBodyStreamingEnabled);
+        AssertEx.False(configuration.Http3Facts.UpstreamMultiplexingConfigured);
+    }
+
     public static void MetricsEndpointReturnsNotFoundWhenMetricsDisabled()
     {
         using var fixture = MetricsFixture.Create();
