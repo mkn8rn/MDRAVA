@@ -358,9 +358,10 @@ public sealed class Http2ClientConnection
                 ProxyClientAddressPolicy.ToForwardedHeadersPeer(_remoteEndPoint));
             context.SetClientEndpoint(forwardedHeaders.ResolvedClientEndpoint);
 
-            if (!_rateLimiter.TryAcquireRequest(
+            if (_rateLimiter.AcquireRequest(
                 forwardedHeaders.ResolvedClientAddress,
-                _configurationSnapshot.Limits.RequestsPerMinutePerIp))
+                _configurationSnapshot.Limits.RequestsPerMinutePerIp)
+                is ClientRateLimitDecision.RejectedResult)
             {
                 await WriteGeneratedResponseAsync(
                     stream.Id,

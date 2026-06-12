@@ -16,36 +16,38 @@ public sealed class ClientRateLimiter
         _timeProvider = timeProvider;
     }
 
-    public bool TryAcquireRequest(string? clientAddressKey, int perMinuteLimit)
+    public ClientRateLimitDecision AcquireRequest(string? clientAddressKey, int perMinuteLimit)
     {
         if (string.IsNullOrWhiteSpace(clientAddressKey))
         {
-            return true;
+            return ClientRateLimitDecision.Accepted;
         }
 
         var allowed = TryAcquire(clientAddressKey, perMinuteLimit, static buckets => buckets.Requests);
         if (!allowed)
         {
             _metrics.RequestRateLimited();
+            return ClientRateLimitDecision.Rejected;
         }
 
-        return allowed;
+        return ClientRateLimitDecision.Accepted;
     }
 
-    public bool TryAcquireUpgrade(string? clientAddressKey, int perMinuteLimit)
+    public ClientRateLimitDecision AcquireUpgrade(string? clientAddressKey, int perMinuteLimit)
     {
         if (string.IsNullOrWhiteSpace(clientAddressKey))
         {
-            return true;
+            return ClientRateLimitDecision.Accepted;
         }
 
         var allowed = TryAcquire(clientAddressKey, perMinuteLimit, static buckets => buckets.Upgrades);
         if (!allowed)
         {
             _metrics.UpgradeRateLimited();
+            return ClientRateLimitDecision.Rejected;
         }
 
-        return allowed;
+        return ClientRateLimitDecision.Accepted;
     }
 
     public int EntryCount
@@ -146,4 +148,19 @@ public sealed class ClientRateLimiter
             return true;
         }
     }
+}
+
+public abstract record ClientRateLimitDecision
+{
+    private ClientRateLimitDecision()
+    {
+    }
+
+    public static ClientRateLimitDecision Accepted { get; } = new AcceptedResult();
+
+    public static ClientRateLimitDecision Rejected { get; } = new RejectedResult();
+
+    public sealed record AcceptedResult : ClientRateLimitDecision;
+
+    public sealed record RejectedResult : ClientRateLimitDecision;
 }

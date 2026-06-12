@@ -74,10 +74,10 @@ internal static class HardeningTests
         var limiter = new ClientRateLimiter(metrics, clock);
         var ip = "127.0.0.1";
 
-        AssertEx.True(limiter.TryAcquireRequest(ip, 1));
-        AssertEx.False(limiter.TryAcquireRequest(ip, 1));
+        AssertAccepted(limiter.AcquireRequest(ip, 1));
+        AssertRejected(limiter.AcquireRequest(ip, 1));
         clock.Advance(TimeSpan.FromSeconds(61));
-        AssertEx.True(limiter.TryAcquireRequest(ip, 1));
+        AssertAccepted(limiter.AcquireRequest(ip, 1));
         AssertEx.Equal(1L, metrics.Snapshot().RateLimitedRequests);
     }
 
@@ -94,7 +94,7 @@ internal static class HardeningTests
             32,
             _ =>
             {
-                if (limiter.TryAcquireRequest(ip, 5))
+                if (limiter.AcquireRequest(ip, 5) is ClientRateLimitDecision.AcceptedResult)
                 {
                     Interlocked.Increment(ref allowed);
                 }
@@ -111,8 +111,8 @@ internal static class HardeningTests
         var limiter = new ClientRateLimiter(metrics, clock);
         var ip = "127.0.0.1";
 
-        AssertEx.True(limiter.TryAcquireUpgrade(ip, 1));
-        AssertEx.False(limiter.TryAcquireUpgrade(ip, 1));
+        AssertAccepted(limiter.AcquireUpgrade(ip, 1));
+        AssertRejected(limiter.AcquireUpgrade(ip, 1));
         AssertEx.Equal(1L, metrics.Snapshot().RateLimitedUpgrades);
     }
 
@@ -125,8 +125,8 @@ internal static class HardeningTests
         var firstKey = MDRAVA.INF.Proxy.RuntimeGuards.ProxyClientAddressPolicy.NormalizeRequiredClientIp(IPAddress.Parse("127.0.0.1"));
         var secondKey = MDRAVA.INF.Proxy.RuntimeGuards.ProxyClientAddressPolicy.NormalizeRequiredClientIp(IPAddress.Parse("::ffff:127.0.0.1"));
 
-        AssertEx.True(limiter.TryAcquireRequest(firstKey, 1));
-        AssertEx.False(limiter.TryAcquireRequest(secondKey, 1));
+        AssertAccepted(limiter.AcquireRequest(firstKey, 1));
+        AssertRejected(limiter.AcquireRequest(secondKey, 1));
         AssertEx.Equal(1, limiter.EntryCount);
         AssertEx.Equal(1L, metrics.Snapshot().RateLimitedRequests);
     }
@@ -139,17 +139,27 @@ internal static class HardeningTests
 
         for (var index = 0; index < 300; index++)
         {
-            limiter.TryAcquireRequest($"10.0.0.{index % 250}", 10);
+            limiter.AcquireRequest($"10.0.0.{index % 250}", 10);
         }
 
         AssertEx.True(limiter.EntryCount > 0);
         clock.Advance(TimeSpan.FromMinutes(6));
         for (var index = 0; index < 256; index++)
         {
-            limiter.TryAcquireRequest($"10.1.0.{index % 250}", 10);
+            limiter.AcquireRequest($"10.1.0.{index % 250}", 10);
         }
 
         AssertEx.True(limiter.EntryCount < 300);
+    }
+
+    private static void AssertAccepted(ClientRateLimitDecision decision)
+    {
+        AssertEx.True(decision is ClientRateLimitDecision.AcceptedResult);
+    }
+
+    private static void AssertRejected(ClientRateLimitDecision decision)
+    {
+        AssertEx.True(decision is ClientRateLimitDecision.RejectedResult);
     }
 
     public static void ShutdownCoordinatorExposesGraceDeadlineAndCancels()
