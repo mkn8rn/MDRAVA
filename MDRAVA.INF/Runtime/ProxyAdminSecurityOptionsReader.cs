@@ -17,8 +17,7 @@ public sealed class ProxyAdminSecurityOptionsReader : IProxyAdminSecurityOptions
     {
         if (_configurationStore.TryGetSnapshot(out var snapshot) && snapshot is not null)
         {
-            return new ProxyAdminSecurityOptionsReadResult(
-                true,
+            return ProxyAdminSecurityOptionsReadResult.FromActiveConfiguration(
                 snapshot.AdminSecurity.RequireAuthentication,
                 snapshot.AdminSecurity.Token,
                 snapshot.AdminSecurity.RecentAuditCapacity);
@@ -28,8 +27,7 @@ public sealed class ProxyAdminSecurityOptionsReader : IProxyAdminSecurityOptions
         var security = ProxyConfigurationRuntimeMapper.ToRuntimeAdminSecurityOptions(
             adminOptions,
             ProxyAdminSecurityTokenPolicy.Resolve(adminOptions, Environment.GetEnvironmentVariable));
-        return new ProxyAdminSecurityOptionsReadResult(
-            false,
+        return ProxyAdminSecurityOptionsReadResult.FromDefaults(
             security.RequireAuthentication,
             security.Token,
             security.RecentAuditCapacity);

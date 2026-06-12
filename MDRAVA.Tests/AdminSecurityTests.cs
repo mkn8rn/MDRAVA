@@ -365,6 +365,27 @@ internal static class AdminSecurityTests
         AssertEx.Equal("none", none.TokenSource);
     }
 
+    public static void AdminSecurityOptionsReadResultNamesActiveAndDefaultSources()
+    {
+        var active = ProxyAdminSecurityOptionsReadResult.FromActiveConfiguration(
+            requireAuthentication: true,
+            token: "active-token",
+            recentAuditCapacity: 50);
+        var defaults = ProxyAdminSecurityOptionsReadResult.FromDefaults(
+            requireAuthentication: false,
+            token: null,
+            recentAuditCapacity: 100);
+
+        AssertEx.True(active.HasActiveConfiguration);
+        AssertEx.True(active.RequireAuthentication);
+        AssertEx.Equal("active-token", active.Token);
+        AssertEx.Equal(50, active.RecentAuditCapacity);
+        AssertEx.False(defaults.HasActiveConfiguration);
+        AssertEx.False(defaults.RequireAuthentication);
+        AssertEx.Equal<string?>(null, defaults.Token);
+        AssertEx.Equal(100, defaults.RecentAuditCapacity);
+    }
+
     public static async Task AdminAuditDoesNotLogTokenValues()
     {
         var store = CreateStoreWithAdminAuthentication();
