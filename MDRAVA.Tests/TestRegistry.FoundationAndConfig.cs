@@ -7,6 +7,7 @@ internal static partial class TestRegistry
     Test("Project references preserve layered dependency direction", Sync(ArchitectureBoundaryTests.ProjectReferencesPreserveLayeredDependencyDirection), TestTaxonomy.Config),
     Test("Configuration file error names global and path errors", Sync(ConfigurationTests.ConfigurationFileErrorNamesGlobalAndPathErrors), TestTaxonomy.Config),
     Test("Normalize site parse result names parsed and failed states", Sync(ConfigurationTests.NormalizeSiteParseResultNamesParsedAndFailedStates), TestTaxonomy.Config),
+    Test("Configuration reload result names reload outcomes", Sync(ConfigurationTests.ConfigurationReloadResultNamesReloadOutcomes), TestTaxonomy.Config),
     Test("Http1RequestParser parses a valid GET request", Sync(Http1RequestParserTests.ParsesValidGet), TestTaxonomy.Http1),
     Test("Http1RequestParser rejects missing Host", Sync(Http1RequestParserTests.RejectsMissingHost), TestTaxonomy.Http1, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
     Test("Http1RequestParser rejects invalid Content-Length", Sync(Http1RequestParserTests.RejectsInvalidContentLength), TestTaxonomy.Http1, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),

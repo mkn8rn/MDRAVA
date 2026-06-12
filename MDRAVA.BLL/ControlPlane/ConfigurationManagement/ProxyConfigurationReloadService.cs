@@ -45,17 +45,15 @@ public sealed class ProxyConfigurationReloadService
             _events.LoadFailed(loadResult.SourceDirectory, loadResult.Errors);
 
             var hasExisting = _store.TryGetSnapshot(out var existing);
-            return new ProxyConfigurationReloadResult<ProxyConfigurationProjection>(
-                false,
-                loadResult.SourceDirectory,
-                loadResult.AttemptedAtUtc,
-                hasExisting && existing is not null ? existing.Version : null,
-                existing?.LoadedAtUtc,
-                existing?.LoadedAtUtc,
-                loadResult.Discovery,
-                loadResult.Errors,
-                loadResult.FileErrors,
-                existing is null ? null : ToProjection(existing));
+            return ProxyConfigurationReloadResult<ProxyConfigurationProjection>.LoadFailed(
+                sourceDirectory: loadResult.SourceDirectory,
+                attemptedAtUtc: loadResult.AttemptedAtUtc,
+                activeVersion: hasExisting && existing is not null ? existing.Version : null,
+                loadedAtUtc: existing?.LoadedAtUtc,
+                discovery: loadResult.Discovery,
+                errors: loadResult.Errors,
+                fileErrors: loadResult.FileErrors,
+                activeConfiguration: existing is null ? null : ToProjection(existing));
         }
 
         var listenerReload = await _listenerReloadApplier.ApplyReloadAsync(
@@ -66,20 +64,14 @@ public sealed class ProxyConfigurationReloadService
         {
             _metrics.ConfigReloadFailed();
             var hasExisting = _store.TryGetSnapshot(out var existing);
-            return new ProxyConfigurationReloadResult<ProxyConfigurationProjection>(
-                false,
-                loadResult.SourceDirectory,
-                loadResult.AttemptedAtUtc,
-                hasExisting && existing is not null ? existing.Version : null,
-                existing?.LoadedAtUtc,
-                existing?.LoadedAtUtc,
-                loadResult.Discovery,
-                listenerReload.Errors,
-                listenerReload.Errors.Select(static error => ProxyConfigurationFileError.Global(error)).ToArray(),
-                existing is null ? null : ToProjection(existing))
-            {
-                ListenerReload = listenerReload
-            };
+            return ProxyConfigurationReloadResult<ProxyConfigurationProjection>.ListenerReloadFailed(
+                sourceDirectory: loadResult.SourceDirectory,
+                attemptedAtUtc: loadResult.AttemptedAtUtc,
+                activeVersion: hasExisting && existing is not null ? existing.Version : null,
+                loadedAtUtc: existing?.LoadedAtUtc,
+                discovery: loadResult.Discovery,
+                listenerReload: listenerReload,
+                activeConfiguration: existing is null ? null : ToProjection(existing));
         }
 
         var snapshot = _store.Snapshot;
@@ -87,20 +79,14 @@ public sealed class ProxyConfigurationReloadService
         _cacheStore.Clear("reload");
         _events.Loaded(snapshot.Version, snapshot.SourceDirectory);
 
-        return new ProxyConfigurationReloadResult<ProxyConfigurationProjection>(
-            true,
-            snapshot.SourceDirectory,
-            loadResult.AttemptedAtUtc,
-            snapshot.Version,
-            snapshot.LoadedAtUtc,
-            snapshot.LoadedAtUtc,
-            loadResult.Discovery,
-            [],
-            [],
-            ToProjection(snapshot))
-        {
-            ListenerReload = listenerReload
-        };
+        return ProxyConfigurationReloadResult<ProxyConfigurationProjection>.Reloaded(
+            sourceDirectory: snapshot.SourceDirectory,
+            attemptedAtUtc: loadResult.AttemptedAtUtc,
+            activeVersion: snapshot.Version,
+            loadedAtUtc: snapshot.LoadedAtUtc,
+            discovery: loadResult.Discovery,
+            listenerReload: listenerReload,
+            activeConfiguration: ToProjection(snapshot));
     }
 
     public async ValueTask<ProxyConfigurationValidationResult> ValidateAsync(CancellationToken cancellationToken)

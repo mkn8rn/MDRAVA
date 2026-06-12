@@ -36,6 +36,75 @@ internal static class ConfigurationTests
         AssertEx.Equal("parse failed", failed.Error);
     }
 
+    public static void ConfigurationReloadResultNamesReloadOutcomes()
+    {
+        var attemptedAtUtc = DateTimeOffset.UnixEpoch.AddMinutes(1);
+        var loadedAtUtc = DateTimeOffset.UnixEpoch.AddMinutes(2);
+        var discovery = new ProxyConfigurationDiscovery(
+            new ProxyFilesystemLayout("tests", "tests/config", "tests/config/sites", "tests/logs", "tests/certs", "tests/state", "tests/config/proxy.json"),
+            [],
+            [],
+            []);
+        var active = new TestConfigurationProjection("active");
+        var listenerReload = new ProxyListenerReloadResult(
+            true,
+            attemptedAtUtc,
+            Added: 1,
+            Removed: 0,
+            Changed: 0,
+            Unchanged: 0,
+            Changes: [],
+            Errors: []);
+        var failedListenerReload = listenerReload with
+        {
+            Succeeded = false,
+            Errors = ["listener failed"]
+        };
+
+        var loadFailed = ProxyConfigurationReloadResult<TestConfigurationProjection>.LoadFailed(
+            sourceDirectory: "data",
+            attemptedAtUtc: attemptedAtUtc,
+            activeVersion: 7,
+            loadedAtUtc: loadedAtUtc,
+            discovery: discovery,
+            errors: ["parse failed"],
+            fileErrors: [ProxyConfigurationFileError.ForPath("sites/broken.json", "parse failed")],
+            activeConfiguration: active);
+        var listenerFailed = ProxyConfigurationReloadResult<TestConfigurationProjection>.ListenerReloadFailed(
+            sourceDirectory: "data",
+            attemptedAtUtc: attemptedAtUtc,
+            activeVersion: 7,
+            loadedAtUtc: loadedAtUtc,
+            discovery: discovery,
+            listenerReload: failedListenerReload,
+            activeConfiguration: active);
+        var reloaded = ProxyConfigurationReloadResult<TestConfigurationProjection>.Reloaded(
+            sourceDirectory: "data",
+            attemptedAtUtc: attemptedAtUtc,
+            activeVersion: 8,
+            loadedAtUtc: loadedAtUtc,
+            discovery: discovery,
+            listenerReload: listenerReload,
+            activeConfiguration: active);
+
+        AssertEx.False(loadFailed.Succeeded);
+        AssertEx.Equal(7, loadFailed.ActiveVersion!.Value);
+        AssertEx.Equal(loadedAtUtc, loadFailed.LastSuccessfulLoadAtUtc!.Value);
+        AssertEx.Equal<ProxyListenerReloadResult?>(null, loadFailed.ListenerReload);
+        AssertEx.Equal("parse failed", loadFailed.Errors[0]);
+        AssertEx.Equal("sites/broken.json", loadFailed.FileErrors[0].Path);
+        AssertEx.False(listenerFailed.Succeeded);
+        AssertEx.Equal(failedListenerReload, AssertEx.NotNull(listenerFailed.ListenerReload));
+        AssertEx.Equal("listener failed", listenerFailed.Errors[0]);
+        AssertEx.Equal("listener failed", listenerFailed.FileErrors[0].Message);
+        AssertEx.True(reloaded.Succeeded);
+        AssertEx.Equal(8, reloaded.ActiveVersion!.Value);
+        AssertEx.Equal(0, reloaded.Errors.Count);
+        AssertEx.Equal(0, reloaded.FileErrors.Count);
+        AssertEx.Equal(listenerReload, AssertEx.NotNull(reloaded.ListenerReload));
+        AssertEx.Equal(active, AssertEx.NotNull(reloaded.ActiveConfiguration));
+    }
+
     public static void DataDirectoryUsesConfiguredOverride()
     {
         var expected = Path.Combine(Path.GetTempPath(), $"mdrava-test-{Guid.NewGuid():N}");
