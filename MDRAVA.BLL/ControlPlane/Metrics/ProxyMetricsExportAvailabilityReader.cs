@@ -1,23 +1,23 @@
-using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
-
 namespace MDRAVA.BLL.ControlPlane.Metrics;
 
 public sealed class ProxyMetricsExportAvailabilityReader : IProxyMetricsExportAvailabilityReader
 {
-    private readonly IProxyConfigurationStore _configurationStore;
+    private readonly IProxyMetricsExportConfigurationSource _configurationSource;
 
-    public ProxyMetricsExportAvailabilityReader(IProxyConfigurationStore configurationStore)
+    public ProxyMetricsExportAvailabilityReader(
+        IProxyMetricsExportConfigurationSource configurationSource)
     {
-        _configurationStore = configurationStore;
+        _configurationSource = configurationSource;
     }
 
     public ProxyMetricsExportAvailabilityState Read()
     {
-        if (!_configurationStore.TryGetSnapshot(out var snapshot) || snapshot is null)
+        var configuration = _configurationSource.ReadConfiguration();
+        if (configuration is null)
         {
             return new ProxyMetricsExportAvailabilityState(false, false);
         }
 
-        return new ProxyMetricsExportAvailabilityState(true, snapshot.Metrics.Enabled);
+        return new ProxyMetricsExportAvailabilityState(true, configuration.MetricsEnabled);
     }
 }

@@ -128,6 +128,9 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<IProxyAdminAuthenticationMetricsSink>(
             static services => services.GetRequiredService<ProxyMetrics>());
         services.AddSingleton<PrometheusMetricsExporter>();
+        services.AddSingleton<
+            IProxyMetricsExportConfigurationSource,
+            ProxyConfigurationMetricsExportConfigurationSource>();
         services.AddSingleton<IProxyMetricsExportAvailabilityReader, ProxyMetricsExportAvailabilityReader>();
         services.AddSingleton<ProxyMetricsExportAvailabilityService>();
         services.AddSingleton<IProxyMetricsExportInputSource, ProxyMetricsExportInputSource>();

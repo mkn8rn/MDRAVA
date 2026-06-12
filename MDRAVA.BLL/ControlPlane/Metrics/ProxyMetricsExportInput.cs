@@ -26,6 +26,11 @@ public sealed record ProxyMetricsExportHttp3Facts(
     bool RequestBodyStreamingEnabled,
     bool UpstreamMultiplexingConfigured);
 
+public sealed record ProxyMetricsExportConfiguration(
+    bool MetricsEnabled,
+    ProxyMetricsExportLabelOptions LabelOptions,
+    ProxyMetricsExportHttp3Facts Http3Facts);
+
 public static class ProxyMetricsExportLabelOptionsMapper
 {
     public static ProxyMetricsExportLabelOptions FromSnapshot(ProxyConfigurationSnapshot snapshot)
@@ -55,6 +60,11 @@ public interface IProxyMetricsExportInputSource
     ProxyMetricsExportInput? ReadInput();
 }
 
+public interface IProxyMetricsExportConfigurationSource
+{
+    ProxyMetricsExportConfiguration? ReadConfiguration();
+}
+
 public static class ProxyMetricsExportInputMapper
 {
     public static ProxyMetricsExportInput FromSources(
@@ -78,22 +88,47 @@ public static class ProxyMetricsExportInputMapper
     }
 }
 
-public sealed class ProxyMetricsExportInputSource : IProxyMetricsExportInputSource
+public sealed class ProxyConfigurationMetricsExportConfigurationSource
+    : IProxyMetricsExportConfigurationSource
 {
     private readonly IProxyConfigurationStore _configurationStore;
+
+    public ProxyConfigurationMetricsExportConfigurationSource(
+        IProxyConfigurationStore configurationStore)
+    {
+        _configurationStore = configurationStore;
+    }
+
+    public ProxyMetricsExportConfiguration? ReadConfiguration()
+    {
+        if (!_configurationStore.TryGetSnapshot(out var snapshot) || snapshot is null)
+        {
+            return null;
+        }
+
+        return new ProxyMetricsExportConfiguration(
+            snapshot.Metrics.Enabled,
+            ProxyMetricsExportLabelOptionsMapper.FromSnapshot(snapshot),
+            ProxyMetricsExportHttp3FactsMapper.FromSnapshot(snapshot));
+    }
+}
+
+public sealed class ProxyMetricsExportInputSource : IProxyMetricsExportInputSource
+{
+    private readonly IProxyMetricsExportConfigurationSource _configurationSource;
     private readonly IProxyStatusMetricsSource _metricsSource;
     private readonly IProxyCacheStatusReader _cacheStatusReader;
     private readonly IProxyStatusUpstreamHealthReader _upstreamHealthReader;
     private readonly IProxyAcmeCertificateLifecycleStatusSource _acmeStatusSource;
 
     public ProxyMetricsExportInputSource(
-        IProxyConfigurationStore configurationStore,
+        IProxyMetricsExportConfigurationSource configurationSource,
         IProxyStatusMetricsSource metricsSource,
         IProxyCacheStatusReader cacheStatusReader,
         IProxyStatusUpstreamHealthReader upstreamHealthReader,
         IProxyAcmeCertificateLifecycleStatusSource acmeStatusSource)
     {
-        _configurationStore = configurationStore;
+        _configurationSource = configurationSource;
         _metricsSource = metricsSource;
         _cacheStatusReader = cacheStatusReader;
         _upstreamHealthReader = upstreamHealthReader;
@@ -102,15 +137,16 @@ public sealed class ProxyMetricsExportInputSource : IProxyMetricsExportInputSour
 
     public ProxyMetricsExportInput? ReadInput()
     {
-        if (!_configurationStore.TryGetSnapshot(out var snapshot) || snapshot is null)
+        var configuration = _configurationSource.ReadConfiguration();
+        if (configuration is null)
         {
             return null;
         }
 
         return ProxyMetricsExportInputMapper.FromSources(
             _metricsSource.ReadMetrics(),
-            ProxyMetricsExportLabelOptionsMapper.FromSnapshot(snapshot),
-            ProxyMetricsExportHttp3FactsMapper.FromSnapshot(snapshot),
+            configuration.LabelOptions,
+            configuration.Http3Facts,
             _cacheStatusReader.GetStatus(),
             _upstreamHealthReader.ReadUpstreams(),
             _acmeStatusSource.GetLifecycleStatuses());

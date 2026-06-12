@@ -65,7 +65,10 @@ internal static class MetricsTests
     {
         using var fixture = MetricsFixture.Create();
         var store = CreateStore();
-        var source = CreateExportInputSource(store, fixture);
+        var source = CreateExportInputSource(
+            new ProxyConfigurationMetricsExportConfigurationSource(store),
+            store,
+            fixture);
 
         var input = AssertEx.NotNull(source.ReadInput());
 
@@ -461,18 +464,22 @@ internal static class MetricsTests
         ProxyConfigurationStore store,
         MetricsFixture fixture)
     {
+        var configurationSource = new ProxyConfigurationMetricsExportConfigurationSource(store);
+
         return new ProxyMetricsExportProvider(
-            CreateExportInputSource(store, fixture),
+            CreateExportInputSource(configurationSource, store, fixture),
             fixture.Exporter,
-            new ProxyMetricsExportAvailabilityService(new ProxyMetricsExportAvailabilityReader(store)));
+            new ProxyMetricsExportAvailabilityService(
+                new ProxyMetricsExportAvailabilityReader(configurationSource)));
     }
 
     private static ProxyMetricsExportInputSource CreateExportInputSource(
+        IProxyMetricsExportConfigurationSource configurationSource,
         ProxyConfigurationStore store,
         MetricsFixture fixture)
     {
         return new ProxyMetricsExportInputSource(
-            store,
+            configurationSource,
             fixture.Metrics,
             new ProxyCacheStatusReader(
                 new ProxyCacheStatusConfigurationSource(store),
