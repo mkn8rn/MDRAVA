@@ -1,5 +1,7 @@
 namespace MDRAVA.BLL.ControlPlane.RouteDiagnostics;
 
+using MDRAVA.BLL.ControlPlane.Routing;
+
 public sealed class ProxyRouteDiagnosticsActionPolicyAdapter
     : IProxyRouteDiagnosticsActionPolicy
 {
@@ -9,9 +11,12 @@ public sealed class ProxyRouteDiagnosticsActionPolicyAdapter
         IProxyRouteDiagnosticsListener listener,
         bool isUpgradeRequest)
     {
-        if (!isUpgradeRequest && TryBuildPolicyRedirect(route, requestHead, listener, out var policyRedirectStatusCode))
+        var policyRedirect = isUpgradeRequest
+            ? ProxyRoutePolicyRedirectDecision.NoRedirect
+            : ProxyRoutePolicyRedirectEvaluator.Evaluate(ToPolicyRedirectInput(route, requestHead, listener));
+        if (policyRedirect is ProxyRoutePolicyRedirectDecision.RedirectDecision redirect)
         {
-            return ProxyRouteDiagnosticsActionDecision.GeneratedResponse(policyRedirectStatusCode);
+            return ProxyRouteDiagnosticsActionDecision.GeneratedResponse(redirect.StatusCode);
         }
 
         if (route.Maintenance.Enabled)
@@ -32,45 +37,20 @@ public sealed class ProxyRouteDiagnosticsActionPolicyAdapter
         return ProxyRouteDiagnosticsActionDecision.Proxy;
     }
 
-    private static bool TryBuildPolicyRedirect(
+    private static ProxyRoutePolicyRedirectInput ToPolicyRedirectInput(
         IProxyRouteDiagnosticsRoute route,
         ProxyRouteDiagnosticsRequestHead requestHead,
-        IProxyRouteDiagnosticsListener listener,
-        out int statusCode)
+        IProxyRouteDiagnosticsListener listener)
     {
-        statusCode = 308;
-        var shouldRedirect = false;
-
-        if (route.HttpsRedirect.Enabled && string.Equals(listener.Transport, "http", StringComparison.OrdinalIgnoreCase))
-        {
-            statusCode = route.HttpsRedirect.StatusCode;
-            shouldRedirect = true;
-        }
-
-        if (route.CanonicalHost.Enabled
-            && !string.IsNullOrWhiteSpace(route.CanonicalHost.TargetHost)
-            && !HostEquals(requestHead.Host, route.CanonicalHost.TargetHost))
-        {
-            statusCode = route.CanonicalHost.StatusCode;
-            shouldRedirect = true;
-        }
-
-        return shouldRedirect;
-    }
-
-    private static bool HostEquals(string requestHost, string targetHost)
-    {
-        return string.Equals(StripSimplePort(requestHost), StripSimplePort(targetHost), StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static string StripSimplePort(string host)
-    {
-        var colonIndex = host.LastIndexOf(':');
-        if (colonIndex <= 0 || host.Contains(']', StringComparison.Ordinal))
-        {
-            return host;
-        }
-
-        return host[..colonIndex];
+        return new ProxyRoutePolicyRedirectInput(
+            route.HttpsRedirect.Enabled,
+            route.HttpsRedirect.StatusCode,
+            route.HttpsRedirect.HttpsPort,
+            route.CanonicalHost.Enabled,
+            route.CanonicalHost.TargetHost,
+            route.CanonicalHost.StatusCode,
+            listener.Transport,
+            requestHead.Host,
+            requestHead.Target);
     }
 }

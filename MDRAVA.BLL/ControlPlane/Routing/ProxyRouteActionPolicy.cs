@@ -1,7 +1,6 @@
 using MDRAVA.BLL.Http;
 using MDRAVA.BLL.ControlPlane.Headers;
 using MDRAVA.BLL.ControlPlane.Http1;
-using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using MDRAVA.BLL.Configuration;
 
@@ -15,9 +14,12 @@ public sealed class ProxyRouteActionPolicy
         RuntimeListener listener,
         bool isUpgradeRequest)
     {
-        if (!isUpgradeRequest && TryBuildPolicyRedirect(route, requestHead, listener, out var policyRedirect))
+        var policyRedirect = isUpgradeRequest
+            ? ProxyRoutePolicyRedirectDecision.NoRedirect
+            : ProxyRoutePolicyRedirectEvaluator.Evaluate(ToPolicyRedirectInput(route, requestHead, listener));
+        if (policyRedirect is ProxyRoutePolicyRedirectDecision.RedirectDecision redirect)
         {
-            return new RouteActionDecision(policyRedirect);
+            return new RouteActionDecision(RedirectResponse(redirect.StatusCode, redirect.Location));
         }
 
         if (route.Maintenance.Enabled)
@@ -49,47 +51,21 @@ public sealed class ProxyRouteActionPolicy
         };
     }
 
-    private static bool TryBuildPolicyRedirect(
+    private static ProxyRoutePolicyRedirectInput ToPolicyRedirectInput(
         RuntimeRoute route,
         Http1RequestHead requestHead,
-        RuntimeListener listener,
-        [NotNullWhen(true)] out GeneratedRouteResponse? response)
+        RuntimeListener listener)
     {
-        response = null;
-        var scheme = listener.Transport == RuntimeListenerTransport.Https ? "https" : "http";
-        var host = requestHead.Host;
-        var statusCode = 308;
-        var shouldRedirect = false;
-
-        if (route.HttpsRedirect.Enabled && listener.Transport == RuntimeListenerTransport.Http)
-        {
-            scheme = "https";
-            statusCode = route.HttpsRedirect.StatusCode;
-            shouldRedirect = true;
-        }
-
-        if (route.CanonicalHost.Enabled
-            && !string.IsNullOrWhiteSpace(route.CanonicalHost.TargetHost)
-            && !HostEquals(host, route.CanonicalHost.TargetHost))
-        {
-            host = route.CanonicalHost.TargetHost;
-            statusCode = route.CanonicalHost.StatusCode;
-            shouldRedirect = true;
-        }
-
-        if (!shouldRedirect)
-        {
-            return false;
-        }
-
-        if (scheme == "https" && route.HttpsRedirect.HttpsPort.HasValue)
-        {
-            host = ApplyPort(host, route.HttpsRedirect.HttpsPort.Value, defaultPort: 443);
-        }
-
-        var location = $"{scheme}://{host}{requestHead.Target}";
-        response = RedirectResponse(statusCode, location);
-        return true;
+        return new ProxyRoutePolicyRedirectInput(
+            route.HttpsRedirect.Enabled,
+            route.HttpsRedirect.StatusCode,
+            route.HttpsRedirect.HttpsPort,
+            route.CanonicalHost.Enabled,
+            route.CanonicalHost.TargetHost,
+            route.CanonicalHost.StatusCode,
+            listener.Transport == RuntimeListenerTransport.Https ? "https" : "http",
+            requestHead.Host,
+            requestHead.Target);
     }
 
     private static GeneratedRouteResponse BuildRouteRedirect(RuntimeRoute route, Http1RequestHead requestHead)
@@ -118,30 +94,6 @@ public sealed class ProxyRouteActionPolicy
             null,
             "",
             [new ProxyHeaderField("Location", location)]);
-    }
-
-    private static bool HostEquals(string requestHost, string targetHost)
-    {
-        return string.Equals(StripSimplePort(requestHost), StripSimplePort(targetHost), StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static string ApplyPort(string host, int port, int defaultPort)
-    {
-        var hostWithoutPort = StripSimplePort(host);
-        return port == defaultPort
-            ? hostWithoutPort
-            : $"{hostWithoutPort}:{port}";
-    }
-
-    private static string StripSimplePort(string host)
-    {
-        var colonIndex = host.LastIndexOf(':');
-        if (colonIndex <= 0 || host.Contains(']', StringComparison.Ordinal))
-        {
-            return host;
-        }
-
-        return host[..colonIndex];
     }
 
     private static string ExtractQuery(string target)

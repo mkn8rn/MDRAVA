@@ -253,6 +253,35 @@ internal static class RouteDiagnosticsTests
         AssertEx.Equal(308, generated.GeneratedStatusCode!.Value);
     }
 
+    public static void RouteDiagnosticsActionPolicyUsesSharedPolicyRedirects()
+    {
+        var route = RouteDiagnosticsRoute("api", "old.test", "/") with
+        {
+            HttpsRedirect = new ProxyRouteDiagnosticsHttpsRedirectPolicy(true, 307, 8443),
+            CanonicalHost = new ProxyRouteDiagnosticsCanonicalHostPolicy(true, "canonical.test", 308)
+        };
+        var requestHead = new ProxyRouteDiagnosticsRequestHead(
+            "GET",
+            "/resource?id=1",
+            "/resource",
+            "HTTP/1.1",
+            "old.test",
+            ProxyRouteDiagnosticsRequestFraming.None,
+            []);
+        var listener = RouteDiagnosticsListener(
+            "plain",
+            "http",
+            8080,
+            RuntimeListenerProtocols.Http1,
+            false);
+        var policy = new ProxyRouteDiagnosticsActionPolicyAdapter();
+
+        var decision = policy.Evaluate(route, requestHead, listener, isUpgradeRequest: false);
+
+        AssertEx.False(decision.ShouldProxy);
+        AssertEx.Equal(308, decision.GeneratedStatusCode!.Value);
+    }
+
     public static void RouteDiagnosticsStatusNamesEnabledAvailability()
     {
         var status = RouteDiagnosticsStatus.Enabled;
