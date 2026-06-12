@@ -14,6 +14,7 @@ using System.Globalization;
 using System.Net.Sockets;
 using System.Text;
 using MDRAVA.INF.Proxy.Connections;
+using MDRAVA.INF.Proxy.Http1;
 using MDRAVA.INF.Proxy.Http3;
 using MDRAVA.INF.Proxy.Http2;
 using MDRAVA.INF.Proxy;
@@ -1200,7 +1201,7 @@ public sealed class ProxyForwarder
         while (true)
         {
             var responseHeadRead = await ReadResponseHeadAsync(upstreamStream, listener.MaxResponseHeadBytes, timeouts.UpstreamResponseHeadTimeout, cancellationToken);
-            if (responseHeadRead.HeadLength <= 0)
+            if (!responseHeadRead.HasReadableHead)
             {
                 throw new Http1UpstreamProtocolException("Upstream closed before a complete response head was received.");
             }
@@ -1658,7 +1659,7 @@ public sealed class ProxyForwarder
 
                 if (bytesRead == 0)
                 {
-                    return new Http1HeadReadResult(-1, totalBytesRead, ReadOnlyMemory<byte>.Empty, ReadOnlyMemory<byte>.Empty);
+                    return Http1HeadReadResult.ResponseUnreadable(totalBytesRead);
                 }
 
                 totalBytesRead += bytesRead;
@@ -1669,11 +1670,11 @@ public sealed class ProxyForwarder
                 {
                     var headBytes = buffer.AsMemory(0, headLength).ToArray();
                     var initialBody = buffer.AsMemory(headLength, totalBytesRead - headLength).ToArray();
-                    return new Http1HeadReadResult(headLength, totalBytesRead, headBytes, initialBody);
+                    return Http1HeadReadResult.Read(headLength, totalBytesRead, headBytes, initialBody);
                 }
             }
 
-            return new Http1HeadReadResult(-1, totalBytesRead, ReadOnlyMemory<byte>.Empty, ReadOnlyMemory<byte>.Empty);
+            return Http1HeadReadResult.ResponseUnreadable(totalBytesRead);
         }
         finally
         {

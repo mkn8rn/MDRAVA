@@ -23,6 +23,7 @@ using System.Text;
 using MDRAVA.INF.Proxy;
 using MDRAVA.INF.Proxy.Forwarding;
 using MDRAVA.INF.Proxy.Health;
+using MDRAVA.INF.Proxy.Http1;
 using MDRAVA.INF.Proxy.Http2;
 using MDRAVA.INF.Proxy.RuntimeGuards;
 using MDRAVA.INF.Proxy.Http3;
@@ -34,10 +35,6 @@ namespace MDRAVA.INF.Proxy.Connections;
 
 public sealed class ClientConnection
 {
-    private const int EmptyRequestHead = 0;
-    private const int RequestHeadTooLarge = -1;
-    private const int IncompleteRequestHead = -2;
-
     private readonly Socket _socket;
     private readonly ProxyConfigurationSnapshot _configurationSnapshot;
     private readonly RuntimeListener _listener;
@@ -189,14 +186,14 @@ public sealed class ClientConnection
                     timeout,
                     timeoutKind,
                     cancellationToken);
-                if (requestHeadRead.HeadLength == EmptyRequestHead)
+                if (requestHeadRead.IsEmptyRequest)
                 {
                     return;
                 }
 
                 currentContext ??= CreateRequestContext();
 
-                if (requestHeadRead.HeadLength == RequestHeadTooLarge)
+                if (requestHeadRead.IsRequestHeadTooLarge)
                 {
                     _metrics.ParseFailed();
                     _metrics.ParserLimitRejected();
@@ -213,7 +210,7 @@ public sealed class ClientConnection
                     return;
                 }
 
-                if (requestHeadRead.HeadLength == IncompleteRequestHead)
+                if (requestHeadRead.IsIncompleteRequest)
                 {
                     _metrics.ParseFailed();
                     _metrics.MalformedRequestRejected();
@@ -903,8 +900,9 @@ public sealed class ClientConnection
 
             if (bytesRead == 0)
             {
-                var code = totalBytesRead == 0 ? EmptyRequestHead : IncompleteRequestHead;
-                return new Http1HeadReadResult(code, totalBytesRead, ReadOnlyMemory<byte>.Empty, ReadOnlyMemory<byte>.Empty);
+                return totalBytesRead == 0
+                    ? Http1HeadReadResult.RequestEmpty()
+                    : Http1HeadReadResult.RequestIncomplete(totalBytesRead);
             }
 
             totalBytesRead += bytesRead;
@@ -913,7 +911,7 @@ public sealed class ClientConnection
             var requestHeadLength = FindRequestHeadLength(requestHeadBuffer.AsSpan(0, totalBytesRead));
             if (requestHeadLength > 0)
             {
-                return new Http1HeadReadResult(
+                return Http1HeadReadResult.Read(
                     requestHeadLength,
                     totalBytesRead,
                     requestHeadBuffer.AsMemory(0, requestHeadLength),
@@ -921,7 +919,7 @@ public sealed class ClientConnection
             }
         }
 
-        return new Http1HeadReadResult(RequestHeadTooLarge, totalBytesRead, ReadOnlyMemory<byte>.Empty, ReadOnlyMemory<byte>.Empty);
+        return Http1HeadReadResult.RequestTooLarge(totalBytesRead);
     }
 
     private async ValueTask WriteGeneratedResponseAsync(

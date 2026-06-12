@@ -12,6 +12,7 @@ using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
 using MDRAVA.INF.Proxy.Connections;
+using MDRAVA.INF.Proxy.Http1;
 using MDRAVA.INF.Observability;
 
 namespace MDRAVA.INF.Proxy.Forwarding;
@@ -88,7 +89,7 @@ public sealed class UpgradeForwarder
                     listener.MaxResponseHeadBytes,
                     timeouts.UpstreamResponseHeadTimeout,
                     cancellationToken);
-                if (responseHeadRead.HeadLength <= 0)
+                if (!responseHeadRead.HasReadableHead)
                 {
                     throw new Http1UpstreamProtocolException("Upstream closed before sending an Upgrade response.");
                 }
@@ -453,7 +454,7 @@ public sealed class UpgradeForwarder
 
                 if (bytesRead == 0)
                 {
-                    return new Http1HeadReadResult(-1, totalBytesRead, ReadOnlyMemory<byte>.Empty, ReadOnlyMemory<byte>.Empty);
+                    return Http1HeadReadResult.ResponseUnreadable(totalBytesRead);
                 }
 
                 totalBytesRead += bytesRead;
@@ -464,11 +465,11 @@ public sealed class UpgradeForwarder
                 {
                     var headBytes = buffer.AsMemory(0, headLength).ToArray();
                     var initialBody = buffer.AsMemory(headLength, totalBytesRead - headLength).ToArray();
-                    return new Http1HeadReadResult(headLength, totalBytesRead, headBytes, initialBody);
+                    return Http1HeadReadResult.Read(headLength, totalBytesRead, headBytes, initialBody);
                 }
             }
 
-            return new Http1HeadReadResult(-1, totalBytesRead, ReadOnlyMemory<byte>.Empty, ReadOnlyMemory<byte>.Empty);
+            return Http1HeadReadResult.ResponseUnreadable(totalBytesRead);
         }
         finally
         {

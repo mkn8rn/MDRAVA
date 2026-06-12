@@ -23,6 +23,7 @@ using System.Text;
 using MDRAVA.INF.Proxy;
 using MDRAVA.INF.Proxy.Forwarding;
 using MDRAVA.INF.Proxy.Health;
+using MDRAVA.INF.Proxy.Http1;
 using MDRAVA.INF.Observability;
 
 namespace MDRAVA.INF.Proxy.Http3;
@@ -636,7 +637,7 @@ public sealed class Http3Connection
                 body);
             var result = await _forwarder.ForwardAsync(
                 translator,
-                new Http1HeadReadResult(0, 0, ReadOnlyMemory<byte>.Empty, ReadOnlyMemory<byte>.Empty),
+                Http1HeadReadResult.TranslatedRequestBody(ReadOnlyMemory<byte>.Empty),
                 requestHead,
                 route,
                 selection.Upstream,
