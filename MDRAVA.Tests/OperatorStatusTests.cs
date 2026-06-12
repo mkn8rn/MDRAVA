@@ -226,16 +226,15 @@ internal static class OperatorStatusTests
             Http3SupportSourceMapper.FromConfiguration(snapshot.Listeners, snapshot.Routes),
             TestHttp3PlatformSupport.Supported,
             Http3SupportSourceMapper.FromRuntimeListeners(runtime.Listeners));
-        var logPersistence = new ProxyLogPersistenceStatus(
-            true,
-            true,
-            null,
-            0,
-            0,
-            ProxyStatusText.Healthy,
-            "ok",
-            null,
-            null);
+        var logPersistence = ProxyLogPersistenceStatus.FromSettings(
+            logDirectory: null,
+            new ProxyLogPersistenceSettings(
+                AccessLogEnabled: true,
+                AdminAuditEnabled: true,
+                MaxFileBytes: 0,
+                MaxFiles: 0),
+            lastSuccessfulWriteAtUtc: null,
+            lastWriteFailure: null);
         var cacheStatus = new ProxyCacheStatusResponse(3, 1024, 0, 0, 0, 0, 0, null, null, [], []);
         var preflight = ProxyRuntimePreflightStatus.Unknown;
         var readiness = ProxyStatusReadinessInputMapper.FromSources(

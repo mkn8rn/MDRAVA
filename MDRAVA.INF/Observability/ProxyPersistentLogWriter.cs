@@ -110,32 +110,16 @@ public sealed class ProxyPersistentLogWriter : IProxyLogPersistenceStore
             lastFailure = _lastWriteFailure;
         }
 
-        var state = ProxyStatusText.Healthy;
-        var reason = ProxyStatusText.Ready;
         if (!hasSnapshot)
         {
-            state = ProxyStatusText.Unknown;
-            reason = ProxyStatusText.NoActiveConfig;
-        }
-        else if (!settings.AccessLogEnabled && !settings.AdminAuditEnabled)
-        {
-            state = ProxyStatusText.Disabled;
-            reason = ProxyStatusText.Disabled;
-        }
-        else if (lastFailure is not null && (lastSuccess is null || lastFailure.TimestampUtc >= lastSuccess))
-        {
-            state = ProxyStatusText.Degraded;
-            reason = ProxyStatusText.LastWriteFailed;
+            return ProxyLogPersistenceStatus.NoActiveConfiguration(
+                logDirectory,
+                settings);
         }
 
-        return new ProxyLogPersistenceStatus(
-            settings.AccessLogEnabled,
-            settings.AdminAuditEnabled,
+        return ProxyLogPersistenceStatus.FromSettings(
             logDirectory,
-            settings.MaxFileBytes,
-            settings.MaxFiles,
-            state,
-            reason,
+            settings,
             lastSuccess,
             lastFailure);
     }
