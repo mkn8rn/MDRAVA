@@ -1,3 +1,5 @@
+using MDRAVA.BLL.ControlPlane.Status;
+
 namespace MDRAVA.BLL.ControlPlane.Backup;
 
 public sealed record ProxyRestoreValidationFindingShape(
@@ -6,6 +8,24 @@ public sealed record ProxyRestoreValidationFindingShape(
 
 public static class ProxyRestoreValidationFindingPolicy
 {
+    public static ProxyRestoreValidationFinding FromBackupWarning(ProxyBackupWarning warning)
+    {
+        return new ProxyRestoreValidationFinding(
+            ProxyStatusText.Warning,
+            warning.Code,
+            warning.Message,
+            warning.RelativePath);
+    }
+
+    public static ProxyRestoreValidationFinding RequiredDirectoryMissing(string relativePath)
+    {
+        return new ProxyRestoreValidationFinding(
+            ProxyStatusText.Error,
+            "required_directory_missing",
+            "A required restore directory is missing.",
+            relativePath);
+    }
+
     public static ProxyRestoreValidationFindingShape ClassifyConfigurationError(string error)
     {
         var code = ClassifyConfigurationErrorCode(error);

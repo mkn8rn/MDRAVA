@@ -104,22 +104,14 @@ public sealed class ProxyBackupService : IProxyBackupOperations
         var manifest = CreateManifest();
         List<ProxyRestoreValidationFinding> errors = [];
         List<ProxyRestoreValidationFinding> warnings = manifest.Warnings
-            .Select(static warning => new ProxyRestoreValidationFinding(
-                ProxyStatusText.Warning,
-                warning.Code,
-                warning.Message,
-                warning.RelativePath))
+            .Select(ProxyRestoreValidationFindingPolicy.FromBackupWarning)
             .ToList();
 
         foreach (var directory in manifest.Directories.Where(static directory =>
             !directory.Exists
             && string.Equals(directory.Classification, ProxyBackupFileClassificationPolicy.MustBackup, StringComparison.OrdinalIgnoreCase)))
         {
-            errors.Add(new ProxyRestoreValidationFinding(
-                ProxyStatusText.Error,
-                "required_directory_missing",
-                "A required restore directory is missing.",
-                directory.RelativePath));
+            errors.Add(ProxyRestoreValidationFindingPolicy.RequiredDirectoryMissing(directory.RelativePath));
         }
 
         var configValidation = await _restoreConfigurationValidator.ValidateExistingLayoutAsync(cancellationToken);
