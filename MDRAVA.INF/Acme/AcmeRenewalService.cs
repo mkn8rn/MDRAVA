@@ -1,6 +1,5 @@
 
 using MDRAVA.BLL.ControlPlane.Acme;
-using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -8,20 +7,20 @@ namespace MDRAVA.INF.Acme;
 
 public sealed class AcmeRenewalService : BackgroundService
 {
-    private readonly IProxyConfigurationStore _configurationStore;
+    private readonly IAcmeRenewalScheduleInputSource _scheduleInputSource;
     private readonly AcmeCertificateManager _manager;
     private readonly AcmeRenewalSchedulePolicy _schedulePolicy;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<AcmeRenewalService> _logger;
 
     public AcmeRenewalService(
-        IProxyConfigurationStore configurationStore,
+        IAcmeRenewalScheduleInputSource scheduleInputSource,
         AcmeCertificateManager manager,
         AcmeRenewalSchedulePolicy schedulePolicy,
         TimeProvider timeProvider,
         ILogger<AcmeRenewalService> logger)
     {
-        _configurationStore = configurationStore;
+        _scheduleInputSource = scheduleInputSource;
         _manager = manager;
         _schedulePolicy = schedulePolicy;
         _timeProvider = timeProvider;
@@ -59,7 +58,6 @@ public sealed class AcmeRenewalService : BackgroundService
 
     private TimeSpan ResolveDelay()
     {
-        _configurationStore.TryGetSnapshot(out var snapshot);
-        return _schedulePolicy.ResolveDelay(AcmeRenewalScheduleInputMapper.FromSnapshot(snapshot));
+        return _schedulePolicy.ResolveDelay(_scheduleInputSource.ReadInput());
     }
 }

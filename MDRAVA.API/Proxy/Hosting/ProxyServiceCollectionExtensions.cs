@@ -196,6 +196,7 @@ public static class ProxyServiceCollectionExtensions
         services.AddSingleton<IProxyAcmeStatusSnapshotReader, ProxyAcmeStatusSnapshotReader>();
         services.AddSingleton<ProxyAcmeAdministrationService>();
         services.AddSingleton<IAcmeCertificateIssuer, DisabledAcmeCertificateIssuer>();
+        services.AddSingleton<IAcmeRenewalScheduleInputSource, ProxyConfigurationAcmeRenewalScheduleInputSource>();
         services.AddSingleton<AcmeRenewalSchedulePolicy>();
         services.AddSingleton<AcmeCertificateManager>();
     }

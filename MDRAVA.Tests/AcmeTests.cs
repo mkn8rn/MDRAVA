@@ -318,6 +318,18 @@ internal static class AcmeTests
         AssertEx.Equal(TimeSpan.FromMinutes(1440), policy.ResolveDelay(aboveMaximum));
     }
 
+    public static void AcmeRenewalScheduleSourceReadsNarrowActiveInput()
+    {
+        using var temp = TemporaryDirectory.Create();
+        var source = new ProxyConfigurationAcmeRenewalScheduleInputSource(
+            CreateStore(temp.Path, checkIntervalMinutes: 17));
+
+        var input = AssertEx.NotNull(source.ReadInput());
+
+        AssertEx.True(input.Enabled);
+        AssertEx.Equal(17, input.CheckIntervalMinutes);
+    }
+
     private static Http1RequestHead Request(string method, string path)
     {
         return new Http1RequestHead(
