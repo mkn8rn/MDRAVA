@@ -32,11 +32,12 @@ public sealed class ResponseCacheStore : IProxyCacheControl
         out CachedProxyResponse? response)
     {
         response = null;
-        if (!TryCreateKey(scope, requestHead, upstreamTarget, out var key, out _))
+        if (CreateKey(scope, requestHead, upstreamTarget) is not CacheKeyCreation.Created createdKey)
         {
             return false;
         }
 
+        var key = createdKey.Key;
         var now = _timeProvider.GetUtcNow();
         lock (_gate)
         {
@@ -68,8 +69,10 @@ public sealed class ResponseCacheStore : IProxyCacheControl
         IReadOnlyList<ProxyHeaderField> responseHeaders,
         byte[] body)
     {
-        if (!TryCreateKey(scope, requestHead, upstreamTarget, out var key, out var rejectionReason))
+        var keyCreation = CreateKey(scope, requestHead, upstreamTarget);
+        if (keyCreation is not CacheKeyCreation.Created createdKey)
         {
+            var rejectionReason = ((CacheKeyCreation.Rejected)keyCreation).Reason;
             if (rejectionReason is not null)
             {
                 RecordRejection(rejectionReason);
@@ -78,6 +81,7 @@ public sealed class ResponseCacheStore : IProxyCacheControl
             return;
         }
 
+        var key = createdKey.Key;
         var responseEligibility = ProxyCacheEligibilityPolicy.EvaluateStoredResponse(
             scope.Policy,
             responseHead,
@@ -166,20 +170,15 @@ public sealed class ResponseCacheStore : IProxyCacheControl
         }
     }
 
-    private bool TryCreateKey(
+    private CacheKeyCreation CreateKey(
         ProxyCacheRequestScope scope,
         Http1RequestHead requestHead,
-        string upstreamTarget,
-        out string key,
-        out string? rejectionReason)
+        string upstreamTarget)
     {
-        key = "";
-        rejectionReason = null;
         var requestEligibility = ProxyCacheEligibilityPolicy.EvaluateRequest(scope.Policy, requestHead);
         if (!requestEligibility.CanCache)
         {
-            rejectionReason = requestEligibility.RejectionReason;
-            return false;
+            return CacheKeyCreation.Reject(requestEligibility.RejectionReason);
         }
 
         var builder = new StringBuilder();
@@ -196,8 +195,49 @@ public sealed class ResponseCacheStore : IProxyCacheControl
             AppendPart(builder, JoinHeaderValues(requestHead.Headers, varyHeader));
         }
 
-        key = builder.ToString();
-        return true;
+        return CacheKeyCreation.Create(builder.ToString());
+    }
+
+    private abstract record CacheKeyCreation
+    {
+        private CacheKeyCreation()
+        {
+        }
+
+        public static CacheKeyCreation Create(string key)
+        {
+            return new Created(key);
+        }
+
+        public static CacheKeyCreation Reject(string? reason)
+        {
+            return new Rejected(reason);
+        }
+
+        public sealed record Created : CacheKeyCreation
+        {
+            public Created(string key)
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentException("Cache key is required.", nameof(key));
+                }
+
+                Key = key;
+            }
+
+            public string Key { get; }
+        }
+
+        public sealed record Rejected : CacheKeyCreation
+        {
+            public Rejected(string? reason)
+            {
+                Reason = reason;
+            }
+
+            public string? Reason { get; }
+        }
     }
 
     private static IReadOnlyList<ProxyHeaderField> SanitizeStoredHeaders(IReadOnlyList<ProxyHeaderField> headers)
