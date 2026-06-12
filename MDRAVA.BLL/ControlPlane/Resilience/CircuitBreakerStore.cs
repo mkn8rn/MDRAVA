@@ -166,31 +166,17 @@ public sealed class CircuitBreakerStore
     {
         if (!source.Policy.Enabled)
         {
-            return new CircuitBreakerStatus(
-                CircuitBreakerRuntimeState.Disabled,
-                false,
-                source.Policy.FailureThreshold,
-                source.Policy.HalfOpenMaxAttempts,
-                null,
-                null,
-                0,
-                0,
-                null);
+            return CircuitBreakerStatus.Disabled(source.Policy);
         }
 
         var state = GetOrCreate(source.UpstreamIdentity);
         lock (state.Gate)
         {
             RefreshOpenState(source.Policy, state, _timeProvider.GetUtcNow());
-            return new CircuitBreakerStatus(
+            return CircuitBreakerStatus.FromEnabledPolicyState(
+                source.Policy,
                 state.State,
-                true,
-                source.Policy.FailureThreshold,
-                source.Policy.HalfOpenMaxAttempts,
                 state.OpenedAtUtc,
-                state.State == CircuitBreakerRuntimeState.Open && state.OpenedAtUtc.HasValue
-                    ? state.OpenedAtUtc.Value.Add(source.Policy.OpenDuration)
-                    : null,
                 state.FailureCount,
                 state.RejectedRequests,
                 state.LastFailureReason);
