@@ -46,7 +46,10 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
             return result;
         }
 
-        var findings = Analyze(snapshot, activeRuntime: true, sourceName: ActiveSource(snapshot));
+        var findings = Analyze(
+            snapshot,
+            activeRuntime: true,
+            sourceName: ConfigLintSourceNameResolver.ActiveSource(snapshot, _sourceNameFormatter));
         var resultWithMetrics = BuildResult(now, findings, []);
         StoreActiveStatus(resultWithMetrics);
         return resultWithMetrics;
@@ -71,11 +74,9 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
             return BuildResult(now, [ConfigLintFindingFactory.Error("empty_config", "Submitted config did not contain a site object.", "lint-input", null, "Submit one site configuration object.")], []);
         }
 
-        List<ConfigLintFinding> findings = [];
-        foreach (var error in submitted.ValidationErrors)
-        {
-            findings.Add(ConfigLintFindingFactory.Error("validation_error", error.Message, SourceName(error.Path), null, "Fix the validation error before applying this config."));
-        }
+        List<ConfigLintFinding> findings = [.. ConfigLintValidationErrorMapper.ToFindings(
+            submitted.ValidationErrors,
+            _sourceNameFormatter)];
 
         findings.AddRange(Analyze(submitted.Snapshot, activeRuntime: false, sourceName: "lint-input"));
         return BuildResult(now, findings, submitted.ValidationErrors);
@@ -108,18 +109,6 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
             runtimeListeners,
             _adminUrlPolicy,
             sourceName);
-    }
-
-    private string ActiveSource(ProxyConfigLintConfigurationSnapshot snapshot)
-    {
-        return snapshot.SourceFiles.Count == 1
-            ? SourceName(snapshot.SourceFiles[0]) ?? "active-config"
-            : "active-config";
-    }
-
-    private string? SourceName(string? path)
-    {
-        return _sourceNameFormatter.FormatSourceName(path);
     }
 
 }
