@@ -33,13 +33,14 @@ public sealed class TlsConnectionAuthenticator
         CancellationToken cancellationToken)
     {
         _metrics.TlsHandshakeAttempted();
-        using var handshakeLease = _admission.TryAcquireTlsHandshake(snapshot.Limits.MaxConcurrentTlsHandshakes);
-        if (handshakeLease is null)
+        var handshakeAdmission = _admission.AcquireTlsHandshake(snapshot.Limits.MaxConcurrentTlsHandshakes);
+        if (handshakeAdmission is not ProxyAdmissionDecision.AcceptedResult acceptedHandshake)
         {
             _logger.LogDebug("Rejected TLS handshake for listener {ListenerName} because the concurrent handshake limit is exhausted.", listener.Name);
             return null;
         }
 
+        using var handshakeLease = acceptedHandshake.Lease;
         var sslStream = new SslStream(transportStream, false);
         var options = new SslServerAuthenticationOptions
         {

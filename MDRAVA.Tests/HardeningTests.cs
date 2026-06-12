@@ -9,11 +9,10 @@ internal static class HardeningTests
         var metrics = new ProxyMetrics();
         var admission = new ProxyAdmissionController(metrics);
 
-        using var first = admission.TryAcquireClientConnection(1);
-        var second = admission.TryAcquireClientConnection(1);
+        using var first = AcceptedLease(admission.AcquireClientConnection(1));
+        var second = admission.AcquireClientConnection(1);
 
-        AssertEx.True(first is not null);
-        AssertEx.Equal(null, second);
+        AssertRejected(second);
         AssertEx.Equal(1L, metrics.Snapshot().ConnectionAdmissionRejections);
     }
 
@@ -22,15 +21,13 @@ internal static class HardeningTests
         var metrics = new ProxyMetrics();
         var admission = new ProxyAdmissionController(metrics);
 
-        using (var lease = admission.TryAcquireClientConnection(1))
+        using (var lease = AcceptedLease(admission.AcquireClientConnection(1)))
         {
-            AssertEx.True(lease is not null);
             AssertEx.Equal(1, admission.ActiveClientConnections);
-            AssertEx.Equal(null, admission.TryAcquireClientConnection(1));
+            AssertRejected(admission.AcquireClientConnection(1));
         }
 
-        using var reacquired = admission.TryAcquireClientConnection(1);
-        AssertEx.True(reacquired is not null);
+        using var reacquired = AcceptedLease(admission.AcquireClientConnection(1));
         AssertEx.Equal(1, admission.ActiveClientConnections);
     }
 
@@ -39,11 +36,10 @@ internal static class HardeningTests
         var metrics = new ProxyMetrics();
         var admission = new ProxyAdmissionController(metrics);
 
-        using var first = admission.TryAcquireTlsHandshake(1);
-        var second = admission.TryAcquireTlsHandshake(1);
+        using var first = AcceptedLease(admission.AcquireTlsHandshake(1));
+        var second = admission.AcquireTlsHandshake(1);
 
-        AssertEx.True(first is not null);
-        AssertEx.Equal(null, second);
+        AssertRejected(second);
         AssertEx.Equal(1L, metrics.Snapshot().TlsHandshakeAdmissionRejections);
         AssertEx.Equal(1L, metrics.Snapshot().ActiveTlsHandshakes);
     }
@@ -53,16 +49,14 @@ internal static class HardeningTests
         var metrics = new ProxyMetrics();
         var admission = new ProxyAdmissionController(metrics);
 
-        using (var lease = admission.TryAcquireTlsHandshake(1))
+        using (var lease = AcceptedLease(admission.AcquireTlsHandshake(1)))
         {
-            AssertEx.True(lease is not null);
             AssertEx.Equal(1, admission.ActiveTlsHandshakes);
             AssertEx.Equal(1L, metrics.Snapshot().ActiveTlsHandshakes);
-            AssertEx.Equal(null, admission.TryAcquireTlsHandshake(1));
+            AssertRejected(admission.AcquireTlsHandshake(1));
         }
 
-        using var reacquired = admission.TryAcquireTlsHandshake(1);
-        AssertEx.True(reacquired is not null);
+        using var reacquired = AcceptedLease(admission.AcquireTlsHandshake(1));
         AssertEx.Equal(1, admission.ActiveTlsHandshakes);
         AssertEx.Equal(1L, metrics.Snapshot().ActiveTlsHandshakes);
     }
@@ -160,6 +154,21 @@ internal static class HardeningTests
     private static void AssertRejected(ClientRateLimitDecision decision)
     {
         AssertEx.True(decision is ClientRateLimitDecision.RejectedResult);
+    }
+
+    private static AdmissionLease AcceptedLease(ProxyAdmissionDecision decision)
+    {
+        if (decision is ProxyAdmissionDecision.AcceptedResult accepted)
+        {
+            return accepted.Lease;
+        }
+
+        throw new InvalidOperationException("Expected accepted admission decision.");
+    }
+
+    private static void AssertRejected(ProxyAdmissionDecision decision)
+    {
+        AssertEx.True(decision is ProxyAdmissionDecision.RejectedResult);
     }
 
     public static void ShutdownCoordinatorExposesGraceDeadlineAndCancels()

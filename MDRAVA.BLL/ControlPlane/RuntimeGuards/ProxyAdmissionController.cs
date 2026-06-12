@@ -11,31 +11,33 @@ public sealed class ProxyAdmissionController
         _metrics = metrics;
     }
 
-    public AdmissionLease? TryAcquireClientConnection(int limit)
+    public ProxyAdmissionDecision AcquireClientConnection(int limit)
     {
         if (!TryIncrementBounded(ref _activeClientConnections, limit))
         {
             _metrics.ConnectionAdmissionRejected();
-            return null;
+            return ProxyAdmissionDecision.Rejected;
         }
 
-        return new AdmissionLease(() => Interlocked.Decrement(ref _activeClientConnections));
+        return ProxyAdmissionDecision.Accepted(
+            new AdmissionLease(() => Interlocked.Decrement(ref _activeClientConnections)));
     }
 
-    public AdmissionLease? TryAcquireTlsHandshake(int limit)
+    public ProxyAdmissionDecision AcquireTlsHandshake(int limit)
     {
         if (!TryIncrementBounded(ref _activeTlsHandshakes, limit))
         {
             _metrics.TlsHandshakeAdmissionRejected();
-            return null;
+            return ProxyAdmissionDecision.Rejected;
         }
 
         _metrics.TlsHandshakeStarted();
-        return new AdmissionLease(() =>
-        {
-            _metrics.TlsHandshakeEnded();
-            Interlocked.Decrement(ref _activeTlsHandshakes);
-        });
+        return ProxyAdmissionDecision.Accepted(
+            new AdmissionLease(() =>
+            {
+                _metrics.TlsHandshakeEnded();
+                Interlocked.Decrement(ref _activeTlsHandshakes);
+            }));
     }
 
     public int ActiveClientConnections => Volatile.Read(ref _activeClientConnections);
@@ -58,6 +60,34 @@ public sealed class ProxyAdmissionController
             }
         }
     }
+}
+
+public abstract record ProxyAdmissionDecision
+{
+    private ProxyAdmissionDecision()
+    {
+    }
+
+    public static ProxyAdmissionDecision Rejected { get; } = new RejectedResult();
+
+    public static ProxyAdmissionDecision Accepted(AdmissionLease lease)
+    {
+        ArgumentNullException.ThrowIfNull(lease);
+        return new AcceptedResult(lease);
+    }
+
+    public sealed record AcceptedResult : ProxyAdmissionDecision
+    {
+        public AcceptedResult(AdmissionLease lease)
+        {
+            ArgumentNullException.ThrowIfNull(lease);
+            Lease = lease;
+        }
+
+        public AdmissionLease Lease { get; }
+    }
+
+    public sealed record RejectedResult : ProxyAdmissionDecision;
 }
 
 public sealed class AdmissionLease : IDisposable

@@ -688,15 +688,15 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
                 _metrics.ConnectionAccepted();
                 var requestSnapshot = _configurationStore.Snapshot;
                 var requestListener = ResolveRequestListener(requestSnapshot, handle.Listener);
-                var admissionLease = _admission.TryAcquireClientConnection(requestSnapshot.Limits.MaxActiveClientConnections);
-                if (admissionLease is null)
+                var admission = _admission.AcquireClientConnection(requestSnapshot.Limits.MaxActiveClientConnections);
+                if (admission is not ProxyAdmissionDecision.AcceptedResult acceptedAdmission)
                 {
                     clientSocket.Dispose();
                     _metrics.ConnectionClosed();
                     continue;
                 }
 
-                var connectionTask = RunConnectionAsync(clientSocket, requestSnapshot, requestListener, admissionLease, _shutdown.Token);
+                var connectionTask = RunConnectionAsync(clientSocket, requestSnapshot, requestListener, acceptedAdmission.Lease, _shutdown.Token);
                 handle.AddConnectionTask(connectionTask);
             }
         }
@@ -739,8 +739,8 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
                 _metrics.ConnectionAccepted();
                 var requestSnapshot = _configurationStore.Snapshot;
                 var requestListener = ResolveRequestListener(requestSnapshot, handle.Listener);
-                var admissionLease = _admission.TryAcquireClientConnection(requestSnapshot.Limits.MaxActiveClientConnections);
-                if (admissionLease is null)
+                var admission = _admission.AcquireClientConnection(requestSnapshot.Limits.MaxActiveClientConnections);
+                if (admission is not ProxyAdmissionDecision.AcceptedResult acceptedAdmission)
                 {
                     _metrics.ConnectionClosed();
                     await connection.CloseAsync(0x100, CancellationToken.None);
@@ -748,7 +748,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
                     continue;
                 }
 
-                var connectionTask = RunQuicConnectionAsync(connection, requestSnapshot, requestListener, admissionLease, _shutdown.Token);
+                var connectionTask = RunQuicConnectionAsync(connection, requestSnapshot, requestListener, acceptedAdmission.Lease, _shutdown.Token);
                 handle.AddConnectionTask(connectionTask);
             }
         }
