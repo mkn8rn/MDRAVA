@@ -22,33 +22,32 @@ public static class FramedUpstreamResponsePolicy
         ArgumentNullException.ThrowIfNull(upstreamResponse);
 
         responseHead = null;
-        if (!TryDetermineFraming(requestHead, upstreamResponse, out var framing, out rejectionReason))
+        var framingDecision = DetermineFraming(requestHead, upstreamResponse);
+        if (framingDecision is not UpstreamResponseFramingDecision.Accepted acceptedFraming)
         {
+            rejectionReason = ((UpstreamResponseFramingDecision.Rejected)framingDecision).Reason;
             return false;
         }
 
+        rejectionReason = "";
         responseHead = new Http1ResponseHead(
             "HTTP/1.1",
             upstreamResponse.StatusCode,
             ProxyRouteActionPolicy.ReasonPhrase(upstreamResponse.StatusCode),
-            framing,
+            acceptedFraming.Framing,
             upstreamResponse.Headers);
         return true;
     }
 
-    private static bool TryDetermineFraming(
+    private static UpstreamResponseFramingDecision DetermineFraming(
         Http1RequestHead requestHead,
-        FramedUpstreamResponseTranslationInput upstreamResponse,
-        out Http1ResponseFraming framing,
-        out string rejectionReason)
+        FramedUpstreamResponseTranslationInput upstreamResponse)
     {
-        rejectionReason = "";
         if (upstreamResponse.ResponseEndedWithHead
             || string.Equals(requestHead.Method, "HEAD", StringComparison.OrdinalIgnoreCase)
             || upstreamResponse.StatusCode is 204 or 304)
         {
-            framing = Http1ResponseFraming.None;
-            return true;
+            return UpstreamResponseFramingDecision.Accept(Http1ResponseFraming.None);
         }
 
         var contentLengthValues = upstreamResponse.Headers
@@ -59,16 +58,54 @@ public static class FramedUpstreamResponsePolicy
         {
             if (!Http1RequestParser.TryAnalyzeContentLength(contentLengthValues, out var contentLength, out var error))
             {
-                framing = Http1ResponseFraming.None;
-                rejectionReason = error.ToString();
-                return false;
+                return UpstreamResponseFramingDecision.Reject(error.ToString());
             }
 
-            framing = Http1ResponseFraming.FromContentLength(contentLength);
-            return true;
+            return UpstreamResponseFramingDecision.Accept(Http1ResponseFraming.FromContentLength(contentLength));
         }
 
-        framing = Http1ResponseFraming.Chunked;
-        return true;
+        return UpstreamResponseFramingDecision.Accept(Http1ResponseFraming.Chunked);
+    }
+
+    private abstract record UpstreamResponseFramingDecision
+    {
+        private UpstreamResponseFramingDecision()
+        {
+        }
+
+        public static UpstreamResponseFramingDecision Accept(Http1ResponseFraming framing)
+        {
+            return new Accepted(framing);
+        }
+
+        public static UpstreamResponseFramingDecision Reject(string reason)
+        {
+            return new Rejected(reason);
+        }
+
+        public sealed record Accepted : UpstreamResponseFramingDecision
+        {
+            public Accepted(Http1ResponseFraming framing)
+            {
+                Framing = framing;
+            }
+
+            public Http1ResponseFraming Framing { get; }
+        }
+
+        public sealed record Rejected : UpstreamResponseFramingDecision
+        {
+            public Rejected(string reason)
+            {
+                if (string.IsNullOrWhiteSpace(reason))
+                {
+                    throw new ArgumentException("Upstream response framing rejection reason is required.", nameof(reason));
+                }
+
+                Reason = reason;
+            }
+
+            public string Reason { get; }
+        }
     }
 }
