@@ -77,13 +77,8 @@ public static class ConfigLintListenerAnalyzer
             listener.Enabled && string.Equals(listener.Transport, "Https", StringComparison.OrdinalIgnoreCase));
         foreach (var route in snapshot.Routes.Where(route => route.HttpsRedirectEnabled && !httpsListenerExists))
         {
-            findings.Add(Warning("https_redirect_without_https_listener", $"Route '{route.Name}' enables HTTP to HTTPS redirect but no enabled HTTPS listener exists.", sourceName, RoutePath(route), "Add an HTTPS listener or disable the redirect for this route."));
+            findings.Add(Warning("https_redirect_without_https_listener", $"Route '{route.Name}' enables HTTP to HTTPS redirect but no enabled HTTPS listener exists.", sourceName, ConfigLintRouteIdentityPolicy.RoutePath(route), "Add an HTTPS listener or disable the redirect for this route."));
         }
-    }
-
-    private static string RoutePath(ProxyConfigLintRoute route)
-    {
-        return $"sites[{route.SiteName}].routes[{route.Name}]";
     }
 
     private static ConfigLintFinding Warning(
