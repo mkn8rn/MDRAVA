@@ -140,50 +140,47 @@ public static class ProxyCacheEligibilityPolicy
             return ProxyCacheEligibilityResult.Reject(ReasonSetCookie);
         }
 
-        if (!TryResolveTtl(policy, responseHead.Headers, out ttl, out var rejectionReason))
+        var ttlResolution = ResolveTtl(policy, responseHead.Headers);
+        if (ttlResolution is not CacheTtlResolution.Resolved resolvedTtl)
         {
-            return ProxyCacheEligibilityResult.Reject(rejectionReason ?? ReasonTtl);
+            return ProxyCacheEligibilityResult.Reject(((CacheTtlResolution.Rejected)ttlResolution).Reason);
         }
 
+        ttl = resolvedTtl.Ttl;
         return ProxyCacheEligibilityResult.Accept();
     }
 
-    private static bool TryResolveTtl(
+    private static CacheTtlResolution ResolveTtl(
         ProxyCachePolicyFacts policy,
-        IReadOnlyList<ProxyHeaderField> headers,
-        out TimeSpan ttl,
-        out string? rejectionReason)
+        IReadOnlyList<ProxyHeaderField> headers)
     {
-        ttl = policy.DefaultTtl;
-        rejectionReason = null;
+        var ttl = policy.DefaultTtl;
         if (!policy.RespectOriginCacheControl)
         {
-            return ttl > TimeSpan.Zero;
+            return ttl > TimeSpan.Zero
+                ? CacheTtlResolution.Resolve(ttl)
+                : CacheTtlResolution.Reject(ReasonTtl);
         }
 
         var directives = CacheControlDirectives(headers);
         if (directives.ContainsKey("no-store"))
         {
-            rejectionReason = ReasonCacheControlNoStore;
-            return false;
+            return CacheTtlResolution.Reject(ReasonCacheControlNoStore);
         }
 
         if (directives.ContainsKey("private"))
         {
-            rejectionReason = ReasonCacheControlPrivate;
-            return false;
+            return CacheTtlResolution.Reject(ReasonCacheControlPrivate);
         }
 
         if (directives.ContainsKey("no-cache"))
         {
-            rejectionReason = ReasonCacheControlNoCache;
-            return false;
+            return CacheTtlResolution.Reject(ReasonCacheControlNoCache);
         }
 
         if (directives.ContainsKey("must-revalidate"))
         {
-            rejectionReason = ReasonCacheControlMustRevalidate;
-            return false;
+            return CacheTtlResolution.Reject(ReasonCacheControlMustRevalidate);
         }
 
         if (directives.TryGetValue("max-age", out var maxAgeValue)
@@ -194,11 +191,57 @@ public static class ProxyCacheEligibilityPolicy
 
         if (ttl <= TimeSpan.Zero)
         {
-            rejectionReason = ReasonTtl;
-            return false;
+            return CacheTtlResolution.Reject(ReasonTtl);
         }
 
-        return true;
+        return CacheTtlResolution.Resolve(ttl);
+    }
+
+    private abstract record CacheTtlResolution
+    {
+        private CacheTtlResolution()
+        {
+        }
+
+        public static CacheTtlResolution Resolve(TimeSpan ttl)
+        {
+            return new Resolved(ttl);
+        }
+
+        public static CacheTtlResolution Reject(string reason)
+        {
+            return new Rejected(reason);
+        }
+
+        public sealed record Resolved : CacheTtlResolution
+        {
+            public Resolved(TimeSpan ttl)
+            {
+                if (ttl <= TimeSpan.Zero)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(ttl), "Cache TTL must be positive.");
+                }
+
+                Ttl = ttl;
+            }
+
+            public TimeSpan Ttl { get; }
+        }
+
+        public sealed record Rejected : CacheTtlResolution
+        {
+            public Rejected(string reason)
+            {
+                if (string.IsNullOrWhiteSpace(reason))
+                {
+                    throw new ArgumentException("Cache TTL rejection reason is required.", nameof(reason));
+                }
+
+                Reason = reason;
+            }
+
+            public string Reason { get; }
+        }
     }
 
     private static Dictionary<string, string?> CacheControlDirectives(IReadOnlyList<ProxyHeaderField> headers)
