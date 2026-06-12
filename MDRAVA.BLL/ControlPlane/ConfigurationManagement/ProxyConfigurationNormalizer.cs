@@ -25,30 +25,30 @@ public sealed class ProxyConfigurationNormalizer
         {
             return Failure(
                 "unknown",
-                [new ProxyConfigurationFileError(null, "A normalize request body is required.")]);
+                [ProxyConfigurationFileError.Global("A normalize request body is required.")]);
         }
 
         if (!TryParseFormat(request.Format, out var format))
         {
-            var error = new ProxyConfigurationFileError(null, "Format must be 'json' or 'yaml'.");
+            var error = ProxyConfigurationFileError.Global("Format must be 'json' or 'yaml'.");
             return Failure(RequestFormatName(request.Format), [error]);
         }
 
         var formatName = FormatName(format);
         if (string.IsNullOrWhiteSpace(request.Text))
         {
-            return Failure(formatName, [new ProxyConfigurationFileError(null, "Submitted config text is required.")]);
+            return Failure(formatName, [ProxyConfigurationFileError.Global("Submitted config text is required.")]);
         }
 
         var parsed = _siteParser.Parse(request.Text, format);
         if (!parsed.Succeeded)
         {
-            return Failure(formatName, [new ProxyConfigurationFileError(null, parsed.Error ?? "Site configuration is invalid.")]);
+            return Failure(formatName, [ProxyConfigurationFileError.Global(parsed.Error ?? "Site configuration is invalid.")]);
         }
 
         if (parsed.Site is null)
         {
-            return Failure(formatName, [new ProxyConfigurationFileError(null, "Site configuration did not contain an object.")]);
+            return Failure(formatName, [ProxyConfigurationFileError.Global("Site configuration did not contain an object.")]);
         }
 
         var options = SiteOptionsAggregator.ToProxyOptions(
@@ -59,7 +59,7 @@ public sealed class ProxyConfigurationNormalizer
             return Failure(
                 formatName,
                 validationFailures
-                    .Select(static failure => new ProxyConfigurationFileError(null, failure))
+                    .Select(static failure => ProxyConfigurationFileError.Global(failure))
                     .ToArray());
         }
 

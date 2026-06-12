@@ -127,7 +127,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
                 attemptedAtUtc,
                 siteFiles,
                 BuildDiscovery(),
-                listenerMergeFailures.Select(static failure => new ProxyConfigurationFileError(null, failure)).ToArray(),
+                listenerMergeFailures.Select(static failure => ProxyConfigurationFileError.Global(failure)).ToArray(),
                 wouldBeVersion);
         }
 
@@ -157,7 +157,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
                 attemptedAtUtc,
                 siteFiles,
                 BuildDiscovery(),
-                operationalFailures.Select(failure => new ProxyConfigurationFileError(operationalConfigPath, failure)).ToArray(),
+                operationalFailures.Select(failure => ProxyConfigurationFileError.ForPath(operationalConfigPath, failure)).ToArray(),
                 wouldBeVersion);
         }
 
@@ -170,7 +170,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
                 attemptedAtUtc,
                 siteFiles,
                 BuildDiscovery(),
-                certificateValidationFailures.Select(static failure => new ProxyConfigurationFileError(null, failure)).ToArray(),
+                certificateValidationFailures.Select(static failure => ProxyConfigurationFileError.Global(failure)).ToArray(),
                 wouldBeVersion);
         }
 
@@ -184,7 +184,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
                     attemptedAtUtc,
                     siteFiles,
                     BuildDiscovery(),
-                    validationFailures.Select(static failure => new ProxyConfigurationFileError(null, failure)).ToArray(),
+                    validationFailures.Select(static failure => ProxyConfigurationFileError.Global(failure)).ToArray(),
                     wouldBeVersion);
             }
         }
@@ -260,7 +260,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
 
             if (!File.Exists(certificatePath))
             {
-                errors.Add(new ProxyConfigurationFileError(null, $"Certificate '{certificateOptions.Id}' file does not exist: {certificatePath}"));
+                errors.Add(ProxyConfigurationFileError.Global($"Certificate '{certificateOptions.Id}' file does not exist: {certificatePath}"));
                 continue;
             }
 
@@ -276,7 +276,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
                 if (!certificate.HasPrivateKey)
                 {
                     certificate.Dispose();
-                    errors.Add(new ProxyConfigurationFileError(null, $"Certificate '{certificateOptions.Id}' must contain a private key."));
+                    errors.Add(ProxyConfigurationFileError.Global($"Certificate '{certificateOptions.Id}' must contain a private key."));
                     continue;
                 }
 
@@ -293,7 +293,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
             }
             catch (CryptographicException exception)
             {
-                errors.Add(new ProxyConfigurationFileError(null, $"Certificate '{certificateOptions.Id}' could not be loaded from '{certificatePath}': {exception.Message}"));
+                errors.Add(ProxyConfigurationFileError.Global($"Certificate '{certificateOptions.Id}' could not be loaded from '{certificatePath}': {exception.Message}"));
             }
         }
 
@@ -355,7 +355,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
 
             if (options is null)
             {
-                errors.Add(new ProxyConfigurationFileError(operationalConfigPath, "Operational configuration did not contain a JSON object."));
+                errors.Add(ProxyConfigurationFileError.ForPath(operationalConfigPath, "Operational configuration did not contain a JSON object."));
                 discoveries.Add(new ProxyConfigurationFileDiscovery(
                     operationalConfigPath,
                     "json",
@@ -373,7 +373,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
         }
         catch (JsonException exception)
         {
-            errors.Add(new ProxyConfigurationFileError(operationalConfigPath, $"JSON is invalid: {exception.Message}"));
+            errors.Add(ProxyConfigurationFileError.ForPath(operationalConfigPath, $"JSON is invalid: {exception.Message}"));
             discoveries.Add(new ProxyConfigurationFileDiscovery(
                 operationalConfigPath,
                 "json",
@@ -383,7 +383,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
         }
         catch (IOException exception)
         {
-            errors.Add(new ProxyConfigurationFileError(operationalConfigPath, $"File could not be read: {exception.Message}"));
+            errors.Add(ProxyConfigurationFileError.ForPath(operationalConfigPath, $"File could not be read: {exception.Message}"));
             discoveries.Add(new ProxyConfigurationFileDiscovery(
                 operationalConfigPath,
                 "json",
@@ -393,7 +393,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
         }
         catch (UnauthorizedAccessException exception)
         {
-            errors.Add(new ProxyConfigurationFileError(operationalConfigPath, $"File could not be accessed: {exception.Message}"));
+            errors.Add(ProxyConfigurationFileError.ForPath(operationalConfigPath, $"File could not be accessed: {exception.Message}"));
             discoveries.Add(new ProxyConfigurationFileDiscovery(
                 operationalConfigPath,
                 "json",
@@ -416,7 +416,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
 
             if (site is null)
             {
-                errors.Add(new ProxyConfigurationFileError(siteFile, "Site configuration did not contain a JSON object."));
+                errors.Add(ProxyConfigurationFileError.ForPath(siteFile, "Site configuration did not contain a JSON object."));
                 discoveries.Add(new ProxyConfigurationFileDiscovery(
                     siteFile,
                     SiteConfigurationFileDiscovery.FormatName(format),
@@ -434,7 +434,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
         }
         catch (JsonException exception)
         {
-            errors.Add(new ProxyConfigurationFileError(siteFile, $"JSON is invalid: {exception.Message}"));
+            errors.Add(ProxyConfigurationFileError.ForPath(siteFile, $"JSON is invalid: {exception.Message}"));
             discoveries.Add(new ProxyConfigurationFileDiscovery(
                 siteFile,
                 SiteConfigurationFileDiscovery.FormatName(format),
@@ -444,7 +444,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
         }
         catch (YamlException exception)
         {
-            errors.Add(new ProxyConfigurationFileError(siteFile, $"YAML is invalid: {exception.Message}"));
+            errors.Add(ProxyConfigurationFileError.ForPath(siteFile, $"YAML is invalid: {exception.Message}"));
             discoveries.Add(new ProxyConfigurationFileDiscovery(
                 siteFile,
                 SiteConfigurationFileDiscovery.FormatName(format),
@@ -454,7 +454,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
         }
         catch (IOException exception)
         {
-            errors.Add(new ProxyConfigurationFileError(siteFile, $"File could not be read: {exception.Message}"));
+            errors.Add(ProxyConfigurationFileError.ForPath(siteFile, $"File could not be read: {exception.Message}"));
             discoveries.Add(new ProxyConfigurationFileDiscovery(
                 siteFile,
                 SiteConfigurationFileDiscovery.FormatName(format),
@@ -464,7 +464,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
         }
         catch (UnauthorizedAccessException exception)
         {
-            errors.Add(new ProxyConfigurationFileError(siteFile, $"File could not be accessed: {exception.Message}"));
+            errors.Add(ProxyConfigurationFileError.ForPath(siteFile, $"File could not be accessed: {exception.Message}"));
             discoveries.Add(new ProxyConfigurationFileDiscovery(
                 siteFile,
                 SiteConfigurationFileDiscovery.FormatName(format),

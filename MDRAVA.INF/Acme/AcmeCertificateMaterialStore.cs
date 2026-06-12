@@ -40,7 +40,7 @@ public static class AcmeCertificateMaterialStore
                 if (!certificate.HasPrivateKey)
                 {
                     certificate.Dispose();
-                    errors.Add(new ProxyConfigurationFileError(null, $"ACME certificate '{certificateOptions.Id}' must contain a private key."));
+                    errors.Add(ProxyConfigurationFileError.Global($"ACME certificate '{certificateOptions.Id}' must contain a private key."));
                     continue;
                 }
 
@@ -55,7 +55,7 @@ public static class AcmeCertificateMaterialStore
             }
             catch (CryptographicException exception)
             {
-                errors.Add(new ProxyConfigurationFileError(null, $"ACME certificate '{certificateOptions.Id}' could not be loaded: {exception.Message}"));
+                errors.Add(ProxyConfigurationFileError.Global($"ACME certificate '{certificateOptions.Id}' could not be loaded: {exception.Message}"));
             }
         }
 

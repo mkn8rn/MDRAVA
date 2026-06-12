@@ -9,6 +9,17 @@ namespace MDRAVA.Tests;
 
 internal static class ConfigurationTests
 {
+    public static void ConfigurationFileErrorNamesGlobalAndPathErrors()
+    {
+        var global = ProxyConfigurationFileError.Global("global failure");
+        var path = ProxyConfigurationFileError.ForPath("config/site.json", "path failure");
+
+        AssertEx.Equal<string?>(null, global.Path);
+        AssertEx.Equal("global failure", global.Message);
+        AssertEx.Equal("config/site.json", path.Path);
+        AssertEx.Equal("path failure", path.Message);
+    }
+
     public static void DataDirectoryUsesConfiguredOverride()
     {
         var expected = Path.Combine(Path.GetTempPath(), $"mdrava-test-{Guid.NewGuid():N}");

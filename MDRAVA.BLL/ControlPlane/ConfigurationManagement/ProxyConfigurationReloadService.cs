@@ -75,7 +75,7 @@ public sealed class ProxyConfigurationReloadService
                 existing?.LoadedAtUtc,
                 loadResult.Discovery,
                 listenerReload.Errors,
-                listenerReload.Errors.Select(static error => new ProxyConfigurationFileError(null, error)).ToArray(),
+                listenerReload.Errors.Select(static error => ProxyConfigurationFileError.Global(error)).ToArray(),
                 existing is null ? null : ToProjection(existing))
             {
                 ListenerReload = listenerReload

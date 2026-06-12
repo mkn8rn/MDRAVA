@@ -57,7 +57,7 @@ public sealed class ProxyConfigLintSubmittedConfigurationSource
 
         var options = SiteOptionsAggregator.ToProxyOptions([new SiteConfigurationSource("lint-input", site)]);
         var validationErrors = ProxyOptionsValidationRules.Validate(options, _endpointAddressPolicy, _urlSyntaxPolicy)
-            .Select(static failure => new ProxyConfigurationFileError("lint-input", failure))
+            .Select(static failure => ProxyConfigurationFileError.ForPath("lint-input", failure))
             .ToArray();
 
         var operationalOptions = new ProxyOperationalOptions();

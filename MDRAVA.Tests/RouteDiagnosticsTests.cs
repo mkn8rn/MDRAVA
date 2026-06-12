@@ -571,7 +571,7 @@ internal static class RouteDiagnosticsTests
         var source = new FixedConfigLintSubmittedConfigurationSource(
             new ProxyConfigLintSubmittedConfigurationResult(
                 LintSnapshot("submitted.json"),
-                [new ProxyConfigurationFileError("lint-input", "Proxy:Routes:0:Name is required.")],
+                [ProxyConfigurationFileError.ForPath("lint-input", "Proxy:Routes:0:Name is required.")],
                 null));
         var service = new ConfigLintService(
             new FixedConfigLintActiveConfigurationSource(null),
