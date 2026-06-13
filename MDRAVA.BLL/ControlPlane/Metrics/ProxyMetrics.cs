@@ -170,31 +170,4 @@ public sealed partial class ProxyMetrics :
     private readonly ConcurrentDictionary<ConfigLintFindingKey, RequestSeriesCounter> _configLintFindings = new();
     private readonly ConcurrentDictionary<string, RequestSeriesCounter> _routeMatchDryRunFailures = new(StringComparer.Ordinal);
 
-    public void ConnectionAdmissionRejected() => Interlocked.Increment(ref _connectionAdmissionRejections);
-
-    public void TlsHandshakeStarted() => Interlocked.Increment(ref _activeTlsHandshakes);
-
-    public void TlsHandshakeEnded() => Interlocked.Decrement(ref _activeTlsHandshakes);
-
-    public void TlsHandshakeAdmissionRejected() => Interlocked.Increment(ref _tlsHandshakeAdmissionRejections);
-
-    public void RequestRateLimited() => Interlocked.Increment(ref _rateLimitedRequests);
-
-    public void UpgradeRateLimited() => Interlocked.Increment(ref _rateLimitedUpgrades);
-
-    public void RequestBodySizeRejected() => Interlocked.Increment(ref _requestBodySizeRejections);
-
-    public void ParserLimitRejected() => Interlocked.Increment(ref _parserLimitRejections);
-
-    public void RequestCompleted(string? site, string? route, string? action, int? statusCode)
-    {
-        var key = new RequestSeriesKey(
-            ProxyMetricLabelPolicy.NormalizeValue(site),
-            ProxyMetricLabelPolicy.NormalizeValue(route),
-            ProxyMetricLabelPolicy.NormalizeValue(action),
-            ProxyMetricLabelPolicy.StatusClass(statusCode));
-        var counter = _requestsByRoute.GetOrAdd(key, static _ => new RequestSeriesCounter());
-        Interlocked.Increment(ref counter.Count);
-    }
-
 }
