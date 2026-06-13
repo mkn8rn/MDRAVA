@@ -265,7 +265,6 @@ public sealed class ProxyForwarder
 
             if (ProxyGeneratedFailurePolicy.CanWriteFailureResponse(responseStarted, suppressGeneratedFailureResponse))
             {
-                ProxyGeneratedFailureMetrics.Record(_metrics, ProxyFailureKind.UpstreamMalformedResponse);
                 await ProxyGeneratedFailureWriter.WriteAsync(
                     clientStream,
                     ProxyFailureKind.UpstreamMalformedResponse,
@@ -299,7 +298,6 @@ public sealed class ProxyForwarder
 
             if (ProxyGeneratedFailurePolicy.CanWriteFailureResponse(responseStarted, suppressGeneratedFailureResponse))
             {
-                ProxyGeneratedFailureMetrics.Record(_metrics, ProxyFailureKind.UpstreamMalformedResponse);
                 await ProxyGeneratedFailureWriter.WriteAsync(
                     clientStream,
                     ProxyFailureKind.UpstreamMalformedResponse,
@@ -344,7 +342,6 @@ public sealed class ProxyForwarder
 
             if (ProxyGeneratedFailurePolicy.CanWriteFailureResponse(responseStarted, suppressGeneratedFailureResponse))
             {
-                ProxyGeneratedFailureMetrics.Record(_metrics, failureKind);
                 await ProxyGeneratedFailureWriter.WriteAsync(
                     clientStream,
                     failureKind,
@@ -377,7 +374,6 @@ public sealed class ProxyForwarder
 
             if (ProxyGeneratedFailurePolicy.CanWriteFailureResponse(responseStarted, suppressGeneratedFailureResponse))
             {
-                ProxyGeneratedFailureMetrics.Record(_metrics, ProxyFailureKind.UpstreamConnectFailed);
                 await ProxyGeneratedFailureWriter.WriteAsync(
                     clientStream,
                     ProxyFailureKind.UpstreamConnectFailed,
@@ -408,7 +404,6 @@ public sealed class ProxyForwarder
 
             if (ProxyGeneratedFailurePolicy.CanWriteFailureResponse(responseStarted, suppressGeneratedFailureResponse))
             {
-                ProxyGeneratedFailureMetrics.Record(_metrics, ProxyFailureKind.UpstreamConnectFailed);
                 await ProxyGeneratedFailureWriter.WriteAsync(
                     clientStream,
                     ProxyFailureKind.UpstreamConnectFailed,
@@ -761,7 +756,6 @@ public sealed class ProxyForwarder
                 _logger.LogWarning(exception, "Timed out connecting to upstream {UpstreamName}", upstream.Name);
                 if (ProxyGeneratedFailurePolicy.CanWriteFailureResponse(responseStarted, suppressGeneratedFailureResponse))
                 {
-                    ProxyGeneratedFailureMetrics.Record(_metrics, ProxyFailureKind.UpstreamConnectTimeout);
                     await ProxyGeneratedFailureWriter.WriteAsync(
                         clientStream,
                         ProxyFailureKind.UpstreamConnectTimeout,
@@ -777,7 +771,6 @@ public sealed class ProxyForwarder
                 _logger.LogWarning(exception, "Timed out waiting for upstream response head from {UpstreamName}", upstream.Name);
                 if (ProxyGeneratedFailurePolicy.CanWriteFailureResponse(responseStarted, suppressGeneratedFailureResponse))
                 {
-                    ProxyGeneratedFailureMetrics.Record(_metrics, ProxyFailureKind.UpstreamResponseHeadTimeout);
                     await ProxyGeneratedFailureWriter.WriteAsync(
                         clientStream,
                         ProxyFailureKind.UpstreamResponseHeadTimeout,

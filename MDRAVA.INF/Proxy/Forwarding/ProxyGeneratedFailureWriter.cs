@@ -15,6 +15,7 @@ internal static class ProxyGeneratedFailureWriter
         CancellationToken cancellationToken)
     {
         var response = ProxyGeneratedFailurePolicy.BuildFailureResponse(failureKind);
+        ProxyGeneratedFailureMetrics.Record(metrics, response);
 
         return ProxyErrorResponses.WriteGeneratedFailureAsync(
             clientStream,
