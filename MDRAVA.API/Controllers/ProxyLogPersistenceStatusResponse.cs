@@ -1,5 +1,3 @@
-using MDRAVA.BLL.ControlPlane.Status;
-
 using BusinessProxyLogPersistenceFailureStatus = MDRAVA.BLL.ControlPlane.Status.ProxyLogPersistenceFailureStatus;
 using BusinessProxyLogPersistenceStatus = MDRAVA.BLL.ControlPlane.Status.ProxyLogPersistenceStatus;
 
