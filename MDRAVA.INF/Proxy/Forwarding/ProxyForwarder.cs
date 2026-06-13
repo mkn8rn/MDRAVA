@@ -1344,41 +1344,20 @@ public sealed class ProxyForwarder
         RuntimeListener listener,
         CancellationToken cancellationToken)
     {
-        var builder = new StringBuilder();
-        builder.Append(responseHead.Version).Append(' ')
-            .Append(responseHead.StatusCode).Append(' ')
-            .Append(responseHead.ReasonPhrase).Append("\r\n");
-
-        foreach (var header in responseHeaders)
-        {
-            if (Http1ManagedHeaderPolicy.IsManagedFramingHeader(header.Name))
-            {
-                continue;
-            }
-
-            builder.Append(header.Name).Append(": ").Append(header.Value).Append("\r\n");
-        }
-
-        foreach (var header in Http3AltSvcPolicy.ApplyHeader([], _altSvcPolicy.CreateHeader(listener)))
-        {
-            builder.Append(header.Name).Append(": ").Append(header.Value).Append("\r\n");
-        }
-
-        builder.Append("X-Request-Id: ").Append(requestId).Append("\r\n");
-
-        if (responseHead.Framing.Kind == Http1BodyKind.ContentLength)
-        {
-            builder.Append("Content-Length: ").Append(responseHead.Framing.ContentLength.GetValueOrDefault()).Append("\r\n");
-        }
-        else if (responseHead.Framing.Kind == Http1BodyKind.Chunked)
-        {
-            builder.Append("Transfer-Encoding: chunked\r\n");
-        }
-
-        builder.Append(keepClientConnectionOpen ? "Connection: keep-alive\r\n\r\n" : "Connection: close\r\n\r\n");
-        var bytes = Encoding.ASCII.GetBytes(builder.ToString());
-        await ProxyTimedStreamWriter.WriteAsync(clientStream, bytes, timeouts.DownstreamWriteTimeout, cancellationToken);
-        _metrics.AddBytesWritten(bytes.Length);
+        await Http1ResponseHeadWriter.WriteAsync(
+            clientStream,
+            responseHead,
+            responseHeaders,
+            Http3AltSvcPolicy.ApplyHeader([], _altSvcPolicy.CreateHeader(listener)),
+            requestId,
+            responseHead.Framing.Kind == Http1BodyKind.ContentLength
+                ? responseHead.Framing.ContentLength
+                : null,
+            responseHead.Framing.Kind == Http1BodyKind.Chunked,
+            keepClientConnectionOpen,
+            timeouts.DownstreamWriteTimeout,
+            _metrics,
+            cancellationToken);
     }
 
     private async ValueTask WriteBufferedResponseAsync(
@@ -1392,32 +1371,18 @@ public sealed class ProxyForwarder
         RuntimeTimeouts timeouts,
         CancellationToken cancellationToken)
     {
-        var builder = new StringBuilder();
-        builder.Append(responseHead.Version).Append(' ')
-            .Append(responseHead.StatusCode).Append(' ')
-            .Append(responseHead.ReasonPhrase).Append("\r\n");
-
-        foreach (var header in responseHeaders)
-        {
-            if (Http1ManagedHeaderPolicy.IsManagedFramingHeader(header.Name))
-            {
-                continue;
-            }
-
-            builder.Append(header.Name).Append(": ").Append(header.Value).Append("\r\n");
-        }
-
-        foreach (var header in Http3AltSvcPolicy.ApplyHeader([], _altSvcPolicy.CreateHeader(listener)))
-        {
-            builder.Append(header.Name).Append(": ").Append(header.Value).Append("\r\n");
-        }
-
-        builder.Append("X-Request-Id: ").Append(requestId).Append("\r\n");
-        builder.Append("Content-Length: ").Append(body.Length).Append("\r\n");
-        builder.Append(keepClientConnectionOpen ? "Connection: keep-alive\r\n\r\n" : "Connection: close\r\n\r\n");
-        var bytes = Encoding.ASCII.GetBytes(builder.ToString());
-        await ProxyTimedStreamWriter.WriteAsync(clientStream, bytes, timeouts.DownstreamWriteTimeout, cancellationToken);
-        _metrics.AddBytesWritten(bytes.Length);
+        await Http1ResponseHeadWriter.WriteAsync(
+            clientStream,
+            responseHead,
+            responseHeaders,
+            Http3AltSvcPolicy.ApplyHeader([], _altSvcPolicy.CreateHeader(listener)),
+            requestId,
+            body.Length,
+            useChunkedTransferEncoding: false,
+            keepClientConnectionOpen,
+            timeouts.DownstreamWriteTimeout,
+            _metrics,
+            cancellationToken);
 
         if (body.Length > 0)
         {

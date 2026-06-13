@@ -396,42 +396,26 @@ public sealed class UpgradeForwarder
         string requestId,
         CancellationToken cancellationToken)
     {
-        var builder = new StringBuilder();
-        builder.Append(responseHead.Version).Append(' ')
-            .Append(responseHead.StatusCode).Append(' ')
-            .Append(responseHead.ReasonPhrase).Append("\r\n");
-
         var filtered = _headerPolicy.FilterForForwarding(
             responseHead.Headers,
             preserveTransferEncoding: false,
             preserveTrailer: responseHead.Framing.Kind == Http1BodyKind.Chunked);
 
         var responseHeaders = ProxyHeaderMutationPolicy.ApplyResponseHeaders(filtered, route.HeaderPolicy);
-        foreach (var header in responseHeaders)
-        {
-            if (Http1ManagedHeaderPolicy.IsManagedFramingHeader(header.Name))
-            {
-                continue;
-            }
-
-            builder.Append(header.Name).Append(": ").Append(header.Value).Append("\r\n");
-        }
-
-        builder.Append("X-Request-Id: ").Append(requestId).Append("\r\n");
-
-        if (responseHead.Framing.Kind == Http1BodyKind.ContentLength)
-        {
-            builder.Append("Content-Length: ").Append(responseHead.Framing.ContentLength.GetValueOrDefault()).Append("\r\n");
-        }
-        else if (responseHead.Framing.Kind == Http1BodyKind.Chunked)
-        {
-            builder.Append("Transfer-Encoding: chunked\r\n");
-        }
-
-        builder.Append("Connection: close\r\n\r\n");
-        var bytes = Encoding.ASCII.GetBytes(builder.ToString());
-        await ProxyTimedStreamWriter.WriteAsync(clientStream, bytes, timeouts.DownstreamWriteTimeout, cancellationToken);
-        _metrics.AddBytesWritten(bytes.Length);
+        await Http1ResponseHeadWriter.WriteAsync(
+            clientStream,
+            responseHead,
+            responseHeaders,
+            [],
+            requestId,
+            responseHead.Framing.Kind == Http1BodyKind.ContentLength
+                ? responseHead.Framing.ContentLength
+                : null,
+            responseHead.Framing.Kind == Http1BodyKind.Chunked,
+            keepClientConnectionOpen: false,
+            timeouts.DownstreamWriteTimeout,
+            _metrics,
+            cancellationToken);
     }
 
     private async ValueTask RelayNonUpgradeResponseBodyAsync(
