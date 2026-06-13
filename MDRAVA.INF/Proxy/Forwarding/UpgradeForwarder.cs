@@ -443,7 +443,12 @@ public sealed class UpgradeForwarder
         RuntimeTimeouts timeouts,
         CancellationToken cancellationToken)
     {
-        var reader = new BodyReader(upstreamStream, initialBodyBytes, _metrics, timeouts.UpstreamResponseBodyIdleTimeout);
+        var reader = new Http1BodyReader(
+            upstreamStream,
+            initialBodyBytes,
+            _metrics,
+            timeouts.UpstreamResponseBodyIdleTimeout,
+            ProxyTimeoutKind.UpstreamResponseBodyIdle);
         if (responseHead.Framing.Kind == Http1BodyKind.ContentLength)
         {
             await RelayFixedLengthBodyAsync(reader, clientStream, responseHead.Framing.ContentLength.GetValueOrDefault(), listener.ForwardingBufferBytes, timeouts.DownstreamWriteTimeout, cancellationToken);
@@ -490,7 +495,7 @@ public sealed class UpgradeForwarder
     }
 
     private async ValueTask RelayFixedLengthBodyAsync(
-        BodyReader reader,
+        Http1BodyReader reader,
         Stream destination,
         long contentLength,
         int bufferSize,
@@ -522,7 +527,7 @@ public sealed class UpgradeForwarder
     }
 
     private async ValueTask RelayCloseDelimitedBodyAsync(
-        BodyReader reader,
+        Http1BodyReader reader,
         Stream destination,
         int bufferSize,
         TimeSpan writeTimeout,
@@ -550,7 +555,7 @@ public sealed class UpgradeForwarder
     }
 
     private async ValueTask RelayChunkedBodyAsync(
-        BodyReader reader,
+        Http1BodyReader reader,
         Stream destination,
         RuntimeListener listener,
         TimeSpan writeTimeout,
@@ -580,7 +585,7 @@ public sealed class UpgradeForwarder
     }
 
     private async ValueTask RelayTrailerSectionAsync(
-        BodyReader reader,
+        Http1BodyReader reader,
         Stream destination,
         int maxLineBytes,
         TimeSpan writeTimeout,
@@ -596,86 +601,6 @@ public sealed class UpgradeForwarder
             {
                 return;
             }
-        }
-    }
-
-    private sealed class BodyReader
-    {
-        private readonly Stream _stream;
-        private readonly ProxyMetrics _metrics;
-        private readonly TimeSpan _readTimeout;
-        private ReadOnlyMemory<byte> _initialBytes;
-
-        public BodyReader(
-            Stream stream,
-            ReadOnlyMemory<byte> initialBytes,
-            ProxyMetrics metrics,
-            TimeSpan readTimeout)
-        {
-            _stream = stream;
-            _initialBytes = initialBytes;
-            _metrics = metrics;
-            _readTimeout = readTimeout;
-        }
-
-        public async ValueTask<int> ReadAsync(Memory<byte> destination, CancellationToken cancellationToken)
-        {
-            if (_initialBytes.Length > 0)
-            {
-                var bytesToCopy = Math.Min(destination.Length, _initialBytes.Length);
-                _initialBytes[..bytesToCopy].CopyTo(destination);
-                _initialBytes = _initialBytes[bytesToCopy..];
-                return bytesToCopy;
-            }
-
-            var bytesRead = await ProxyTimeoutPolicy.RunAsync(
-                async timeoutToken => await _stream.ReadAsync(destination, timeoutToken),
-                _readTimeout,
-                ProxyTimeoutKind.UpstreamResponseBodyIdle,
-                cancellationToken);
-            _metrics.AddBytesRead(bytesRead);
-            return bytesRead;
-        }
-
-        public async ValueTask<byte[]> ReadExactAsync(int length, CancellationToken cancellationToken)
-        {
-            var bytes = new byte[length];
-            var total = 0;
-
-            while (total < length)
-            {
-                var bytesRead = await ReadAsync(bytes.AsMemory(total, length - total), cancellationToken);
-                if (bytesRead == 0)
-                {
-                    throw new IOException("Source closed before the required bytes were read.");
-                }
-
-                total += bytesRead;
-            }
-
-            return bytes;
-        }
-
-        public async ValueTask<byte[]> ReadLineWithCrlfAsync(int maxLineBytes, CancellationToken cancellationToken)
-        {
-            List<byte> bytes = [];
-            var previous = (byte)0;
-
-            while (bytes.Count < maxLineBytes)
-            {
-                var one = await ReadExactAsync(1, cancellationToken);
-                var current = one[0];
-                bytes.Add(current);
-
-                if (previous == (byte)'\r' && current == (byte)'\n')
-                {
-                    return bytes.ToArray();
-                }
-
-                previous = current;
-            }
-
-            throw new IOException("HTTP line exceeded the configured maximum length.");
         }
     }
 
