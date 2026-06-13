@@ -496,6 +496,25 @@ internal static class ClientHttp3Tests
         AssertEx.Equal(0L, snapshot.Http3AltSvcSuppressed);
     }
 
+    public static void AltSvcPolicyAppliesHeaderWithoutKeepingStaleValues()
+    {
+        var result = Http3AltSvcPolicy.ApplyHeader(
+            [
+                new ProxyHeaderField("Content-Type", "text/plain"),
+                new ProxyHeaderField("Alt-Svc", "h3=\":443\"; ma=1")
+            ],
+            Http3AltSvcHeaderResult.Emitted(new ProxyHeaderField("Alt-Svc", "h3=\":8443\"; ma=60")));
+
+        AssertEx.Equal(2, result.Count);
+        AssertEx.True(result.Any(static header => header.Name == "Content-Type" && header.Value == "text/plain"));
+        AssertEx.Equal("h3=\":8443\"; ma=60", result.Single(static header => string.Equals(header.Name, "Alt-Svc", StringComparison.OrdinalIgnoreCase)).Value);
+
+        var suppressed = Http3AltSvcPolicy.ApplyHeader(result, Http3AltSvcHeaderResult.Suppressed);
+
+        AssertEx.Equal(1, suppressed.Count);
+        AssertEx.False(suppressed.Any(static header => string.Equals(header.Name, "Alt-Svc", StringComparison.OrdinalIgnoreCase)));
+    }
+
     public static async Task AltSvcIsAbsentWhenHttp3ExplicitlyDisabled()
     {
         if (!QuicListener.IsSupported || !QuicConnection.IsSupported)

@@ -98,6 +98,7 @@ internal static partial class TestRegistry
     Test("Status and effective config use current HTTP/3 projection", Sync(ClientHttp3Tests.StatusAndEffectiveConfigUseCurrentHttp3Projection), TestTaxonomy.Http3, TestTaxonomy.Config),
     Test("HTTP/3 legacy enablement values are rejected", Sync(ClientHttp3Tests.Http3LegacyEnablementValuesAreRejected), TestTaxonomy.Http3, TestTaxonomy.SecurityNegativePaths),
     Test("HTTP/3 Alt-Svc policy reads narrow runtime listener source", Sync(ClientHttp3Tests.AltSvcPolicyReadsNarrowRuntimeListenerSource), TestTaxonomy.Http3),
+    Test("HTTP/3 Alt-Svc policy applies emitted headers", Sync(ClientHttp3Tests.AltSvcPolicyAppliesHeaderWithoutKeepingStaleValues), TestTaxonomy.Http3, TestTaxonomy.Headers),
     Test("HTTP/3 Alt-Svc is absent when HTTP/3 is explicitly disabled", ClientHttp3Tests.AltSvcIsAbsentWhenHttp3ExplicitlyDisabled, TestTaxonomy.Http3, TestTaxonomy.SecurityNegativePaths),
     Test("HTTP/3 Alt-Svc is emitted only when configured and ready", ClientHttp3Tests.AltSvcIsEmittedOnlyWhenConfiguredAndReady, TestTaxonomy.Http3),
     Test("HTTP/3 Alt-Svc is not emitted when QUIC listener is not ready", ClientHttp3Tests.AltSvcIsNotEmittedWhenQuicListenerIsNotReady, TestTaxonomy.Http3),

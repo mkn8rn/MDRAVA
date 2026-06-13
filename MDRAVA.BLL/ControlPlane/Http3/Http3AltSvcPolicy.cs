@@ -39,4 +39,22 @@ public sealed class Http3AltSvcPolicy
                 "Alt-Svc",
                 $"h3=\":{listener.Port}\"; ma={listener.Http3AltSvc.MaxAgeSeconds}"));
     }
+
+    public static IReadOnlyList<ProxyHeaderField> ApplyHeader(
+        IReadOnlyList<ProxyHeaderField> headers,
+        Http3AltSvcHeaderResult result)
+    {
+        ArgumentNullException.ThrowIfNull(headers);
+        ArgumentNullException.ThrowIfNull(result);
+
+        var projected = headers
+            .Where(static header => !string.Equals(header.Name, "alt-svc", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (result is Http3AltSvcHeaderResult.EmittedResult emitted)
+        {
+            projected.Add(emitted.Header);
+        }
+
+        return projected;
+    }
 }

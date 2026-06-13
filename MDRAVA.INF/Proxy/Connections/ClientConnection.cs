@@ -907,7 +907,7 @@ public sealed class ClientConnection
             _metrics,
             cancellationToken,
             contentType: "text/plain",
-            headers: WithAltSvc([]));
+            headers: ApplyAltSvc([]));
 
         context.ResponseStarted = true;
         context.ResponseStatusCode = statusCode;
@@ -940,9 +940,9 @@ public sealed class ClientConnection
             builder.Append(header.Name).Append(": ").Append(header.Value).Append("\r\n");
         }
 
-        if (_altSvcPolicy.CreateHeader(_listener) is Http3AltSvcHeaderResult.EmittedResult altSvc)
+        foreach (var header in ApplyAltSvc([]))
         {
-            builder.Append(altSvc.Header.Name).Append(": ").Append(altSvc.Header.Value).Append("\r\n");
+            builder.Append(header.Name).Append(": ").Append(header.Value).Append("\r\n");
         }
 
         builder.Append("Age: ").Append(ageSeconds).Append("\r\n");
@@ -990,26 +990,16 @@ public sealed class ClientConnection
             _metrics,
             cancellationToken,
             contentType: response.ContentType,
-            headers: WithAltSvc(response.Headers));
+            headers: ApplyAltSvc(response.Headers));
 
         context.ResponseStarted = true;
         context.ResponseStatusCode = response.StatusCode;
         context.KeepClientConnectionOpen = false;
     }
 
-    private IReadOnlyList<ProxyHeaderField> WithAltSvc(IReadOnlyList<ProxyHeaderField> headers)
+    private IReadOnlyList<ProxyHeaderField> ApplyAltSvc(IReadOnlyList<ProxyHeaderField> headers)
     {
-        ArgumentNullException.ThrowIfNull(headers);
-
-        var result = headers
-            .Where(static header => !string.Equals(header.Name, "alt-svc", StringComparison.OrdinalIgnoreCase))
-            .ToList();
-        if (_altSvcPolicy.CreateHeader(_listener) is Http3AltSvcHeaderResult.EmittedResult altSvc)
-        {
-            result.Add(altSvc.Header);
-        }
-
-        return result;
+        return Http3AltSvcPolicy.ApplyHeader(headers, _altSvcPolicy.CreateHeader(_listener));
     }
 
     private ProxyRequestContext CreateRequestContext()
