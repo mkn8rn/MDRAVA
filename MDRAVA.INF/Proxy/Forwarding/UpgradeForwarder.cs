@@ -328,7 +328,7 @@ public sealed class UpgradeForwarder
         builder.Append("Upgrade: ").Append(upgrade.Protocol).Append("\r\n");
         builder.Append("Connection: Upgrade\r\n\r\n");
         var bytes = Encoding.ASCII.GetBytes(builder.ToString());
-        await WriteWithTimeoutAsync(upstreamStream, bytes, timeouts.DownstreamWriteTimeout, cancellationToken);
+        await ProxyTimedStreamWriter.WriteAsync(upstreamStream, bytes, timeouts.DownstreamWriteTimeout, cancellationToken);
         _metrics.AddBytesWritten(bytes.Length);
     }
 
@@ -362,7 +362,7 @@ public sealed class UpgradeForwarder
         builder.Append("Upgrade: ").Append(upgrade.Protocol).Append("\r\n");
         builder.Append("Connection: Upgrade\r\n\r\n");
         var bytes = Encoding.ASCII.GetBytes(builder.ToString());
-        await WriteWithTimeoutAsync(clientStream, bytes, timeouts.DownstreamWriteTimeout, cancellationToken);
+        await ProxyTimedStreamWriter.WriteAsync(clientStream, bytes, timeouts.DownstreamWriteTimeout, cancellationToken);
         _metrics.AddBytesWritten(bytes.Length);
     }
 
@@ -430,7 +430,7 @@ public sealed class UpgradeForwarder
 
         builder.Append("Connection: close\r\n\r\n");
         var bytes = Encoding.ASCII.GetBytes(builder.ToString());
-        await WriteWithTimeoutAsync(clientStream, bytes, timeouts.DownstreamWriteTimeout, cancellationToken);
+        await ProxyTimedStreamWriter.WriteAsync(clientStream, bytes, timeouts.DownstreamWriteTimeout, cancellationToken);
         _metrics.AddBytesWritten(bytes.Length);
     }
 
@@ -510,7 +510,7 @@ public sealed class UpgradeForwarder
                     throw new IOException("Source closed before the declared Content-Length body was complete.");
                 }
 
-                await WriteWithTimeoutAsync(destination, buffer.AsMemory(0, bytesRead), writeTimeout, cancellationToken);
+                await ProxyTimedStreamWriter.WriteAsync(destination, buffer.AsMemory(0, bytesRead), writeTimeout, cancellationToken);
                 _metrics.AddBytesWritten(bytesRead);
                 remaining -= bytesRead;
             }
@@ -539,7 +539,7 @@ public sealed class UpgradeForwarder
                     break;
                 }
 
-                await WriteWithTimeoutAsync(destination, buffer.AsMemory(0, bytesRead), writeTimeout, cancellationToken);
+                await ProxyTimedStreamWriter.WriteAsync(destination, buffer.AsMemory(0, bytesRead), writeTimeout, cancellationToken);
                 _metrics.AddBytesWritten(bytesRead);
             }
         }
@@ -559,7 +559,7 @@ public sealed class UpgradeForwarder
         while (true)
         {
             var chunkLine = await reader.ReadLineWithCrlfAsync(listener.MaxChunkLineBytes, cancellationToken);
-            await WriteWithTimeoutAsync(destination, chunkLine, writeTimeout, cancellationToken);
+            await ProxyTimedStreamWriter.WriteAsync(destination, chunkLine, writeTimeout, cancellationToken);
             _metrics.AddBytesWritten(chunkLine.Length);
             if (!Http1ChunkSizeParser.TryParseLine(chunkLine.AsSpan(), out var chunkSize))
             {
@@ -574,7 +574,7 @@ public sealed class UpgradeForwarder
 
             await RelayFixedLengthBodyAsync(reader, destination, chunkSize, listener.ForwardingBufferBytes, writeTimeout, cancellationToken);
             var crlf = await reader.ReadExactAsync(2, cancellationToken);
-            await WriteWithTimeoutAsync(destination, crlf, writeTimeout, cancellationToken);
+            await ProxyTimedStreamWriter.WriteAsync(destination, crlf, writeTimeout, cancellationToken);
             _metrics.AddBytesWritten(crlf.Length);
         }
     }
@@ -589,7 +589,7 @@ public sealed class UpgradeForwarder
         while (true)
         {
             var line = await reader.ReadLineWithCrlfAsync(maxLineBytes, cancellationToken);
-            await WriteWithTimeoutAsync(destination, line, writeTimeout, cancellationToken);
+            await ProxyTimedStreamWriter.WriteAsync(destination, line, writeTimeout, cancellationToken);
             _metrics.AddBytesWritten(line.Length);
 
             if (line.Length == 2)
@@ -597,22 +597,6 @@ public sealed class UpgradeForwarder
                 return;
             }
         }
-    }
-
-    private static async ValueTask WriteWithTimeoutAsync(
-        Stream destination,
-        ReadOnlyMemory<byte> bytes,
-        TimeSpan timeout,
-        CancellationToken cancellationToken)
-    {
-        await ProxyTimeoutPolicy.RunAsync(
-            async timeoutToken =>
-            {
-                await destination.WriteAsync(bytes, timeoutToken);
-            },
-            timeout,
-            ProxyTimeoutKind.DownstreamWrite,
-            cancellationToken);
     }
 
     private sealed class BodyReader

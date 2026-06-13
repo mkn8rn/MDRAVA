@@ -1118,7 +1118,7 @@ public sealed class ProxyForwarder
                     }
                     else
                     {
-                        await WriteWithTimeoutAsync(clientStream, chunk.Data, timeouts.DownstreamWriteTimeout, cancellationToken);
+                        await ProxyTimedStreamWriter.WriteAsync(clientStream, chunk.Data, timeouts.DownstreamWriteTimeout, cancellationToken);
                         _metrics.AddBytesWritten(chunk.Data.Length);
                     }
                 }
@@ -1127,7 +1127,7 @@ public sealed class ProxyForwarder
                 {
                     if (responseHead.Framing.Kind == Http1BodyKind.Chunked)
                     {
-                        await WriteWithTimeoutAsync(clientStream, "0\r\n\r\n"u8.ToArray(), timeouts.DownstreamWriteTimeout, cancellationToken);
+                        await ProxyTimedStreamWriter.WriteAsync(clientStream, "0\r\n\r\n"u8.ToArray(), timeouts.DownstreamWriteTimeout, cancellationToken);
                         _metrics.AddBytesWritten(5);
                     }
 
@@ -1150,9 +1150,9 @@ public sealed class ProxyForwarder
         CancellationToken cancellationToken)
     {
         var prefix = Encoding.ASCII.GetBytes(data.Length.ToString("x", CultureInfo.InvariantCulture) + "\r\n");
-        await WriteWithTimeoutAsync(clientStream, prefix, writeTimeout, cancellationToken);
-        await WriteWithTimeoutAsync(clientStream, data, writeTimeout, cancellationToken);
-        await WriteWithTimeoutAsync(clientStream, "\r\n"u8.ToArray(), writeTimeout, cancellationToken);
+        await ProxyTimedStreamWriter.WriteAsync(clientStream, prefix, writeTimeout, cancellationToken);
+        await ProxyTimedStreamWriter.WriteAsync(clientStream, data, writeTimeout, cancellationToken);
+        await ProxyTimedStreamWriter.WriteAsync(clientStream, "\r\n"u8.ToArray(), writeTimeout, cancellationToken);
         _metrics.AddBytesWritten(prefix.Length + data.Length + 2);
     }
 
@@ -1197,7 +1197,7 @@ public sealed class ProxyForwarder
 
         builder.Append("Connection: keep-alive\r\n\r\n");
         var bytes = Encoding.ASCII.GetBytes(builder.ToString());
-        await WriteWithTimeoutAsync(upstreamStream, bytes, timeouts.DownstreamWriteTimeout, cancellationToken);
+        await ProxyTimedStreamWriter.WriteAsync(upstreamStream, bytes, timeouts.DownstreamWriteTimeout, cancellationToken);
         _metrics.AddBytesWritten(bytes.Length);
     }
 
@@ -1377,7 +1377,7 @@ public sealed class ProxyForwarder
 
         builder.Append(keepClientConnectionOpen ? "Connection: keep-alive\r\n\r\n" : "Connection: close\r\n\r\n");
         var bytes = Encoding.ASCII.GetBytes(builder.ToString());
-        await WriteWithTimeoutAsync(clientStream, bytes, timeouts.DownstreamWriteTimeout, cancellationToken);
+        await ProxyTimedStreamWriter.WriteAsync(clientStream, bytes, timeouts.DownstreamWriteTimeout, cancellationToken);
         _metrics.AddBytesWritten(bytes.Length);
     }
 
@@ -1416,12 +1416,12 @@ public sealed class ProxyForwarder
         builder.Append("Content-Length: ").Append(body.Length).Append("\r\n");
         builder.Append(keepClientConnectionOpen ? "Connection: keep-alive\r\n\r\n" : "Connection: close\r\n\r\n");
         var bytes = Encoding.ASCII.GetBytes(builder.ToString());
-        await WriteWithTimeoutAsync(clientStream, bytes, timeouts.DownstreamWriteTimeout, cancellationToken);
+        await ProxyTimedStreamWriter.WriteAsync(clientStream, bytes, timeouts.DownstreamWriteTimeout, cancellationToken);
         _metrics.AddBytesWritten(bytes.Length);
 
         if (body.Length > 0)
         {
-            await WriteWithTimeoutAsync(clientStream, body, timeouts.DownstreamWriteTimeout, cancellationToken);
+            await ProxyTimedStreamWriter.WriteAsync(clientStream, body, timeouts.DownstreamWriteTimeout, cancellationToken);
             _metrics.AddBytesWritten(body.Length);
         }
     }
@@ -1582,7 +1582,7 @@ public sealed class ProxyForwarder
                     throw new IOException("Source closed before the declared Content-Length body was complete.");
                 }
 
-                await WriteWithTimeoutAsync(destination, buffer.AsMemory(0, bytesRead), writeTimeout, cancellationToken);
+                await ProxyTimedStreamWriter.WriteAsync(destination, buffer.AsMemory(0, bytesRead), writeTimeout, cancellationToken);
                 _metrics.AddBytesWritten(bytesRead);
                 remaining -= bytesRead;
             }
@@ -1611,7 +1611,7 @@ public sealed class ProxyForwarder
                     break;
                 }
 
-                await WriteWithTimeoutAsync(destination, buffer.AsMemory(0, bytesRead), writeTimeout, cancellationToken);
+                await ProxyTimedStreamWriter.WriteAsync(destination, buffer.AsMemory(0, bytesRead), writeTimeout, cancellationToken);
                 _metrics.AddBytesWritten(bytesRead);
             }
         }
@@ -1640,7 +1640,7 @@ public sealed class ProxyForwarder
                 throw new Http1ClientProtocolException("Invalid chunk-size line.");
             }
 
-            await WriteWithTimeoutAsync(destination, chunkLine, writeTimeout, cancellationToken);
+            await ProxyTimedStreamWriter.WriteAsync(destination, chunkLine, writeTimeout, cancellationToken);
             _metrics.AddBytesWritten(chunkLine.Length);
 
             if (chunkSize == 0)
@@ -1662,7 +1662,7 @@ public sealed class ProxyForwarder
                 throw new Http1ClientProtocolException("Chunk data was not followed by CRLF.");
             }
 
-            await WriteWithTimeoutAsync(destination, crlf, writeTimeout, cancellationToken);
+            await ProxyTimedStreamWriter.WriteAsync(destination, crlf, writeTimeout, cancellationToken);
             _metrics.AddBytesWritten(crlf.Length);
             chunkLine = null;
         }
@@ -1678,7 +1678,7 @@ public sealed class ProxyForwarder
         while (true)
         {
             var line = await reader.ReadLineWithCrlfAsync(maxLineBytes, cancellationToken);
-            await WriteWithTimeoutAsync(destination, line, writeTimeout, cancellationToken);
+            await ProxyTimedStreamWriter.WriteAsync(destination, line, writeTimeout, cancellationToken);
             _metrics.AddBytesWritten(line.Length);
 
             if (line.Length == 2)
@@ -1692,22 +1692,6 @@ public sealed class ProxyForwarder
                 throw new Http1ClientProtocolException("Invalid trailer field line.");
             }
         }
-    }
-
-    private static async ValueTask WriteWithTimeoutAsync(
-        Stream destination,
-        ReadOnlyMemory<byte> bytes,
-        TimeSpan timeout,
-        CancellationToken cancellationToken)
-    {
-        await ProxyTimeoutPolicy.RunAsync(
-            async timeoutToken =>
-            {
-                await destination.WriteAsync(bytes, timeoutToken);
-            },
-            timeout,
-            ProxyTimeoutKind.DownstreamWrite,
-            cancellationToken);
     }
 
     private sealed class Http1BodyReader
