@@ -68,6 +68,22 @@ internal static class ProxyGeneratedFailurePolicyTests
         AssertEx.Equal(ProxyFailureKind.UpstreamResponseHeadTimeout, forwardingResult.FailureKind);
     }
 
+    public static void ForwardingFailurePolicyHidesStatusAfterResponseStarts()
+    {
+        AssertEx.Equal(502, ProxyForwardingFailurePolicy.ResponseStatusCodeForFailure(
+            responseStarted: false,
+            ProxyFailureKind.UpstreamConnectFailed));
+        AssertEx.Equal(413, ProxyForwardingFailurePolicy.ResponseStatusCodeForFailure(
+            responseStarted: false,
+            ProxyFailureKind.RequestPayloadTooLarge));
+        AssertEx.Equal<int?>(null, ProxyForwardingFailurePolicy.ResponseStatusCodeForFailure(
+            responseStarted: true,
+            ProxyFailureKind.UpstreamConnectFailed));
+        AssertEx.Equal<int?>(null, ProxyForwardingFailurePolicy.ResponseStatusCodeForFailure(
+            responseStarted: true,
+            ProxyFailureKind.RequestPayloadTooLarge));
+    }
+
     public static void BuildsGeneratedFailureResponseWithExplicitBody()
     {
         var response = ProxyGeneratedFailurePolicy.BuildFailureResponse(

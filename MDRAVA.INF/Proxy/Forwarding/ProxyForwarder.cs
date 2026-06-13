@@ -217,7 +217,9 @@ public sealed class ProxyForwarder
 
             return ForwardingResult.Failure(
                 responseStarted,
-                responseStarted ? null : 413,
+                ProxyForwardingFailurePolicy.ResponseStatusCodeForFailure(
+                    responseStarted,
+                    ProxyFailureKind.RequestPayloadTooLarge),
                 ProxyFailureKind.RequestPayloadTooLarge);
         }
         catch (Http1ClientProtocolException exception)
@@ -241,7 +243,9 @@ public sealed class ProxyForwarder
             }
             return ForwardingResult.Failure(
                 responseStarted,
-                responseStarted ? null : 400,
+                ProxyForwardingFailurePolicy.ResponseStatusCodeForFailure(
+                    responseStarted,
+                    ProxyFailureKind.ClientMalformedRequest),
                 ProxyFailureKind.ClientMalformedRequest);
         }
         catch (Http1UpstreamProtocolException exception)
@@ -272,7 +276,9 @@ public sealed class ProxyForwarder
             }
             return ForwardingResult.Failure(
                 responseStarted,
-                responseStarted ? null : 502,
+                ProxyForwardingFailurePolicy.ResponseStatusCodeForFailure(
+                    responseStarted,
+                    ProxyFailureKind.UpstreamMalformedResponse),
                 ProxyFailureKind.UpstreamMalformedResponse);
         }
         catch (Http2UpstreamProtocolException exception)
@@ -304,7 +310,9 @@ public sealed class ProxyForwarder
             }
             return ForwardingResult.Failure(
                 responseStarted,
-                responseStarted ? null : 502,
+                ProxyForwardingFailurePolicy.ResponseStatusCodeForFailure(
+                    responseStarted,
+                    ProxyFailureKind.UpstreamMalformedResponse),
                 ProxyFailureKind.UpstreamMalformedResponse);
         }
         catch (Http3UpstreamProtocolException exception)
@@ -348,7 +356,7 @@ public sealed class ProxyForwarder
 
             return ForwardingResult.Failure(
                 responseStarted,
-                responseStarted ? null : 502,
+                ProxyForwardingFailurePolicy.ResponseStatusCodeForFailure(responseStarted, failureKind),
                 failureKind);
         }
         catch (UpstreamTlsException exception)
@@ -379,10 +387,14 @@ public sealed class ProxyForwarder
                     cancellationToken);
             }
 
+            var failureKind = responseStarted
+                ? ProxyFailureKind.UpstreamPrematureDisconnect
+                : ProxyFailureKind.UpstreamConnectFailed;
+
             return ForwardingResult.Failure(
                 responseStarted,
-                responseStarted ? null : 502,
-                responseStarted ? ProxyFailureKind.UpstreamPrematureDisconnect : ProxyFailureKind.UpstreamConnectFailed);
+                ProxyForwardingFailurePolicy.ResponseStatusCodeForFailure(responseStarted, failureKind),
+                failureKind);
         }
         catch (Exception exception) when (exception is SocketException or IOException)
         {
@@ -405,10 +417,15 @@ public sealed class ProxyForwarder
                     _metrics,
                     cancellationToken);
             }
+
+            var failureKind = responseStarted
+                ? ProxyFailureKind.UpstreamPrematureDisconnect
+                : ProxyFailureKind.UpstreamConnectFailed;
+
             return ForwardingResult.Failure(
                 responseStarted,
-                responseStarted ? null : 502,
-                responseStarted ? ProxyFailureKind.UpstreamPrematureDisconnect : ProxyFailureKind.UpstreamConnectFailed);
+                ProxyForwardingFailurePolicy.ResponseStatusCodeForFailure(responseStarted, failureKind),
+                failureKind);
         }
         finally
         {

@@ -73,7 +73,9 @@ public sealed class UpgradeForwarder
                     cancellationToken);
                 return ForwardingResult.Failure(
                     responseStarted,
-                    503,
+                    ProxyForwardingFailurePolicy.ResponseStatusCodeForFailure(
+                        responseStarted,
+                        ProxyFailureKind.UpgradeRejected),
                     ProxyFailureKind.UpgradeRejected);
             }
 
@@ -189,7 +191,9 @@ public sealed class UpgradeForwarder
 
             return ForwardingResult.Failure(
                 responseStarted,
-                responseStarted ? null : 502,
+                ProxyForwardingFailurePolicy.ResponseStatusCodeForFailure(
+                    responseStarted,
+                    ProxyFailureKind.UpstreamMalformedResponse),
                 ProxyFailureKind.UpstreamMalformedResponse);
         }
         catch (Exception exception) when (exception is SocketException or IOException)
@@ -217,7 +221,9 @@ public sealed class UpgradeForwarder
 
             return ForwardingResult.Failure(
                 responseStarted,
-                responseStarted ? null : 502,
+                ProxyForwardingFailurePolicy.ResponseStatusCodeForFailure(
+                    responseStarted,
+                    ProxyFailureKind.UpstreamConnectFailed),
                 ProxyFailureKind.UpstreamConnectFailed);
         }
         finally

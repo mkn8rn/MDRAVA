@@ -34,4 +34,9 @@ public static class ProxyForwardingFailurePolicy
             _ => 502
         };
     }
+
+    public static int? ResponseStatusCodeForFailure(bool responseStarted, ProxyFailureKind failureKind)
+    {
+        return responseStarted ? null : StatusCodeForFailure(failureKind);
+    }
 }
