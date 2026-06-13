@@ -38,7 +38,7 @@ public sealed record ProxyStatusResponse(
 
     public ProxyLogPersistenceStatusResponse LogPersistence { get; init; } = null!;
 
-    public ProxyReadinessStatus Readiness { get; init; } = null!;
+    public ProxyReadinessStatusResponse Readiness { get; init; } = null!;
 
     public ProxySubsystemSummaries Subsystems { get; init; } = null!;
 
@@ -73,7 +73,7 @@ public sealed record ProxyStatusResponse(
             RouteDiagnostics = response.RouteDiagnostics,
             ConfigLint = response.ConfigLint,
             LogPersistence = ProxyLogPersistenceStatusResponse.FromStatus(response.LogPersistence),
-            Readiness = response.Readiness,
+            Readiness = ProxyReadinessStatusResponse.FromStatus(response.Readiness),
             Subsystems = response.Subsystems,
             RuntimePreflight = ProxyRuntimePreflightStatusResponse.FromStatus(response.RuntimePreflight)
         };
