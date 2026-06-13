@@ -3,7 +3,6 @@ using MDRAVA.BLL.ControlPlane.Http3;
 using MDRAVA.BLL.ControlPlane.Listeners;
 using MDRAVA.BLL.ControlPlane.Metrics;
 using MDRAVA.BLL.ControlPlane.RouteDiagnostics;
-using MDRAVA.BLL.ControlPlane.Status;
 
 using BusinessProxyStatus = MDRAVA.BLL.ControlPlane.Status.ProxyStatus;
 
@@ -40,7 +39,7 @@ public sealed record ProxyStatusResponse(
 
     public ProxyReadinessStatusResponse Readiness { get; init; } = null!;
 
-    public ProxySubsystemSummaries Subsystems { get; init; } = null!;
+    public ProxySubsystemSummariesResponse Subsystems { get; init; } = null!;
 
     public ProxyRuntimePreflightStatusResponse RuntimePreflight { get; init; } = null!;
 
@@ -74,7 +73,7 @@ public sealed record ProxyStatusResponse(
             ConfigLint = ConfigLintStatusResponse.FromStatus(response.ConfigLint),
             LogPersistence = ProxyLogPersistenceStatusResponse.FromStatus(response.LogPersistence),
             Readiness = ProxyReadinessStatusResponse.FromStatus(response.Readiness),
-            Subsystems = response.Subsystems,
+            Subsystems = ProxySubsystemSummariesResponse.FromSummaries(response.Subsystems),
             RuntimePreflight = ProxyRuntimePreflightStatusResponse.FromStatus(response.RuntimePreflight)
         };
     }
