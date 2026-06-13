@@ -140,6 +140,7 @@ public sealed record ProxyMetricsSnapshotResponse(
     public static ProxyMetricsSnapshotResponse FromSnapshot(BusinessProxyMetricsSnapshot snapshot)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
+        var adminAuth = snapshot.AdminAuth;
         var configReloads = snapshot.ConfigReloads;
         var diagnostics = snapshot.Diagnostics;
         var health = snapshot.Health;
@@ -223,8 +224,8 @@ public sealed record ProxyMetricsSnapshotResponse(
             ProxyRequestSeriesSnapshotResponse.FromSnapshots(snapshot.RequestsByRoute),
             configReloads.Successes,
             configReloads.Failures,
-            snapshot.AdminAuthSuccesses,
-            snapshot.AdminAuthFailures,
+            adminAuth.Successes,
+            adminAuth.Failures,
             snapshot.AcmeRenewalAttempts,
             snapshot.AcmeRenewalSuccesses,
             snapshot.AcmeRenewalFailures,

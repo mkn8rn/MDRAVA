@@ -43,7 +43,7 @@ internal static class MetricsTests
         await middleware.InvokeAsync(context);
 
         AssertEx.Equal(StatusCodes.Status401Unauthorized, context.Response.StatusCode);
-        AssertEx.Equal(1L, metrics.Snapshot().AdminAuthFailures);
+        AssertEx.Equal(1L, metrics.Snapshot().AdminAuth.Failures);
     }
 
     public static void MetricsEndpointReturnsPrometheusText()
@@ -197,8 +197,9 @@ internal static class MetricsTests
             ConfigReloads: new ProxyConfigReloadMetricsSnapshot(
                 Successes: 0,
                 Failures: 0),
-            AdminAuthSuccesses: 0,
-            AdminAuthFailures: 0,
+            AdminAuth: new ProxyAdminAuthMetricsSnapshot(
+                Successes: 0,
+                Failures: 0),
             AcmeRenewalAttempts: 0,
             AcmeRenewalSuccesses: 0,
             AcmeRenewalFailures: 0,
