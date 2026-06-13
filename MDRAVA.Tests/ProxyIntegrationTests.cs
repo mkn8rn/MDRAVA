@@ -1396,7 +1396,7 @@ internal static class ProxyIntegrationTests
         AssertEx.True(result.ClientObservation.Contains("101 Switching Protocols", StringComparison.Ordinal), result.ClientObservation);
         AssertEx.True(result.UpstreamResult.Request.Contains("Connection: Upgrade", StringComparison.OrdinalIgnoreCase), result.UpstreamResult.Request);
         AssertEx.Equal(1L, result.Metrics.UpgradeRequestsSucceeded);
-        AssertEx.Equal(1L, result.Metrics.TotalTunnels);
+        AssertEx.Equal(1L, result.Metrics.Tunnels.Total);
     }
 
     public static async Task WebSocketUpgradeProducesTunnelDiagnostic()
@@ -1438,7 +1438,7 @@ internal static class ProxyIntegrationTests
             });
 
         AssertEx.Equal("hello", result.UpstreamResult.Observation);
-        AssertEx.Equal(5L, result.Metrics.TunnelBytesClientToUpstream);
+        AssertEx.Equal(5L, result.Metrics.Tunnels.BytesClientToUpstream);
     }
 
     public static async Task WebSocketTunnelRelaysUpstreamBytesToClient()
@@ -1459,7 +1459,7 @@ internal static class ProxyIntegrationTests
             });
 
         AssertEx.True(result.ClientObservation.EndsWith("world", StringComparison.Ordinal), result.ClientObservation);
-        AssertEx.Equal(5L, result.Metrics.TunnelBytesUpstreamToClient);
+        AssertEx.Equal(5L, result.Metrics.Tunnels.BytesUpstreamToClient);
     }
 
     public static async Task WebSocketTunnelClosesWhenClientCloses()
@@ -1479,7 +1479,7 @@ internal static class ProxyIntegrationTests
             });
 
         AssertEx.Equal("0", result.UpstreamResult.Observation);
-        AssertEx.Equal(1L, result.Metrics.TotalTunnels);
+        AssertEx.Equal(1L, result.Metrics.Tunnels.Total);
     }
 
     public static async Task WebSocketTunnelClosesWhenUpstreamCloses()
@@ -1499,7 +1499,7 @@ internal static class ProxyIntegrationTests
             });
 
         AssertEx.True(result.ClientObservation.Contains("101 Switching Protocols", StringComparison.Ordinal), result.ClientObservation);
-        AssertEx.Equal(1L, result.Metrics.TotalTunnels);
+        AssertEx.Equal(1L, result.Metrics.Tunnels.Total);
     }
 
     public static async Task WebSocketTunnelIdleTimeoutClosesTunnel()
@@ -1521,7 +1521,7 @@ internal static class ProxyIntegrationTests
             tunnelIdleTimeoutMs: 150);
 
         AssertEx.True(result.ClientObservation.Contains("101 Switching Protocols", StringComparison.Ordinal), result.ClientObservation);
-        AssertEx.Equal(1L, result.Metrics.TunnelIdleTimeouts);
+        AssertEx.Equal(1L, result.Metrics.Tunnels.IdleTimeouts);
     }
 
     public static async Task WebSocketUpgradeOverHttpsReturnsSwitchingProtocols()

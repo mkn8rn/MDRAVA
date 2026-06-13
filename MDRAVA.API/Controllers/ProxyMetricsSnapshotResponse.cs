@@ -143,6 +143,7 @@ public sealed record ProxyMetricsSnapshotResponse(
         var http3 = snapshot.Http3;
         var listeners = snapshot.Listeners;
         var resilience = snapshot.Resilience;
+        var tunnels = snapshot.Tunnels;
         var upstreamHttp3 = snapshot.UpstreamHttp3;
 
         return new ProxyMetricsSnapshotResponse(
@@ -186,12 +187,12 @@ public sealed record ProxyMetricsSnapshotResponse(
             snapshot.UpgradeRequestsSucceeded,
             snapshot.UpgradeRequestsRejected,
             snapshot.UpgradeUpstreamFailures,
-            snapshot.ActiveTunnels,
-            snapshot.TotalTunnels,
-            snapshot.TunnelIdleTimeouts,
-            snapshot.TunnelBytesClientToUpstream,
-            snapshot.TunnelBytesUpstreamToClient,
-            snapshot.TunnelRelayFailures,
+            tunnels.Active,
+            tunnels.Total,
+            tunnels.IdleTimeouts,
+            tunnels.BytesClientToUpstream,
+            tunnels.BytesUpstreamToClient,
+            tunnels.RelayFailures,
             snapshot.UpstreamSelections,
             snapshot.NoHealthyUpstreamFailures,
             snapshot.HealthChecksAttempted,

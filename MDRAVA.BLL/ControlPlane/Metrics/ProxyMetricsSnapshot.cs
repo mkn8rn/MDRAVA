@@ -44,12 +44,7 @@ public sealed record ProxyMetricsSnapshot(
     long UpgradeRequestsSucceeded,
     long UpgradeRequestsRejected,
     long UpgradeUpstreamFailures,
-    long ActiveTunnels,
-    long TotalTunnels,
-    long TunnelIdleTimeouts,
-    long TunnelBytesClientToUpstream,
-    long TunnelBytesUpstreamToClient,
-    long TunnelRelayFailures,
+    ProxyTunnelMetricsSnapshot Tunnels,
     long UpstreamSelections,
     long NoHealthyUpstreamFailures,
     long HealthChecksAttempted,
@@ -104,6 +99,9 @@ public sealed record ProxyMetricsSnapshot(
 
     public ProxyResilienceMetricsSnapshot Resilience { get; } =
         Resilience ?? throw new ArgumentNullException(nameof(Resilience));
+
+    public ProxyTunnelMetricsSnapshot Tunnels { get; } =
+        Tunnels ?? throw new ArgumentNullException(nameof(Tunnels));
 
     public IReadOnlyDictionary<string, long> RequestFailuresByKind { get; } =
         MetricsList.CopyDictionary(RequestFailuresByKind, StringComparer.Ordinal);
