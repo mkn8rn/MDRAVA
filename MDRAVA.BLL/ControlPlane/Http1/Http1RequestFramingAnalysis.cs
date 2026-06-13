@@ -1,0 +1,178 @@
+using System.Text;
+
+namespace MDRAVA.BLL.ControlPlane.Http1;
+
+public static partial class Http1RequestParser
+{
+    private static Http1RequestFramingAnalysisResult AnalyzeRequestFraming(
+        IReadOnlyList<string> contentLengthValues,
+        IReadOnlyList<string> transferEncodingValues)
+    {
+        if (transferEncodingValues.Count > 0 && contentLengthValues.Count > 0)
+        {
+            return Http1RequestFramingAnalysisResult.Reject(Http1ParseError.ContentLengthWithTransferEncoding);
+        }
+
+        if (transferEncodingValues.Count > 0)
+        {
+            var transferEncodingAnalysis = AnalyzeTransferEncoding(transferEncodingValues);
+            if (transferEncodingAnalysis is Http1TransferEncodingAnalysisResult.Rejected rejectedTransferEncoding)
+            {
+                return Http1RequestFramingAnalysisResult.Reject(rejectedTransferEncoding.Error);
+            }
+
+            return Http1RequestFramingAnalysisResult.Accept(Http1RequestFraming.Chunked);
+        }
+
+        if (contentLengthValues.Count == 0)
+        {
+            return Http1RequestFramingAnalysisResult.Accept(Http1RequestFraming.None);
+        }
+
+        var contentLengthAnalysis = AnalyzeContentLength(contentLengthValues);
+        if (contentLengthAnalysis is Http1ContentLengthAnalysisResult.Rejected rejectedContentLength)
+        {
+            return Http1RequestFramingAnalysisResult.Reject(rejectedContentLength.Error);
+        }
+
+        var contentLength = ((Http1ContentLengthAnalysisResult.Accepted)contentLengthAnalysis).ContentLength;
+        return Http1RequestFramingAnalysisResult.Accept(Http1RequestFraming.FromContentLength(contentLength));
+    }
+
+    public static Http1ContentLengthAnalysisResult AnalyzeContentLength(
+        IReadOnlyList<string> contentLengthValues)
+    {
+        long? observed = null;
+
+        foreach (var headerValue in contentLengthValues)
+        {
+            var parts = headerValue.Split(',', StringSplitOptions.TrimEntries);
+            foreach (var part in parts)
+            {
+                if (!TryParseNonNegativeInt64(Encoding.ASCII.GetBytes(part), out var parsed))
+                {
+                    return Http1ContentLengthAnalysisResult.Reject(Http1ParseError.InvalidContentLength);
+                }
+
+                if (observed.HasValue && observed.Value != parsed)
+                {
+                    return Http1ContentLengthAnalysisResult.Reject(Http1ParseError.ConflictingContentLength);
+                }
+
+                observed = parsed;
+            }
+        }
+
+        if (!observed.HasValue)
+        {
+            return Http1ContentLengthAnalysisResult.Reject(Http1ParseError.InvalidContentLength);
+        }
+
+        return Http1ContentLengthAnalysisResult.Accept(observed.Value);
+    }
+
+    public static Http1TransferEncodingAnalysisResult AnalyzeTransferEncoding(
+        IReadOnlyList<string> transferEncodingValues)
+    {
+        List<string> codings = [];
+
+        foreach (var headerValue in transferEncodingValues)
+        {
+            var parts = headerValue.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+            codings.AddRange(parts);
+        }
+
+        if (codings.Count == 0)
+        {
+            return Http1TransferEncodingAnalysisResult.Reject(Http1ParseError.InvalidTransferEncoding);
+        }
+
+        if (codings.Count != 1 || !string.Equals(codings[0], "chunked", StringComparison.OrdinalIgnoreCase))
+        {
+            return Http1TransferEncodingAnalysisResult.Reject(Http1ParseError.UnsupportedTransferEncoding);
+        }
+
+        return Http1TransferEncodingAnalysisResult.Accepted;
+    }
+
+    private abstract record Http1RequestFramingAnalysisResult
+    {
+        private Http1RequestFramingAnalysisResult()
+        {
+        }
+
+        public static Http1RequestFramingAnalysisResult Accept(Http1RequestFraming framing)
+        {
+            ArgumentNullException.ThrowIfNull(framing);
+            return new Accepted(framing);
+        }
+
+        public static Http1RequestFramingAnalysisResult Reject(Http1ParseError error)
+        {
+            if (error == Http1ParseError.None)
+            {
+                throw new ArgumentException("Request framing rejection requires a parse error.", nameof(error));
+            }
+
+            return new Rejected(error);
+        }
+
+        public sealed record Accepted(Http1RequestFraming Framing) : Http1RequestFramingAnalysisResult;
+
+        public sealed record Rejected(Http1ParseError Error) : Http1RequestFramingAnalysisResult;
+    }
+}
+
+public abstract record Http1ContentLengthAnalysisResult
+{
+    private Http1ContentLengthAnalysisResult()
+    {
+    }
+
+    public static Http1ContentLengthAnalysisResult Accept(long contentLength)
+    {
+        if (contentLength < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(contentLength), "Content-Length cannot be negative.");
+        }
+
+        return new Accepted(contentLength);
+    }
+
+    public static Http1ContentLengthAnalysisResult Reject(Http1ParseError error)
+    {
+        if (error == Http1ParseError.None)
+        {
+            throw new ArgumentException("Content-Length rejection requires a parse error.", nameof(error));
+        }
+
+        return new Rejected(error);
+    }
+
+    public sealed record Accepted(long ContentLength) : Http1ContentLengthAnalysisResult;
+
+    public sealed record Rejected(Http1ParseError Error) : Http1ContentLengthAnalysisResult;
+}
+
+public abstract record Http1TransferEncodingAnalysisResult
+{
+    private Http1TransferEncodingAnalysisResult()
+    {
+    }
+
+    public static Http1TransferEncodingAnalysisResult Accepted { get; } = new AcceptedResult();
+
+    public static Http1TransferEncodingAnalysisResult Reject(Http1ParseError error)
+    {
+        if (error == Http1ParseError.None)
+        {
+            throw new ArgumentException("Transfer-Encoding rejection requires a parse error.", nameof(error));
+        }
+
+        return new Rejected(error);
+    }
+
+    public sealed record Rejected(Http1ParseError Error) : Http1TransferEncodingAnalysisResult;
+
+    private sealed record AcceptedResult : Http1TransferEncodingAnalysisResult;
+}
