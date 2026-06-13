@@ -34,9 +34,21 @@ public sealed partial class ProxyMetrics
 
     public void UpstreamPrematureDisconnect() => Interlocked.Increment(ref _upstreamPrematureDisconnects);
 
-    public void ProxyGenerated502() => Interlocked.Increment(ref _proxyGenerated502Responses);
+    public void GeneratedFailureResponse(int statusCode)
+    {
+        if (statusCode == 502)
+        {
+            ProxyGenerated502();
+        }
+        else if (statusCode == 504)
+        {
+            ProxyGenerated504();
+        }
+    }
 
-    public void ProxyGenerated504() => Interlocked.Increment(ref _proxyGenerated504Responses);
+    private void ProxyGenerated502() => Interlocked.Increment(ref _proxyGenerated502Responses);
+
+    private void ProxyGenerated504() => Interlocked.Increment(ref _proxyGenerated504Responses);
 
     public void UpstreamRequestFailed() => Interlocked.Increment(ref _upstreamRequestFailures);
 }

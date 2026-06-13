@@ -61,6 +61,19 @@ internal static class MetricsTests
         AssertEx.True(text.Contains("# TYPE mdrava_requests_total counter", StringComparison.Ordinal));
     }
 
+    public static void GeneratedFailureResponseMetricsClassifyCountedStatuses()
+    {
+        var metrics = new ProxyMetrics();
+
+        metrics.GeneratedFailureResponse(502);
+        metrics.GeneratedFailureResponse(504);
+        metrics.GeneratedFailureResponse(408);
+
+        var snapshot = metrics.Snapshot();
+        AssertEx.Equal(1L, snapshot.ProxyGenerated502Responses);
+        AssertEx.Equal(1L, snapshot.ProxyGenerated504Responses);
+    }
+
     public static void MetricsExportInputSourceReadsActiveRuntimeFacts()
     {
         using var fixture = MetricsFixture.Create();

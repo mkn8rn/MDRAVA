@@ -259,7 +259,7 @@ public sealed class ProxyForwarder
 
             if (ProxyGeneratedFailurePolicy.CanWriteFailureResponse(responseStarted, suppressGeneratedFailureResponse))
             {
-                _metrics.ProxyGenerated502();
+                _metrics.GeneratedFailureResponse(502);
                 await ProxyErrorResponses.WriteAsync(
                     clientStream,
                     BuildGeneratedBadGateway(requestId),
@@ -290,7 +290,7 @@ public sealed class ProxyForwarder
 
             if (ProxyGeneratedFailurePolicy.CanWriteFailureResponse(responseStarted, suppressGeneratedFailureResponse))
             {
-                _metrics.ProxyGenerated502();
+                _metrics.GeneratedFailureResponse(502);
                 await ProxyErrorResponses.WriteAsync(
                     clientStream,
                     BuildGeneratedBadGateway(requestId),
@@ -332,7 +332,7 @@ public sealed class ProxyForwarder
 
             if (ProxyGeneratedFailurePolicy.CanWriteFailureResponse(responseStarted, suppressGeneratedFailureResponse))
             {
-                _metrics.ProxyGenerated502();
+                _metrics.GeneratedFailureResponse(502);
                 await ProxyErrorResponses.WriteAsync(
                     clientStream,
                     BuildGeneratedBadGateway(requestId),
@@ -364,7 +364,7 @@ public sealed class ProxyForwarder
 
             if (ProxyGeneratedFailurePolicy.CanWriteFailureResponse(responseStarted, suppressGeneratedFailureResponse))
             {
-                _metrics.ProxyGenerated502();
+                _metrics.GeneratedFailureResponse(502);
                 await ProxyErrorResponses.WriteAsync(
                     clientStream,
                     BuildGeneratedBadGateway(requestId),
@@ -390,7 +390,7 @@ public sealed class ProxyForwarder
 
             if (ProxyGeneratedFailurePolicy.CanWriteFailureResponse(responseStarted, suppressGeneratedFailureResponse))
             {
-                _metrics.ProxyGenerated502();
+                _metrics.GeneratedFailureResponse(502);
                 await ProxyErrorResponses.WriteAsync(
                     clientStream,
                     BuildGeneratedBadGateway(requestId),
@@ -731,7 +731,7 @@ public sealed class ProxyForwarder
                 _logger.LogWarning(exception, "Timed out connecting to upstream {UpstreamName}", upstream.Name);
                 if (ProxyGeneratedFailurePolicy.CanWriteFailureResponse(responseStarted, suppressGeneratedFailureResponse))
                 {
-                    _metrics.ProxyGenerated504();
+                    _metrics.GeneratedFailureResponse(504);
                     await ProxyErrorResponses.WriteAsync(clientStream, BuildGeneratedGatewayTimeout(requestId), timeouts.DownstreamWriteTimeout, _metrics, cancellationToken);
                 }
                 break;
@@ -741,7 +741,7 @@ public sealed class ProxyForwarder
                 _logger.LogWarning(exception, "Timed out waiting for upstream response head from {UpstreamName}", upstream.Name);
                 if (ProxyGeneratedFailurePolicy.CanWriteFailureResponse(responseStarted, suppressGeneratedFailureResponse))
                 {
-                    _metrics.ProxyGenerated504();
+                    _metrics.GeneratedFailureResponse(504);
                     await ProxyErrorResponses.WriteAsync(clientStream, BuildGeneratedGatewayTimeout(requestId), timeouts.DownstreamWriteTimeout, _metrics, cancellationToken);
                 }
                 break;

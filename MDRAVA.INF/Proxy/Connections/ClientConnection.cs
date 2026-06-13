@@ -866,14 +866,7 @@ public sealed class ClientConnection
         CancellationToken cancellationToken)
     {
         var statusCode = result.ResponseStatusCode ?? ProxyForwardingFailurePolicy.StatusCodeForFailure(result.FailureKind);
-        if (statusCode == 502)
-        {
-            _metrics.ProxyGenerated502();
-        }
-        else if (statusCode == 504)
-        {
-            _metrics.ProxyGenerated504();
-        }
+        _metrics.GeneratedFailureResponse(statusCode);
 
         var reason = ProxyRouteActionPolicy.ReasonPhrase(statusCode);
         await WriteGeneratedResponseAsync(
