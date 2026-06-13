@@ -74,6 +74,224 @@ internal static class MetricsTests
         AssertEx.Equal(1L, snapshot.ProxyGenerated504Responses);
     }
 
+    public static void MetricsSnapshotCopiesCollectionInputs()
+    {
+        var requestFailures = new Dictionary<string, long>(StringComparer.Ordinal)
+        {
+            ["ConnectFailure"] = 2
+        };
+        var requestsByRoute = new List<ProxyRequestSeriesSnapshot>
+        {
+            new("site-a", "route-a", "proxy", "2xx", 3)
+        };
+        var retrySkipped = new List<ProxyRetrySkippedSnapshot>
+        {
+            new("unsafe_method", 4)
+        };
+        var upstreamSelections = new List<ProxyUpstreamSelectionSnapshot>
+        {
+            new("route-a", "upstream-a", "http", RuntimeUpstreamProtocol.Http1, 5)
+        };
+        var http2ProtocolErrors = new Dictionary<string, long>(StringComparer.Ordinal)
+        {
+            ["stream_error"] = 6
+        };
+        var upstreamHttp3ProtocolErrors = new Dictionary<string, long>(StringComparer.Ordinal)
+        {
+            ["goaway"] = 7
+        };
+        var http3RequestsByOutcome = new List<ProxyHttp3RequestOutcomeSnapshot>
+        {
+            new("GET", "proxied", "2xx", 8)
+        };
+        var http3RejectedRequests = new Dictionary<string, long>(StringComparer.Ordinal)
+        {
+            ["malformed"] = 9
+        };
+        var http3ProtocolErrors = new Dictionary<string, long>(StringComparer.Ordinal)
+        {
+            ["qpack"] = 10
+        };
+        var configLintFindings = new List<ProxyConfigLintFindingMetricSnapshot>
+        {
+            new("warning", "route_shadowed", 11)
+        };
+        var routeMatchFailures = new List<ProxyRouteDryRunFailureSnapshot>
+        {
+            new("no_route", 12)
+        };
+
+        var snapshot = new ProxyMetricsSnapshot(
+            AcceptedConnections: 0,
+            ActiveConnections: 0,
+            TotalRequests: 0,
+            UpstreamSuccesses: 0,
+            UpstreamFailures: 0,
+            BytesRead: 0,
+            BytesWritten: 0,
+            ParseErrors: 0,
+            RejectedMalformedRequests: 0,
+            RejectedUnsupportedRequestFraming: 0,
+            UpstreamMalformedResponses: 0,
+            ClientBodyRelayFailures: 0,
+            UpstreamBodyRelayFailures: 0,
+            ClientRequestHeadTimeouts: 0,
+            ClientRequestBodyTimeouts: 0,
+            UpstreamConnectFailures: 0,
+            UpstreamConnectTimeouts: 0,
+            UpstreamResponseHeadTimeouts: 0,
+            UpstreamResponseBodyTimeouts: 0,
+            UpstreamPrematureDisconnects: 0,
+            ClientPrematureDisconnects: 0,
+            ProxyGenerated502Responses: 0,
+            ProxyGenerated504Responses: 0,
+            DownstreamWriteTimeouts: 0,
+            TlsHandshakeAttempts: 0,
+            TlsHandshakeSuccesses: 0,
+            TlsHandshakeFailures: 0,
+            TlsHandshakeTimeouts: 0,
+            TlsNoCertificateForSniFailures: 0,
+            ClientConnectionsClosedByIdleTimeout: 0,
+            ClientConnectionsClosedByMaxRequests: 0,
+            UpstreamConnectionsOpened: 0,
+            UpstreamConnectionsReused: 0,
+            UpstreamConnectionsDiscarded: 0,
+            UpstreamPoolIdleConnections: 0,
+            UpstreamPoolActiveConnections: 0,
+            UpgradeRequestsReceived: 0,
+            UpgradeRequestsSucceeded: 0,
+            UpgradeRequestsRejected: 0,
+            UpgradeUpstreamFailures: 0,
+            ActiveTunnels: 0,
+            TotalTunnels: 0,
+            TunnelIdleTimeouts: 0,
+            TunnelBytesClientToUpstream: 0,
+            TunnelBytesUpstreamToClient: 0,
+            TunnelRelayFailures: 0,
+            UpstreamSelections: 0,
+            NoHealthyUpstreamFailures: 0,
+            HealthChecksAttempted: 0,
+            HealthChecksSucceeded: 0,
+            HealthChecksFailed: 0,
+            UpstreamHealthTransitions: 0,
+            UpstreamRequestFailures: 0,
+            RequestIdsGenerated: 0,
+            AccessLogsEmitted: 0,
+            RecentDiagnosticsOverwritten: 0,
+            ConnectionAdmissionRejections: 0,
+            ActiveTlsHandshakes: 0,
+            TlsHandshakeAdmissionRejections: 0,
+            RateLimitedRequests: 0,
+            RateLimitedUpgrades: 0,
+            RequestBodySizeRejections: 0,
+            ParserLimitRejections: 0,
+            RequestFailuresByKind: requestFailures,
+            RequestsByRoute: requestsByRoute,
+            ConfigReloadSuccesses: 0,
+            ConfigReloadFailures: 0,
+            AdminAuthSuccesses: 0,
+            AdminAuthFailures: 0,
+            AcmeRenewalAttempts: 0,
+            AcmeRenewalSuccesses: 0,
+            AcmeRenewalFailures: 0,
+            RetryAttempts: 0,
+            RetryExhausted: 0,
+            RetrySkipped: retrySkipped,
+            CircuitOpened: 0,
+            CircuitHalfOpened: 0,
+            CircuitClosed: 0,
+            CircuitRejections: 0,
+            NoAvailableUpstreamFailures: 0,
+            UpstreamSelectionsByUpstream: upstreamSelections,
+            ListenerReloadAttempts: 0,
+            ListenerReloadSuccesses: 0,
+            ListenerReloadFailures: 0,
+            ListenerReloadAdded: 0,
+            ListenerReloadRemoved: 0,
+            ListenerReloadChanged: 0,
+            ListenerReloadUnchanged: 0,
+            ListenerStartFailures: 0,
+            ListenerDrainCount: 0,
+            ActiveListeners: 0,
+            Http2AcceptedConnections: 0,
+            Http2Requests: 0,
+            ActiveHttp2Streams: 0,
+            Http2ProtocolErrors: http2ProtocolErrors,
+            UpstreamHttp2Requests: 0,
+            UpstreamHttp2AlpnFailures: 0,
+            UpstreamHttp2ProtocolErrors: 0,
+            UpstreamHttp3Requests: 0,
+            UpstreamHttp3ConnectionAttempts: 0,
+            UpstreamHttp3ConnectionSuccesses: 0,
+            UpstreamHttp3ConnectionFailures: 0,
+            UpstreamHttp3PoolConnectionsOpened: 0,
+            UpstreamHttp3PoolConnectionsReused: 0,
+            UpstreamHttp3PoolConnectionsClosed: 0,
+            UpstreamHttp3StreamLimitRejections: 0,
+            ActiveUpstreamHttp3Connections: 0,
+            ActiveUpstreamHttp3Streams: 0,
+            UpstreamHttp3ProtocolErrors: upstreamHttp3ProtocolErrors,
+            Http3AcceptedConnections: 0,
+            ActiveHttp3Connections: 0,
+            Http3Requests: 0,
+            Http3ProxiedRequests: 0,
+            Http3GeneratedResponses: 0,
+            ActiveHttp3Streams: 0,
+            Http3StreamResets: 0,
+            Http3StreamedResponses: 0,
+            ActiveHttp3ResponseStreams: 0,
+            Http3ResponseBytesSent: 0,
+            Http3RequestBodyBytesReceived: 0,
+            Http3ResponseStreamResets: 0,
+            Http3AltSvcEmitted: 0,
+            Http3AltSvcSuppressed: 0,
+            Http3RequestsByOutcome: http3RequestsByOutcome,
+            Http3RejectedRequests: http3RejectedRequests,
+            Http3ProtocolErrors: http3ProtocolErrors,
+            QuicListenerStartSuccesses: 0,
+            QuicListenerStartFailures: 0,
+            ActiveQuicListeners: 0,
+            ConfigLintRuns: 0,
+            ConfigLintFindings: configLintFindings,
+            RouteMatchDryRuns: 0,
+            RouteMatchDryRunFailures: routeMatchFailures);
+
+        requestFailures.Clear();
+        requestsByRoute.Clear();
+        retrySkipped.Clear();
+        upstreamSelections.Clear();
+        http2ProtocolErrors.Clear();
+        upstreamHttp3ProtocolErrors.Clear();
+        http3RequestsByOutcome.Clear();
+        http3RejectedRequests.Clear();
+        http3ProtocolErrors.Clear();
+        configLintFindings.Clear();
+        routeMatchFailures.Clear();
+
+        AssertEx.Equal(2L, snapshot.RequestFailuresByKind["ConnectFailure"]);
+        AssertEx.Equal("route-a", snapshot.RequestsByRoute[0].Route);
+        AssertEx.Equal("unsafe_method", snapshot.RetrySkipped[0].Reason);
+        AssertEx.Equal("upstream-a", snapshot.UpstreamSelectionsByUpstream[0].Upstream);
+        AssertEx.Equal(6L, snapshot.Http2ProtocolErrors["stream_error"]);
+        AssertEx.Equal(7L, snapshot.UpstreamHttp3ProtocolErrors["goaway"]);
+        AssertEx.Equal("proxied", snapshot.Http3RequestsByOutcome[0].Outcome);
+        AssertEx.Equal(9L, snapshot.Http3RejectedRequests["malformed"]);
+        AssertEx.Equal(10L, snapshot.Http3ProtocolErrors["qpack"]);
+        AssertEx.Equal("route_shadowed", snapshot.ConfigLintFindings[0].Code);
+        AssertEx.Equal("no_route", snapshot.RouteMatchDryRunFailures[0].Reason);
+        AssertEx.False(snapshot.RequestFailuresByKind is Dictionary<string, long>);
+        AssertEx.False(snapshot.RequestsByRoute is ProxyRequestSeriesSnapshot[]);
+        AssertEx.False(snapshot.RetrySkipped is ProxyRetrySkippedSnapshot[]);
+        AssertEx.False(snapshot.UpstreamSelectionsByUpstream is ProxyUpstreamSelectionSnapshot[]);
+        AssertEx.False(snapshot.Http2ProtocolErrors is Dictionary<string, long>);
+        AssertEx.False(snapshot.UpstreamHttp3ProtocolErrors is Dictionary<string, long>);
+        AssertEx.False(snapshot.Http3RequestsByOutcome is ProxyHttp3RequestOutcomeSnapshot[]);
+        AssertEx.False(snapshot.Http3RejectedRequests is Dictionary<string, long>);
+        AssertEx.False(snapshot.Http3ProtocolErrors is Dictionary<string, long>);
+        AssertEx.False(snapshot.ConfigLintFindings is ProxyConfigLintFindingMetricSnapshot[]);
+        AssertEx.False(snapshot.RouteMatchDryRunFailures is ProxyRouteDryRunFailureSnapshot[]);
+    }
+
     public static void MetricsExportInputSourceReadsActiveRuntimeFacts()
     {
         using var fixture = MetricsFixture.Create();

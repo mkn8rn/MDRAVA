@@ -136,4 +136,38 @@ public sealed record ProxyMetricsSnapshot(
     long ConfigLintRuns,
     IReadOnlyList<ProxyConfigLintFindingMetricSnapshot> ConfigLintFindings,
     long RouteMatchDryRuns,
-    IReadOnlyList<ProxyRouteDryRunFailureSnapshot> RouteMatchDryRunFailures);
+    IReadOnlyList<ProxyRouteDryRunFailureSnapshot> RouteMatchDryRunFailures)
+{
+    public IReadOnlyDictionary<string, long> RequestFailuresByKind { get; } =
+        MetricsList.CopyDictionary(RequestFailuresByKind, StringComparer.Ordinal);
+
+    public IReadOnlyList<ProxyRequestSeriesSnapshot> RequestsByRoute { get; } =
+        MetricsList.Copy(RequestsByRoute);
+
+    public IReadOnlyList<ProxyRetrySkippedSnapshot> RetrySkipped { get; } =
+        MetricsList.Copy(RetrySkipped);
+
+    public IReadOnlyList<ProxyUpstreamSelectionSnapshot> UpstreamSelectionsByUpstream { get; } =
+        MetricsList.Copy(UpstreamSelectionsByUpstream);
+
+    public IReadOnlyDictionary<string, long> Http2ProtocolErrors { get; } =
+        MetricsList.CopyDictionary(Http2ProtocolErrors, StringComparer.Ordinal);
+
+    public IReadOnlyDictionary<string, long> UpstreamHttp3ProtocolErrors { get; } =
+        MetricsList.CopyDictionary(UpstreamHttp3ProtocolErrors, StringComparer.Ordinal);
+
+    public IReadOnlyList<ProxyHttp3RequestOutcomeSnapshot> Http3RequestsByOutcome { get; } =
+        MetricsList.Copy(Http3RequestsByOutcome);
+
+    public IReadOnlyDictionary<string, long> Http3RejectedRequests { get; } =
+        MetricsList.CopyDictionary(Http3RejectedRequests, StringComparer.Ordinal);
+
+    public IReadOnlyDictionary<string, long> Http3ProtocolErrors { get; } =
+        MetricsList.CopyDictionary(Http3ProtocolErrors, StringComparer.Ordinal);
+
+    public IReadOnlyList<ProxyConfigLintFindingMetricSnapshot> ConfigLintFindings { get; } =
+        MetricsList.Copy(ConfigLintFindings);
+
+    public IReadOnlyList<ProxyRouteDryRunFailureSnapshot> RouteMatchDryRunFailures { get; } =
+        MetricsList.Copy(RouteMatchDryRunFailures);
+}
