@@ -27,8 +27,8 @@ public sealed record ProxyCacheStatus
         StoreRejectionCount = storeRejectionCount;
         LastClearedAtUtc = lastClearedAtUtc;
         LastClearReason = lastClearReason;
-        Rejections = rejections.ToArray();
-        Routes = routes.ToArray();
+        Rejections = CacheList.Copy(rejections);
+        Routes = CacheList.Copy(routes);
     }
 
     public int EntryCount { get; }

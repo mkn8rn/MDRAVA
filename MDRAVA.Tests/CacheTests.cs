@@ -319,11 +319,31 @@ internal static class CacheTests
     public static void CacheResponseAndStatusCopyInputCollections()
     {
         var storedAtUtc = DateTimeOffset.UnixEpoch.AddMinutes(1);
+        var varyByHeaders = new List<string> { "X-Tenant" };
+        var cacheableStatusCodes = new List<int> { 200 };
+        var methods = new List<string> { "GET" };
+        var policy = new ProxyCachePolicyFacts(
+            Enabled: true,
+            MaxEntryBytes: 1024,
+            MaxTotalBytes: 4096,
+            DefaultTtl: TimeSpan.FromSeconds(60),
+            RespectOriginCacheControl: true,
+            VaryByHeaders: varyByHeaders,
+            CacheableStatusCodes: cacheableStatusCodes,
+            Methods: methods);
         var headers = new List<ProxyHeaderField>
         {
             new("Content-Type", "text/plain")
         };
         var body = Encoding.ASCII.GetBytes("cached-body");
+        var runtimeRejections = new List<ProxyCacheRuntimeRejectionSnapshot>
+        {
+            new("authorization", 1)
+        };
+        var runtimeEntries = new List<ProxyCacheRuntimeEntrySnapshot>
+        {
+            new("api", 11)
+        };
         var rejections = new List<ProxyCacheRejectionStatus>
         {
             ProxyCacheRejectionStatus.FromRuntimeRejection(new ProxyCacheRuntimeRejectionSnapshot("authorization", 1))
@@ -344,8 +364,8 @@ internal static class CacheTests
             StoreRejectionCount: 6,
             LastClearedAtUtc: null,
             LastClearReason: null,
-            Rejections: [],
-            Entries: []);
+            Rejections: runtimeRejections,
+            Entries: runtimeEntries);
 
         var response = new CachedProxyResponse(
             200,
@@ -356,15 +376,36 @@ internal static class CacheTests
             storedAtUtc.AddMinutes(1));
         var status = ProxyCacheStatus.FromRuntimeSnapshot(runtime, rejections, routes);
 
+        varyByHeaders[0] = "X-Replacement";
+        cacheableStatusCodes[0] = 500;
+        methods[0] = "POST";
         headers.Clear();
         body[0] = (byte)'X';
+        var returnedBody = response.Body;
+        returnedBody[0] = (byte)'Y';
+        runtimeRejections[0] = new ProxyCacheRuntimeRejectionSnapshot("replacement", 9);
+        runtimeEntries[0] = new ProxyCacheRuntimeEntrySnapshot("replacement", 99);
         rejections.Clear();
         routes.Clear();
+        varyByHeaders.Clear();
+        cacheableStatusCodes.Clear();
+        methods.Clear();
+        runtimeRejections.Clear();
+        runtimeEntries.Clear();
 
+        AssertEx.Equal("X-Tenant", policy.VaryByHeaders[0]);
+        AssertEx.Equal(200, policy.CacheableStatusCodes[0]);
+        AssertEx.Equal("GET", policy.Methods[0]);
         AssertEx.Equal("Content-Type", response.Headers[0].Name);
         AssertEx.Equal((byte)'c', response.Body[0]);
+        AssertEx.Equal("authorization", runtime.Rejections[0].Reason);
+        AssertEx.Equal("api", runtime.Entries[0].RouteName);
         AssertEx.Equal("authorization", status.Rejections[0].Reason);
         AssertEx.Equal("api", status.Routes[0].RouteName);
+        AssertEx.False(policy.VaryByHeaders is string[], "Cache policy vary headers should not expose a mutable array.");
+        AssertEx.False(response.Headers is ProxyHeaderField[], "Cached response headers should not expose a mutable array.");
+        AssertEx.False(runtime.Rejections is ProxyCacheRuntimeRejectionSnapshot[], "Cache runtime rejections should not expose a mutable array.");
+        AssertEx.False(status.Rejections is ProxyCacheRejectionStatus[], "Cache status rejections should not expose a mutable array.");
     }
 
     public static async Task OversizedResponseIsStreamedButNotCached()

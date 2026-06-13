@@ -4,6 +4,8 @@ namespace MDRAVA.BLL.ControlPlane.Caching;
 
 public sealed class CachedProxyResponse
 {
+    private readonly byte[] _body;
+
     public CachedProxyResponse(
         int statusCode,
         string reasonPhrase,
@@ -17,8 +19,8 @@ public sealed class CachedProxyResponse
 
         StatusCode = statusCode;
         ReasonPhrase = reasonPhrase;
-        Headers = headers.ToArray();
-        Body = body.ToArray();
+        Headers = CacheList.Copy(headers);
+        _body = body.ToArray();
         StoredAtUtc = storedAtUtc;
         ExpiresAtUtc = expiresAtUtc;
     }
@@ -29,7 +31,7 @@ public sealed class CachedProxyResponse
 
     public IReadOnlyList<ProxyHeaderField> Headers { get; }
 
-    public byte[] Body { get; }
+    public byte[] Body => _body.ToArray();
 
     public DateTimeOffset StoredAtUtc { get; }
 
