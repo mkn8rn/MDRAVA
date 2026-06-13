@@ -12,12 +12,12 @@ public sealed class ProxyMetricsExportAvailabilityReader : IProxyMetricsExportAv
 
     public ProxyMetricsExportAvailabilityState Read()
     {
-        var configuration = _configurationSource.ReadConfiguration();
-        if (configuration is null)
+        var configurationResult = _configurationSource.ReadConfiguration();
+        if (configurationResult is not ProxyMetricsExportConfigurationReadResult.AvailableResult available)
         {
             return ProxyMetricsExportAvailabilityState.MissingConfiguration;
         }
 
-        return ProxyMetricsExportAvailabilityState.FromConfiguration(configuration);
+        return ProxyMetricsExportAvailabilityState.FromConfiguration(available.Configuration);
     }
 }

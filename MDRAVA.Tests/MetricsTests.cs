@@ -70,8 +70,10 @@ internal static class MetricsTests
             store,
             fixture);
 
-        var input = AssertEx.NotNull(source.ReadInput());
+        var result = source.ReadInput();
 
+        AssertEx.True(result is ProxyMetricsExportInputReadResult.AvailableResult);
+        var input = ((ProxyMetricsExportInputReadResult.AvailableResult)result).Input;
         AssertEx.Equal(0L, input.Metrics.TotalRequests);
         AssertEx.Equal(0L, input.Metrics.UpstreamFailures);
         AssertEx.Equal(0, input.DefaultEnabledHttp3ListenerCount);
@@ -861,9 +863,9 @@ internal static class MetricsTests
     {
         public static MissingMetricsExportConfigurationSource Instance { get; } = new();
 
-        public ProxyMetricsExportConfiguration? ReadConfiguration()
+        public ProxyMetricsExportConfigurationReadResult ReadConfiguration()
         {
-            return null;
+            return ProxyMetricsExportConfigurationReadResult.MissingConfiguration;
         }
     }
 

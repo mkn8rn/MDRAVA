@@ -73,12 +73,74 @@ public static class ProxyMetricsExportHttp3FactsMapper
 
 public interface IProxyMetricsExportInputSource
 {
-    ProxyMetricsExportInput? ReadInput();
+    ProxyMetricsExportInputReadResult ReadInput();
 }
 
 public interface IProxyMetricsExportConfigurationSource
 {
-    ProxyMetricsExportConfiguration? ReadConfiguration();
+    ProxyMetricsExportConfigurationReadResult ReadConfiguration();
+}
+
+public abstract record ProxyMetricsExportConfigurationReadResult
+{
+    private ProxyMetricsExportConfigurationReadResult()
+    {
+    }
+
+    public static ProxyMetricsExportConfigurationReadResult MissingConfiguration { get; } =
+        new MissingConfigurationResult();
+
+    public static ProxyMetricsExportConfigurationReadResult Available(ProxyMetricsExportConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        return new AvailableResult(configuration);
+    }
+
+    public sealed record AvailableResult : ProxyMetricsExportConfigurationReadResult
+    {
+        public AvailableResult(ProxyMetricsExportConfiguration configuration)
+        {
+            ArgumentNullException.ThrowIfNull(configuration);
+
+            Configuration = configuration;
+        }
+
+        public ProxyMetricsExportConfiguration Configuration { get; }
+    }
+
+    public sealed record MissingConfigurationResult : ProxyMetricsExportConfigurationReadResult;
+}
+
+public abstract record ProxyMetricsExportInputReadResult
+{
+    private ProxyMetricsExportInputReadResult()
+    {
+    }
+
+    public static ProxyMetricsExportInputReadResult MissingConfiguration { get; } =
+        new MissingConfigurationResult();
+
+    public static ProxyMetricsExportInputReadResult Available(ProxyMetricsExportInput input)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+
+        return new AvailableResult(input);
+    }
+
+    public sealed record AvailableResult : ProxyMetricsExportInputReadResult
+    {
+        public AvailableResult(ProxyMetricsExportInput input)
+        {
+            ArgumentNullException.ThrowIfNull(input);
+
+            Input = input;
+        }
+
+        public ProxyMetricsExportInput Input { get; }
+    }
+
+    public sealed record MissingConfigurationResult : ProxyMetricsExportInputReadResult;
 }
 
 public static class ProxyMetricsExportInputMapper
@@ -115,19 +177,20 @@ public sealed class ProxyConfigurationMetricsExportConfigurationSource
         _configurationStore = configurationStore;
     }
 
-    public ProxyMetricsExportConfiguration? ReadConfiguration()
+    public ProxyMetricsExportConfigurationReadResult ReadConfiguration()
     {
         var snapshotResult = _configurationStore.ReadSnapshot();
         if (snapshotResult is not ProxyConfigurationSnapshotReadResult.AvailableResult available)
         {
-            return null;
+            return ProxyMetricsExportConfigurationReadResult.MissingConfiguration;
         }
 
         var snapshot = available.Snapshot;
-        return ProxyMetricsExportConfigurationMapper.FromSources(
-            snapshot.Metrics.Enabled,
-            ProxyMetricsExportLabelOptionsMapper.FromMetrics(snapshot.Metrics),
-            ProxyMetricsExportHttp3FactsMapper.FromRuntimeConfiguration(snapshot.Listeners, snapshot.Routes));
+        return ProxyMetricsExportConfigurationReadResult.Available(
+            ProxyMetricsExportConfigurationMapper.FromSources(
+                snapshot.Metrics.Enabled,
+                ProxyMetricsExportLabelOptionsMapper.FromMetrics(snapshot.Metrics),
+                ProxyMetricsExportHttp3FactsMapper.FromRuntimeConfiguration(snapshot.Listeners, snapshot.Routes)));
     }
 }
 
@@ -153,20 +216,21 @@ public sealed class ProxyMetricsExportInputSource : IProxyMetricsExportInputSour
         _acmeStatusSource = acmeStatusSource;
     }
 
-    public ProxyMetricsExportInput? ReadInput()
+    public ProxyMetricsExportInputReadResult ReadInput()
     {
-        var configuration = _configurationSource.ReadConfiguration();
-        if (configuration is null)
+        var configurationResult = _configurationSource.ReadConfiguration();
+        if (configurationResult is not ProxyMetricsExportConfigurationReadResult.AvailableResult available)
         {
-            return null;
+            return ProxyMetricsExportInputReadResult.MissingConfiguration;
         }
 
-        return ProxyMetricsExportInputMapper.FromSources(
+        var configuration = available.Configuration;
+        return ProxyMetricsExportInputReadResult.Available(ProxyMetricsExportInputMapper.FromSources(
             _metricsSource.ReadMetrics(),
             configuration.LabelOptions,
             configuration.Http3Facts,
             _cacheStatusReader.GetStatus(),
             _upstreamHealthReader.ReadUpstreams(),
-            _acmeStatusSource.GetLifecycleStatuses());
+            _acmeStatusSource.GetLifecycleStatuses()));
     }
 }

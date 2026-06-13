@@ -23,14 +23,14 @@ public sealed class ProxyMetricsExportProvider : IProxyMetricsExportProvider
             return ProxyMetricsExportResult.NotAvailable;
         }
 
-        var input = _inputSource.ReadInput();
-        if (input is null)
+        var inputResult = _inputSource.ReadInput();
+        if (inputResult is not ProxyMetricsExportInputReadResult.AvailableResult available)
         {
             return ProxyMetricsExportResult.NotAvailable;
         }
 
         return ProxyMetricsExportResult.Create(
-            _exporter.Export(input),
+            _exporter.Export(available.Input),
             PrometheusMetricsExporter.ContentType);
     }
 }
