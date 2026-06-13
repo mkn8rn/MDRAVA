@@ -12,7 +12,38 @@ public interface IProxyStatusRuntimeStateSource
 
 public interface IProxyStatusConfigurationSource
 {
-    bool TryReadConfiguration(out ProxyStatusConfigurationSourceSet? configuration);
+    ProxyStatusConfigurationReadResult ReadConfiguration();
+}
+
+public abstract record ProxyStatusConfigurationReadResult
+{
+    private ProxyStatusConfigurationReadResult()
+    {
+    }
+
+    public static ProxyStatusConfigurationReadResult MissingConfiguration { get; } =
+        new MissingConfigurationResult();
+
+    public static ProxyStatusConfigurationReadResult Available(ProxyStatusConfigurationSourceSet configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        return new AvailableResult(configuration);
+    }
+
+    public sealed record AvailableResult : ProxyStatusConfigurationReadResult
+    {
+        public AvailableResult(ProxyStatusConfigurationSourceSet configuration)
+        {
+            ArgumentNullException.ThrowIfNull(configuration);
+
+            Configuration = configuration;
+        }
+
+        public ProxyStatusConfigurationSourceSet Configuration { get; }
+    }
+
+    public sealed record MissingConfigurationResult : ProxyStatusConfigurationReadResult;
 }
 
 public sealed record ProxyStatusConfigurationSourceSet(

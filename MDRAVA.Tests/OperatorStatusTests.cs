@@ -1361,10 +1361,11 @@ internal static class OperatorStatusTests
             _configuration = configuration;
         }
 
-        public bool TryReadConfiguration(out ProxyStatusConfigurationSourceSet? configuration)
+        public ProxyStatusConfigurationReadResult ReadConfiguration()
         {
-            configuration = _configuration;
-            return configuration is not null;
+            return _configuration is null
+                ? ProxyStatusConfigurationReadResult.MissingConfiguration
+                : ProxyStatusConfigurationReadResult.Available(_configuration);
         }
     }
 

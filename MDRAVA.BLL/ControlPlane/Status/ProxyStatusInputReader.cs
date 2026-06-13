@@ -49,7 +49,10 @@ public sealed class ProxyStatusInputReader : IProxyStatusInputReader
     public ProxyStatusInput Read()
     {
         var runtimeSummary = _runtimeSource.ReadRuntimeSummary();
-        var configuration = _configurationSource.TryReadConfiguration(out var source) ? source : null;
+        var configurationResult = _configurationSource.ReadConfiguration();
+        var configuration = configurationResult is ProxyStatusConfigurationReadResult.AvailableResult available
+            ? available.Configuration
+            : null;
         var readinessConfiguration = configuration?.ReadinessConfiguration
             ?? ProxyStatusReadinessConfigurationSourceSet.Missing;
         var upstreams = _upstreamReader.ReadUpstreams();

@@ -17,7 +17,10 @@ public sealed class ProxyStatusUpstreamHealthReader : IProxyStatusUpstreamHealth
 
     public IReadOnlyList<ProxyUpstreamStatusResponse> ReadUpstreams()
     {
-        var configuration = _configurationSource.TryReadConfiguration(out var source) ? source : null;
+        var configurationResult = _configurationSource.ReadConfiguration();
+        var configuration = configurationResult is ProxyStatusConfigurationReadResult.AvailableResult available
+            ? available.Configuration
+            : null;
         return _upstreamHealthSource.ReadUpstreams(
             configuration is null
                 ? []
