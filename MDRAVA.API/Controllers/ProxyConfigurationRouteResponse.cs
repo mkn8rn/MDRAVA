@@ -1,6 +1,4 @@
-using BusinessRuntimeCachePolicy = MDRAVA.BLL.Configuration.RuntimeCachePolicy;
 using BusinessRuntimeHealthCheckOptions = MDRAVA.BLL.Configuration.RuntimeHealthCheckOptions;
-using BusinessRuntimeRetryPolicy = MDRAVA.BLL.Configuration.RuntimeRetryPolicy;
 using BusinessRuntimeRoute = MDRAVA.BLL.Configuration.RuntimeRoute;
 using BusinessRuntimeRouteAction = MDRAVA.BLL.Configuration.RuntimeRouteAction;
 using BusinessRuntimeRouteResolvedOptions = MDRAVA.BLL.Configuration.RuntimeRouteResolvedOptions;
@@ -86,32 +84,6 @@ public sealed record RuntimeHealthCheckResponse(
     }
 }
 
-public sealed record RuntimeCachePolicyResponse(
-    bool Enabled,
-    long MaxEntryBytes,
-    long MaxTotalBytes,
-    TimeSpan DefaultTtl,
-    bool RespectOriginCacheControl,
-    IReadOnlyList<string> VaryByHeaders,
-    IReadOnlyList<int> CacheableStatusCodes,
-    IReadOnlyList<string> Methods)
-{
-    public static RuntimeCachePolicyResponse FromPolicy(BusinessRuntimeCachePolicy policy)
-    {
-        ArgumentNullException.ThrowIfNull(policy);
-
-        return new RuntimeCachePolicyResponse(
-            policy.Enabled,
-            policy.MaxEntryBytes,
-            policy.MaxTotalBytes,
-            policy.DefaultTtl,
-            policy.RespectOriginCacheControl,
-            policy.VaryByHeaders.ToArray(),
-            policy.CacheableStatusCodes.ToArray(),
-            policy.Methods.ToArray());
-    }
-}
-
 public sealed record RuntimeRouteResolvedOptionsResponse(
     long MaxRequestBodyBytes,
     TimeSpan ClientRequestHeadTimeout,
@@ -128,32 +100,6 @@ public sealed record RuntimeRouteResolvedOptionsResponse(
             options.ClientRequestHeadTimeout,
             options.UpstreamResponseHeadTimeout,
             options.AccessLogEnabled);
-    }
-}
-
-public sealed record RuntimeRetryPolicyResponse(
-    bool Enabled,
-    int MaxAttempts,
-    TimeSpan? PerAttemptTimeout,
-    bool RetryOnConnectFailure,
-    bool RetryOnUpstreamResponseHeadTimeout,
-    IReadOnlyList<int> RetryOnStatusCodes,
-    IReadOnlyList<string> RetryMethods,
-    TimeSpan RetryBackoff)
-{
-    public static RuntimeRetryPolicyResponse FromPolicy(BusinessRuntimeRetryPolicy policy)
-    {
-        ArgumentNullException.ThrowIfNull(policy);
-
-        return new RuntimeRetryPolicyResponse(
-            policy.Enabled,
-            policy.MaxAttempts,
-            policy.PerAttemptTimeout,
-            policy.RetryOnConnectFailure,
-            policy.RetryOnUpstreamResponseHeadTimeout,
-            policy.RetryOnStatusCodes.ToArray(),
-            policy.RetryMethods.ToArray(),
-            policy.RetryBackoff);
     }
 }
 
