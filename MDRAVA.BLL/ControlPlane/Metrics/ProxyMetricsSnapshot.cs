@@ -85,16 +85,7 @@ public sealed record ProxyMetricsSnapshot(
     long CircuitRejections,
     long NoAvailableUpstreamFailures,
     IReadOnlyList<ProxyUpstreamSelectionSnapshot> UpstreamSelectionsByUpstream,
-    long ListenerReloadAttempts,
-    long ListenerReloadSuccesses,
-    long ListenerReloadFailures,
-    long ListenerReloadAdded,
-    long ListenerReloadRemoved,
-    long ListenerReloadChanged,
-    long ListenerReloadUnchanged,
-    long ListenerStartFailures,
-    long ListenerDrainCount,
-    long ActiveListeners,
+    ProxyListenerMetricsSnapshot Listeners,
     long Http2AcceptedConnections,
     long Http2Requests,
     long ActiveHttp2Streams,
@@ -114,6 +105,9 @@ public sealed record ProxyMetricsSnapshot(
 
     public ProxyUpstreamHttp3MetricsSnapshot UpstreamHttp3 { get; } =
         UpstreamHttp3 ?? throw new ArgumentNullException(nameof(UpstreamHttp3));
+
+    public ProxyListenerMetricsSnapshot Listeners { get; } =
+        Listeners ?? throw new ArgumentNullException(nameof(Listeners));
 
     public IReadOnlyDictionary<string, long> RequestFailuresByKind { get; } =
         MetricsList.CopyDictionary(RequestFailuresByKind, StringComparer.Ordinal);

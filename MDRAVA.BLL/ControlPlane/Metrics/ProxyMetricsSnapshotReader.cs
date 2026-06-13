@@ -86,16 +86,7 @@ public sealed partial class ProxyMetrics
             Interlocked.Read(ref _circuitRejections),
             Interlocked.Read(ref _noAvailableUpstreamFailures),
             ReadUpstreamSelectionsByUpstream(),
-            Interlocked.Read(ref _listenerReloadAttempts),
-            Interlocked.Read(ref _listenerReloadSuccesses),
-            Interlocked.Read(ref _listenerReloadFailures),
-            Interlocked.Read(ref _listenerReloadAdded),
-            Interlocked.Read(ref _listenerReloadRemoved),
-            Interlocked.Read(ref _listenerReloadChanged),
-            Interlocked.Read(ref _listenerReloadUnchanged),
-            Interlocked.Read(ref _listenerStartFailures),
-            Interlocked.Read(ref _listenerDrainCount),
-            Interlocked.Read(ref _activeListeners),
+            ReadListenerMetricsSnapshot(),
             Interlocked.Read(ref _http2AcceptedConnections),
             Interlocked.Read(ref _http2Requests),
             Interlocked.Read(ref _activeHttp2Streams),
@@ -134,6 +125,21 @@ public sealed partial class ProxyMetrics
             Interlocked.Read(ref _quicListenerStartSuccesses),
             Interlocked.Read(ref _quicListenerStartFailures),
             Interlocked.Read(ref _activeQuicListeners));
+    }
+
+    private ProxyListenerMetricsSnapshot ReadListenerMetricsSnapshot()
+    {
+        return new ProxyListenerMetricsSnapshot(
+            Interlocked.Read(ref _listenerReloadAttempts),
+            Interlocked.Read(ref _listenerReloadSuccesses),
+            Interlocked.Read(ref _listenerReloadFailures),
+            Interlocked.Read(ref _listenerReloadAdded),
+            Interlocked.Read(ref _listenerReloadRemoved),
+            Interlocked.Read(ref _listenerReloadChanged),
+            Interlocked.Read(ref _listenerReloadUnchanged),
+            Interlocked.Read(ref _listenerStartFailures),
+            Interlocked.Read(ref _listenerDrainCount),
+            Interlocked.Read(ref _activeListeners));
     }
 
     private ProxyUpstreamHttp3MetricsSnapshot ReadUpstreamHttp3MetricsSnapshot()

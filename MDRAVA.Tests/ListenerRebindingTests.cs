@@ -337,12 +337,12 @@ internal static class ListenerRebindingTests
 
             ProxyConfigurationReloadResultAssertions.Reloaded(success, string.Join("; ", success.Errors));
             ProxyConfigurationReloadResultAssertions.ListenerReloadFailed(failure);
-            AssertEx.True(metrics.ListenerReloadAttempts >= 3);
-            AssertEx.True(metrics.ListenerReloadSuccesses >= 2);
-            AssertEx.True(metrics.ListenerReloadFailures >= 1);
-            AssertEx.True(metrics.ListenerReloadAdded >= 1);
-            AssertEx.True(metrics.ListenerStartFailures >= 1);
-            AssertEx.True(metrics.ActiveListeners >= 1);
+            AssertEx.True(metrics.Listeners.ReloadAttempts >= 3);
+            AssertEx.True(metrics.Listeners.ReloadSuccesses >= 2);
+            AssertEx.True(metrics.Listeners.ReloadFailures >= 1);
+            AssertEx.True(metrics.Listeners.ReloadAdded >= 1);
+            AssertEx.True(metrics.Listeners.StartFailures >= 1);
+            AssertEx.True(metrics.Listeners.ActiveListeners >= 1);
         }
         finally
         {
