@@ -1,83 +1,9 @@
-using MDRAVA.BLL.ControlPlane.ConfigLint;
-using MDRAVA.BLL.ControlPlane.Forwarding;
-using MDRAVA.BLL.ControlPlane.RequestDiagnostics;
-using MDRAVA.BLL.ControlPlane.RouteDiagnostics;
-
 namespace MDRAVA.BLL.ControlPlane.Metrics;
 
 public sealed partial class ProxyMetrics
 {
     public ProxyMetricsSnapshot Snapshot()
     {
-        Dictionary<string, long> failuresByKind = new(StringComparer.Ordinal);
-        foreach (var failureKind in FailureKinds)
-        {
-            if (failureKind == ProxyFailureKind.None)
-            {
-                continue;
-            }
-
-            failuresByKind[failureKind.ToString()] = Interlocked.Read(ref _requestFailuresByKind[(int)failureKind]);
-        }
-
-        var requestsByRoute = _requestsByRoute
-            .Select(static pair => new ProxyRequestSeriesSnapshot(
-                pair.Key.Site,
-                pair.Key.Route,
-                pair.Key.Action,
-                pair.Key.StatusClass,
-                Interlocked.Read(ref pair.Value.Count)))
-            .OrderBy(static item => item.Site, StringComparer.Ordinal)
-            .ThenBy(static item => item.Route, StringComparer.Ordinal)
-            .ThenBy(static item => item.Action, StringComparer.Ordinal)
-            .ThenBy(static item => item.StatusClass, StringComparer.Ordinal)
-            .ToArray();
-        var retrySkipped = _retrySkippedByReason
-            .Select(static pair => new ProxyRetrySkippedSnapshot(pair.Key, Interlocked.Read(ref pair.Value.Count)))
-            .OrderBy(static item => item.Reason, StringComparer.Ordinal)
-            .ToArray();
-        var upstreamSelectionsByUpstream = _upstreamSelectionsByUpstream
-            .Select(static pair => new ProxyUpstreamSelectionSnapshot(
-                pair.Key.Route,
-                pair.Key.Upstream,
-                pair.Key.Scheme,
-                pair.Key.Protocol,
-                Interlocked.Read(ref pair.Value.Count)))
-            .OrderBy(static item => item.Route, StringComparer.Ordinal)
-            .ThenBy(static item => item.Upstream, StringComparer.Ordinal)
-            .ThenBy(static item => item.Scheme, StringComparer.Ordinal)
-            .ToArray();
-        var http2ProtocolErrors = _http2ProtocolErrors
-            .ToDictionary(static pair => pair.Key, static pair => Interlocked.Read(ref pair.Value.Count), StringComparer.Ordinal);
-        var upstreamHttp3ProtocolErrors = _upstreamHttp3ProtocolErrors
-            .ToDictionary(static pair => pair.Key, static pair => Interlocked.Read(ref pair.Value.Count), StringComparer.Ordinal);
-        var http3RequestsByOutcome = _http3RequestsByOutcome
-            .Select(static pair => new ProxyHttp3RequestOutcomeSnapshot(
-                pair.Key.Method,
-                pair.Key.Outcome,
-                pair.Key.StatusClass,
-                Interlocked.Read(ref pair.Value.Count)))
-            .OrderBy(static item => item.Method, StringComparer.Ordinal)
-            .ThenBy(static item => item.Outcome, StringComparer.Ordinal)
-            .ThenBy(static item => item.StatusClass, StringComparer.Ordinal)
-            .ToArray();
-        var http3RejectedRequests = _http3RejectedRequests
-            .ToDictionary(static pair => pair.Key, static pair => Interlocked.Read(ref pair.Value.Count), StringComparer.Ordinal);
-        var http3ProtocolErrors = _http3ProtocolErrors
-            .ToDictionary(static pair => pair.Key, static pair => Interlocked.Read(ref pair.Value.Count), StringComparer.Ordinal);
-        var configLintFindings = _configLintFindings
-            .Select(static pair => new ProxyConfigLintFindingMetricSnapshot(
-                pair.Key.Severity,
-                pair.Key.Code,
-                Interlocked.Read(ref pair.Value.Count)))
-            .OrderBy(static item => item.Severity, StringComparer.Ordinal)
-            .ThenBy(static item => item.Code, StringComparer.Ordinal)
-            .ToArray();
-        var routeMatchDryRunFailures = _routeMatchDryRunFailures
-            .Select(static pair => new ProxyRouteDryRunFailureSnapshot(pair.Key, Interlocked.Read(ref pair.Value.Count)))
-            .OrderBy(static item => item.Reason, StringComparer.Ordinal)
-            .ToArray();
-
         return new ProxyMetricsSnapshot(
             Interlocked.Read(ref _acceptedConnections),
             Interlocked.Read(ref _activeConnections),
@@ -142,8 +68,8 @@ public sealed partial class ProxyMetrics
             Interlocked.Read(ref _rateLimitedUpgrades),
             Interlocked.Read(ref _requestBodySizeRejections),
             Interlocked.Read(ref _parserLimitRejections),
-            failuresByKind,
-            requestsByRoute,
+            ReadRequestFailuresByKind(),
+            ReadRequestsByRoute(),
             Interlocked.Read(ref _configReloadSuccesses),
             Interlocked.Read(ref _configReloadFailures),
             Interlocked.Read(ref _adminAuthSuccesses),
@@ -153,13 +79,13 @@ public sealed partial class ProxyMetrics
             Interlocked.Read(ref _acmeRenewalFailures),
             Interlocked.Read(ref _retryAttempts),
             Interlocked.Read(ref _retryExhausted),
-            retrySkipped,
+            ReadRetrySkipped(),
             Interlocked.Read(ref _circuitOpened),
             Interlocked.Read(ref _circuitHalfOpened),
             Interlocked.Read(ref _circuitClosed),
             Interlocked.Read(ref _circuitRejections),
             Interlocked.Read(ref _noAvailableUpstreamFailures),
-            upstreamSelectionsByUpstream,
+            ReadUpstreamSelectionsByUpstream(),
             Interlocked.Read(ref _listenerReloadAttempts),
             Interlocked.Read(ref _listenerReloadSuccesses),
             Interlocked.Read(ref _listenerReloadFailures),
@@ -173,7 +99,7 @@ public sealed partial class ProxyMetrics
             Interlocked.Read(ref _http2AcceptedConnections),
             Interlocked.Read(ref _http2Requests),
             Interlocked.Read(ref _activeHttp2Streams),
-            http2ProtocolErrors,
+            ReadHttp2ProtocolErrors(),
             Interlocked.Read(ref _upstreamHttp2Requests),
             Interlocked.Read(ref _upstreamHttp2AlpnFailures),
             Interlocked.Read(ref _upstreamHttp2ProtocolErrors),
@@ -187,7 +113,7 @@ public sealed partial class ProxyMetrics
             Interlocked.Read(ref _upstreamHttp3StreamLimitRejections),
             Interlocked.Read(ref _activeUpstreamHttp3Connections),
             Interlocked.Read(ref _activeUpstreamHttp3Streams),
-            upstreamHttp3ProtocolErrors,
+            ReadUpstreamHttp3ProtocolErrors(),
             Interlocked.Read(ref _http3AcceptedConnections),
             Interlocked.Read(ref _activeHttp3Connections),
             Interlocked.Read(ref _http3Requests),
@@ -202,16 +128,16 @@ public sealed partial class ProxyMetrics
             Interlocked.Read(ref _http3ResponseStreamResets),
             Interlocked.Read(ref _http3AltSvcEmitted),
             Interlocked.Read(ref _http3AltSvcSuppressed),
-            http3RequestsByOutcome,
-            http3RejectedRequests,
-            http3ProtocolErrors,
+            ReadHttp3RequestsByOutcome(),
+            ReadHttp3RejectedRequests(),
+            ReadHttp3ProtocolErrors(),
             Interlocked.Read(ref _quicListenerStartSuccesses),
             Interlocked.Read(ref _quicListenerStartFailures),
             Interlocked.Read(ref _activeQuicListeners),
             Interlocked.Read(ref _configLintRuns),
-            configLintFindings,
+            ReadConfigLintFindings(),
             Interlocked.Read(ref _routeMatchDryRuns),
-            routeMatchDryRunFailures);
+            ReadRouteMatchDryRunFailures());
     }
 
     public ProxyMetricsSnapshot ReadMetrics()
