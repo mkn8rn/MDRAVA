@@ -22,69 +22,7 @@ public sealed partial class PrometheusMetricsExporter
         AppendClientProtocolMetrics(builder, input, proxy);
         AppendRouteRequestCounters(builder, input.IncludePerRouteLabels, proxy.RequestsByRoute);
         AppendRequestRejectionCounters(builder, proxy);
-
-        AppendCounter(builder, "mdrava_upstream_request_attempts_total", "Selected upstream request attempts.", proxy.UpstreamSelections);
-        AppendCounter(builder, "mdrava_upstream_http2_requests_total", "Upstream HTTP/2 request attempts.", proxy.UpstreamHttp2Requests);
-        AppendCounter(builder, "mdrava_upstream_http3_requests_total", "Upstream HTTP/3 request attempts.", proxy.UpstreamHttp3Requests);
-        AppendCounter(builder, "mdrava_upstream_http3_connection_attempts_total", "Upstream HTTP/3 QUIC connection attempts.", proxy.UpstreamHttp3ConnectionAttempts);
-        AppendCounter(builder, "mdrava_upstream_http3_connection_successes_total", "Successful upstream HTTP/3 QUIC connections.", proxy.UpstreamHttp3ConnectionSuccesses);
-        AppendCounter(builder, "mdrava_upstream_http3_connection_failures_total", "Failed upstream HTTP/3 QUIC connections.", proxy.UpstreamHttp3ConnectionFailures);
-        AppendCounter(builder, "mdrava_upstream_http3_pool_connections_opened_total", "Upstream HTTP/3 pool connections opened.", proxy.UpstreamHttp3PoolConnectionsOpened);
-        AppendCounter(builder, "mdrava_upstream_http3_pool_connections_reused_total", "Upstream HTTP/3 pool connection reuses.", proxy.UpstreamHttp3PoolConnectionsReused);
-        AppendCounter(builder, "mdrava_upstream_http3_pool_connections_closed_total", "Upstream HTTP/3 pool connections closed.", proxy.UpstreamHttp3PoolConnectionsClosed);
-        AppendCounter(builder, "mdrava_upstream_http3_stream_limit_rejections_total", "Upstream HTTP/3 stream limit rejections.", proxy.UpstreamHttp3StreamLimitRejections);
-        AppendGauge(builder, "mdrava_upstream_http3_multiplexing_enabled", "Whether upstream HTTP/3 multiplexing is enabled.", proxy.UpstreamHttp3Requests > 0 || input.UpstreamHttp3MultiplexingConfigured ? 1 : 0);
-        AppendGauge(builder, "mdrava_upstream_http3_connections_active", "Active upstream HTTP/3 QUIC connections.", proxy.ActiveUpstreamHttp3Connections);
-        AppendGauge(builder, "mdrava_upstream_http3_streams_active", "Active upstream HTTP/3 streams.", proxy.ActiveUpstreamHttp3Streams);
-        AppendUpstreamSelectionCounters(builder, input.IncludePerUpstreamLabels, proxy.UpstreamSelectionsByUpstream);
-        AppendLabeledCounter(builder, "mdrava_upstream_failures_total", "Upstream failures by bounded reason.", proxy.UpstreamConnectFailures, new Label("reason", "connect_failure"));
-        AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.UpstreamConnectTimeouts, new Label("reason", "connect_timeout"));
-        AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.UpstreamResponseHeadTimeouts, new Label("reason", "response_head_timeout"));
-        AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.UpstreamResponseBodyTimeouts, new Label("reason", "response_body_timeout"));
-        AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.UpstreamMalformedResponses, new Label("reason", "malformed_response"));
-        AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.UpstreamPrematureDisconnects, new Label("reason", "premature_disconnect"));
-        AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.NoHealthyUpstreamFailures, new Label("reason", "no_healthy_upstream"));
-        AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.NoAvailableUpstreamFailures, new Label("reason", "no_available_upstream"));
-        AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.UpstreamRequestFailures, new Label("reason", "request_failure"));
-        AppendLabeledCounter(builder, "mdrava_upstream_http2_failures_total", "Upstream HTTP/2 failures by bounded reason.", proxy.UpstreamHttp2AlpnFailures, new Label("reason", "alpn_failure"));
-        AppendLabeledCounter(builder, "mdrava_upstream_http2_failures_total", null, proxy.UpstreamHttp2ProtocolErrors, new Label("reason", "protocol_error"));
-        if (proxy.UpstreamHttp3ProtocolErrors.Count > 0)
-        {
-            AppendHelpAndType(builder, "mdrava_upstream_http3_protocol_errors_total", "Upstream HTTP/3 protocol errors by bounded reason.", "counter");
-            foreach (var error in proxy.UpstreamHttp3ProtocolErrors.OrderBy(static item => item.Key, StringComparer.Ordinal))
-            {
-                AppendSample(builder, "mdrava_upstream_http3_protocol_errors_total", error.Value, new Label("reason", error.Key));
-            }
-        }
-
-        AppendCounter(builder, "mdrava_retry_attempts_total", "Retry attempts after an initial failed upstream attempt.", proxy.RetryAttempts);
-        AppendCounter(builder, "mdrava_retry_exhausted_total", "Requests that exhausted their configured retry attempts.", proxy.RetryExhausted);
-        if (proxy.RetrySkipped.Count > 0)
-        {
-            AppendHelpAndType(builder, "mdrava_retry_skipped_total", "Retries skipped by bounded reason.", "counter");
-        }
-
-        foreach (var skipped in proxy.RetrySkipped)
-        {
-            AppendSample(builder, "mdrava_retry_skipped_total", skipped.Count, new Label("reason", skipped.Reason));
-        }
-
-        AppendLabeledCounter(builder, "mdrava_circuit_transitions_total", "Circuit breaker transitions by state.", proxy.CircuitOpened, new Label("state", "open"));
-        AppendLabeledCounter(builder, "mdrava_circuit_transitions_total", null, proxy.CircuitHalfOpened, new Label("state", "half_open"));
-        AppendLabeledCounter(builder, "mdrava_circuit_transitions_total", null, proxy.CircuitClosed, new Label("state", "closed"));
-        AppendCounter(builder, "mdrava_circuit_rejections_total", "Requests rejected by open or saturated half-open circuits.", proxy.CircuitRejections);
-
-        AppendGauge(builder, "mdrava_upstream_connections_active", "Active borrowed upstream connections.", proxy.UpstreamPoolActiveConnections);
-        AppendGauge(builder, "mdrava_upstream_connections_idle", "Idle reusable upstream connections.", proxy.UpstreamPoolIdleConnections);
-        AppendCounter(builder, "mdrava_upstream_connections_opened_total", "Opened upstream connections.", proxy.UpstreamConnectionsOpened);
-        AppendCounter(builder, "mdrava_upstream_connections_reused_total", "Reused upstream connections.", proxy.UpstreamConnectionsReused);
-        AppendCounter(builder, "mdrava_upstream_connections_discarded_total", "Discarded upstream connections.", proxy.UpstreamConnectionsDiscarded);
-
-        AppendLabeledCounter(builder, "mdrava_health_checks_total", "Health checks by result.", proxy.HealthChecksAttempted, new Label("result", "attempted"));
-        AppendLabeledCounter(builder, "mdrava_health_checks_total", null, proxy.HealthChecksSucceeded, new Label("result", "success"));
-        AppendLabeledCounter(builder, "mdrava_health_checks_total", null, proxy.HealthChecksFailed, new Label("result", "failure"));
-        AppendCounter(builder, "mdrava_upstream_health_transitions_total", "Upstream health state transitions.", proxy.UpstreamHealthTransitions);
-        AppendUpstreamHealth(builder, input.IncludePerUpstreamLabels, health);
+        AppendUpstreamAndResilienceMetrics(builder, input, proxy, health);
 
         AppendGauge(builder, "mdrava_cache_entries", "Current in-memory response cache entries.", cache.EntryCount);
         AppendGauge(builder, "mdrava_cache_bytes", "Approximate in-memory response cache bytes.", cache.ApproximateBytes);
