@@ -169,12 +169,6 @@ public sealed partial class ProxyMetrics
 
     public void UpstreamRequestFailed() => Interlocked.Increment(ref _upstreamRequestFailures);
 
-    public void RequestIdGenerated() => Interlocked.Increment(ref _requestIdsGenerated);
-
-    public void AccessLogEmitted() => Interlocked.Increment(ref _accessLogsEmitted);
-
-    public void RecentDiagnosticOverwritten() => Interlocked.Increment(ref _recentDiagnosticsOverwritten);
-
     public void RequestFailed(ProxyFailureKind failureKind)
     {
         if (failureKind == ProxyFailureKind.None)
