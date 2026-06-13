@@ -154,6 +154,7 @@ public sealed record ProxyMetricsSnapshotResponse(
         var listeners = snapshot.Listeners;
         var rejections = snapshot.Rejections;
         var resilience = snapshot.Resilience;
+        var routeDiagnostics = snapshot.RouteDiagnostics;
         var tls = snapshot.Tls;
         var traffic = snapshot.Traffic;
         var tunnels = snapshot.Tunnels;
@@ -297,7 +298,7 @@ public sealed record ProxyMetricsSnapshotResponse(
             http3.ActiveQuicListeners,
             configLint.Runs,
             ProxyConfigLintFindingMetricSnapshotResponse.FromSnapshots(configLint.Findings),
-            snapshot.RouteMatchDryRuns,
-            ProxyRouteDryRunFailureSnapshotResponse.FromSnapshots(snapshot.RouteMatchDryRunFailures));
+            routeDiagnostics.DryRuns,
+            ProxyRouteDryRunFailureSnapshotResponse.FromSnapshots(routeDiagnostics.DryRunFailures));
     }
 }

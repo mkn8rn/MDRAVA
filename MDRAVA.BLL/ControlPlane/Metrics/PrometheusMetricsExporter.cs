@@ -18,6 +18,7 @@ public sealed partial class PrometheusMetricsExporter
         var acmeRenewals = proxy.AcmeRenewals;
         var clientConnections = proxy.ClientConnections;
         var rejections = proxy.Rejections;
+        var routeDiagnostics = proxy.RouteDiagnostics;
         var traffic = proxy.Traffic;
         var builder = new StringBuilder();
 
@@ -68,11 +69,11 @@ public sealed partial class PrometheusMetricsExporter
             }
         }
 
-        AppendCounter(builder, "mdrava_route_match_dry_runs_total", "Route match dry-run requests.", proxy.RouteMatchDryRuns);
-        if (proxy.RouteMatchDryRunFailures.Count > 0)
+        AppendCounter(builder, "mdrava_route_match_dry_runs_total", "Route match dry-run requests.", routeDiagnostics.DryRuns);
+        if (routeDiagnostics.DryRunFailures.Count > 0)
         {
             AppendHelpAndType(builder, "mdrava_route_match_dry_run_failures_total", "Route match dry-run non-match or rejection results by bounded reason.", "counter");
-            foreach (var failure in proxy.RouteMatchDryRunFailures)
+            foreach (var failure in routeDiagnostics.DryRunFailures)
             {
                 AppendSample(
                     builder,

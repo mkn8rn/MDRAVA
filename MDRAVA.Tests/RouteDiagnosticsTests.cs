@@ -61,7 +61,7 @@ internal static class RouteDiagnosticsTests
         AssertEx.Equal(0L, afterMetrics.Resilience.CircuitRejections - beforeMetrics.Resilience.CircuitRejections);
         AssertEx.Equal(beforeCache.HitCount, afterCache.HitCount);
         AssertEx.Equal(beforeCache.MissCount, afterCache.MissCount);
-        AssertEx.Equal(1L, afterMetrics.RouteMatchDryRuns - beforeMetrics.RouteMatchDryRuns);
+        AssertEx.Equal(1L, afterMetrics.RouteDiagnostics.DryRuns - beforeMetrics.RouteDiagnostics.DryRuns);
     }
 
     public static void DryRunReportsNoMatchReason()
@@ -1168,7 +1168,7 @@ internal static class RouteDiagnosticsTests
         _ = lintService.LintActive();
         var snapshot = metrics.Snapshot();
 
-        AssertEx.Equal(1L, snapshot.RouteMatchDryRuns);
+        AssertEx.Equal(1L, snapshot.RouteDiagnostics.DryRuns);
         AssertEx.Equal(1L, snapshot.ConfigLint.Runs);
         AssertEx.True(snapshot.ConfigLint.Findings.Any(static finding => finding.Code == "route_shadowed"));
     }
