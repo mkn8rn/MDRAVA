@@ -24,15 +24,15 @@ public sealed class ProxyLogPersistenceSettingsReader : IProxyLogPersistenceSett
         _settingsSource = settingsSource;
     }
 
-    public bool TryGetLogPersistenceSettings(out ProxyLogPersistenceSettings settings)
+    public ProxyLogPersistenceSettingsReadResult ReadLogPersistenceSettings()
     {
-        if (_settingsSource.TryGetLogPersistenceSettings(out settings))
+        var result = _settingsSource.ReadLogPersistenceSettings();
+        if (result is ProxyLogPersistenceSettingsSourceResult.AvailableResult available)
         {
-            return true;
+            return ProxyLogPersistenceSettingsReadResult.Active(available.Settings);
         }
 
-        settings = ProxyLogPersistenceSettings.DisabledOperationalDefaults;
-        return false;
+        return ProxyLogPersistenceSettingsReadResult.DisabledDefaults();
     }
 }
 
@@ -46,15 +46,14 @@ public sealed class ProxyConfigurationLogPersistenceSettingsSource
         _configurationStore = configurationStore;
     }
 
-    public bool TryGetLogPersistenceSettings(out ProxyLogPersistenceSettings settings)
+    public ProxyLogPersistenceSettingsSourceResult ReadLogPersistenceSettings()
     {
         if (_configurationStore.TryGetSnapshot(out var snapshot) && snapshot is not null)
         {
-            settings = ProxyLogPersistenceSettingsMapper.FromRuntimeOptions(snapshot.Observability.LogPersistence);
-            return true;
+            return ProxyLogPersistenceSettingsSourceResult.Available(
+                ProxyLogPersistenceSettingsMapper.FromRuntimeOptions(snapshot.Observability.LogPersistence));
         }
 
-        settings = ProxyLogPersistenceSettings.Unavailable;
-        return false;
+        return ProxyLogPersistenceSettingsSourceResult.MissingConfiguration;
     }
 }

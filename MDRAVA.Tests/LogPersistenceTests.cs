@@ -213,9 +213,10 @@ internal static class LogPersistenceTests
     {
         var reader = new ProxyLogPersistenceSettingsReader(MissingLogPersistenceSettingsSource.Instance);
 
-        var found = reader.TryGetLogPersistenceSettings(out var settings);
+        var result = reader.ReadLogPersistenceSettings();
 
-        AssertEx.False(found);
+        AssertEx.True(result is ProxyLogPersistenceSettingsReadResult.DisabledDefaultsResult);
+        var settings = result.Settings;
         AssertEx.Equal(ProxyLogPersistenceSettings.DisabledOperationalDefaults, settings);
         AssertEx.False(settings.AccessLogEnabled);
         AssertEx.False(settings.AdminAuditEnabled);
@@ -461,10 +462,9 @@ internal static class LogPersistenceTests
     {
         public static MissingLogPersistenceSettingsSource Instance { get; } = new();
 
-        public bool TryGetLogPersistenceSettings(out ProxyLogPersistenceSettings settings)
+        public ProxyLogPersistenceSettingsSourceResult ReadLogPersistenceSettings()
         {
-            settings = ProxyLogPersistenceSettings.Unavailable;
-            return false;
+            return ProxyLogPersistenceSettingsSourceResult.MissingConfiguration;
         }
     }
 

@@ -42,11 +42,14 @@ public sealed class ProxyPersistentLogWriter : IProxyLogPersistenceStore
 
     public void WriteAccess(ProxyAccessLogEntry accessEntry)
     {
-        if (!TryGetSettings(out var settings) || !settings.AccessLogEnabled)
+        var settingsResult = _settingsReader.ReadLogPersistenceSettings();
+        if (settingsResult is not ProxyLogPersistenceSettingsReadResult.ActiveResult active
+            || !active.Settings.AccessLogEnabled)
         {
             return;
         }
 
+        var settings = active.Settings;
         var entry = new
         {
             timestampUtc = accessEntry.TimestampUtc,
@@ -78,11 +81,14 @@ public sealed class ProxyPersistentLogWriter : IProxyLogPersistenceStore
 
     public void WriteAdminAudit(ProxyAdminAuditEvent auditEvent)
     {
-        if (!TryGetSettings(out var settings) || !settings.AdminAuditEnabled)
+        var settingsResult = _settingsReader.ReadLogPersistenceSettings();
+        if (settingsResult is not ProxyLogPersistenceSettingsReadResult.ActiveResult active
+            || !active.Settings.AdminAuditEnabled)
         {
             return;
         }
 
+        var settings = active.Settings;
         var entry = new
         {
             timestampUtc = auditEvent.TimestampUtc,
@@ -100,7 +106,8 @@ public sealed class ProxyPersistentLogWriter : IProxyLogPersistenceStore
     public ProxyLogPersistenceStatus GetStatus()
     {
         var logDirectory = SafeValue(_dataDirectoryProvider.GetLogsDirectory(), MaxPathLength);
-        var hasSnapshot = _settingsReader.TryGetLogPersistenceSettings(out var settings);
+        var settingsResult = _settingsReader.ReadLogPersistenceSettings();
+        var settings = settingsResult.Settings;
 
         DateTimeOffset? lastSuccess;
         ProxyLogPersistenceFailureStatus? lastFailure;
@@ -110,7 +117,7 @@ public sealed class ProxyPersistentLogWriter : IProxyLogPersistenceStore
             lastFailure = _lastWriteFailure;
         }
 
-        if (!hasSnapshot)
+        if (settingsResult is ProxyLogPersistenceSettingsReadResult.DisabledDefaultsResult)
         {
             return ProxyLogPersistenceStatus.NoActiveConfiguration(
                 logDirectory,
@@ -122,11 +129,6 @@ public sealed class ProxyPersistentLogWriter : IProxyLogPersistenceStore
             settings,
             lastSuccess,
             lastFailure);
-    }
-
-    private bool TryGetSettings(out ProxyLogPersistenceSettings settings)
-    {
-        return _settingsReader.TryGetLogPersistenceSettings(out settings);
     }
 
     private void WriteLine(
