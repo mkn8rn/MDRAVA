@@ -812,18 +812,7 @@ public sealed class ClientConnection
             forwardedHeaders,
             context.RequestId,
             cancellationToken);
-        if (upgradeResult is ForwardingResult.FailureResult)
-        {
-            _healthStore.RecordRequestFailure(UpstreamHealthStateSourceMapper.FromUpstream(upgradeSelection.Upstream));
-            _circuitBreakerStore.RecordFailure(
-                upgradeSelection.CircuitBreakerLease,
-                ProxyForwardingFailurePolicy.CircuitFailureReason(upgradeResult.FailureKind));
-        }
-        else
-        {
-            _circuitBreakerStore.RecordSuccess(upgradeSelection.CircuitBreakerLease);
-        }
-
+        ProxyUpstreamAttemptRecorder.Record(upgradeSelection, upgradeResult, _healthStore, _circuitBreakerStore);
         ApplyForwardingResult(context, upgradeResult);
         return false;
     }

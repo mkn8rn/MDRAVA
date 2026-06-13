@@ -342,6 +342,26 @@ internal static class ResilienceTests
         AssertEx.Equal(0L, fixture.Metrics.Snapshot().UpstreamRequestFailures);
     }
 
+    public static void UpstreamAttemptRecorderRecordsNonCircuitFailuresWithoutOpeningCircuit()
+    {
+        using var fixture = SelectorFixture.Create();
+        var route = Route([Upstream("first", weight: 1, circuit: Circuit(threshold: 1))]);
+        var selection = AssertEx.NotNull(fixture.Selector.Select(SelectionRoute(route)));
+
+        ProxyUpstreamAttemptRecorder.Record(
+            selection,
+            ForwardingResult.Failure(
+                responseStarted: false,
+                responseStatusCode: 502,
+                failureKind: ProxyFailureKind.UpstreamMalformedResponse),
+            fixture.Health,
+            fixture.Circuit);
+
+        AssertEx.Equal(CircuitBreakerRuntimeState.Closed, fixture.Circuit.Snapshot(StatusSource(route.Upstreams[0])).State);
+        AssertEx.Equal(0L, fixture.Metrics.Snapshot().CircuitOpened);
+        AssertEx.Equal(1L, fixture.Metrics.Snapshot().UpstreamRequestFailures);
+    }
+
     public static void CircuitRejectsTrafficWhileOpen()
     {
         using var fixture = SelectorFixture.Create();
