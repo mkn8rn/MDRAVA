@@ -4,17 +4,6 @@ namespace MDRAVA.BLL.ControlPlane.Metrics;
 
 public sealed partial class ProxyMetrics
 {
-    public void ConnectionAccepted()
-    {
-        Interlocked.Increment(ref _acceptedConnections);
-        Interlocked.Increment(ref _activeConnections);
-    }
-
-    public void ConnectionClosed()
-    {
-        Interlocked.Decrement(ref _activeConnections);
-    }
-
     public void RequestReceived()
     {
         Interlocked.Increment(ref _totalRequests);
@@ -104,17 +93,11 @@ public sealed partial class ProxyMetrics
 
     public void UpstreamPrematureDisconnect() => Interlocked.Increment(ref _upstreamPrematureDisconnects);
 
-    public void ClientPrematureDisconnect() => Interlocked.Increment(ref _clientPrematureDisconnects);
-
     public void ProxyGenerated502() => Interlocked.Increment(ref _proxyGenerated502Responses);
 
     public void ProxyGenerated504() => Interlocked.Increment(ref _proxyGenerated504Responses);
 
     public void DownstreamWriteTimedOut() => Interlocked.Increment(ref _downstreamWriteTimeouts);
-
-    public void ClientConnectionClosedByIdleTimeout() => Interlocked.Increment(ref _clientConnectionsClosedByIdleTimeout);
-
-    public void ClientConnectionClosedByMaxRequests() => Interlocked.Increment(ref _clientConnectionsClosedByMaxRequests);
 
     public void UpstreamRequestFailed() => Interlocked.Increment(ref _upstreamRequestFailures);
 
