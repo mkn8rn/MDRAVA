@@ -1,5 +1,6 @@
-using MDRAVA.BLL.ControlPlane.RequestDiagnostics;
 using Microsoft.AspNetCore.Mvc;
+using BusinessProxyDiagnosticsAdministrationService =
+    MDRAVA.BLL.ControlPlane.RequestDiagnostics.ProxyDiagnosticsAdministrationService;
 
 namespace MDRAVA.API.Controllers;
 
@@ -7,16 +8,16 @@ namespace MDRAVA.API.Controllers;
 [Route("admin/proxy/diagnostics")]
 public sealed class ProxyDiagnosticsController : ControllerBase
 {
-    private readonly ProxyDiagnosticsAdministrationService _diagnosticsAdministration;
+    private readonly BusinessProxyDiagnosticsAdministrationService _diagnosticsAdministration;
 
-    public ProxyDiagnosticsController(ProxyDiagnosticsAdministrationService diagnosticsAdministration)
+    public ProxyDiagnosticsController(BusinessProxyDiagnosticsAdministrationService diagnosticsAdministration)
     {
         _diagnosticsAdministration = diagnosticsAdministration;
     }
 
     [HttpGet("recent")]
-    public IReadOnlyList<ProxyRecentRequestDiagnosticEvent> Recent([FromQuery] int limit = 50)
+    public IReadOnlyList<ProxyRecentRequestDiagnosticEventResponse> Recent([FromQuery] int limit = 50)
     {
-        return _diagnosticsAdministration.Recent(limit);
+        return ProxyRecentRequestDiagnosticEventResponse.FromEvents(_diagnosticsAdministration.Recent(limit));
     }
 }

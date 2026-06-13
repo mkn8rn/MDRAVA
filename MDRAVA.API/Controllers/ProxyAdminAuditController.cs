@@ -1,5 +1,6 @@
-using MDRAVA.BLL.ControlPlane.AdminAudit;
 using Microsoft.AspNetCore.Mvc;
+using BusinessProxyAdminAuditAdministrationService =
+    MDRAVA.BLL.ControlPlane.AdminAudit.ProxyAdminAuditAdministrationService;
 
 namespace MDRAVA.API.Controllers;
 
@@ -7,16 +8,16 @@ namespace MDRAVA.API.Controllers;
 [Route("admin/proxy/audit")]
 public sealed class ProxyAdminAuditController : ControllerBase
 {
-    private readonly ProxyAdminAuditAdministrationService _auditAdministration;
+    private readonly BusinessProxyAdminAuditAdministrationService _auditAdministration;
 
-    public ProxyAdminAuditController(ProxyAdminAuditAdministrationService auditAdministration)
+    public ProxyAdminAuditController(BusinessProxyAdminAuditAdministrationService auditAdministration)
     {
         _auditAdministration = auditAdministration;
     }
 
     [HttpGet("recent")]
-    public IReadOnlyList<ProxyAdminAuditEvent> Recent([FromQuery] int limit = 50)
+    public IReadOnlyList<ProxyAdminAuditEventResponse> Recent([FromQuery] int limit = 50)
     {
-        return _auditAdministration.Recent(limit);
+        return ProxyAdminAuditEventResponse.FromEvents(_auditAdministration.Recent(limit));
     }
 }
