@@ -16,8 +16,9 @@ public sealed partial class PrometheusMetricsExporter
         var upstreamPool = proxy.UpstreamPool;
         var healthMetrics = proxy.Health;
         var resilience = proxy.Resilience;
+        var upstreamSelections = proxy.UpstreamSelections;
         var upstreamFailureReasons = proxy.UpstreamFailureReasons;
-        AppendCounter(builder, "mdrava_upstream_request_attempts_total", "Selected upstream request attempts.", proxy.UpstreamSelections);
+        AppendCounter(builder, "mdrava_upstream_request_attempts_total", "Selected upstream request attempts.", upstreamSelections.Total);
         AppendCounter(builder, "mdrava_upstream_http2_requests_total", "Upstream HTTP/2 request attempts.", upstreamHttp2.Requests);
         AppendCounter(builder, "mdrava_upstream_http3_requests_total", "Upstream HTTP/3 request attempts.", upstreamHttp3.Requests);
         AppendCounter(builder, "mdrava_upstream_http3_connection_attempts_total", "Upstream HTTP/3 QUIC connection attempts.", upstreamHttp3.ConnectionAttempts);
@@ -30,7 +31,7 @@ public sealed partial class PrometheusMetricsExporter
         AppendGauge(builder, "mdrava_upstream_http3_multiplexing_enabled", "Whether upstream HTTP/3 multiplexing is enabled.", upstreamHttp3.Requests > 0 || input.UpstreamHttp3MultiplexingConfigured ? 1 : 0);
         AppendGauge(builder, "mdrava_upstream_http3_connections_active", "Active upstream HTTP/3 QUIC connections.", upstreamHttp3.ActiveConnections);
         AppendGauge(builder, "mdrava_upstream_http3_streams_active", "Active upstream HTTP/3 streams.", upstreamHttp3.ActiveStreams);
-        AppendUpstreamSelectionCounters(builder, input.IncludePerUpstreamLabels, proxy.UpstreamSelectionsByUpstream);
+        AppendUpstreamSelectionCounters(builder, input.IncludePerUpstreamLabels, upstreamSelections.ByUpstream);
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", "Upstream failures by bounded reason.", upstreamFailureReasons.ConnectFailures, new Label("reason", "connect_failure"));
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, upstreamFailureReasons.ConnectTimeouts, new Label("reason", "connect_timeout"));
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, upstreamFailureReasons.ResponseHeadTimeouts, new Label("reason", "response_head_timeout"));

@@ -15,7 +15,7 @@ public sealed record ProxyMetricsSnapshot(
     ProxyUpstreamPoolMetricsSnapshot UpstreamPool,
     ProxyUpgradeMetricsSnapshot Upgrades,
     ProxyTunnelMetricsSnapshot Tunnels,
-    long UpstreamSelections,
+    ProxyUpstreamSelectionMetricsSnapshot UpstreamSelections,
     ProxyHealthMetricsSnapshot Health,
     ProxyDiagnosticsMetricsSnapshot Diagnostics,
     IReadOnlyDictionary<string, long> RequestFailuresByKind,
@@ -24,7 +24,6 @@ public sealed record ProxyMetricsSnapshot(
     ProxyAdminAuthMetricsSnapshot AdminAuth,
     ProxyAcmeRenewalMetricsSnapshot AcmeRenewals,
     ProxyResilienceMetricsSnapshot Resilience,
-    IReadOnlyList<ProxyUpstreamSelectionSnapshot> UpstreamSelectionsByUpstream,
     ProxyListenerMetricsSnapshot Listeners,
     ProxyHttp2MetricsSnapshot Http2,
     ProxyUpstreamHttp2MetricsSnapshot UpstreamHttp2,
@@ -46,6 +45,9 @@ public sealed record ProxyMetricsSnapshot(
 
     public ProxyUpstreamForwardingMetricsSnapshot UpstreamForwarding { get; } =
         UpstreamForwarding ?? throw new ArgumentNullException(nameof(UpstreamForwarding));
+
+    public ProxyUpstreamSelectionMetricsSnapshot UpstreamSelections { get; } =
+        UpstreamSelections ?? throw new ArgumentNullException(nameof(UpstreamSelections));
 
     public ProxyHttp3MetricsSnapshot Http3 { get; } =
         Http3 ?? throw new ArgumentNullException(nameof(Http3));
@@ -106,9 +108,6 @@ public sealed record ProxyMetricsSnapshot(
 
     public IReadOnlyList<ProxyRequestSeriesSnapshot> RequestsByRoute { get; } =
         MetricsList.Copy(RequestsByRoute);
-
-    public IReadOnlyList<ProxyUpstreamSelectionSnapshot> UpstreamSelectionsByUpstream { get; } =
-        MetricsList.Copy(UpstreamSelectionsByUpstream);
 
     public IReadOnlyList<ProxyConfigLintFindingMetricSnapshot> ConfigLintFindings { get; } =
         MetricsList.Copy(ConfigLintFindings);

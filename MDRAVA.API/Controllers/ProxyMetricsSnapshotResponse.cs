@@ -161,6 +161,7 @@ public sealed record ProxyMetricsSnapshotResponse(
         var upstreamHttp2 = snapshot.UpstreamHttp2;
         var upstreamHttp3 = snapshot.UpstreamHttp3;
         var upstreamPool = snapshot.UpstreamPool;
+        var upstreamSelections = snapshot.UpstreamSelections;
         var upgrades = snapshot.Upgrades;
 
         return new ProxyMetricsSnapshotResponse(
@@ -210,7 +211,7 @@ public sealed record ProxyMetricsSnapshotResponse(
             tunnels.BytesClientToUpstream,
             tunnels.BytesUpstreamToClient,
             tunnels.RelayFailures,
-            snapshot.UpstreamSelections,
+            upstreamSelections.Total,
             health.NoHealthyUpstreamFailures,
             health.ChecksAttempted,
             health.ChecksSucceeded,
@@ -244,7 +245,7 @@ public sealed record ProxyMetricsSnapshotResponse(
             resilience.CircuitClosed,
             resilience.CircuitRejections,
             resilience.NoAvailableUpstreamFailures,
-            ProxyUpstreamSelectionSnapshotResponse.FromSnapshots(snapshot.UpstreamSelectionsByUpstream),
+            ProxyUpstreamSelectionSnapshotResponse.FromSnapshots(upstreamSelections.ByUpstream),
             listeners.ReloadAttempts,
             listeners.ReloadSuccesses,
             listeners.ReloadFailures,

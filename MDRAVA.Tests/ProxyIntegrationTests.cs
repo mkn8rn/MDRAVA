@@ -1616,7 +1616,7 @@ internal static class ProxyIntegrationTests
 
         AssertEx.Equal(2, result.FirstRequests);
         AssertEx.Equal(2, result.SecondRequests);
-        AssertEx.Equal(4L, result.Metrics.UpstreamSelections);
+        AssertEx.Equal(4L, result.Metrics.UpstreamSelections.Total);
     }
 
     public static async Task UnhealthyUpstreamIsNotSelected()
