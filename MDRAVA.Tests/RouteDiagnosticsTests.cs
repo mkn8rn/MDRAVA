@@ -825,6 +825,32 @@ internal static class RouteDiagnosticsTests
         AssertEx.True(empty is ProxyConfigLintSubmittedConfigurationResult.EmptyResult);
     }
 
+    public static void ConfigLintResultsCopyInputCollections()
+    {
+        var lintedAtUtc = DateTimeOffset.UnixEpoch.AddHours(6);
+        var findings = new List<ConfigLintFinding>
+        {
+            new("warning", "route_shadowed", "Route is shadowed.", "lint-input", "routes[1]", "Move it earlier.")
+        };
+        var validationErrors = new List<ProxyConfigurationFileError>
+        {
+            ProxyConfigurationFileError.ForPath("lint-input", "Proxy:Routes:0:Name is required.")
+        };
+        var snapshot = LintSnapshot("submitted.json");
+
+        var result = ConfigLintResult.Completed(lintedAtUtc, findings, validationErrors);
+        var submitted = ProxyConfigLintSubmittedConfigurationResult.Loaded(snapshot, validationErrors);
+
+        findings.Clear();
+        validationErrors.Clear();
+
+        AssertEx.Equal("route_shadowed", result.Findings[0].Code);
+        AssertEx.Equal("lint-input", result.ValidationErrors[0].Path);
+        AssertEx.True(submitted is ProxyConfigLintSubmittedConfigurationResult.LoadedResult);
+        var loaded = (ProxyConfigLintSubmittedConfigurationResult.LoadedResult)submitted;
+        AssertEx.Equal("lint-input", loaded.ValidationErrors[0].Path);
+    }
+
     public static void ConfigLintServiceShapesSubmittedSourceFindings()
     {
         var source = new FixedConfigLintSubmittedConfigurationSource(

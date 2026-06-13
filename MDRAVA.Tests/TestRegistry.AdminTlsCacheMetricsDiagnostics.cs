@@ -151,6 +151,7 @@ internal static partial class TestRegistry
     Test("Config lint service shapes active source findings", Sync(RouteDiagnosticsTests.ConfigLintServiceShapesActiveSourceFindings), TestTaxonomy.Config, TestTaxonomy.Routing),
     Test("Config lint status names empty and completed states", Sync(RouteDiagnosticsTests.ConfigLintStatusNamesEmptyAndCompletedStates), TestTaxonomy.Config, TestTaxonomy.Routing),
     Test("Config lint submitted configuration result names source outcomes", Sync(RouteDiagnosticsTests.ConfigLintSubmittedConfigurationResultNamesSourceOutcomes), TestTaxonomy.Config, TestTaxonomy.Routing),
+    Test("Config lint results copy input collections", Sync(RouteDiagnosticsTests.ConfigLintResultsCopyInputCollections), TestTaxonomy.Config, TestTaxonomy.Routing),
     Test("Config lint service shapes submitted source findings", Sync(RouteDiagnosticsTests.ConfigLintServiceShapesSubmittedSourceFindings), TestTaxonomy.Config, TestTaxonomy.Routing),
     Test("Config lint rejects missing submitted request body", Sync(RouteDiagnosticsTests.ConfigLintRejectsMissingSubmittedRequestBody), TestTaxonomy.Config, TestTaxonomy.Routing, TestTaxonomy.SecurityNegativePaths),
     Test("Config lint submitted request reader accepts YAML input", Sync(RouteDiagnosticsTests.ConfigLintSubmittedRequestReaderAcceptsYamlInput), TestTaxonomy.Config, TestTaxonomy.Routing),

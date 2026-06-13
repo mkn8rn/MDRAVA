@@ -10,10 +10,13 @@ public abstract partial record ConfigLintResult
         IReadOnlyList<ConfigLintFinding> findings,
         IReadOnlyList<ProxyConfigurationFileError> validationErrors)
     {
+        ArgumentNullException.ThrowIfNull(findings);
+        ArgumentNullException.ThrowIfNull(validationErrors);
+
         LintedAtUtc = lintedAtUtc;
         Summary = summary;
-        Findings = findings;
-        ValidationErrors = validationErrors;
+        Findings = findings.ToArray();
+        ValidationErrors = validationErrors.ToArray();
     }
 
     public DateTimeOffset LintedAtUtc { get; }
