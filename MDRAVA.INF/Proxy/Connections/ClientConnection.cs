@@ -916,7 +916,7 @@ public sealed class ClientConnection
             _configurationSnapshot.Timeouts.DownstreamWriteTimeout,
             _metrics,
             cancellationToken,
-            contentType: "text/plain",
+            contentType: ProxyGeneratedFailurePolicy.PlainTextContentType,
             headers: ApplyAltSvc([]));
 
         context.ResponseStarted = true;
@@ -961,19 +961,19 @@ public sealed class ClientConnection
         builder.Append(keepClientConnectionOpen ? "Connection: keep-alive\r\n\r\n" : "Connection: close\r\n\r\n");
 
         var headBytes = Encoding.ASCII.GetBytes(builder.ToString());
-        await ProxyTimeoutPolicy.RunAsync(
-            async timeoutToken => await clientStream.WriteAsync(headBytes, timeoutToken),
+        await ProxyTimedStreamWriter.WriteAsync(
+            clientStream,
+            headBytes,
             timeouts.DownstreamWriteTimeout,
-            ProxyTimeoutKind.DownstreamWrite,
             cancellationToken);
         _metrics.AddBytesWritten(headBytes.Length);
 
         if (includeBody && response.Body.Length > 0)
         {
-            await ProxyTimeoutPolicy.RunAsync(
-                async timeoutToken => await clientStream.WriteAsync(response.Body, timeoutToken),
+            await ProxyTimedStreamWriter.WriteAsync(
+                clientStream,
+                response.Body,
                 timeouts.DownstreamWriteTimeout,
-                ProxyTimeoutKind.DownstreamWrite,
                 cancellationToken);
             _metrics.AddBytesWritten(response.Body.Length);
         }
