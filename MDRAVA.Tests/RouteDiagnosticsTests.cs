@@ -1169,8 +1169,8 @@ internal static class RouteDiagnosticsTests
         var snapshot = metrics.Snapshot();
 
         AssertEx.Equal(1L, snapshot.RouteMatchDryRuns);
-        AssertEx.Equal(1L, snapshot.ConfigLintRuns);
-        AssertEx.True(snapshot.ConfigLintFindings.Any(static finding => finding.Code == "route_shadowed"));
+        AssertEx.Equal(1L, snapshot.ConfigLint.Runs);
+        AssertEx.True(snapshot.ConfigLint.Findings.Any(static finding => finding.Code == "route_shadowed"));
     }
 
     private static RouteMatchDiagnosticsService CreateRouteService(

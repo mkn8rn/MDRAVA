@@ -144,6 +144,7 @@ public sealed record ProxyMetricsSnapshotResponse(
         var acmeRenewals = snapshot.AcmeRenewals;
         var clientConnections = snapshot.ClientConnections;
         var clientFailures = snapshot.ClientFailures;
+        var configLint = snapshot.ConfigLint;
         var configReloads = snapshot.ConfigReloads;
         var diagnostics = snapshot.Diagnostics;
         var generatedResponses = snapshot.GeneratedResponses;
@@ -294,8 +295,8 @@ public sealed record ProxyMetricsSnapshotResponse(
             http3.QuicListenerStartSuccesses,
             http3.QuicListenerStartFailures,
             http3.ActiveQuicListeners,
-            snapshot.ConfigLintRuns,
-            ProxyConfigLintFindingMetricSnapshotResponse.FromSnapshots(snapshot.ConfigLintFindings),
+            configLint.Runs,
+            ProxyConfigLintFindingMetricSnapshotResponse.FromSnapshots(configLint.Findings),
             snapshot.RouteMatchDryRuns,
             ProxyRouteDryRunFailureSnapshotResponse.FromSnapshots(snapshot.RouteMatchDryRunFailures));
     }

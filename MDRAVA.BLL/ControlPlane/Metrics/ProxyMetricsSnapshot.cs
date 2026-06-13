@@ -1,4 +1,3 @@
-using MDRAVA.BLL.ControlPlane.ConfigLint;
 using MDRAVA.BLL.ControlPlane.RouteDiagnostics;
 
 namespace MDRAVA.BLL.ControlPlane.Metrics;
@@ -29,8 +28,7 @@ public sealed record ProxyMetricsSnapshot(
     ProxyUpstreamHttp2MetricsSnapshot UpstreamHttp2,
     ProxyUpstreamHttp3MetricsSnapshot UpstreamHttp3,
     ProxyHttp3MetricsSnapshot Http3,
-    long ConfigLintRuns,
-    IReadOnlyList<ProxyConfigLintFindingMetricSnapshot> ConfigLintFindings,
+    ProxyConfigLintMetricsSnapshot ConfigLint,
     long RouteMatchDryRuns,
     IReadOnlyList<ProxyRouteDryRunFailureSnapshot> RouteMatchDryRunFailures)
 {
@@ -88,6 +86,9 @@ public sealed record ProxyMetricsSnapshot(
     public ProxyConfigReloadMetricsSnapshot ConfigReloads { get; } =
         ConfigReloads ?? throw new ArgumentNullException(nameof(ConfigReloads));
 
+    public ProxyConfigLintMetricsSnapshot ConfigLint { get; } =
+        ConfigLint ?? throw new ArgumentNullException(nameof(ConfigLint));
+
     public ProxyAdminAuthMetricsSnapshot AdminAuth { get; } =
         AdminAuth ?? throw new ArgumentNullException(nameof(AdminAuth));
 
@@ -108,9 +109,6 @@ public sealed record ProxyMetricsSnapshot(
 
     public IReadOnlyList<ProxyRequestSeriesSnapshot> RequestsByRoute { get; } =
         MetricsList.Copy(RequestsByRoute);
-
-    public IReadOnlyList<ProxyConfigLintFindingMetricSnapshot> ConfigLintFindings { get; } =
-        MetricsList.Copy(ConfigLintFindings);
 
     public IReadOnlyList<ProxyRouteDryRunFailureSnapshot> RouteMatchDryRunFailures { get; } =
         MetricsList.Copy(RouteMatchDryRunFailures);

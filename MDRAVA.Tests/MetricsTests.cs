@@ -274,8 +274,9 @@ internal static class MetricsTests
                 QuicListenerStartSuccesses: 0,
                 QuicListenerStartFailures: 0,
                 ActiveQuicListeners: 0),
-            ConfigLintRuns: 0,
-            ConfigLintFindings: configLintFindings,
+            ConfigLint: new ProxyConfigLintMetricsSnapshot(
+                Runs: 0,
+                Findings: configLintFindings),
             RouteMatchDryRuns: 0,
             RouteMatchDryRunFailures: routeMatchFailures);
 
@@ -300,7 +301,7 @@ internal static class MetricsTests
         AssertEx.Equal("proxied", snapshot.Http3.RequestsByOutcome[0].Outcome);
         AssertEx.Equal(9L, snapshot.Http3.RejectedRequests["malformed"]);
         AssertEx.Equal(10L, snapshot.Http3.ProtocolErrors["qpack"]);
-        AssertEx.Equal("route_shadowed", snapshot.ConfigLintFindings[0].Code);
+        AssertEx.Equal("route_shadowed", snapshot.ConfigLint.Findings[0].Code);
         AssertEx.Equal("no_route", snapshot.RouteMatchDryRunFailures[0].Reason);
         AssertEx.False(snapshot.RequestFailuresByKind is Dictionary<string, long>);
         AssertEx.False(snapshot.RequestsByRoute is ProxyRequestSeriesSnapshot[]);
@@ -311,7 +312,7 @@ internal static class MetricsTests
         AssertEx.False(snapshot.Http3.RequestsByOutcome is ProxyHttp3RequestOutcomeSnapshot[]);
         AssertEx.False(snapshot.Http3.RejectedRequests is Dictionary<string, long>);
         AssertEx.False(snapshot.Http3.ProtocolErrors is Dictionary<string, long>);
-        AssertEx.False(snapshot.ConfigLintFindings is ProxyConfigLintFindingMetricSnapshot[]);
+        AssertEx.False(snapshot.ConfigLint.Findings is ProxyConfigLintFindingMetricSnapshot[]);
         AssertEx.False(snapshot.RouteMatchDryRunFailures is ProxyRouteDryRunFailureSnapshot[]);
     }
 

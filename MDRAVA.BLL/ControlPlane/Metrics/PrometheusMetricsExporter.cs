@@ -13,6 +13,7 @@ public sealed partial class PrometheusMetricsExporter
         var health = input.UpstreamHealth;
         var acme = input.AcmeCertificates;
         var configReloads = proxy.ConfigReloads;
+        var configLint = proxy.ConfigLint;
         var adminAuth = proxy.AdminAuth;
         var acmeRenewals = proxy.AcmeRenewals;
         var clientConnections = proxy.ClientConnections;
@@ -52,11 +53,11 @@ public sealed partial class PrometheusMetricsExporter
 
         AppendLabeledCounter(builder, "mdrava_config_reloads_total", "Configuration reloads by result.", configReloads.Successes, new Label("result", "success"));
         AppendLabeledCounter(builder, "mdrava_config_reloads_total", null, configReloads.Failures, new Label("result", "failure"));
-        AppendCounter(builder, "mdrava_config_lint_runs_total", "Configuration lint runs.", proxy.ConfigLintRuns);
-        if (proxy.ConfigLintFindings.Count > 0)
+        AppendCounter(builder, "mdrava_config_lint_runs_total", "Configuration lint runs.", configLint.Runs);
+        if (configLint.Findings.Count > 0)
         {
             AppendHelpAndType(builder, "mdrava_config_lint_findings_total", "Configuration lint findings by bounded severity and code.", "counter");
-            foreach (var finding in proxy.ConfigLintFindings)
+            foreach (var finding in configLint.Findings)
             {
                 AppendSample(
                     builder,

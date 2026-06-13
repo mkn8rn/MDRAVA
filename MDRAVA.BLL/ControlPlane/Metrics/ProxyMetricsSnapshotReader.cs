@@ -30,8 +30,7 @@ public sealed partial class ProxyMetrics
             ReadUpstreamHttp2MetricsSnapshot(),
             ReadUpstreamHttp3MetricsSnapshot(),
             ReadHttp3MetricsSnapshot(),
-            Interlocked.Read(ref _configLintRuns),
-            ReadConfigLintFindings(),
+            ReadConfigLintMetricsSnapshot(),
             Interlocked.Read(ref _routeMatchDryRuns),
             ReadRouteMatchDryRunFailures());
     }
@@ -68,6 +67,13 @@ public sealed partial class ProxyMetrics
         return new ProxyUpstreamSelectionMetricsSnapshot(
             Interlocked.Read(ref _upstreamSelections),
             ReadUpstreamSelectionsByUpstream());
+    }
+
+    private ProxyConfigLintMetricsSnapshot ReadConfigLintMetricsSnapshot()
+    {
+        return new ProxyConfigLintMetricsSnapshot(
+            Interlocked.Read(ref _configLintRuns),
+            ReadConfigLintFindings());
     }
 
     private ProxyClientConnectionMetricsSnapshot ReadClientConnectionMetricsSnapshot()
