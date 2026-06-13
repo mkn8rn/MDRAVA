@@ -885,7 +885,7 @@ public sealed class Http2ClientConnection
     {
         await WriteGeneratedResponseAsync(
             streamId,
-            ProxyGeneratedFailurePolicy.BuildFailureResponse(statusCode, body, body, failureKind),
+            ProxyGeneratedFailurePolicy.BuildFailureResponse(statusCode, body, failureKind),
             context,
             method,
             cancellationToken);

@@ -64,6 +64,18 @@ public static class ProxyGeneratedFailurePolicy
             failureKind);
     }
 
+    public static ProxyGeneratedFailureResponse BuildFailureResponse(
+        int statusCode,
+        string body,
+        ProxyFailureKind failureKind)
+    {
+        return BuildFailureResponse(
+            statusCode,
+            body,
+            body,
+            failureKind);
+    }
+
     public static IReadOnlyList<ProxyHeaderField> BuildFramedResponseHeaders(
         ProxyGeneratedFailureResponse response,
         string requestId,

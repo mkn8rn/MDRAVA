@@ -778,7 +778,7 @@ public sealed class Http3Connection
     {
         return WriteGeneratedResponseAsync(
             stream,
-            ProxyGeneratedFailurePolicy.BuildFailureResponse(statusCode, body, body, failureKind),
+            ProxyGeneratedFailurePolicy.BuildFailureResponse(statusCode, body, failureKind),
             context,
             method,
             cancellationToken);

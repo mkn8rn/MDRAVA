@@ -56,11 +56,19 @@ internal static class ProxyGeneratedFailurePolicyTests
             "Request Header Fields Too Large",
             "Request Head Too Large",
             ProxyFailureKind.ParserLimitExceeded);
+        var sameBodyResponse = ProxyGeneratedFailurePolicy.BuildFailureResponse(
+            502,
+            "Bad Gateway",
+            ProxyFailureKind.UpstreamConnectFailed);
 
         AssertEx.Equal(431, response.StatusCode);
         AssertEx.Equal("Request Header Fields Too Large", response.ReasonPhrase);
         AssertEx.Equal("Request Head Too Large", response.Body);
         AssertEx.Equal(ProxyFailureKind.ParserLimitExceeded, response.FailureKind);
+        AssertEx.Equal(502, sameBodyResponse.StatusCode);
+        AssertEx.Equal("Bad Gateway", sameBodyResponse.ReasonPhrase);
+        AssertEx.Equal("Bad Gateway", sameBodyResponse.Body);
+        AssertEx.Equal(ProxyFailureKind.UpstreamConnectFailed, sameBodyResponse.FailureKind);
     }
 
     public static void BuildsGeneratedFailureFramedHeaders()
