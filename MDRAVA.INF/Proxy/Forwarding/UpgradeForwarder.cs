@@ -177,7 +177,7 @@ public sealed class UpgradeForwarder
 
             if (ProxyGeneratedFailurePolicy.CanWriteFailureResponse(responseStarted, suppressGeneratedFailureResponse: false))
             {
-                _metrics.GeneratedFailureResponse(502);
+                ProxyGeneratedFailureMetrics.Record(_metrics, ProxyFailureKind.UpstreamMalformedResponse);
                 await ProxyGeneratedFailureWriter.WriteAsync(
                     clientStream,
                     ProxyFailureKind.UpstreamMalformedResponse,
@@ -205,7 +205,7 @@ public sealed class UpgradeForwarder
 
             if (ProxyGeneratedFailurePolicy.CanWriteFailureResponse(responseStarted, suppressGeneratedFailureResponse: false))
             {
-                _metrics.GeneratedFailureResponse(502);
+                ProxyGeneratedFailureMetrics.Record(_metrics, ProxyFailureKind.UpstreamConnectFailed);
                 await ProxyGeneratedFailureWriter.WriteAsync(
                     clientStream,
                     ProxyFailureKind.UpstreamConnectFailed,
@@ -245,7 +245,7 @@ public sealed class UpgradeForwarder
                 _logger.LogWarning(exception, "Timed out connecting Upgrade request to upstream {UpstreamName}", upstream.Name);
                 if (ProxyGeneratedFailurePolicy.CanWriteFailureResponse(responseStarted, suppressGeneratedFailureResponse: false))
                 {
-                    _metrics.GeneratedFailureResponse(504);
+                    ProxyGeneratedFailureMetrics.Record(_metrics, ProxyFailureKind.UpstreamConnectTimeout);
                     await ProxyGeneratedFailureWriter.WriteAsync(
                         clientStream,
                         ProxyFailureKind.UpstreamConnectTimeout,
@@ -262,7 +262,7 @@ public sealed class UpgradeForwarder
                 _logger.LogWarning(exception, "Timed out waiting for upstream Upgrade response head from {UpstreamName}", upstream.Name);
                 if (ProxyGeneratedFailurePolicy.CanWriteFailureResponse(responseStarted, suppressGeneratedFailureResponse: false))
                 {
-                    _metrics.GeneratedFailureResponse(504);
+                    ProxyGeneratedFailureMetrics.Record(_metrics, ProxyFailureKind.UpstreamResponseHeadTimeout);
                     await ProxyGeneratedFailureWriter.WriteAsync(
                         clientStream,
                         ProxyFailureKind.UpstreamResponseHeadTimeout,
