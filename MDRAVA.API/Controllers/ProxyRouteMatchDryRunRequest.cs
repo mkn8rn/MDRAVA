@@ -1,4 +1,4 @@
-using MDRAVA.BLL.ControlPlane.RouteDiagnostics;
+using BusinessRouteMatchDryRunRequest = MDRAVA.BLL.ControlPlane.RouteDiagnostics.RouteMatchDryRunRequest;
 
 namespace MDRAVA.API.Controllers;
 
@@ -14,9 +14,9 @@ public sealed record ProxyRouteMatchDryRunRequest(
     string? ListenerName,
     string? Protocol = null)
 {
-    public RouteMatchDryRunRequest ToRouteMatchDryRunRequest()
+    public BusinessRouteMatchDryRunRequest ToRouteMatchDryRunRequest()
     {
-        return new RouteMatchDryRunRequest(
+        return new BusinessRouteMatchDryRunRequest(
             Scheme,
             Host,
             Port,

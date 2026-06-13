@@ -1,4 +1,5 @@
-using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
+using BusinessProxyConfigurationNormalizeRequest =
+    MDRAVA.BLL.ControlPlane.ConfigurationManagement.ProxyConfigurationNormalizeRequest;
 
 namespace MDRAVA.API.Controllers;
 
@@ -6,8 +7,8 @@ public sealed record ProxyConfigurationNormalizeSubmissionRequest(
     string? Format,
     string? Text)
 {
-    public ProxyConfigurationNormalizeRequest ToNormalizeRequest()
+    public BusinessProxyConfigurationNormalizeRequest ToNormalizeRequest()
     {
-        return new ProxyConfigurationNormalizeRequest(Format, Text);
+        return new BusinessProxyConfigurationNormalizeRequest(Format, Text);
     }
 }
