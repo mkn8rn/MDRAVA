@@ -19,6 +19,8 @@ public sealed record ProxyConfigurationReloadResponse<TProjection>(
     public static ProxyConfigurationReloadResponse<TProjection> FromResult(
         ConfigurationManagement.ProxyConfigurationReloadResult<TProjection> result)
     {
+        ArgumentNullException.ThrowIfNull(result);
+
         return result switch
         {
             ConfigurationManagement.ProxyConfigurationReloadResult<TProjection>.LoadFailedResult loadFailed =>
@@ -49,6 +51,8 @@ public sealed record ProxyConfigurationReloadResponse<TProjection>(
         TProjection? activeConfiguration,
         ProxyListenerReloadResponse? listenerReload)
     {
+        ArgumentNullException.ThrowIfNull(result);
+
         return new ProxyConfigurationReloadResponse<TProjection>(
             Succeeded: succeeded,
             SourceDirectory: result.SourceDirectory,

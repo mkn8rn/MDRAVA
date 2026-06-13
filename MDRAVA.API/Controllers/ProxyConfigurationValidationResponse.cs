@@ -17,6 +17,8 @@ public sealed record ProxyConfigurationValidationResponse(
 {
     public static ProxyConfigurationValidationResponse FromResult(BusinessProxyConfigurationValidationResult result)
     {
+        ArgumentNullException.ThrowIfNull(result);
+
         return result switch
         {
             BusinessProxyConfigurationValidationResult.ValidResult valid => FromResult(valid, succeeded: true),
@@ -29,6 +31,8 @@ public sealed record ProxyConfigurationValidationResponse(
         BusinessProxyConfigurationValidationResult result,
         bool succeeded)
     {
+        ArgumentNullException.ThrowIfNull(result);
+
         return new ProxyConfigurationValidationResponse(
             Succeeded: succeeded,
             SourceDirectory: result.SourceDirectory,

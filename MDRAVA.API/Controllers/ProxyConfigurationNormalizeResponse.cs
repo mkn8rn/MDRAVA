@@ -12,6 +12,8 @@ public sealed record ProxyConfigurationNormalizeResponse(
 {
     public static ProxyConfigurationNormalizeResponse FromResult(BusinessProxyConfigurationNormalizeResult result)
     {
+        ArgumentNullException.ThrowIfNull(result);
+
         return result switch
         {
             BusinessProxyConfigurationNormalizeResult.NormalizedResult normalized => new ProxyConfigurationNormalizeResponse(
