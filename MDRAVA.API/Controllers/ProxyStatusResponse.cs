@@ -5,7 +5,7 @@ using MDRAVA.BLL.ControlPlane.Metrics;
 using MDRAVA.BLL.ControlPlane.RouteDiagnostics;
 using MDRAVA.BLL.ControlPlane.Status;
 
-using BusinessProxyStatusResponse = MDRAVA.BLL.ControlPlane.Status.ProxyStatusResponse;
+using BusinessProxyStatus = MDRAVA.BLL.ControlPlane.Status.ProxyStatus;
 
 namespace MDRAVA.API.Controllers;
 
@@ -44,7 +44,7 @@ public sealed record ProxyStatusResponse(
 
     public ProxyRuntimePreflightStatus RuntimePreflight { get; init; } = null!;
 
-    public static ProxyStatusResponse FromBusinessResponse(BusinessProxyStatusResponse response)
+    public static ProxyStatusResponse FromBusinessResponse(BusinessProxyStatus response)
     {
         ArgumentNullException.ThrowIfNull(response);
 

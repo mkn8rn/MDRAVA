@@ -6,7 +6,7 @@ using MDRAVA.BLL.ControlPlane.Metrics;
 
 namespace MDRAVA.BLL.ControlPlane.Status;
 
-public sealed record ProxyStatusResponse(
+public sealed record ProxyStatus(
     bool ListenerLive,
     string? ListenerName,
     string? Endpoint,

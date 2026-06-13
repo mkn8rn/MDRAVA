@@ -9,7 +9,7 @@ public sealed class ProxyStatusOperations : IProxyStatusOperations
         _inputReader = inputReader;
     }
 
-    public ProxyStatusResponse GetStatus()
+    public ProxyStatus GetStatus()
     {
         return ProxyStatusResponseBuilder.Build(_inputReader.Read());
     }

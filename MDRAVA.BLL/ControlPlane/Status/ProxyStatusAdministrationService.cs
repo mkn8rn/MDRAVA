@@ -9,7 +9,7 @@ public sealed class ProxyStatusAdministrationService
         _operations = operations;
     }
 
-    public ProxyStatusResponse GetStatus()
+    public ProxyStatus GetStatus()
     {
         return _operations.GetStatus();
     }

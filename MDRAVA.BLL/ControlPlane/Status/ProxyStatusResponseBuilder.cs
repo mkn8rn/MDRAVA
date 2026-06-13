@@ -4,7 +4,7 @@ namespace MDRAVA.BLL.ControlPlane.Status;
 
 public static class ProxyStatusResponseBuilder
 {
-    public static ProxyStatusResponse Build(ProxyStatusInput input)
+    public static ProxyStatus Build(ProxyStatusInput input)
     {
         ArgumentNullException.ThrowIfNull(input);
 
@@ -14,7 +14,7 @@ public static class ProxyStatusResponseBuilder
         var routeCount = configuration?.RouteCount ?? 0;
         var (readiness, subsystems) = ProxyStatusReadinessBuilder.Build(input.Readiness);
 
-        return new ProxyStatusResponse(
+        return new ProxyStatus(
             runtime.ListenerLive,
             runtime.ListenerName,
             runtime.Endpoint,
