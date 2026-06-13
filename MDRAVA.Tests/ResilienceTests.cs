@@ -705,6 +705,8 @@ internal static class ResilienceTests
         AssertEx.True(ProxyRetryPolicy.DidExhaustAttempts(retry, retryableFailure, attempt: 2, maxAttempts: 2));
         AssertEx.True(ProxyRetryPolicy.DidExhaustAttempts(retry, startedFailure, attempt: 2, maxAttempts: 2));
         AssertEx.False(ProxyRetryPolicy.DidExhaustAttempts(retry, success, attempt: 2, maxAttempts: 2));
+        AssertEx.False(ProxyRetryPolicy.DidExhaustAttemptsBeforeUpstreamSelection(attempt: 1));
+        AssertEx.True(ProxyRetryPolicy.DidExhaustAttemptsBeforeUpstreamSelection(attempt: 2));
     }
 
     public static void ForwardingResultNamesSuccessAndFailureOutcomes()

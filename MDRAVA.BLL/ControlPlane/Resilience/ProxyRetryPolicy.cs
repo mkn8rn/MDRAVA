@@ -86,6 +86,11 @@ public static class ProxyRetryPolicy
             && IsRetryableFailure(retry, result);
     }
 
+    public static bool DidExhaustAttemptsBeforeUpstreamSelection(int attempt)
+    {
+        return attempt > 1;
+    }
+
     public static bool IsRetryableFailure(RuntimeRetryPolicy retry, ForwardingResult result)
     {
         if (result.ResponseStatusCode.HasValue

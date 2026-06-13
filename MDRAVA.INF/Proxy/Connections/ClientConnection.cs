@@ -623,7 +623,7 @@ public sealed class ClientConnection
             var selection = _upstreamSelector.Select(ProxyUpstreamSelectionRuntimeMapper.ToSelectionRoute(route));
             if (selection is null)
             {
-                if (attempt > 1)
+                if (ProxyRetryPolicy.DidExhaustAttemptsBeforeUpstreamSelection(attempt))
                 {
                     _metrics.RetryExhausted();
                 }
