@@ -42,7 +42,7 @@ public sealed record ProxyStatusResponse(
 
     public ProxySubsystemSummaries Subsystems { get; init; } = null!;
 
-    public ProxyRuntimePreflightStatus RuntimePreflight { get; init; } = null!;
+    public ProxyRuntimePreflightStatusResponse RuntimePreflight { get; init; } = null!;
 
     public static ProxyStatusResponse FromBusinessResponse(BusinessProxyStatus response)
     {
@@ -75,7 +75,7 @@ public sealed record ProxyStatusResponse(
             LogPersistence = ProxyLogPersistenceStatusResponse.FromStatus(response.LogPersistence),
             Readiness = response.Readiness,
             Subsystems = response.Subsystems,
-            RuntimePreflight = response.RuntimePreflight
+            RuntimePreflight = ProxyRuntimePreflightStatusResponse.FromStatus(response.RuntimePreflight)
         };
     }
 }
