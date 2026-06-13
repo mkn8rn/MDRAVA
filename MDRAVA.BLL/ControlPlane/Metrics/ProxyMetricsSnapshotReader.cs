@@ -13,16 +13,11 @@ public sealed partial class ProxyMetrics
             Interlocked.Read(ref _bytesWritten),
             Interlocked.Read(ref _parseErrors),
             ReadRejectionMetricsSnapshot(),
-            Interlocked.Read(ref _upstreamMalformedResponses),
             Interlocked.Read(ref _clientBodyRelayFailures),
             Interlocked.Read(ref _upstreamBodyRelayFailures),
             Interlocked.Read(ref _clientRequestHeadTimeouts),
             Interlocked.Read(ref _clientRequestBodyTimeouts),
-            Interlocked.Read(ref _upstreamConnectFailures),
-            Interlocked.Read(ref _upstreamConnectTimeouts),
-            Interlocked.Read(ref _upstreamResponseHeadTimeouts),
-            Interlocked.Read(ref _upstreamResponseBodyTimeouts),
-            Interlocked.Read(ref _upstreamPrematureDisconnects),
+            ReadUpstreamFailureMetricsSnapshot(),
             Interlocked.Read(ref _clientPrematureDisconnects),
             Interlocked.Read(ref _proxyGenerated502Responses),
             Interlocked.Read(ref _proxyGenerated504Responses),
@@ -33,7 +28,6 @@ public sealed partial class ProxyMetrics
             ReadTunnelMetricsSnapshot(),
             Interlocked.Read(ref _upstreamSelections),
             ReadHealthMetricsSnapshot(),
-            Interlocked.Read(ref _upstreamRequestFailures),
             ReadDiagnosticsMetricsSnapshot(),
             ReadRequestFailuresByKind(),
             ReadRequestsByRoute(),
@@ -60,6 +54,18 @@ public sealed partial class ProxyMetrics
             Interlocked.Read(ref _activeConnections),
             Interlocked.Read(ref _clientConnectionsClosedByIdleTimeout),
             Interlocked.Read(ref _clientConnectionsClosedByMaxRequests));
+    }
+
+    private ProxyUpstreamFailureMetricsSnapshot ReadUpstreamFailureMetricsSnapshot()
+    {
+        return new ProxyUpstreamFailureMetricsSnapshot(
+            Interlocked.Read(ref _upstreamConnectFailures),
+            Interlocked.Read(ref _upstreamConnectTimeouts),
+            Interlocked.Read(ref _upstreamResponseHeadTimeouts),
+            Interlocked.Read(ref _upstreamResponseBodyTimeouts),
+            Interlocked.Read(ref _upstreamMalformedResponses),
+            Interlocked.Read(ref _upstreamPrematureDisconnects),
+            Interlocked.Read(ref _upstreamRequestFailures));
     }
 
     private ProxyHttp3MetricsSnapshot ReadHttp3MetricsSnapshot()

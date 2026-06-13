@@ -1031,7 +1031,7 @@ internal static class ProxyIntegrationTests
             sendUpstreamResponse: false);
 
         AssertEx.True(result.ClientResponse.Contains("504 Gateway Timeout", StringComparison.Ordinal), result.ClientResponse);
-        AssertEx.Equal(1L, result.Metrics.UpstreamResponseHeadTimeouts);
+        AssertEx.Equal(1L, result.Metrics.UpstreamFailureReasons.ResponseHeadTimeouts);
         AssertEx.Equal(1L, result.Metrics.ProxyGenerated504Responses);
     }
 

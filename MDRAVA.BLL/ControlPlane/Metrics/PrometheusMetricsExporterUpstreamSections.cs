@@ -16,6 +16,7 @@ public sealed partial class PrometheusMetricsExporter
         var upstreamPool = proxy.UpstreamPool;
         var healthMetrics = proxy.Health;
         var resilience = proxy.Resilience;
+        var upstreamFailureReasons = proxy.UpstreamFailureReasons;
         AppendCounter(builder, "mdrava_upstream_request_attempts_total", "Selected upstream request attempts.", proxy.UpstreamSelections);
         AppendCounter(builder, "mdrava_upstream_http2_requests_total", "Upstream HTTP/2 request attempts.", upstreamHttp2.Requests);
         AppendCounter(builder, "mdrava_upstream_http3_requests_total", "Upstream HTTP/3 request attempts.", upstreamHttp3.Requests);
@@ -30,15 +31,15 @@ public sealed partial class PrometheusMetricsExporter
         AppendGauge(builder, "mdrava_upstream_http3_connections_active", "Active upstream HTTP/3 QUIC connections.", upstreamHttp3.ActiveConnections);
         AppendGauge(builder, "mdrava_upstream_http3_streams_active", "Active upstream HTTP/3 streams.", upstreamHttp3.ActiveStreams);
         AppendUpstreamSelectionCounters(builder, input.IncludePerUpstreamLabels, proxy.UpstreamSelectionsByUpstream);
-        AppendLabeledCounter(builder, "mdrava_upstream_failures_total", "Upstream failures by bounded reason.", proxy.UpstreamConnectFailures, new Label("reason", "connect_failure"));
-        AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.UpstreamConnectTimeouts, new Label("reason", "connect_timeout"));
-        AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.UpstreamResponseHeadTimeouts, new Label("reason", "response_head_timeout"));
-        AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.UpstreamResponseBodyTimeouts, new Label("reason", "response_body_timeout"));
-        AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.UpstreamMalformedResponses, new Label("reason", "malformed_response"));
-        AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.UpstreamPrematureDisconnects, new Label("reason", "premature_disconnect"));
+        AppendLabeledCounter(builder, "mdrava_upstream_failures_total", "Upstream failures by bounded reason.", upstreamFailureReasons.ConnectFailures, new Label("reason", "connect_failure"));
+        AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, upstreamFailureReasons.ConnectTimeouts, new Label("reason", "connect_timeout"));
+        AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, upstreamFailureReasons.ResponseHeadTimeouts, new Label("reason", "response_head_timeout"));
+        AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, upstreamFailureReasons.ResponseBodyTimeouts, new Label("reason", "response_body_timeout"));
+        AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, upstreamFailureReasons.MalformedResponses, new Label("reason", "malformed_response"));
+        AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, upstreamFailureReasons.PrematureDisconnects, new Label("reason", "premature_disconnect"));
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, healthMetrics.NoHealthyUpstreamFailures, new Label("reason", "no_healthy_upstream"));
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, resilience.NoAvailableUpstreamFailures, new Label("reason", "no_available_upstream"));
-        AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.UpstreamRequestFailures, new Label("reason", "request_failure"));
+        AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, upstreamFailureReasons.RequestFailures, new Label("reason", "request_failure"));
         AppendLabeledCounter(builder, "mdrava_upstream_http2_failures_total", "Upstream HTTP/2 failures by bounded reason.", upstreamHttp2.AlpnFailures, new Label("reason", "alpn_failure"));
         AppendLabeledCounter(builder, "mdrava_upstream_http2_failures_total", null, upstreamHttp2.ProtocolErrors, new Label("reason", "protocol_error"));
         if (upstreamHttp3.ProtocolErrors.Count > 0)

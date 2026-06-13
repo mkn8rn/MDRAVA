@@ -12,16 +12,11 @@ public sealed record ProxyMetricsSnapshot(
     long BytesWritten,
     long ParseErrors,
     ProxyRejectionMetricsSnapshot Rejections,
-    long UpstreamMalformedResponses,
     long ClientBodyRelayFailures,
     long UpstreamBodyRelayFailures,
     long ClientRequestHeadTimeouts,
     long ClientRequestBodyTimeouts,
-    long UpstreamConnectFailures,
-    long UpstreamConnectTimeouts,
-    long UpstreamResponseHeadTimeouts,
-    long UpstreamResponseBodyTimeouts,
-    long UpstreamPrematureDisconnects,
+    ProxyUpstreamFailureMetricsSnapshot UpstreamFailureReasons,
     long ClientPrematureDisconnects,
     long ProxyGenerated502Responses,
     long ProxyGenerated504Responses,
@@ -32,7 +27,6 @@ public sealed record ProxyMetricsSnapshot(
     ProxyTunnelMetricsSnapshot Tunnels,
     long UpstreamSelections,
     ProxyHealthMetricsSnapshot Health,
-    long UpstreamRequestFailures,
     ProxyDiagnosticsMetricsSnapshot Diagnostics,
     IReadOnlyDictionary<string, long> RequestFailuresByKind,
     IReadOnlyList<ProxyRequestSeriesSnapshot> RequestsByRoute,
@@ -80,6 +74,9 @@ public sealed record ProxyMetricsSnapshot(
 
     public ProxyRejectionMetricsSnapshot Rejections { get; } =
         Rejections ?? throw new ArgumentNullException(nameof(Rejections));
+
+    public ProxyUpstreamFailureMetricsSnapshot UpstreamFailureReasons { get; } =
+        UpstreamFailureReasons ?? throw new ArgumentNullException(nameof(UpstreamFailureReasons));
 
     public ProxyDiagnosticsMetricsSnapshot Diagnostics { get; } =
         Diagnostics ?? throw new ArgumentNullException(nameof(Diagnostics));

@@ -339,7 +339,7 @@ internal static class ResilienceTests
 
         AssertEx.Equal(CircuitBreakerRuntimeState.Open, fixture.Circuit.Snapshot(StatusSource(route.Upstreams[0])).State);
         AssertEx.Equal(1L, fixture.Metrics.Snapshot().Resilience.CircuitOpened);
-        AssertEx.Equal(0L, fixture.Metrics.Snapshot().UpstreamRequestFailures);
+        AssertEx.Equal(0L, fixture.Metrics.Snapshot().UpstreamFailureReasons.RequestFailures);
     }
 
     public static void UpstreamAttemptRecorderRecordsNonCircuitFailuresWithoutOpeningCircuit()
@@ -359,7 +359,7 @@ internal static class ResilienceTests
 
         AssertEx.Equal(CircuitBreakerRuntimeState.Closed, fixture.Circuit.Snapshot(StatusSource(route.Upstreams[0])).State);
         AssertEx.Equal(0L, fixture.Metrics.Snapshot().Resilience.CircuitOpened);
-        AssertEx.Equal(1L, fixture.Metrics.Snapshot().UpstreamRequestFailures);
+        AssertEx.Equal(1L, fixture.Metrics.Snapshot().UpstreamFailureReasons.RequestFailures);
     }
 
     public static void CircuitRejectsTrafficWhileOpen()

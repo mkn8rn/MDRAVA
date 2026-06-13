@@ -153,6 +153,7 @@ public sealed record ProxyMetricsSnapshotResponse(
         var resilience = snapshot.Resilience;
         var tls = snapshot.Tls;
         var tunnels = snapshot.Tunnels;
+        var upstreamFailureReasons = snapshot.UpstreamFailureReasons;
         var upstreamHttp2 = snapshot.UpstreamHttp2;
         var upstreamHttp3 = snapshot.UpstreamHttp3;
         var upstreamPool = snapshot.UpstreamPool;
@@ -169,16 +170,16 @@ public sealed record ProxyMetricsSnapshotResponse(
             snapshot.ParseErrors,
             rejections.MalformedRequests,
             rejections.UnsupportedRequestFraming,
-            snapshot.UpstreamMalformedResponses,
+            upstreamFailureReasons.MalformedResponses,
             snapshot.ClientBodyRelayFailures,
             snapshot.UpstreamBodyRelayFailures,
             snapshot.ClientRequestHeadTimeouts,
             snapshot.ClientRequestBodyTimeouts,
-            snapshot.UpstreamConnectFailures,
-            snapshot.UpstreamConnectTimeouts,
-            snapshot.UpstreamResponseHeadTimeouts,
-            snapshot.UpstreamResponseBodyTimeouts,
-            snapshot.UpstreamPrematureDisconnects,
+            upstreamFailureReasons.ConnectFailures,
+            upstreamFailureReasons.ConnectTimeouts,
+            upstreamFailureReasons.ResponseHeadTimeouts,
+            upstreamFailureReasons.ResponseBodyTimeouts,
+            upstreamFailureReasons.PrematureDisconnects,
             snapshot.ClientPrematureDisconnects,
             snapshot.ProxyGenerated502Responses,
             snapshot.ProxyGenerated504Responses,
@@ -211,7 +212,7 @@ public sealed record ProxyMetricsSnapshotResponse(
             health.ChecksSucceeded,
             health.ChecksFailed,
             health.UpstreamTransitions,
-            snapshot.UpstreamRequestFailures,
+            upstreamFailureReasons.RequestFailures,
             diagnostics.RequestIdsGenerated,
             diagnostics.AccessLogsEmitted,
             diagnostics.RecentDiagnosticsOverwritten,
