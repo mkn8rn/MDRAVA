@@ -12,16 +12,13 @@ public abstract record ProxyRestoreValidationResult
     {
         ArgumentNullException.ThrowIfNull(configValidation);
         ArgumentNullException.ThrowIfNull(manifest);
-        ArgumentNullException.ThrowIfNull(errors);
-        ArgumentNullException.ThrowIfNull(warnings);
-
         GeneratedAtUtc = generatedAtUtc;
         ActiveConfigVersion = activeConfigVersion;
         ConfigValidationSucceeded = configValidation is ProxyRestoreConfigurationValidationResult.ValidResult;
         WouldBeConfigVersion = configValidation.WouldBeVersion;
         Manifest = manifest;
-        Errors = errors.ToArray();
-        Warnings = warnings.ToArray();
+        Errors = BackupList.Copy(errors);
+        Warnings = BackupList.Copy(warnings);
     }
 
     public DateTimeOffset GeneratedAtUtc { get; }

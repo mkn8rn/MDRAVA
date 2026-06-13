@@ -253,12 +253,28 @@ internal static class BackupRestoreTests
         {
             new(ProxyStatusText.Warning, "manifest_warning", "Manifest warning.", null)
         };
+        var manifestDirectories = new List<ProxyBackupDirectoryStatus>
+        {
+            new("config", true, "must_backup", true)
+        };
+        var manifestEntries = new List<ProxyBackupManifestEntry>
+        {
+            new("config/proxy.json", "config", "must_backup", false, 10, generatedAtUtc)
+        };
+        var manifestCounts = new List<ProxyBackupManifestCount>
+        {
+            new("config", "must_backup", 1, 10)
+        };
+        var manifestWarnings = new List<ProxyBackupWarning>
+        {
+            new("manifest_warning", "Manifest warning.", null)
+        };
         var manifest = new ProxyBackupManifest(
             generatedAtUtc,
-            [],
-            [],
-            [],
-            [],
+            manifestDirectories,
+            manifestEntries,
+            manifestCounts,
+            manifestWarnings,
             Truncated: false);
 
         var scan = ProxyBackupFileSystemScanResult.Scanned(scanFiles, scanWarnings);
@@ -278,6 +294,10 @@ internal static class BackupRestoreTests
         scanWarnings.Clear();
         configErrors.Clear();
         configFileErrors.Clear();
+        manifestDirectories.Clear();
+        manifestEntries.Clear();
+        manifestCounts.Clear();
+        manifestWarnings.Clear();
         restoreErrors.Clear();
         restoreWarnings.Clear();
 
@@ -285,8 +305,22 @@ internal static class BackupRestoreTests
         AssertEx.Equal("directory_unreadable", scan.Warnings[0].Code);
         AssertEx.Equal("parse failed", configValidation.Errors[0]);
         AssertEx.Equal("config/proxy.json", configValidation.FileErrors[0].Path);
+        AssertEx.Equal("config", manifest.Directories[0].RelativePath);
+        AssertEx.Equal("config/proxy.json", manifest.Entries[0].RelativePath);
+        AssertEx.Equal("config", manifest.Counts[0].Category);
+        AssertEx.Equal("manifest_warning", manifest.Warnings[0].Code);
         AssertEx.Equal("config_invalid", restoreValidation.Errors[0].Code);
         AssertEx.Equal("manifest_warning", restoreValidation.Warnings[0].Code);
+        AssertEx.False(scan.Files is ProxyBackupFileSystemEntry[]);
+        AssertEx.False(scan.Warnings is ProxyBackupFileSystemWarning[]);
+        AssertEx.False(configValidation.Errors is string[]);
+        AssertEx.False(configValidation.FileErrors is ProxyConfigurationFileError[]);
+        AssertEx.False(manifest.Directories is ProxyBackupDirectoryStatus[]);
+        AssertEx.False(manifest.Entries is ProxyBackupManifestEntry[]);
+        AssertEx.False(manifest.Counts is ProxyBackupManifestCount[]);
+        AssertEx.False(manifest.Warnings is ProxyBackupWarning[]);
+        AssertEx.False(restoreValidation.Errors is ProxyRestoreValidationFinding[]);
+        AssertEx.False(restoreValidation.Warnings is ProxyRestoreValidationFinding[]);
     }
 
     public static void BackupPathSafetyRejectsTraversalOutsideDataDirectory()

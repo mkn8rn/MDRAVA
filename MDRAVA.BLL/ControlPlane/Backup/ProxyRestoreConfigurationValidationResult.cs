@@ -34,9 +34,10 @@ public abstract record ProxyRestoreConfigurationValidationResult
             WouldBeVersion = wouldBeVersion;
         }
 
-        public override IReadOnlyList<string> Errors => [];
+        public override IReadOnlyList<string> Errors => BackupList.Copy(Array.Empty<string>());
 
-        public override IReadOnlyList<ProxyConfigurationFileError> FileErrors => [];
+        public override IReadOnlyList<ProxyConfigurationFileError> FileErrors =>
+            BackupList.Copy(Array.Empty<ProxyConfigurationFileError>());
 
         public override int? WouldBeVersion { get; }
     }
@@ -55,8 +56,8 @@ public abstract record ProxyRestoreConfigurationValidationResult
                 throw new ArgumentException("Invalid restore configuration validation requires at least one error.");
             }
 
-            Errors = errors.ToArray();
-            FileErrors = fileErrors.ToArray();
+            Errors = BackupList.Copy(errors);
+            FileErrors = BackupList.Copy(fileErrors);
             WouldBeVersion = wouldBeVersion;
         }
 
