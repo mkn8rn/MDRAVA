@@ -20,9 +20,23 @@ public sealed record ProxyRouteSummarySource(
     bool CacheEnabled,
     bool HasHttp3Upstream);
 
-public sealed record ProxyCertificateSummarySource(
-    IReadOnlyList<string> ReferencedCertificateIds,
-    IReadOnlyList<ProxyCertificateValiditySource> LoadedCertificates);
+public sealed record ProxyCertificateSummarySource
+{
+    public ProxyCertificateSummarySource(
+        IReadOnlyList<string> ReferencedCertificateIds,
+        IReadOnlyList<ProxyCertificateValiditySource> LoadedCertificates)
+    {
+        ArgumentNullException.ThrowIfNull(ReferencedCertificateIds);
+        ArgumentNullException.ThrowIfNull(LoadedCertificates);
+
+        this.ReferencedCertificateIds = ProxyStatusList.Copy(ReferencedCertificateIds);
+        this.LoadedCertificates = ProxyStatusList.Copy(LoadedCertificates);
+    }
+
+    public IReadOnlyList<string> ReferencedCertificateIds { get; }
+
+    public IReadOnlyList<ProxyCertificateValiditySource> LoadedCertificates { get; }
+}
 
 public sealed record ProxyCertificateValiditySource(
     string Id,

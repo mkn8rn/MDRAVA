@@ -488,6 +488,174 @@ internal static class OperatorStatusTests
         AssertEx.False(input.AcmeStatuses is AcmeCertificateLifecycleStatus[], "Status input ACME statuses should not expose a mutable array.");
     }
 
+    public static void StatusReadinessInputsCopySourceLists()
+    {
+        var configured = new ProxyConfiguredListenerSummarySource(
+            Enabled: true,
+            Http1Enabled: true,
+            Http2Enabled: false,
+            Http3EnabledForTraffic: false);
+        var configuredReplacement = configured with { Enabled = false };
+        var configuredListeners = new List<ProxyConfiguredListenerSummarySource> { configured };
+        var runtime = new ProxyRuntimeListenerSummarySource(IsQuic: false, ProxyListenerState.Active);
+        var runtimeReplacement = runtime with { State = ProxyListenerState.Failed };
+        var runtimeListeners = new List<ProxyRuntimeListenerSummarySource> { runtime };
+        var route = new ProxyRouteSummarySource(
+            SiteName: "main",
+            IsProxyRoute: true,
+            CacheEnabled: true,
+            HasHttp3Upstream: false);
+        var routeReplacement = route with { SiteName = "replacement" };
+        var routes = new List<ProxyRouteSummarySource> { route };
+        var upstream = new ProxyUpstreamSummarySource(
+            UpstreamHealthState.Healthy,
+            HealthCheckEnabled: true,
+            CircuitBreakerEnabled: false,
+            CircuitBreakerRuntimeState.Disabled);
+        var upstreamReplacement = upstream with { HealthState = UpstreamHealthState.Unhealthy };
+        var upstreams = new List<ProxyUpstreamSummarySource> { upstream };
+        var acme = new AcmeCertificateLifecycleStatus(
+            CertificateId: "cert-a",
+            Enabled: true,
+            Domains: ["example.test"],
+            Active: true,
+            Source: "acme",
+            NotBeforeUtc: DateTimeOffset.UnixEpoch,
+            NotAfterUtc: DateTimeOffset.UnixEpoch.AddDays(30),
+            RenewalDueAtUtc: DateTimeOffset.UnixEpoch.AddDays(20),
+            LastAttemptAtUtc: null,
+            LastSucceededAtUtc: DateTimeOffset.UnixEpoch,
+            LastFailedAtUtc: null,
+            NextAttemptNotBeforeUtc: null,
+            LastResult: "loaded",
+            ErrorSummary: null);
+        var acmeReplacement = acme with { CertificateId = "cert-b" };
+        var acmeStatuses = new List<AcmeCertificateLifecycleStatus> { acme };
+        var referencedCertificates = new List<string> { "cert-a" };
+        var loadedCertificate = new ProxyCertificateValiditySource(
+            "cert-a",
+            DateTime.UnixEpoch,
+            DateTime.UnixEpoch.AddDays(30));
+        var loadedCertificates = new List<ProxyCertificateValiditySource> { loadedCertificate };
+        var certificates = new ProxyCertificateSummarySource(referencedCertificates, loadedCertificates);
+        var configuration = new ProxyStatusReadinessConfigurationSourceSet(
+            HasActiveConfiguration: true,
+            ConfigGeneration: 42,
+            ConfigurationLoadedAtUtc: DateTimeOffset.UnixEpoch,
+            ConfiguredListeners: configuredListeners,
+            Routes: routes,
+            Certificates: certificates,
+            Acme: new ProxyAcmeSummaryConfigurationSource(Enabled: true, ConfiguredCertificates: 1),
+            LimitConfiguration: new ProxyLimitConfigurationSummarySource(
+                MaxActiveClientConnections: 4096,
+                MaxConcurrentTlsHandshakes: 16,
+                RequestsPerMinutePerIp: 30));
+        var sources = new ProxyStatusReadinessSourceSet(
+            HasActiveConfiguration: true,
+            ConfigGeneration: 42,
+            ConfigurationLoadedAtUtc: DateTimeOffset.UnixEpoch,
+            LastListenerReloadSucceeded: true,
+            LastListenerReloadFailed: false,
+            ConfiguredListeners: configuredListeners,
+            RuntimeListeners: runtimeListeners,
+            Routes: routes,
+            Certificates: certificates,
+            Acme: new ProxyAcmeSummaryConfigurationSource(Enabled: true, ConfiguredCertificates: 1),
+            Upstreams: upstreams,
+            LimitConfiguration: new ProxyLimitConfigurationSummarySource(
+                MaxActiveClientConnections: 4096,
+                MaxConcurrentTlsHandshakes: 16,
+                RequestsPerMinutePerIp: 30),
+            LimitRuntime: new ProxyLimitRuntimeSummarySource(
+                ActiveConnections: 1,
+                ActiveTlsHandshakes: 0,
+                ActiveHttp2Streams: 0,
+                ActiveHttp3Streams: 0,
+                ActiveUpstreamHttp3Streams: 0),
+            ClientHttp3Enabled: false,
+            ClientHttp3Ready: false,
+            Log: new ProxyLogSummarySource(
+                AccessLogPersistenceEnabled: true,
+                AdminAuditPersistenceEnabled: true,
+                State: ProxyStatusText.Healthy,
+                Reason: "ok"),
+            Shutdown: new ProxyShutdownSummarySource(
+                IsRunning: true,
+                IsShuttingDown: false,
+                ShutdownStartedAtUtc: null,
+                ShutdownDeadlineUtc: null));
+        var input = new ProxyStatusReadinessInput(
+            HasActiveConfiguration: true,
+            ConfigGeneration: 42,
+            ConfigurationLoadedAtUtc: DateTimeOffset.UnixEpoch,
+            LastListenerReloadSucceeded: true,
+            LastListenerReloadFailed: false,
+            ConfiguredListeners: configuredListeners,
+            RuntimeListeners: runtimeListeners,
+            Routes: routes,
+            Certificates: certificates,
+            Acme: new ProxyAcmeSummaryConfigurationSource(Enabled: true, ConfiguredCertificates: 1),
+            Upstreams: upstreams,
+            LimitConfiguration: new ProxyLimitConfigurationSummarySource(
+                MaxActiveClientConnections: 4096,
+                MaxConcurrentTlsHandshakes: 16,
+                RequestsPerMinutePerIp: 30),
+            LimitRuntime: new ProxyLimitRuntimeSummarySource(
+                ActiveConnections: 1,
+                ActiveTlsHandshakes: 0,
+                ActiveHttp2Streams: 0,
+                ActiveHttp3Streams: 0,
+                ActiveUpstreamHttp3Streams: 0),
+            ClientHttp3Enabled: false,
+            ClientHttp3Ready: false,
+            Log: new ProxyLogSummarySource(
+                AccessLogPersistenceEnabled: true,
+                AdminAuditPersistenceEnabled: true,
+                State: ProxyStatusText.Healthy,
+                Reason: "ok"),
+            Shutdown: new ProxyShutdownSummarySource(
+                IsRunning: true,
+                IsShuttingDown: false,
+                ShutdownStartedAtUtc: null,
+                ShutdownDeadlineUtc: null),
+            CacheStatus: null,
+            AcmeStatuses: acmeStatuses,
+            RuntimePreflight: ProxyRuntimePreflightStatus.Unknown,
+            ObservedAtUtc: DateTimeOffset.UnixEpoch);
+
+        configuredListeners[0] = configuredReplacement;
+        runtimeListeners[0] = runtimeReplacement;
+        routes[0] = routeReplacement;
+        upstreams[0] = upstreamReplacement;
+        acmeStatuses[0] = acmeReplacement;
+        referencedCertificates[0] = "cert-b";
+        loadedCertificates[0] = loadedCertificate with { Id = "cert-b" };
+        configuredListeners.Clear();
+        runtimeListeners.Clear();
+        routes.Clear();
+        upstreams.Clear();
+        acmeStatuses.Clear();
+        referencedCertificates.Clear();
+        loadedCertificates.Clear();
+
+        AssertEx.True(configuration.ConfiguredListeners[0].Enabled);
+        AssertEx.Equal("main", configuration.Routes[0].SiteName);
+        AssertEx.True(sources.ConfiguredListeners[0].Enabled);
+        AssertEx.Equal(ProxyListenerState.Active, sources.RuntimeListeners[0].State);
+        AssertEx.Equal("main", sources.Routes[0].SiteName);
+        AssertEx.Equal(UpstreamHealthState.Healthy, sources.Upstreams[0].HealthState);
+        AssertEx.True(input.ConfiguredListeners[0].Enabled);
+        AssertEx.Equal(ProxyListenerState.Active, input.RuntimeListeners[0].State);
+        AssertEx.Equal("main", input.Routes[0].SiteName);
+        AssertEx.Equal(UpstreamHealthState.Healthy, input.Upstreams[0].HealthState);
+        AssertEx.Equal("cert-a", input.AcmeStatuses[0].CertificateId);
+        AssertEx.Equal("cert-a", certificates.ReferencedCertificateIds[0]);
+        AssertEx.Equal("cert-a", certificates.LoadedCertificates[0].Id);
+        AssertEx.False(input.Routes is ProxyRouteSummarySource[], "Readiness input routes should not expose a mutable array.");
+        AssertEx.False(sources.Upstreams is ProxyUpstreamSummarySource[], "Readiness source upstreams should not expose a mutable array.");
+        AssertEx.False(certificates.ReferencedCertificateIds is string[], "Certificate references should not expose a mutable array.");
+    }
+
     public static void StatusReadinessSourceMapperConsumesRuntimeSummaryWithoutRuntimeSnapshot()
     {
         var listener = Listener();
