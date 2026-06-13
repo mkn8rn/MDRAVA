@@ -65,7 +65,7 @@ public static class ProxyRetryPolicy
             return true;
         }
 
-        if (!result.Succeeded)
+        if (result is ForwardingResult.FailureResult)
         {
             return result.FailureKind switch
             {

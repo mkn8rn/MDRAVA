@@ -652,22 +652,22 @@ internal static class ResilienceTests
             responseStatusCode: 101,
             tunnel: tunnelRelay);
 
-        AssertEx.True(success.Succeeded);
+        AssertEx.True(success is ForwardingResult.SuccessResult);
         AssertEx.True(success.ResponseStarted);
         AssertEx.True(success.KeepClientConnectionOpen);
         AssertEx.Equal(200, success.ResponseStatusCode!.Value);
         AssertEx.Equal(ProxyFailureKind.None, success.FailureKind);
-        AssertEx.False(failure.Succeeded);
+        AssertEx.True(failure is ForwardingResult.FailureResult);
         AssertEx.False(failure.ResponseStarted);
         AssertEx.False(failure.KeepClientConnectionOpen);
         AssertEx.Equal(502, failure.ResponseStatusCode!.Value);
         AssertEx.Equal(ProxyFailureKind.UpstreamConnectFailed, failure.FailureKind);
-        AssertEx.True(tunnel.Succeeded);
+        AssertEx.True(tunnel is ForwardingResult.TunnelCompletedResult);
         AssertEx.True(tunnel.ResponseStarted);
         AssertEx.False(tunnel.KeepClientConnectionOpen);
         AssertEx.Equal(101, tunnel.ResponseStatusCode!.Value);
         AssertEx.Equal(ProxyFailureKind.TunnelRelayFailure, tunnel.FailureKind);
-        AssertEx.Equal(tunnelRelay, tunnel.Tunnel);
+        AssertEx.Equal(tunnelRelay, ((ForwardingResult.TunnelCompletedResult)tunnel).Tunnel);
     }
 
     public static void TimeoutPolicyAppliesRouteAndRetryAttemptTimeouts()

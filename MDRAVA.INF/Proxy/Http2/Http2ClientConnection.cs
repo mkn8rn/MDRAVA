@@ -790,18 +790,19 @@ public sealed class Http2ClientConnection
                 _metrics.RetryExhausted();
             }
 
-            if (suppressGeneratedFailureResponse && !result.Succeeded && !result.ResponseStarted)
+            if (suppressGeneratedFailureResponse
+                && result is ForwardingResult.FailureResult { ResponseStarted: false } suppressedFailure)
             {
-                return await WriteSuppressedFailureAsync(streamId, result, context, requestHead.Method, cancellationToken);
+                return await WriteSuppressedFailureAsync(streamId, suppressedFailure, context, requestHead.Method, cancellationToken);
             }
 
             await translator.CompleteAsync(cancellationToken);
             return result;
         }
 
-        if (lastResult is not null && !lastResult.ResponseStarted)
+        if (lastResult is ForwardingResult.FailureResult { ResponseStarted: false } lastFailure)
         {
-            return await WriteSuppressedFailureAsync(streamId, lastResult, context, requestHead.Method, cancellationToken);
+            return await WriteSuppressedFailureAsync(streamId, lastFailure, context, requestHead.Method, cancellationToken);
         }
 
         return lastResult ?? ForwardingResult.Failure(
@@ -812,7 +813,7 @@ public sealed class Http2ClientConnection
 
     private async ValueTask<ForwardingResult> WriteSuppressedFailureAsync(
         int streamId,
-        ForwardingResult result,
+        ForwardingResult.FailureResult result,
         ProxyRequestContext context,
         string method,
         CancellationToken cancellationToken)
@@ -851,7 +852,7 @@ public sealed class Http2ClientConnection
             return;
         }
 
-        if (!result.Succeeded)
+        if (result is ForwardingResult.FailureResult)
         {
             _healthStore.RecordRequestFailure(UpstreamHealthStateSourceMapper.FromUpstream(selection.Upstream));
             if (ProxyForwardingFailurePolicy.IsCircuitFailure(result.FailureKind))

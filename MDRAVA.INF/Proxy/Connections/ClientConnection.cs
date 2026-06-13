@@ -456,7 +456,7 @@ public sealed class ClientConnection
                 }
 
                 CompleteContext(ref currentContext);
-                if (!result.Succeeded || !result.KeepClientConnectionOpen)
+                if (result is ForwardingResult.FailureResult || !result.KeepClientConnectionOpen)
                 {
                     return;
                 }
@@ -684,17 +684,18 @@ public sealed class ClientConnection
                 _metrics.RetryExhausted();
             }
 
-            if (suppressGeneratedFailureResponse && !result.Succeeded && !result.ResponseStarted)
+            if (suppressGeneratedFailureResponse
+                && result is ForwardingResult.FailureResult { ResponseStarted: false } suppressedFailure)
             {
-                return await WriteSuppressedFailureAsync(clientStream, result, context, cancellationToken);
+                return await WriteSuppressedFailureAsync(clientStream, suppressedFailure, context, cancellationToken);
             }
 
             return result;
         }
 
-        if (lastResult is not null && !lastResult.ResponseStarted)
+        if (lastResult is ForwardingResult.FailureResult { ResponseStarted: false } lastFailure)
         {
-            return await WriteSuppressedFailureAsync(clientStream, lastResult, context, cancellationToken);
+            return await WriteSuppressedFailureAsync(clientStream, lastFailure, context, cancellationToken);
         }
 
         return lastResult ?? ForwardingResult.Failure(
@@ -813,7 +814,7 @@ public sealed class ClientConnection
             forwardedHeaders,
             context.RequestId,
             cancellationToken);
-        if (!upgradeResult.Succeeded)
+        if (upgradeResult is ForwardingResult.FailureResult)
         {
             _healthStore.RecordRequestFailure(UpstreamHealthStateSourceMapper.FromUpstream(upgradeSelection.Upstream));
             _circuitBreakerStore.RecordFailure(
@@ -838,7 +839,7 @@ public sealed class ClientConnection
             return;
         }
 
-        if (!result.Succeeded)
+        if (result is ForwardingResult.FailureResult)
         {
             _healthStore.RecordRequestFailure(UpstreamHealthStateSourceMapper.FromUpstream(selection.Upstream));
             if (ProxyForwardingFailurePolicy.IsCircuitFailure(result.FailureKind))
@@ -860,7 +861,7 @@ public sealed class ClientConnection
 
     private async ValueTask<ForwardingResult> WriteSuppressedFailureAsync(
         Stream clientStream,
-        ForwardingResult result,
+        ForwardingResult.FailureResult result,
         ProxyRequestContext context,
         CancellationToken cancellationToken)
     {
@@ -1087,12 +1088,12 @@ public sealed class ClientConnection
         context.ResponseStatusCode = result.ResponseStatusCode;
         context.KeepClientConnectionOpen = result.KeepClientConnectionOpen;
         context.FailureKind = result.FailureKind;
-        if (result.Tunnel is not null)
+        if (result is ForwardingResult.TunnelCompletedResult tunnelCompleted)
         {
             context.TunnelEstablished = result.ResponseStatusCode == 101;
-            context.TunnelCloseReason = result.Tunnel.CloseReason;
-            context.TunnelBytesClientToUpstream = result.Tunnel.BytesClientToUpstream;
-            context.TunnelBytesUpstreamToClient = result.Tunnel.BytesUpstreamToClient;
+            context.TunnelCloseReason = tunnelCompleted.Tunnel.CloseReason;
+            context.TunnelBytesClientToUpstream = tunnelCompleted.Tunnel.BytesClientToUpstream;
+            context.TunnelBytesUpstreamToClient = tunnelCompleted.Tunnel.BytesUpstreamToClient;
         }
     }
 

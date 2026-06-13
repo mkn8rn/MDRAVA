@@ -682,18 +682,19 @@ public sealed class Http3Connection
                 _metrics.RetryExhausted();
             }
 
-            if (suppressGeneratedFailureResponse && !result.Succeeded && !result.ResponseStarted)
+            if (suppressGeneratedFailureResponse
+                && result is ForwardingResult.FailureResult { ResponseStarted: false } suppressedFailure)
             {
-                return await WriteSuppressedFailureAsync(stream, result, context, requestHead.Method, cancellationToken);
+                return await WriteSuppressedFailureAsync(stream, suppressedFailure, context, requestHead.Method, cancellationToken);
             }
 
             await translator.CompleteAsync(cancellationToken);
             return result;
         }
 
-        if (lastResult is not null && !lastResult.ResponseStarted)
+        if (lastResult is ForwardingResult.FailureResult { ResponseStarted: false } lastFailure)
         {
-            return await WriteSuppressedFailureAsync(stream, lastResult, context, requestHead.Method, cancellationToken);
+            return await WriteSuppressedFailureAsync(stream, lastFailure, context, requestHead.Method, cancellationToken);
         }
 
         return lastResult ?? ForwardingResult.Failure(
@@ -704,7 +705,7 @@ public sealed class Http3Connection
 
     private async ValueTask<ForwardingResult> WriteSuppressedFailureAsync(
         QuicStream stream,
-        ForwardingResult result,
+        ForwardingResult.FailureResult result,
         ProxyRequestContext context,
         string method,
         CancellationToken cancellationToken)
@@ -742,7 +743,7 @@ public sealed class Http3Connection
             return;
         }
 
-        if (!result.Succeeded)
+        if (result is ForwardingResult.FailureResult)
         {
             _healthStore.RecordRequestFailure(UpstreamHealthStateSourceMapper.FromUpstream(selection.Upstream));
             if (ProxyForwardingFailurePolicy.IsCircuitFailure(result.FailureKind))
