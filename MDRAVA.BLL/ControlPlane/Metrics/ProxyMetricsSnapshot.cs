@@ -68,13 +68,8 @@ public sealed record ProxyMetricsSnapshot(
     ProxyResilienceMetricsSnapshot Resilience,
     IReadOnlyList<ProxyUpstreamSelectionSnapshot> UpstreamSelectionsByUpstream,
     ProxyListenerMetricsSnapshot Listeners,
-    long Http2AcceptedConnections,
-    long Http2Requests,
-    long ActiveHttp2Streams,
-    IReadOnlyDictionary<string, long> Http2ProtocolErrors,
-    long UpstreamHttp2Requests,
-    long UpstreamHttp2AlpnFailures,
-    long UpstreamHttp2ProtocolErrors,
+    ProxyHttp2MetricsSnapshot Http2,
+    ProxyUpstreamHttp2MetricsSnapshot UpstreamHttp2,
     ProxyUpstreamHttp3MetricsSnapshot UpstreamHttp3,
     ProxyHttp3MetricsSnapshot Http3,
     long ConfigLintRuns,
@@ -87,6 +82,12 @@ public sealed record ProxyMetricsSnapshot(
 
     public ProxyUpstreamHttp3MetricsSnapshot UpstreamHttp3 { get; } =
         UpstreamHttp3 ?? throw new ArgumentNullException(nameof(UpstreamHttp3));
+
+    public ProxyUpstreamHttp2MetricsSnapshot UpstreamHttp2 { get; } =
+        UpstreamHttp2 ?? throw new ArgumentNullException(nameof(UpstreamHttp2));
+
+    public ProxyHttp2MetricsSnapshot Http2 { get; } =
+        Http2 ?? throw new ArgumentNullException(nameof(Http2));
 
     public ProxyListenerMetricsSnapshot Listeners { get; } =
         Listeners ?? throw new ArgumentNullException(nameof(Listeners));
@@ -108,9 +109,6 @@ public sealed record ProxyMetricsSnapshot(
 
     public IReadOnlyList<ProxyUpstreamSelectionSnapshot> UpstreamSelectionsByUpstream { get; } =
         MetricsList.Copy(UpstreamSelectionsByUpstream);
-
-    public IReadOnlyDictionary<string, long> Http2ProtocolErrors { get; } =
-        MetricsList.CopyDictionary(Http2ProtocolErrors, StringComparer.Ordinal);
 
     public IReadOnlyList<ProxyConfigLintFindingMetricSnapshot> ConfigLintFindings { get; } =
         MetricsList.Copy(ConfigLintFindings);

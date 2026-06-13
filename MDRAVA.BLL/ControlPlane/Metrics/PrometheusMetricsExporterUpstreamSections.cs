@@ -12,9 +12,10 @@ public sealed partial class PrometheusMetricsExporter
         IReadOnlyList<ProxyUpstreamStatus> health)
     {
         var upstreamHttp3 = proxy.UpstreamHttp3;
+        var upstreamHttp2 = proxy.UpstreamHttp2;
         var resilience = proxy.Resilience;
         AppendCounter(builder, "mdrava_upstream_request_attempts_total", "Selected upstream request attempts.", proxy.UpstreamSelections);
-        AppendCounter(builder, "mdrava_upstream_http2_requests_total", "Upstream HTTP/2 request attempts.", proxy.UpstreamHttp2Requests);
+        AppendCounter(builder, "mdrava_upstream_http2_requests_total", "Upstream HTTP/2 request attempts.", upstreamHttp2.Requests);
         AppendCounter(builder, "mdrava_upstream_http3_requests_total", "Upstream HTTP/3 request attempts.", upstreamHttp3.Requests);
         AppendCounter(builder, "mdrava_upstream_http3_connection_attempts_total", "Upstream HTTP/3 QUIC connection attempts.", upstreamHttp3.ConnectionAttempts);
         AppendCounter(builder, "mdrava_upstream_http3_connection_successes_total", "Successful upstream HTTP/3 QUIC connections.", upstreamHttp3.ConnectionSuccesses);
@@ -36,8 +37,8 @@ public sealed partial class PrometheusMetricsExporter
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.NoHealthyUpstreamFailures, new Label("reason", "no_healthy_upstream"));
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, resilience.NoAvailableUpstreamFailures, new Label("reason", "no_available_upstream"));
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.UpstreamRequestFailures, new Label("reason", "request_failure"));
-        AppendLabeledCounter(builder, "mdrava_upstream_http2_failures_total", "Upstream HTTP/2 failures by bounded reason.", proxy.UpstreamHttp2AlpnFailures, new Label("reason", "alpn_failure"));
-        AppendLabeledCounter(builder, "mdrava_upstream_http2_failures_total", null, proxy.UpstreamHttp2ProtocolErrors, new Label("reason", "protocol_error"));
+        AppendLabeledCounter(builder, "mdrava_upstream_http2_failures_total", "Upstream HTTP/2 failures by bounded reason.", upstreamHttp2.AlpnFailures, new Label("reason", "alpn_failure"));
+        AppendLabeledCounter(builder, "mdrava_upstream_http2_failures_total", null, upstreamHttp2.ProtocolErrors, new Label("reason", "protocol_error"));
         if (upstreamHttp3.ProtocolErrors.Count > 0)
         {
             AppendHelpAndType(builder, "mdrava_upstream_http3_protocol_errors_total", "Upstream HTTP/3 protocol errors by bounded reason.", "counter");

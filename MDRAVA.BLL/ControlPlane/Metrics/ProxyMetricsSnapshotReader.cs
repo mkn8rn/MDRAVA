@@ -69,13 +69,8 @@ public sealed partial class ProxyMetrics
             ReadResilienceMetricsSnapshot(),
             ReadUpstreamSelectionsByUpstream(),
             ReadListenerMetricsSnapshot(),
-            Interlocked.Read(ref _http2AcceptedConnections),
-            Interlocked.Read(ref _http2Requests),
-            Interlocked.Read(ref _activeHttp2Streams),
-            ReadHttp2ProtocolErrors(),
-            Interlocked.Read(ref _upstreamHttp2Requests),
-            Interlocked.Read(ref _upstreamHttp2AlpnFailures),
-            Interlocked.Read(ref _upstreamHttp2ProtocolErrors),
+            ReadHttp2MetricsSnapshot(),
+            ReadUpstreamHttp2MetricsSnapshot(),
             ReadUpstreamHttp3MetricsSnapshot(),
             ReadHttp3MetricsSnapshot(),
             Interlocked.Read(ref _configLintRuns),
@@ -174,6 +169,23 @@ public sealed partial class ProxyMetrics
             Interlocked.Read(ref _activeUpstreamHttp3Connections),
             Interlocked.Read(ref _activeUpstreamHttp3Streams),
             ReadUpstreamHttp3ProtocolErrors());
+    }
+
+    private ProxyHttp2MetricsSnapshot ReadHttp2MetricsSnapshot()
+    {
+        return new ProxyHttp2MetricsSnapshot(
+            Interlocked.Read(ref _http2AcceptedConnections),
+            Interlocked.Read(ref _http2Requests),
+            Interlocked.Read(ref _activeHttp2Streams),
+            ReadHttp2ProtocolErrors());
+    }
+
+    private ProxyUpstreamHttp2MetricsSnapshot ReadUpstreamHttp2MetricsSnapshot()
+    {
+        return new ProxyUpstreamHttp2MetricsSnapshot(
+            Interlocked.Read(ref _upstreamHttp2Requests),
+            Interlocked.Read(ref _upstreamHttp2AlpnFailures),
+            Interlocked.Read(ref _upstreamHttp2ProtocolErrors));
     }
 
     public ProxyMetricsSnapshot ReadMetrics()

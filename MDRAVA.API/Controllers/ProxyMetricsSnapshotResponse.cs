@@ -140,11 +140,13 @@ public sealed record ProxyMetricsSnapshotResponse(
     public static ProxyMetricsSnapshotResponse FromSnapshot(BusinessProxyMetricsSnapshot snapshot)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
+        var http2 = snapshot.Http2;
         var http3 = snapshot.Http3;
         var listeners = snapshot.Listeners;
         var resilience = snapshot.Resilience;
         var tls = snapshot.Tls;
         var tunnels = snapshot.Tunnels;
+        var upstreamHttp2 = snapshot.UpstreamHttp2;
         var upstreamHttp3 = snapshot.UpstreamHttp3;
 
         return new ProxyMetricsSnapshotResponse(
@@ -239,13 +241,13 @@ public sealed record ProxyMetricsSnapshotResponse(
             listeners.StartFailures,
             listeners.Drains,
             listeners.ActiveListeners,
-            snapshot.Http2AcceptedConnections,
-            snapshot.Http2Requests,
-            snapshot.ActiveHttp2Streams,
-            new Dictionary<string, long>(snapshot.Http2ProtocolErrors),
-            snapshot.UpstreamHttp2Requests,
-            snapshot.UpstreamHttp2AlpnFailures,
-            snapshot.UpstreamHttp2ProtocolErrors,
+            http2.AcceptedConnections,
+            http2.Requests,
+            http2.ActiveStreams,
+            new Dictionary<string, long>(http2.ProtocolErrors),
+            upstreamHttp2.Requests,
+            upstreamHttp2.AlpnFailures,
+            upstreamHttp2.ProtocolErrors,
             upstreamHttp3.Requests,
             upstreamHttp3.ConnectionAttempts,
             upstreamHttp3.ConnectionSuccesses,

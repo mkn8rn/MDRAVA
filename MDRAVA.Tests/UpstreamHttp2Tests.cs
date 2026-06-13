@@ -213,7 +213,7 @@ internal static class UpstreamHttp2Tests
 
         AssertEx.True(result.ClientResponse.Contains("cache-h2", StringComparison.Ordinal), result.ClientResponse);
         AssertEx.True(result.SecondClientResponse.Contains("cache-h2", StringComparison.Ordinal), result.SecondClientResponse);
-        AssertEx.True(result.Metrics.UpstreamHttp2Requests >= 1, result.Metrics.UpstreamHttp2Requests.ToString());
+        AssertEx.True(result.Metrics.UpstreamHttp2.Requests >= 1, result.Metrics.UpstreamHttp2.Requests.ToString());
     }
 
     public static async Task Http2UpstreamForwardsRequestBody()
@@ -290,7 +290,7 @@ internal static class UpstreamHttp2Tests
             [("content-length", "2")],
             Encoding.ASCII.GetBytes("ok"));
 
-        AssertEx.True(result.Metrics.UpstreamHttp2Requests >= 1, result.Metrics.UpstreamHttp2Requests.ToString());
+        AssertEx.True(result.Metrics.UpstreamHttp2.Requests >= 1, result.Metrics.UpstreamHttp2.Requests.ToString());
     }
 
     public static async Task Http2UpstreamCloseBeforeResponseHeadersReturnsSafeFailure()

@@ -183,7 +183,7 @@ internal static class ClientHttp2Tests
             });
 
         AssertEx.Equal(400, result.Response.StatusCode);
-        AssertEx.Equal(1L, result.Metrics.Http2ProtocolErrors["invalid_pseudo_header"]);
+        AssertEx.Equal(1L, result.Metrics.Http2.ProtocolErrors["invalid_pseudo_header"]);
     }
 
     public static async Task ForbiddenConnectionHeadersAreRejected()
@@ -197,7 +197,7 @@ internal static class ClientHttp2Tests
             });
 
         AssertEx.Equal(400, result.Response.StatusCode);
-        AssertEx.Equal(1L, result.Metrics.Http2ProtocolErrors["forbidden_header"]);
+        AssertEx.Equal(1L, result.Metrics.Http2.ProtocolErrors["forbidden_header"]);
     }
 
     public static async Task HuffmanRequestHeaderValuesAreDecoded()
@@ -517,8 +517,8 @@ internal static class ClientHttp2Tests
             });
 
         AssertEx.Equal(400, result.Response.StatusCode);
-        AssertEx.True(result.Metrics.Http2ProtocolErrors.ContainsKey("invalid_pseudo_header")
-            || result.Metrics.Http2ProtocolErrors.ContainsKey("extended_connect_unsupported"));
+        AssertEx.True(result.Metrics.Http2.ProtocolErrors.ContainsKey("invalid_pseudo_header")
+            || result.Metrics.Http2.ProtocolErrors.ContainsKey("extended_connect_unsupported"));
     }
 
     public static async Task ConcurrentStreamsReachDifferentRoutes()
@@ -538,7 +538,7 @@ internal static class ClientHttp2Tests
         AssertEx.Equal("one", result.Value[0].BodyText);
         AssertEx.Equal(200, result.Value[1].StatusCode);
         AssertEx.Equal("two", result.Value[1].BodyText);
-        AssertEx.Equal(0L, result.Metrics.ActiveHttp2Streams);
+        AssertEx.Equal(0L, result.Metrics.Http2.ActiveStreams);
     }
 
     public static async Task DataBeforeHeadersIsRejectedSafely()
@@ -548,8 +548,8 @@ internal static class ClientHttp2Tests
             async (client, _, cancellationToken) => await client.SendDataBeforeHeadersAsync(cancellationToken));
 
         AssertEx.Equal(0, result.Value.StatusCode);
-        AssertEx.Equal(1L, result.Metrics.Http2ProtocolErrors["unexpected_data"]);
-        AssertEx.Equal(0L, result.Metrics.ActiveHttp2Streams);
+        AssertEx.Equal(1L, result.Metrics.Http2.ProtocolErrors["unexpected_data"]);
+        AssertEx.Equal(0L, result.Metrics.Http2.ActiveStreams);
     }
 
     public static async Task ContinuationHeaderFragmentationIsAccepted()
@@ -563,7 +563,7 @@ internal static class ClientHttp2Tests
 
         AssertEx.Equal(203, result.Value.StatusCode);
         AssertEx.Equal("static-h2", result.Value.BodyText);
-        AssertEx.Equal(0L, result.Metrics.ActiveHttp2Streams);
+        AssertEx.Equal(0L, result.Metrics.Http2.ActiveStreams);
     }
 
     public static async Task RstStreamReleasesStateAndKeepsConnectionUsable()
@@ -577,7 +577,7 @@ internal static class ClientHttp2Tests
 
         AssertEx.Equal(203, result.Value.StatusCode);
         AssertEx.Equal("static-h2", result.Value.BodyText);
-        AssertEx.Equal(0L, result.Metrics.ActiveHttp2Streams);
+        AssertEx.Equal(0L, result.Metrics.Http2.ActiveStreams);
     }
 
     public static async Task GoAwayStopsNewStreamsSafely()
@@ -601,8 +601,8 @@ internal static class ClientHttp2Tests
             });
 
         AssertEx.Equal(0, result.Value.StatusCode);
-        AssertEx.Equal(1L, result.Metrics.Http2ProtocolErrors["header_list_too_large"]);
-        AssertEx.Equal(0L, result.Metrics.ActiveHttp2Streams);
+        AssertEx.Equal(1L, result.Metrics.Http2.ProtocolErrors["header_list_too_large"]);
+        AssertEx.Equal(0L, result.Metrics.Http2.ActiveStreams);
     }
 
     public static async Task MetricsIncludeHttp2Counters()
@@ -615,9 +615,9 @@ internal static class ClientHttp2Tests
                 request.Path = "/metrics";
             });
 
-        AssertEx.True(result.Metrics.Http2AcceptedConnections >= 1, result.Metrics.Http2AcceptedConnections.ToString());
-        AssertEx.True(result.Metrics.Http2Requests >= 1, result.Metrics.Http2Requests.ToString());
-        AssertEx.Equal(0L, result.Metrics.ActiveHttp2Streams);
+        AssertEx.True(result.Metrics.Http2.AcceptedConnections >= 1, result.Metrics.Http2.AcceptedConnections.ToString());
+        AssertEx.True(result.Metrics.Http2.Requests >= 1, result.Metrics.Http2.Requests.ToString());
+        AssertEx.Equal(0L, result.Metrics.Http2.ActiveStreams);
     }
 
     private static async Task<Http2ScenarioResult> RunHttp2ScenarioAsync(

@@ -74,7 +74,7 @@ internal static class TestWaiters
         return UntilAsync(
             () =>
             {
-                observed = metrics.Snapshot().ActiveHttp2Streams;
+                observed = metrics.Snapshot().Http2.ActiveStreams;
                 return observed == 0;
             },
             () => $"Timed out waiting for HTTP/2 stream gauges to drain. ActiveHttp2Streams={observed}.",

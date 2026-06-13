@@ -217,13 +217,15 @@ internal static class MetricsTests
                 StartFailures: 0,
                 Drains: 0,
                 ActiveListeners: 0),
-            Http2AcceptedConnections: 0,
-            Http2Requests: 0,
-            ActiveHttp2Streams: 0,
-            Http2ProtocolErrors: http2ProtocolErrors,
-            UpstreamHttp2Requests: 0,
-            UpstreamHttp2AlpnFailures: 0,
-            UpstreamHttp2ProtocolErrors: 0,
+            Http2: new ProxyHttp2MetricsSnapshot(
+                AcceptedConnections: 0,
+                Requests: 0,
+                ActiveStreams: 0,
+                ProtocolErrors: http2ProtocolErrors),
+            UpstreamHttp2: new ProxyUpstreamHttp2MetricsSnapshot(
+                Requests: 0,
+                AlpnFailures: 0,
+                ProtocolErrors: 0),
             UpstreamHttp3: new ProxyUpstreamHttp3MetricsSnapshot(
                 Requests: 0,
                 ConnectionAttempts: 0,
@@ -278,7 +280,7 @@ internal static class MetricsTests
         AssertEx.Equal("route-a", snapshot.RequestsByRoute[0].Route);
         AssertEx.Equal("unsafe_method", snapshot.Resilience.RetrySkipped[0].Reason);
         AssertEx.Equal("upstream-a", snapshot.UpstreamSelectionsByUpstream[0].Upstream);
-        AssertEx.Equal(6L, snapshot.Http2ProtocolErrors["stream_error"]);
+        AssertEx.Equal(6L, snapshot.Http2.ProtocolErrors["stream_error"]);
         AssertEx.Equal(7L, snapshot.UpstreamHttp3.ProtocolErrors["goaway"]);
         AssertEx.Equal("proxied", snapshot.Http3.RequestsByOutcome[0].Outcome);
         AssertEx.Equal(9L, snapshot.Http3.RejectedRequests["malformed"]);
@@ -289,7 +291,7 @@ internal static class MetricsTests
         AssertEx.False(snapshot.RequestsByRoute is ProxyRequestSeriesSnapshot[]);
         AssertEx.False(snapshot.Resilience.RetrySkipped is ProxyRetrySkippedSnapshot[]);
         AssertEx.False(snapshot.UpstreamSelectionsByUpstream is ProxyUpstreamSelectionSnapshot[]);
-        AssertEx.False(snapshot.Http2ProtocolErrors is Dictionary<string, long>);
+        AssertEx.False(snapshot.Http2.ProtocolErrors is Dictionary<string, long>);
         AssertEx.False(snapshot.UpstreamHttp3.ProtocolErrors is Dictionary<string, long>);
         AssertEx.False(snapshot.Http3.RequestsByOutcome is ProxyHttp3RequestOutcomeSnapshot[]);
         AssertEx.False(snapshot.Http3.RejectedRequests is Dictionary<string, long>);
