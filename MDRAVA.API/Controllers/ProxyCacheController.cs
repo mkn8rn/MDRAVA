@@ -17,12 +17,16 @@ public sealed class ProxyCacheController : ControllerBase
     [HttpGet("status")]
     public ProxyCacheStatusResponse Status()
     {
-        return _cacheAdministration.GetStatus();
+        var status = _cacheAdministration.GetStatus();
+
+        return ProxyCacheStatusResponse.FromStatus(status);
     }
 
     [HttpPost("clear")]
     public ProxyCacheStatusResponse Clear()
     {
-        return _cacheAdministration.Clear();
+        var status = _cacheAdministration.Clear();
+
+        return ProxyCacheStatusResponse.FromStatus(status);
     }
 }

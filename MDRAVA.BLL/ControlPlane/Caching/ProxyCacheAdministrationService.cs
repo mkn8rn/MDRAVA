@@ -15,12 +15,12 @@ public sealed class ProxyCacheAdministrationService
         _cacheControl = cacheControl;
     }
 
-    public ProxyCacheStatusResponse GetStatus()
+    public ProxyCacheStatus GetStatus()
     {
         return _statusReader.GetStatus();
     }
 
-    public ProxyCacheStatusResponse Clear()
+    public ProxyCacheStatus Clear()
     {
         _cacheControl.Clear(ManualClearReason);
         return _statusReader.GetStatus();

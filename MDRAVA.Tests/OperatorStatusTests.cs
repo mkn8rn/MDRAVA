@@ -235,7 +235,7 @@ internal static class OperatorStatusTests
                 MaxFiles: 0),
             lastSuccessfulWriteAtUtc: null,
             lastWriteFailure: null);
-        var cacheStatus = ProxyCacheStatusResponse.FromRuntimeSnapshot(
+        var cacheStatus = ProxyCacheStatus.FromRuntimeSnapshot(
             new ProxyCacheRuntimeStatusSnapshot(
                 EntryCount: 3,
                 ApproximateBytes: 1024,
@@ -622,7 +622,7 @@ internal static class OperatorStatusTests
                 IsShuttingDown: false,
                 ShutdownStartedAtUtc: null,
                 ShutdownDeadlineUtc: null),
-            CacheStatus: ProxyCacheStatusResponse.FromRuntimeSnapshot(
+            CacheStatus: ProxyCacheStatus.FromRuntimeSnapshot(
                 new ProxyCacheRuntimeStatusSnapshot(
                     EntryCount: 1,
                     ApproximateBytes: 512,

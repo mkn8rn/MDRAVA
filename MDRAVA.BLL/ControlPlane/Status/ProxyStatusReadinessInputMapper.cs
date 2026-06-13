@@ -106,7 +106,7 @@ public static class ProxyStatusReadinessInputMapper
 {
     public static ProxyStatusReadinessInput FromSources(
         ProxyStatusReadinessSourceSet sources,
-        ProxyCacheStatusResponse? cacheStatus,
+        ProxyCacheStatus? cacheStatus,
         IReadOnlyList<AcmeCertificateLifecycleStatus> acmeStatuses,
         ProxyRuntimePreflightStatus runtimePreflight,
         DateTimeOffset observedAtUtc)

@@ -13,7 +13,7 @@ public sealed record ProxyMetricsExportInput(
     int DefaultEnabledHttp3ListenerCount,
     bool Http3RequestBodyStreamingEnabled,
     bool UpstreamHttp3MultiplexingConfigured,
-    ProxyCacheStatusResponse CacheStatus,
+    ProxyCacheStatus CacheStatus,
     IReadOnlyList<ProxyUpstreamStatusResponse> UpstreamHealth,
     IReadOnlyList<AcmeCertificateLifecycleStatus> AcmeCertificates);
 
@@ -149,7 +149,7 @@ public static class ProxyMetricsExportInputMapper
         ProxyMetricsSnapshot metrics,
         ProxyMetricsExportLabelOptions labelOptions,
         ProxyMetricsExportHttp3Facts http3Facts,
-        ProxyCacheStatusResponse cacheStatus,
+        ProxyCacheStatus cacheStatus,
         IReadOnlyList<ProxyUpstreamStatusResponse> upstreamHealth,
         IReadOnlyList<AcmeCertificateLifecycleStatus> acmeCertificates)
     {

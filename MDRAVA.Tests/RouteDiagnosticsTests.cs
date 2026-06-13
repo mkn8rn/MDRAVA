@@ -853,7 +853,7 @@ internal static class RouteDiagnosticsTests
             TimeProvider.System);
     }
 
-    private static ProxyCacheStatusResponse CacheStatus(
+    private static ProxyCacheStatus CacheStatus(
         ResponseCacheStore cache,
         ProxyConfigurationSnapshot? configuration)
     {

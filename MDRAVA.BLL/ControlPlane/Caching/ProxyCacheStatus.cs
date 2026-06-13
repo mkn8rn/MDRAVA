@@ -1,8 +1,8 @@
 namespace MDRAVA.BLL.ControlPlane.Caching;
 
-public sealed record ProxyCacheStatusResponse
+public sealed record ProxyCacheStatus
 {
-    private ProxyCacheStatusResponse(
+    private ProxyCacheStatus(
         int entryCount,
         long approximateBytes,
         long hitCount,
@@ -50,7 +50,7 @@ public sealed record ProxyCacheStatusResponse
 
     public IReadOnlyList<ProxyCacheRouteStatus> Routes { get; }
 
-    public static ProxyCacheStatusResponse FromRuntimeSnapshot(
+    public static ProxyCacheStatus FromRuntimeSnapshot(
         ProxyCacheRuntimeStatusSnapshot runtime,
         IReadOnlyList<ProxyCacheRejectionStatus> rejections,
         IReadOnlyList<ProxyCacheRouteStatus> routes)
@@ -59,7 +59,7 @@ public sealed record ProxyCacheStatusResponse
         ArgumentNullException.ThrowIfNull(rejections);
         ArgumentNullException.ThrowIfNull(routes);
 
-        return new ProxyCacheStatusResponse(
+        return new ProxyCacheStatus(
             runtime.EntryCount,
             runtime.ApproximateBytes,
             runtime.HitCount,

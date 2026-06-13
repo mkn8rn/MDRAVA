@@ -133,7 +133,7 @@ public static class ProxySubsystemSummaryBuilder
 
     public static ProxyCacheSubsystemSummary BuildCache(
         int enabledRoutes,
-        ProxyCacheStatusResponse? cacheStatus)
+        ProxyCacheStatus? cacheStatus)
     {
         return new ProxyCacheSubsystemSummary(
             enabledRoutes > 0,

@@ -698,7 +698,7 @@ internal static class CacheTests
         cache.Store(Scope(route with { Cache = CachePolicy() }, listener), request, "/seed", response, response.Headers, Encoding.ASCII.GetBytes("seed"));
     }
 
-    private static ProxyCacheStatusResponse CacheStatus(
+    private static ProxyCacheStatus CacheStatus(
         ResponseCacheStore cache,
         ProxyConfigurationSnapshot? configuration)
     {

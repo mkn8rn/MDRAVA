@@ -13,14 +13,14 @@ public sealed class ProxyCacheStatusReader : IProxyCacheStatusReader
         _runtimeSource = runtimeSource;
     }
 
-    public ProxyCacheStatusResponse GetStatus()
+    public ProxyCacheStatus GetStatus()
     {
         return Project(
             _configurationSource.ReadRoutes(),
             _runtimeSource.ReadSnapshot());
     }
 
-    public static ProxyCacheStatusResponse Project(
+    public static ProxyCacheStatus Project(
         IReadOnlyList<ProxyCacheStatusRouteSource> routes,
         ProxyCacheRuntimeStatusSnapshot runtime)
     {
@@ -33,7 +33,7 @@ public sealed class ProxyCacheStatusReader : IProxyCacheStatusReader
             .Select(ProxyCacheRejectionStatus.FromRuntimeRejection)
             .ToArray();
 
-        return ProxyCacheStatusResponse.FromRuntimeSnapshot(
+        return ProxyCacheStatus.FromRuntimeSnapshot(
             runtime,
             rejections,
             routeStatuses);

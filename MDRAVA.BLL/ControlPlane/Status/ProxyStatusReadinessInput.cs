@@ -21,7 +21,7 @@ public sealed record ProxyStatusReadinessInput(
     bool ClientHttp3Ready,
     ProxyLogSummarySource Log,
     ProxyShutdownSummarySource Shutdown,
-    ProxyCacheStatusResponse? CacheStatus,
+    ProxyCacheStatus? CacheStatus,
     IReadOnlyList<AcmeCertificateLifecycleStatus> AcmeStatuses,
     ProxyRuntimePreflightStatus RuntimePreflight,
     DateTimeOffset ObservedAtUtc);

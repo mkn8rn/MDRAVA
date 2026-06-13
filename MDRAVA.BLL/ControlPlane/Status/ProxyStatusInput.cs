@@ -15,7 +15,7 @@ public sealed record ProxyStatusInput(
     IReadOnlyList<ProxyUpstreamStatusResponse> Upstreams,
     RuntimeHttp3SupportProjection Http3,
     ProxyLogPersistenceStatus LogPersistence,
-    ProxyCacheStatusResponse? CacheStatus,
+    ProxyCacheStatus? CacheStatus,
     IReadOnlyList<AcmeCertificateLifecycleStatus> AcmeStatuses,
     ProxyRuntimePreflightStatus RuntimePreflight,
     DateTimeOffset ObservedAtUtc,
