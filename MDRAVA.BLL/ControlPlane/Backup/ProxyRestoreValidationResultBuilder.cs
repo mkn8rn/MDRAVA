@@ -1,8 +1,8 @@
 namespace MDRAVA.BLL.ControlPlane.Backup;
 
-public static class ProxyRestoreValidationResponseBuilder
+public static class ProxyRestoreValidationResultBuilder
 {
-    public static ProxyRestoreValidationResponse Build(
+    public static ProxyRestoreValidationResult Build(
         DateTimeOffset generatedAtUtc,
         int? activeConfigVersion,
         ProxyRestoreConfigurationValidationResult configValidation,
@@ -12,7 +12,7 @@ public static class ProxyRestoreValidationResponseBuilder
         int maxFindings)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(maxFindings);
-        return ProxyRestoreValidationResponse.Completed(
+        return ProxyRestoreValidationResult.Completed(
             generatedAtUtc,
             activeConfigVersion,
             configValidation,

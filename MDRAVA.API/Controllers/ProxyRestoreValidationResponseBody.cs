@@ -12,27 +12,25 @@ public sealed record ProxyRestoreValidationResponseBody(
     IReadOnlyList<ProxyRestoreValidationFinding> Errors,
     IReadOnlyList<ProxyRestoreValidationFinding> Warnings)
 {
-    public static ProxyRestoreValidationResponseBody FromResult(ProxyRestoreValidationResponse result)
+    public static ProxyRestoreValidationResponseBody FromResult(ProxyRestoreValidationResult result)
     {
         return result switch
         {
-            ProxyRestoreValidationResponse.AcceptedResult accepted => FromResult(accepted, succeeded: true),
-            ProxyRestoreValidationResponse.RejectedResult rejected => FromResult(rejected, succeeded: false),
+            ProxyRestoreValidationResult.AcceptedResult accepted => FromResult(accepted, succeeded: true),
+            ProxyRestoreValidationResult.RejectedResult rejected => FromResult(rejected, succeeded: false),
             _ => throw new InvalidOperationException($"Unknown restore validation result '{result.GetType().Name}'.")
         };
     }
 
     private static ProxyRestoreValidationResponseBody FromResult(
-        ProxyRestoreValidationResponse result,
+        ProxyRestoreValidationResult result,
         bool succeeded)
     {
-        var configValidationSucceeded = result.ConfigValidation is ProxyRestoreConfigurationValidationResult.ValidResult;
-
         return new ProxyRestoreValidationResponseBody(
             Succeeded: succeeded,
             GeneratedAtUtc: result.GeneratedAtUtc,
             ActiveConfigVersion: result.ActiveConfigVersion,
-            ConfigValidationSucceeded: configValidationSucceeded,
+            ConfigValidationSucceeded: result.ConfigValidationSucceeded,
             WouldBeConfigVersion: result.WouldBeConfigVersion,
             Manifest: ProxyBackupManifestResponse.FromManifest(result.Manifest),
             Errors: result.Errors,

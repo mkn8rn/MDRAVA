@@ -200,7 +200,7 @@ internal static class BackupRestoreTests
             new ProxyRestoreValidationFinding(ProxyStatusText.Warning, "second_warning", "Second warning.", null)
         ];
 
-        var response = ProxyRestoreValidationResponseBuilder.Build(
+        var response = ProxyRestoreValidationResultBuilder.Build(
             generatedAtUtc,
             activeConfigVersion: 3,
             configValidation,
@@ -208,7 +208,7 @@ internal static class BackupRestoreTests
             errors,
             warnings,
             maxFindings: 1);
-        var invalidResponse = ProxyRestoreValidationResponseBuilder.Build(
+        var invalidResponse = ProxyRestoreValidationResultBuilder.Build(
             generatedAtUtc,
             activeConfigVersion: 3,
             invalidConfigValidation,
@@ -220,12 +220,12 @@ internal static class BackupRestoreTests
         AssertEx.True(configValidation is ProxyRestoreConfigurationValidationResult.ValidResult);
         AssertEx.True(invalidConfigValidation is ProxyRestoreConfigurationValidationResult.InvalidResult);
         AssertRejected(invalidResponse);
-        AssertEx.True(invalidResponse.ConfigValidation is ProxyRestoreConfigurationValidationResult.InvalidResult);
+        AssertEx.False(invalidResponse.ConfigValidationSucceeded);
         AssertEx.Equal("parse failed", invalidConfigValidation.Errors[0]);
         AssertRejected(response);
         AssertEx.Equal(generatedAtUtc, response.GeneratedAtUtc);
         AssertEx.Equal(3, response.ActiveConfigVersion);
-        AssertEx.True(response.ConfigValidation is ProxyRestoreConfigurationValidationResult.ValidResult);
+        AssertEx.True(response.ConfigValidationSucceeded);
         AssertEx.Equal(7, response.WouldBeConfigVersion);
         AssertEx.Equal(1, response.Errors.Count);
         AssertEx.Equal("first", response.Errors[0].Code);
@@ -353,14 +353,14 @@ internal static class BackupRestoreTests
         });
     }
 
-    private static void AssertAccepted(ProxyRestoreValidationResponse result, string? message = null)
+    private static void AssertAccepted(ProxyRestoreValidationResult result, string? message = null)
     {
-        AssertEx.True(result is ProxyRestoreValidationResponse.AcceptedResult, message ?? string.Join(",", result.Errors.Select(static error => error.Code)));
+        AssertEx.True(result is ProxyRestoreValidationResult.AcceptedResult, message ?? string.Join(",", result.Errors.Select(static error => error.Code)));
     }
 
-    private static void AssertRejected(ProxyRestoreValidationResponse result, string? message = null)
+    private static void AssertRejected(ProxyRestoreValidationResult result, string? message = null)
     {
-        AssertEx.True(result is ProxyRestoreValidationResponse.RejectedResult, message ?? string.Join(",", result.Errors.Select(static error => error.Code)));
+        AssertEx.True(result is ProxyRestoreValidationResult.RejectedResult, message ?? string.Join(",", result.Errors.Select(static error => error.Code)));
     }
 
     private sealed class TemporaryDirectory : IDisposable

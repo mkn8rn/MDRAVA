@@ -68,7 +68,7 @@ public sealed class ProxyBackupService : IProxyBackupOperations
             MaxWarnings);
     }
 
-    public async ValueTask<ProxyRestoreValidationResponse> ValidateAsync(CancellationToken cancellationToken)
+    public async ValueTask<ProxyRestoreValidationResult> ValidateAsync(CancellationToken cancellationToken)
     {
         var generatedAtUtc = _timeProvider.GetUtcNow();
         var root = _dataDirectoryProvider.GetDataDirectory();
@@ -93,7 +93,7 @@ public sealed class ProxyBackupService : IProxyBackupOperations
             errors.Add(ProxyRestoreValidationFindingPolicy.ConfigurationError(error, relativePath: null));
         }
 
-        return ProxyRestoreValidationResponseBuilder.Build(
+        return ProxyRestoreValidationResultBuilder.Build(
             generatedAtUtc,
             _activeConfigurationVersionReader.ActiveConfigVersion,
             configValidation,

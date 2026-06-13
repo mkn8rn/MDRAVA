@@ -4,5 +4,5 @@ public interface IProxyBackupOperations
 {
     ProxyBackupManifest CreateManifest();
 
-    ValueTask<ProxyRestoreValidationResponse> ValidateAsync(CancellationToken cancellationToken);
+    ValueTask<ProxyRestoreValidationResult> ValidateAsync(CancellationToken cancellationToken);
 }

@@ -1,5 +1,4 @@
 using MDRAVA.BLL.Configuration;
-using System.Text.Json.Serialization;
 
 namespace MDRAVA.BLL.ControlPlane.Backup;
 
@@ -162,9 +161,9 @@ public sealed record ProxyBackupWarning(
     string Message,
     string? RelativePath);
 
-public abstract record ProxyRestoreValidationResponse
+public abstract record ProxyRestoreValidationResult
 {
-    private ProxyRestoreValidationResponse(
+    private ProxyRestoreValidationResult(
         DateTimeOffset generatedAtUtc,
         int? activeConfigVersion,
         ProxyRestoreConfigurationValidationResult configValidation,
@@ -179,7 +178,8 @@ public abstract record ProxyRestoreValidationResponse
 
         GeneratedAtUtc = generatedAtUtc;
         ActiveConfigVersion = activeConfigVersion;
-        ConfigValidation = configValidation;
+        ConfigValidationSucceeded = configValidation is ProxyRestoreConfigurationValidationResult.ValidResult;
+        WouldBeConfigVersion = configValidation.WouldBeVersion;
         Manifest = manifest;
         Errors = errors;
         Warnings = warnings;
@@ -189,10 +189,9 @@ public abstract record ProxyRestoreValidationResponse
 
     public int? ActiveConfigVersion { get; }
 
-    [JsonIgnore]
-    public ProxyRestoreConfigurationValidationResult ConfigValidation { get; }
+    public bool ConfigValidationSucceeded { get; }
 
-    public int? WouldBeConfigVersion => ConfigValidation.WouldBeVersion;
+    public int? WouldBeConfigVersion { get; }
 
     public ProxyBackupManifest Manifest { get; }
 
@@ -200,7 +199,7 @@ public abstract record ProxyRestoreValidationResponse
 
     public IReadOnlyList<ProxyRestoreValidationFinding> Warnings { get; }
 
-    public static ProxyRestoreValidationResponse Completed(
+    public static ProxyRestoreValidationResult Completed(
         DateTimeOffset generatedAtUtc,
         int? activeConfigVersion,
         ProxyRestoreConfigurationValidationResult configValidation,
@@ -227,7 +226,7 @@ public abstract record ProxyRestoreValidationResponse
                 warnings);
     }
 
-    public sealed record AcceptedResult : ProxyRestoreValidationResponse
+    public sealed record AcceptedResult : ProxyRestoreValidationResult
     {
         internal AcceptedResult(
             DateTimeOffset generatedAtUtc,
@@ -241,7 +240,7 @@ public abstract record ProxyRestoreValidationResponse
         }
     }
 
-    public sealed record RejectedResult : ProxyRestoreValidationResponse
+    public sealed record RejectedResult : ProxyRestoreValidationResult
     {
         internal RejectedResult(
             DateTimeOffset generatedAtUtc,

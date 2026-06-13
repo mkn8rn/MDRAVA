@@ -14,7 +14,7 @@ public sealed class ProxyBackupAdministrationService
         return _backupOperations.CreateManifest();
     }
 
-    public ValueTask<ProxyRestoreValidationResponse> ValidateAsync(CancellationToken cancellationToken)
+    public ValueTask<ProxyRestoreValidationResult> ValidateAsync(CancellationToken cancellationToken)
     {
         return _backupOperations.ValidateAsync(cancellationToken);
     }
