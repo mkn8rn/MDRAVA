@@ -37,7 +37,38 @@ public sealed record AcmeRenewalCertificateSource(
 
 public interface IAcmeRenewalConfigurationSource
 {
-    AcmeRenewalConfigurationInput? ReadInput();
+    AcmeRenewalConfigurationInputReadResult ReadInput();
+}
+
+public abstract record AcmeRenewalConfigurationInputReadResult
+{
+    private AcmeRenewalConfigurationInputReadResult()
+    {
+    }
+
+    public static AcmeRenewalConfigurationInputReadResult MissingConfiguration { get; } =
+        new MissingConfigurationResult();
+
+    public static AcmeRenewalConfigurationInputReadResult Available(AcmeRenewalConfigurationInput input)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+
+        return new AvailableResult(input);
+    }
+
+    public sealed record AvailableResult : AcmeRenewalConfigurationInputReadResult
+    {
+        public AvailableResult(AcmeRenewalConfigurationInput input)
+        {
+            ArgumentNullException.ThrowIfNull(input);
+
+            Input = input;
+        }
+
+        public AcmeRenewalConfigurationInput Input { get; }
+    }
+
+    public sealed record MissingConfigurationResult : AcmeRenewalConfigurationInputReadResult;
 }
 
 public interface IAcmeCertificateActivator
@@ -111,19 +142,20 @@ public sealed class ProxyConfigurationAcmeRenewalConfigurationSource : IAcmeRene
         _configurationStore = configurationStore;
     }
 
-    public AcmeRenewalConfigurationInput? ReadInput()
+    public AcmeRenewalConfigurationInputReadResult ReadInput()
     {
         var snapshotResult = _configurationStore.ReadSnapshot();
         if (snapshotResult is not ProxyConfigurationSnapshotReadResult.AvailableResult available)
         {
-            return null;
+            return AcmeRenewalConfigurationInputReadResult.MissingConfiguration;
         }
 
         var snapshot = available.Snapshot;
-        return AcmeRenewalConfigurationInputMapper.FromSources(
-            AcmeRenewalConfigurationSourceMapper.FromRuntimeConfiguration(
-                snapshot.Acme,
-                snapshot.Certificates));
+        return AcmeRenewalConfigurationInputReadResult.Available(
+            AcmeRenewalConfigurationInputMapper.FromSources(
+                AcmeRenewalConfigurationSourceMapper.FromRuntimeConfiguration(
+                    snapshot.Acme,
+                    snapshot.Certificates)));
     }
 }
 

@@ -41,12 +41,14 @@ public sealed class AcmeCertificateManager
 
     public async ValueTask CheckRenewalsAsync(CancellationToken cancellationToken)
     {
-        var input = _configurationSource.ReadInput();
-        if (input is null || !input.Enabled)
+        var inputResult = _configurationSource.ReadInput();
+        if (inputResult is not AcmeRenewalConfigurationInputReadResult.AvailableResult available
+            || !available.Input.Enabled)
         {
             return;
         }
 
+        var input = available.Input;
         _materialWriter.EnsureLayout(_dataDirectoryProvider.GetDataDirectory(), input.StoragePath);
         var nowUtc = _timeProvider.GetUtcNow();
         foreach (var certificate in input.Certificates)

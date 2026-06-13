@@ -435,8 +435,10 @@ internal static class AcmeTests
         var store = CreateStore(temp.Path);
         var source = new ProxyConfigurationAcmeRenewalConfigurationSource(store);
 
-        var input = AssertEx.NotNull(source.ReadInput());
+        var result = source.ReadInput();
 
+        AssertEx.True(result is AcmeRenewalConfigurationInputReadResult.AvailableResult);
+        var input = ((AcmeRenewalConfigurationInputReadResult.AvailableResult)result).Input;
         AssertEx.True(input.Enabled);
         AssertEx.Equal("acme", input.StoragePath);
         AssertEx.Equal(60, input.RetryAfterMinutes);
