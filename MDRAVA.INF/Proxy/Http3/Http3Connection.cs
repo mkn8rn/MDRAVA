@@ -600,14 +600,14 @@ public sealed class Http3Connection
         string requestId,
         CancellationToken cancellationToken)
     {
-        var retryAdmission = ProxyRetryPolicy.EvaluateAdmission(route, requestHead);
-        if (retryAdmission is ProxyRetryAdmissionDecision.SkippedDecision skippedAdmission)
+        var retryPlan = ProxyRetryPolicy.CreatePlan(route, requestHead);
+        if (retryPlan.Admission is ProxyRetryAdmissionDecision.SkippedDecision skippedAdmission)
         {
             _metrics.RetrySkipped(skippedAdmission.Reason);
         }
 
-        var retryAllowed = retryAdmission == ProxyRetryAdmissionDecision.Allowed;
-        var maxAttempts = retryAllowed ? route.Retry.MaxAttempts : 1;
+        var retryAllowed = retryPlan.IsAllowed;
+        var maxAttempts = retryPlan.MaxAttempts;
         ForwardingResult? lastResult = null;
         for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {

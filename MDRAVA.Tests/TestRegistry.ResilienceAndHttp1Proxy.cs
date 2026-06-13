@@ -32,6 +32,7 @@ internal static partial class TestRegistry
     Test("Retry policy suppresses configured status only when allowed", Sync(ResilienceTests.RetryPolicySuppressesConfiguredStatusOnlyWhenAllowed), TestTaxonomy.RetryCircuit),
     Test("Retry policy suppresses attempt failure only before final attempt", Sync(ResilienceTests.RetryPolicySuppressesAttemptFailureOnlyBeforeFinalAttempt), TestTaxonomy.RetryCircuit),
     Test("Retry policy names admission decisions", Sync(ResilienceTests.RetryPolicyNamesAdmissionDecisions), TestTaxonomy.RetryCircuit),
+    Test("Retry policy creates execution plan from admission", Sync(ResilienceTests.RetryPolicyCreatesExecutionPlanFromAdmission), TestTaxonomy.RetryCircuit),
     Test("Retry policy names attempt decisions", Sync(ResilienceTests.RetryPolicyNamesAttemptDecisions), TestTaxonomy.RetryCircuit),
     Test("Forwarding result names success and failure outcomes", Sync(ResilienceTests.ForwardingResultNamesSuccessAndFailureOutcomes), TestTaxonomy.RetryCircuit),
     Test("Timeout policy applies route and retry attempt timeouts", Sync(ResilienceTests.TimeoutPolicyAppliesRouteAndRetryAttemptTimeouts), TestTaxonomy.RetryCircuit, TestTaxonomy.Limits),

@@ -6,6 +6,16 @@ namespace MDRAVA.BLL.ControlPlane.Resilience;
 
 public static class ProxyRetryPolicy
 {
+    public static ProxyRetryPlan CreatePlan(RuntimeRoute route, Http1RequestHead requestHead)
+    {
+        var admission = EvaluateAdmission(route, requestHead);
+        var isAllowed = admission == ProxyRetryAdmissionDecision.Allowed;
+        return new ProxyRetryPlan(
+            admission,
+            isAllowed,
+            isAllowed ? route.Retry.MaxAttempts : 1);
+    }
+
     public static ProxyRetryAdmissionDecision EvaluateAdmission(RuntimeRoute route, Http1RequestHead requestHead)
     {
         if (!route.Retry.Enabled)
@@ -98,6 +108,11 @@ public static class ProxyRetryPolicy
         return false;
     }
 }
+
+public sealed record ProxyRetryPlan(
+    ProxyRetryAdmissionDecision Admission,
+    bool IsAllowed,
+    int MaxAttempts);
 
 public abstract record ProxyRetryAdmissionDecision
 {

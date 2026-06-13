@@ -637,6 +637,36 @@ internal static class ResilienceTests
         AssertEx.Equal(ProxyRetryAdmissionDecision.Allowed, allowed);
     }
 
+    public static void RetryPolicyCreatesExecutionPlanFromAdmission()
+    {
+        var retryRoute = Route([]) with
+        {
+            Retry = new RuntimeRetryPolicy(
+                true,
+                3,
+                null,
+                true,
+                false,
+                [],
+                ["GET"],
+                TimeSpan.Zero)
+        };
+
+        var disabled = ProxyRetryPolicy.CreatePlan(Route([]), RequestHead("GET", Http1RequestFraming.None));
+        var skipped = ProxyRetryPolicy.CreatePlan(retryRoute, RequestHead("POST", Http1RequestFraming.None));
+        var allowed = ProxyRetryPolicy.CreatePlan(retryRoute, RequestHead("GET", Http1RequestFraming.None));
+
+        AssertEx.Equal(ProxyRetryAdmissionDecision.NotAllowed, disabled.Admission);
+        AssertEx.False(disabled.IsAllowed);
+        AssertEx.Equal(1, disabled.MaxAttempts);
+        AssertEx.True(skipped.Admission is ProxyRetryAdmissionDecision.SkippedDecision);
+        AssertEx.False(skipped.IsAllowed);
+        AssertEx.Equal(1, skipped.MaxAttempts);
+        AssertEx.Equal(ProxyRetryAdmissionDecision.Allowed, allowed.Admission);
+        AssertEx.True(allowed.IsAllowed);
+        AssertEx.Equal(3, allowed.MaxAttempts);
+    }
+
     public static void RetryPolicyNamesAttemptDecisions()
     {
         var retry = new RuntimeRetryPolicy(
