@@ -11,6 +11,7 @@ using System.Net.Sockets;
 using System.Text;
 using MDRAVA.INF.Proxy.Connections;
 using MDRAVA.INF.Proxy.Forwarding;
+using MDRAVA.INF.Proxy.Http1;
 using MDRAVA.INF.Proxy.Http2;
 using MDRAVA.INF.Proxy.Http3;
 
@@ -195,7 +196,7 @@ public sealed class UpstreamHealthCheckClient : IUpstreamHealthCheckClient
                 }
 
                 total += bytesRead;
-                var headLength = FindHeadLength(buffer.AsSpan(0, total));
+                var headLength = Http1HeadTerminator.FindLength(buffer.AsSpan(0, total));
                 if (headLength > 0)
                 {
                     return buffer.AsMemory(0, headLength).ToArray();
@@ -208,21 +209,5 @@ public sealed class UpstreamHealthCheckClient : IUpstreamHealthCheckClient
         {
             ArrayPool<byte>.Shared.Return(buffer);
         }
-    }
-
-    private static int FindHeadLength(ReadOnlySpan<byte> bytes)
-    {
-        for (var index = 3; index < bytes.Length; index++)
-        {
-            if (bytes[index - 3] == (byte)'\r'
-                && bytes[index - 2] == (byte)'\n'
-                && bytes[index - 1] == (byte)'\r'
-                && bytes[index] == (byte)'\n')
-            {
-                return index + 1;
-            }
-        }
-
-        return -1;
     }
 }

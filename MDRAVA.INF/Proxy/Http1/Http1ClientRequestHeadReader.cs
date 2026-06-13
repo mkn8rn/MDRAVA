@@ -51,7 +51,7 @@ internal static class Http1ClientRequestHeadReader
             totalBytesRead += bytesRead;
             metrics.AddBytesRead(bytesRead);
 
-            var requestHeadLength = FindRequestHeadLength(requestHeadBuffer.AsSpan(0, totalBytesRead));
+            var requestHeadLength = Http1HeadTerminator.FindLength(requestHeadBuffer.AsSpan(0, totalBytesRead));
             if (requestHeadLength > 0)
             {
                 return Http1HeadReadResult.Read(
@@ -63,21 +63,5 @@ internal static class Http1ClientRequestHeadReader
         }
 
         return Http1HeadReadResult.RequestTooLarge(totalBytesRead);
-    }
-
-    private static int FindRequestHeadLength(ReadOnlySpan<byte> bytes)
-    {
-        for (var index = 3; index < bytes.Length; index++)
-        {
-            if (bytes[index - 3] == (byte)'\r'
-                && bytes[index - 2] == (byte)'\n'
-                && bytes[index - 1] == (byte)'\r'
-                && bytes[index] == (byte)'\n')
-            {
-                return index + 1;
-            }
-        }
-
-        return -1;
     }
 }

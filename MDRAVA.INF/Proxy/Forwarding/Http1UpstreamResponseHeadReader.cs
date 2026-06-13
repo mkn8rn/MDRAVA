@@ -37,7 +37,7 @@ internal static class Http1UpstreamResponseHeadReader
                 totalBytesRead += bytesRead;
                 metrics.AddBytesRead(bytesRead);
 
-                var headLength = FindHeadLength(buffer.AsSpan(0, totalBytesRead));
+                var headLength = Http1HeadTerminator.FindLength(buffer.AsSpan(0, totalBytesRead));
                 if (headLength > 0)
                 {
                     var headBytes = buffer.AsMemory(0, headLength).ToArray();
@@ -52,21 +52,5 @@ internal static class Http1UpstreamResponseHeadReader
         {
             ArrayPool<byte>.Shared.Return(buffer);
         }
-    }
-
-    private static int FindHeadLength(ReadOnlySpan<byte> bytes)
-    {
-        for (var index = 3; index < bytes.Length; index++)
-        {
-            if (bytes[index - 3] == (byte)'\r'
-                && bytes[index - 2] == (byte)'\n'
-                && bytes[index - 1] == (byte)'\r'
-                && bytes[index] == (byte)'\n')
-            {
-                return index + 1;
-            }
-        }
-
-        return -1;
     }
 }
