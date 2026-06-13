@@ -9,7 +9,7 @@ public sealed class ProxyAcmeAdministrationService
         _statusReader = statusReader;
     }
 
-    public AcmeStatusResponse? GetStatus()
+    public AcmeStatus? GetStatus()
     {
         var snapshotResult = _statusReader.ReadSnapshot();
         if (snapshotResult is not ProxyAcmeStatusSnapshotReadResult.AvailableResult available)
@@ -35,6 +35,6 @@ public sealed class ProxyAcmeAdministrationService
             })
             .ToArray();
 
-        return AcmeStatusResponse.FromSnapshot(snapshot, statuses);
+        return AcmeStatus.FromSnapshot(snapshot, statuses);
     }
 }

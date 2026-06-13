@@ -17,6 +17,10 @@ public sealed class ProxyAcmeController : ControllerBase
     [HttpGet("status")]
     public ActionResult<AcmeStatusResponse> Status()
     {
-        return ProxyAdminHttpResultMapper.OkOrNotFound(this, _acmeAdministration.GetStatus());
+        var status = _acmeAdministration.GetStatus();
+
+        return ProxyAdminHttpResultMapper.OkOrNotFound(
+            this,
+            status is null ? null : AcmeStatusResponse.FromStatus(status));
     }
 }
