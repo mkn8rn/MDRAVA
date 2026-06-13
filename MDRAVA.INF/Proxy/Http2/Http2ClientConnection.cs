@@ -841,10 +841,9 @@ public sealed class Http2ClientConnection
         AddAltSvcHeader(headers);
         var includeBody = !string.Equals(requestHead.Method, "HEAD", StringComparison.OrdinalIgnoreCase);
         await WriteHeadersAndBodyAsync(streamId, response.StatusCode, headers, includeBody ? response.Body : [], cancellationToken);
-        context.ResponseStarted = true;
-        context.ResponseStatusCode = response.StatusCode;
-        context.KeepClientConnectionOpen = true;
-        context.SetRouteAction("cache");
+        context.RecordCachedResponse(
+            response,
+            keepClientConnectionOpen: true);
     }
 
     private async ValueTask WriteGeneratedRouteResponseAsync(

@@ -1,3 +1,4 @@
+using MDRAVA.BLL.ControlPlane.Caching;
 using MDRAVA.BLL.ControlPlane.Forwarding;
 using MDRAVA.BLL.ControlPlane.Routing;
 
@@ -135,6 +136,18 @@ public sealed class ProxyRequestContext
         ResponseStarted = true;
         ResponseStatusCode = response.StatusCode;
         KeepClientConnectionOpen = keepClientConnectionOpen;
+    }
+
+    public void RecordCachedResponse(
+        CachedProxyResponse response,
+        bool keepClientConnectionOpen)
+    {
+        ArgumentNullException.ThrowIfNull(response);
+
+        ResponseStarted = true;
+        ResponseStatusCode = response.StatusCode;
+        KeepClientConnectionOpen = keepClientConnectionOpen;
+        SetRouteAction("cache");
     }
 
 }

@@ -734,10 +734,9 @@ public sealed class Http3Connection
             _timeProvider.GetUtcNow());
         var includeBody = !string.Equals(requestHead.Method, "HEAD", StringComparison.OrdinalIgnoreCase);
         await WriteHeadersAndBodyAsync(stream, response.StatusCode, headers, includeBody ? response.Body : [], cancellationToken);
-        context.ResponseStarted = true;
-        context.ResponseStatusCode = response.StatusCode;
-        context.KeepClientConnectionOpen = true;
-        context.SetRouteAction("cache");
+        context.RecordCachedResponse(
+            response,
+            keepClientConnectionOpen: true);
     }
 
     private async ValueTask WriteGeneratedRouteResponseAsync(

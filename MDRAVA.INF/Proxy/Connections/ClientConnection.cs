@@ -926,10 +926,9 @@ public sealed class ClientConnection
             _metrics.AddBytesWritten(response.Body.Length);
         }
 
-        context.ResponseStarted = true;
-        context.ResponseStatusCode = response.StatusCode;
-        context.KeepClientConnectionOpen = keepClientConnectionOpen;
-        context.SetRouteAction("cache");
+        context.RecordCachedResponse(
+            response,
+            keepClientConnectionOpen);
     }
 
     private async ValueTask WriteGeneratedRouteResponseAsync(

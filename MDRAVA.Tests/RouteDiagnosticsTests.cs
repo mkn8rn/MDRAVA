@@ -360,6 +360,34 @@ internal static class RouteDiagnosticsTests
         AssertEx.True(context.KeepClientConnectionOpen);
     }
 
+    public static void RequestContextRecordsCachedResponse()
+    {
+        var context = new ProxyRequestContext(
+            "req-cache",
+            "listener",
+            "tcp",
+            "127.0.0.1:50000",
+            7,
+            TimeProvider.System);
+        var response = new CachedProxyResponse(
+            203,
+            "Non-Authoritative Information",
+            [new ProxyHeaderField("content-type", "text/plain")],
+            new byte[] { 99 },
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow.AddMinutes(1));
+
+        context.RecordCachedResponse(
+            response,
+            keepClientConnectionOpen: true);
+
+        AssertEx.True(context.ResponseStarted);
+        AssertEx.Equal(203, context.ResponseStatusCode);
+        AssertEx.Equal("cache", context.RouteAction);
+        AssertEx.Equal(ProxyFailureKind.None, context.FailureKind);
+        AssertEx.True(context.KeepClientConnectionOpen);
+    }
+
     public static void RouteDiagnosticsStatusNamesEnabledAvailability()
     {
         var status = RouteDiagnosticsStatus.Enabled;
