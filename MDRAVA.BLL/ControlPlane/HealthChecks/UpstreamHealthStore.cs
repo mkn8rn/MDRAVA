@@ -31,13 +31,13 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
     public void RecordSelection(UpstreamHealthStateSource source)
     {
         var state = GetOrCreate(source);
-        Interlocked.Increment(ref state.SelectedRequests);
+        state.RecordSelection();
     }
 
     public void RecordRequestFailure(UpstreamHealthStateSource source)
     {
         var state = GetOrCreate(source);
-        Interlocked.Increment(ref state.RequestFailures);
+        state.RecordRequestFailure();
         _metrics.UpstreamRequestFailed();
     }
 
@@ -100,8 +100,8 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
                     state.LastCheckedAtUtc,
                     state.ConsecutiveSuccesses,
                     state.ConsecutiveFailures,
-                    Interlocked.Read(ref state.SelectedRequests),
-                    Interlocked.Read(ref state.RequestFailures))
+                    state.ReadSelectedRequests(),
+                    state.ReadRequestFailures())
                 {
                     Protocol = source.Protocol,
                     Weight = source.Weight,
@@ -168,13 +168,33 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
 
         public int ConsecutiveFailures { get; private set; }
 
-        public long SelectedRequests;
+        private long _selectedRequests;
 
-        public long RequestFailures;
+        private long _requestFailures;
 
         public void RecordHealthCheckConfiguration(bool enabled)
         {
             HealthCheckEnabled = enabled;
+        }
+
+        public void RecordSelection()
+        {
+            Interlocked.Increment(ref _selectedRequests);
+        }
+
+        public void RecordRequestFailure()
+        {
+            Interlocked.Increment(ref _requestFailures);
+        }
+
+        public long ReadSelectedRequests()
+        {
+            return Interlocked.Read(ref _selectedRequests);
+        }
+
+        public long ReadRequestFailures()
+        {
+            return Interlocked.Read(ref _requestFailures);
         }
 
         public UpstreamHealthState RecordHealthCheckSample(
