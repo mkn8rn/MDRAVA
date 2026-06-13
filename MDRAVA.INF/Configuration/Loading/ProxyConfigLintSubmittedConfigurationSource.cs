@@ -58,7 +58,7 @@ public sealed class ProxyConfigLintSubmittedConfigurationSource
         {
             return ProxyConfigLintSubmittedConfigurationResult.Failed(
                 ProxyConfigLintSubmittedConfigurationFailureKind.EmptySite,
-                null);
+                "Submitted config did not contain a site object.");
         }
 
         var options = SiteOptionsAggregator.ToProxyOptions([new SiteConfigurationSource("lint-input", site)]);

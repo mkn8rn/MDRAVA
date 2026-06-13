@@ -605,17 +605,15 @@ internal static class RouteDiagnosticsTests
             "bad json");
         var empty = ProxyConfigLintSubmittedConfigurationResult.Empty();
 
-        AssertEx.Equal(snapshot, AssertEx.NotNull(loaded.Snapshot));
-        AssertEx.Equal(validationError, loaded.ValidationErrors[0]);
-        AssertEx.Equal<ProxyConfigLintSubmittedConfigurationFailure?>(null, loaded.Failure);
-        AssertEx.Equal<ProxyConfigLintConfigurationSnapshot?>(null, failed.Snapshot);
-        AssertEx.Equal(0, failed.ValidationErrors.Count);
-        var failure = AssertEx.NotNull(failed.Failure);
+        AssertEx.True(loaded is ProxyConfigLintSubmittedConfigurationResult.LoadedResult);
+        var loadedResult = (ProxyConfigLintSubmittedConfigurationResult.LoadedResult)loaded;
+        AssertEx.Equal(snapshot, loadedResult.Snapshot);
+        AssertEx.Equal(validationError, loadedResult.ValidationErrors[0]);
+        AssertEx.True(failed is ProxyConfigLintSubmittedConfigurationResult.FailedResult);
+        var failure = ((ProxyConfigLintSubmittedConfigurationResult.FailedResult)failed).Failure;
         AssertEx.Equal(ProxyConfigLintSubmittedConfigurationFailureKind.JsonParseError, failure.Kind);
         AssertEx.Equal("bad json", failure.Message);
-        AssertEx.Equal<ProxyConfigLintConfigurationSnapshot?>(null, empty.Snapshot);
-        AssertEx.Equal(0, empty.ValidationErrors.Count);
-        AssertEx.Equal<ProxyConfigLintSubmittedConfigurationFailure?>(null, empty.Failure);
+        AssertEx.True(empty is ProxyConfigLintSubmittedConfigurationResult.EmptyResult);
     }
 
     public static void ConfigLintServiceShapesSubmittedSourceFindings()

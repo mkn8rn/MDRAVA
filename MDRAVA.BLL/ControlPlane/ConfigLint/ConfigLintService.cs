@@ -68,22 +68,22 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
 
         var input = ((ConfigLintSubmittedRequestDecision.AcceptedDecision)requestDecision).Input;
         var submitted = _submittedConfigurationSource.Read(input.Text, input.Format, now);
-        if (submitted.Failure is not null)
+        if (submitted is ProxyConfigLintSubmittedConfigurationResult.FailedResult failed)
         {
-            return BuildResult(now, [ConfigLintSubmittedFailureMapper.ToFinding(submitted.Failure)], []);
+            return BuildResult(now, [ConfigLintSubmittedFailureMapper.ToFinding(failed.Failure)], []);
         }
 
-        if (submitted.Snapshot is null)
+        if (submitted is not ProxyConfigLintSubmittedConfigurationResult.LoadedResult loaded)
         {
             return BuildResult(now, [ConfigLintServiceFailureFindingFactory.EmptySubmittedConfig()], []);
         }
 
         List<ConfigLintFinding> findings = [.. ConfigLintValidationErrorMapper.ToFindings(
-            submitted.ValidationErrors,
+            loaded.ValidationErrors,
             _sourceNameFormatter)];
 
-        findings.AddRange(Analyze(submitted.Snapshot, activeRuntime: false, sourceName: "lint-input"));
-        return BuildResult(now, findings, submitted.ValidationErrors);
+        findings.AddRange(Analyze(loaded.Snapshot, activeRuntime: false, sourceName: "lint-input"));
+        return BuildResult(now, findings, loaded.ValidationErrors);
     }
 
     private void StoreActiveStatus(ConfigLintResult result)
