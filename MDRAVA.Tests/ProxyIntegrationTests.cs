@@ -1395,7 +1395,7 @@ internal static class ProxyIntegrationTests
 
         AssertEx.True(result.ClientObservation.Contains("101 Switching Protocols", StringComparison.Ordinal), result.ClientObservation);
         AssertEx.True(result.UpstreamResult.Request.Contains("Connection: Upgrade", StringComparison.OrdinalIgnoreCase), result.UpstreamResult.Request);
-        AssertEx.Equal(1L, result.Metrics.UpgradeRequestsSucceeded);
+        AssertEx.Equal(1L, result.Metrics.Upgrades.RequestsSucceeded);
         AssertEx.Equal(1L, result.Metrics.Tunnels.Total);
     }
 
@@ -1541,7 +1541,7 @@ internal static class ProxyIntegrationTests
 
         AssertEx.True(result.ClientObservation.Contains("101 Switching Protocols", StringComparison.Ordinal), result.ClientObservation);
         AssertEx.Equal(1L, result.Metrics.Tls.HandshakeSuccesses);
-        AssertEx.Equal(1L, result.Metrics.UpgradeRequestsSucceeded);
+        AssertEx.Equal(1L, result.Metrics.Upgrades.RequestsSucceeded);
     }
 
     public static async Task UpgradeDoesNotUseNormalUpstreamPool()
@@ -1569,7 +1569,7 @@ internal static class ProxyIntegrationTests
             "GET /ws HTTP/1.1\r\nHost: ws.test\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Version: 13\r\n\r\n");
 
         AssertEx.True(result.ClientObservation.Contains("400 Bad Request", StringComparison.Ordinal), result.ClientObservation);
-        AssertEx.Equal(1L, result.Metrics.UpgradeRequestsRejected);
+        AssertEx.Equal(1L, result.Metrics.Upgrades.RequestsRejected);
     }
 
     public static async Task UpstreamNon101UpgradeResponseIsForwardedAndClosed()
@@ -1605,7 +1605,7 @@ internal static class ProxyIntegrationTests
             });
 
         AssertEx.True(result.ClientObservation.Contains("502 Bad Gateway", StringComparison.Ordinal), result.ClientObservation);
-        AssertEx.Equal(1L, result.Metrics.UpgradeUpstreamFailures);
+        AssertEx.Equal(1L, result.Metrics.Upgrades.UpstreamFailures);
     }
 
     public static async Task RoundRobinDistributesSequentialRequestsAcrossTwoUpstreams()

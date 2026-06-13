@@ -32,10 +32,7 @@ public sealed record ProxyMetricsSnapshot(
     long ClientConnectionsClosedByIdleTimeout,
     long ClientConnectionsClosedByMaxRequests,
     ProxyUpstreamPoolMetricsSnapshot UpstreamPool,
-    long UpgradeRequestsReceived,
-    long UpgradeRequestsSucceeded,
-    long UpgradeRequestsRejected,
-    long UpgradeUpstreamFailures,
+    ProxyUpgradeMetricsSnapshot Upgrades,
     ProxyTunnelMetricsSnapshot Tunnels,
     long UpstreamSelections,
     long NoHealthyUpstreamFailures,
@@ -90,6 +87,9 @@ public sealed record ProxyMetricsSnapshot(
 
     public ProxyUpstreamPoolMetricsSnapshot UpstreamPool { get; } =
         UpstreamPool ?? throw new ArgumentNullException(nameof(UpstreamPool));
+
+    public ProxyUpgradeMetricsSnapshot Upgrades { get; } =
+        Upgrades ?? throw new ArgumentNullException(nameof(Upgrades));
 
     public ProxyResilienceMetricsSnapshot Resilience { get; } =
         Resilience ?? throw new ArgumentNullException(nameof(Resilience));

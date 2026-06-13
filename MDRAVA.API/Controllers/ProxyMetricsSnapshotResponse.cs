@@ -149,6 +149,7 @@ public sealed record ProxyMetricsSnapshotResponse(
         var upstreamHttp2 = snapshot.UpstreamHttp2;
         var upstreamHttp3 = snapshot.UpstreamHttp3;
         var upstreamPool = snapshot.UpstreamPool;
+        var upgrades = snapshot.Upgrades;
 
         return new ProxyMetricsSnapshotResponse(
             snapshot.AcceptedConnections,
@@ -187,10 +188,10 @@ public sealed record ProxyMetricsSnapshotResponse(
             upstreamPool.ConnectionsDiscarded,
             upstreamPool.IdleConnections,
             upstreamPool.ActiveConnections,
-            snapshot.UpgradeRequestsReceived,
-            snapshot.UpgradeRequestsSucceeded,
-            snapshot.UpgradeRequestsRejected,
-            snapshot.UpgradeUpstreamFailures,
+            upgrades.RequestsReceived,
+            upgrades.RequestsSucceeded,
+            upgrades.RequestsRejected,
+            upgrades.UpstreamFailures,
             tunnels.Active,
             tunnels.Total,
             tunnels.IdleTimeouts,

@@ -162,10 +162,11 @@ internal static class MetricsTests
                 ConnectionsDiscarded: 0,
                 IdleConnections: 0,
                 ActiveConnections: 0),
-            UpgradeRequestsReceived: 0,
-            UpgradeRequestsSucceeded: 0,
-            UpgradeRequestsRejected: 0,
-            UpgradeUpstreamFailures: 0,
+            Upgrades: new ProxyUpgradeMetricsSnapshot(
+                RequestsReceived: 0,
+                RequestsSucceeded: 0,
+                RequestsRejected: 0,
+                UpstreamFailures: 0),
             Tunnels: new ProxyTunnelMetricsSnapshot(
                 Active: 0,
                 Total: 0,
