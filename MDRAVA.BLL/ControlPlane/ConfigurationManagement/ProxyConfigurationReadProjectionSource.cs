@@ -16,10 +16,11 @@ public sealed class ProxyConfigurationReadProjectionSource
         _http3PlatformSupportSource = http3PlatformSupportSource;
     }
 
-    public ProxyConfigurationProjection? ReadCurrent()
+    public ProxyConfigurationReadProjectionResult<ProxyConfigurationProjection> ReadCurrent()
     {
         return _configurationStore.ReadSnapshot() is ProxyConfigurationSnapshotReadResult.AvailableResult available
-            ? ProxyConfigurationProjectionMapper.ToProjection(available.Snapshot, _http3PlatformSupportSource.Read())
-            : null;
+            ? ProxyConfigurationReadProjectionResult<ProxyConfigurationProjection>.Available(
+                ProxyConfigurationProjectionMapper.ToProjection(available.Snapshot, _http3PlatformSupportSource.Read()))
+            : ProxyConfigurationReadProjectionResult<ProxyConfigurationProjection>.MissingConfiguration;
     }
 }

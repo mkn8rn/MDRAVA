@@ -1546,16 +1546,18 @@ internal static class ConfigurationTests
         : IProxyConfigurationReadProjectionSource<TConfiguration>
         where TConfiguration : class
     {
-        private readonly TConfiguration? _projection;
+        private readonly ProxyConfigurationReadProjectionResult<TConfiguration> _result;
 
         public FixedConfigurationReadProjectionSource(TConfiguration? projection)
         {
-            _projection = projection;
+            _result = projection is null
+                ? ProxyConfigurationReadProjectionResult<TConfiguration>.MissingConfiguration
+                : ProxyConfigurationReadProjectionResult<TConfiguration>.Available(projection);
         }
 
-        public TConfiguration? ReadCurrent()
+        public ProxyConfigurationReadProjectionResult<TConfiguration> ReadCurrent()
         {
-            return _projection;
+            return _result;
         }
     }
 
