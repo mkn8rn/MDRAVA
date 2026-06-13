@@ -53,31 +53,11 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
             target.UpstreamEndpoint);
         lock (state.Gate)
         {
-            state.RecordHealthCheckConfiguration(enabled: true);
-            state.LastResult = sample.Result;
-            state.LastCheckedAtUtc = checkedAtUtc;
-            var previous = state.State;
-
-            if (sample.Healthy)
-            {
-                state.ConsecutiveSuccesses++;
-                state.ConsecutiveFailures = 0;
-                if (state.State != UpstreamHealthState.Healthy
-                    && state.ConsecutiveSuccesses >= target.HealthyThreshold)
-                {
-                    state.State = UpstreamHealthState.Healthy;
-                }
-            }
-            else
-            {
-                state.ConsecutiveFailures++;
-                state.ConsecutiveSuccesses = 0;
-                if (state.State != UpstreamHealthState.Unhealthy
-                    && state.ConsecutiveFailures >= target.UnhealthyThreshold)
-                {
-                    state.State = UpstreamHealthState.Unhealthy;
-                }
-            }
+            var previous = state.RecordHealthCheckSample(
+                sample,
+                checkedAtUtc,
+                target.HealthyThreshold,
+                target.UnhealthyThreshold);
 
             if (state.State != previous)
             {
@@ -178,15 +158,15 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
 
         public bool HealthCheckEnabled { get; private set; }
 
-        public UpstreamHealthState State { get; set; } = UpstreamHealthState.Unknown;
+        public UpstreamHealthState State { get; private set; } = UpstreamHealthState.Unknown;
 
-        public string? LastResult { get; set; }
+        public string? LastResult { get; private set; }
 
-        public DateTimeOffset? LastCheckedAtUtc { get; set; }
+        public DateTimeOffset? LastCheckedAtUtc { get; private set; }
 
-        public int ConsecutiveSuccesses { get; set; }
+        public int ConsecutiveSuccesses { get; private set; }
 
-        public int ConsecutiveFailures { get; set; }
+        public int ConsecutiveFailures { get; private set; }
 
         public long SelectedRequests;
 
@@ -195,6 +175,41 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
         public void RecordHealthCheckConfiguration(bool enabled)
         {
             HealthCheckEnabled = enabled;
+        }
+
+        public UpstreamHealthState RecordHealthCheckSample(
+            HealthCheckSample sample,
+            DateTimeOffset checkedAtUtc,
+            int healthyThreshold,
+            int unhealthyThreshold)
+        {
+            RecordHealthCheckConfiguration(enabled: true);
+            LastResult = sample.Result;
+            LastCheckedAtUtc = checkedAtUtc;
+            var previous = State;
+
+            if (sample.Healthy)
+            {
+                ConsecutiveSuccesses++;
+                ConsecutiveFailures = 0;
+                if (State != UpstreamHealthState.Healthy
+                    && ConsecutiveSuccesses >= healthyThreshold)
+                {
+                    State = UpstreamHealthState.Healthy;
+                }
+            }
+            else
+            {
+                ConsecutiveFailures++;
+                ConsecutiveSuccesses = 0;
+                if (State != UpstreamHealthState.Unhealthy
+                    && ConsecutiveFailures >= unhealthyThreshold)
+                {
+                    State = UpstreamHealthState.Unhealthy;
+                }
+            }
+
+            return previous;
         }
     }
 }
