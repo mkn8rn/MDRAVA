@@ -188,9 +188,10 @@ internal static class MetricsTests
                 ChecksFailed: 0,
                 UpstreamTransitions: 0),
             UpstreamRequestFailures: 0,
-            RequestIdsGenerated: 0,
-            AccessLogsEmitted: 0,
-            RecentDiagnosticsOverwritten: 0,
+            Diagnostics: new ProxyDiagnosticsMetricsSnapshot(
+                RequestIdsGenerated: 0,
+                AccessLogsEmitted: 0,
+                RecentDiagnosticsOverwritten: 0),
             RequestFailuresByKind: requestFailures,
             RequestsByRoute: requestsByRoute,
             ConfigReloadSuccesses: 0,

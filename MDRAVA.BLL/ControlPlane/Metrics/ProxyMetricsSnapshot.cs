@@ -36,9 +36,7 @@ public sealed record ProxyMetricsSnapshot(
     long UpstreamSelections,
     ProxyHealthMetricsSnapshot Health,
     long UpstreamRequestFailures,
-    long RequestIdsGenerated,
-    long AccessLogsEmitted,
-    long RecentDiagnosticsOverwritten,
+    ProxyDiagnosticsMetricsSnapshot Diagnostics,
     IReadOnlyDictionary<string, long> RequestFailuresByKind,
     IReadOnlyList<ProxyRequestSeriesSnapshot> RequestsByRoute,
     long ConfigReloadSuccesses,
@@ -86,6 +84,9 @@ public sealed record ProxyMetricsSnapshot(
 
     public ProxyRejectionMetricsSnapshot Rejections { get; } =
         Rejections ?? throw new ArgumentNullException(nameof(Rejections));
+
+    public ProxyDiagnosticsMetricsSnapshot Diagnostics { get; } =
+        Diagnostics ?? throw new ArgumentNullException(nameof(Diagnostics));
 
     public ProxyResilienceMetricsSnapshot Resilience { get; } =
         Resilience ?? throw new ArgumentNullException(nameof(Resilience));

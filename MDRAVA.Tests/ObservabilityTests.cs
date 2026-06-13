@@ -18,7 +18,7 @@ internal static class ObservabilityTests
         AssertEx.Equal(2, recent.Count);
         AssertEx.Equal("three", recent[0].RequestId);
         AssertEx.Equal("two", recent[1].RequestId);
-        AssertEx.Equal(1L, metrics.Snapshot().RecentDiagnosticsOverwritten);
+        AssertEx.Equal(1L, metrics.Snapshot().Diagnostics.RecentDiagnosticsOverwritten);
     }
 
     public static void DiagnosticsControllerHonorsSafeLimit()

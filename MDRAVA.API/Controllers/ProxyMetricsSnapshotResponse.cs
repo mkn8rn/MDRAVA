@@ -140,6 +140,7 @@ public sealed record ProxyMetricsSnapshotResponse(
     public static ProxyMetricsSnapshotResponse FromSnapshot(BusinessProxyMetricsSnapshot snapshot)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
+        var diagnostics = snapshot.Diagnostics;
         var health = snapshot.Health;
         var http2 = snapshot.Http2;
         var http3 = snapshot.Http3;
@@ -207,9 +208,9 @@ public sealed record ProxyMetricsSnapshotResponse(
             health.ChecksFailed,
             health.UpstreamTransitions,
             snapshot.UpstreamRequestFailures,
-            snapshot.RequestIdsGenerated,
-            snapshot.AccessLogsEmitted,
-            snapshot.RecentDiagnosticsOverwritten,
+            diagnostics.RequestIdsGenerated,
+            diagnostics.AccessLogsEmitted,
+            diagnostics.RecentDiagnosticsOverwritten,
             rejections.ClientConnectionAdmissionRejections,
             tls.ActiveHandshakes,
             tls.HandshakeAdmissionRejections,

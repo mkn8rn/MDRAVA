@@ -270,7 +270,7 @@ internal static class ProxyIntegrationTests
             accessLogEnabled: false);
 
         AssertEx.Equal(1, result.Diagnostics.Count);
-        AssertEx.Equal(0L, result.Metrics.AccessLogsEmitted);
+        AssertEx.Equal(0L, result.Metrics.Diagnostics.AccessLogsEmitted);
     }
 
     public static async Task HttpToHttpsRedirectPreservesPathAndQuery()
@@ -606,7 +606,7 @@ internal static class ProxyIntegrationTests
             readBodyFromUpstreamRequest: false);
 
         AssertEx.Equal(1, result.Diagnostics.Count);
-        AssertEx.Equal(0L, result.Metrics.AccessLogsEmitted);
+        AssertEx.Equal(0L, result.Metrics.Diagnostics.AccessLogsEmitted);
         AssertEx.Equal("scenario", result.Diagnostics[0].RouteName);
     }
 

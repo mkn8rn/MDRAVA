@@ -66,7 +66,7 @@ internal static class LogPersistenceTests
         emitter.Complete(CreateAccessContext("/disabled"), accessLogEnabled: false, diagnosticsCapacity: 10);
 
         AssertEx.False(File.Exists(Path.Combine(temp.Path, "logs", "access.log")));
-        AssertEx.Equal(0L, metrics.Snapshot().AccessLogsEmitted);
+        AssertEx.Equal(0L, metrics.Snapshot().Diagnostics.AccessLogsEmitted);
     }
 
     public static async Task AdminAuditPersistenceWritesFailedAuthWithoutSecrets()
