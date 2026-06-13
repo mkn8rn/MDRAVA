@@ -197,21 +197,18 @@ internal static class CacheTests
 
         var result = ProxyCacheEligibilityPolicy.EvaluateResponseForBuffering(CacheFacts(route.Cache), request, response);
 
-        AssertEx.False(result.CanCache);
-        AssertEx.Equal(ProxyCacheEligibilityPolicy.ReasonCookie, result.RejectionReason);
+        AssertRejectedEligibility(result, ProxyCacheEligibilityPolicy.ReasonCookie);
     }
 
     public static void CacheEligibilityResultNamesAcceptedAndRejectedOutcomes()
     {
-        var accepted = ProxyCacheEligibilityResult.Accept();
-        var rejected = ProxyCacheEligibilityResult.Reject(ProxyCacheEligibilityPolicy.ReasonCookie);
+        var accepted = ProxyCacheEligibilityResult.Accepted();
+        var rejected = ProxyCacheEligibilityResult.Rejected(ProxyCacheEligibilityPolicy.ReasonCookie);
         var storageAccepted = ProxyCacheStorageEligibilityResult.Accepted(TimeSpan.FromSeconds(30));
         var storageRejected = ProxyCacheStorageEligibilityResult.Rejected(ProxyCacheEligibilityPolicy.ReasonTtl);
 
-        AssertEx.True(accepted.CanCache);
-        AssertEx.Equal<string?>(null, accepted.RejectionReason);
-        AssertEx.False(rejected.CanCache);
-        AssertEx.Equal(ProxyCacheEligibilityPolicy.ReasonCookie, rejected.RejectionReason);
+        AssertEx.True(accepted is ProxyCacheEligibilityResult.AcceptedResult);
+        AssertRejectedEligibility(rejected, ProxyCacheEligibilityPolicy.ReasonCookie);
         if (storageAccepted is not ProxyCacheStorageEligibilityResult.AcceptedResult acceptedStorage)
         {
             throw new InvalidOperationException("Expected accepted cache storage eligibility.");
@@ -244,8 +241,7 @@ internal static class CacheTests
 
         var result = ProxyCacheEligibilityPolicy.EvaluateResponseForBuffering(CacheFacts(route.Cache), request, response);
 
-        AssertEx.False(result.CanCache);
-        AssertEx.Equal(ProxyCacheEligibilityPolicy.ReasonCacheControlNoStore, result.RejectionReason);
+        AssertRejectedEligibility(result, ProxyCacheEligibilityPolicy.ReasonCacheControlNoStore);
     }
 
     public static void NoCacheResponseIsNotCached()
@@ -320,8 +316,7 @@ internal static class CacheTests
 
         var result = ProxyCacheEligibilityPolicy.EvaluateResponseForBuffering(CacheFacts(route.Cache), request, response);
 
-        AssertEx.False(result.CanCache);
-        AssertEx.Equal(ProxyCacheEligibilityPolicy.ReasonFraming, result.RejectionReason);
+        AssertRejectedEligibility(result, ProxyCacheEligibilityPolicy.ReasonFraming);
     }
 
     public static void CacheEligibilityClassifiesOversizedContentLength()
@@ -337,8 +332,7 @@ internal static class CacheTests
 
         var result = ProxyCacheEligibilityPolicy.EvaluateResponseForBuffering(CacheFacts(route.Cache), request, response);
 
-        AssertEx.False(result.CanCache);
-        AssertEx.Equal(ProxyCacheEligibilityPolicy.ReasonOversized, result.RejectionReason);
+        AssertRejectedEligibility(result, ProxyCacheEligibilityPolicy.ReasonOversized);
     }
 
     public static void HopByHopHeadersAndTransferEncodingAreNotStored()
@@ -686,6 +680,16 @@ internal static class CacheTests
 
         AssertCacheMiss(cache, route, listener, request, "/reject");
         AssertEx.True(CacheStatus(cache, null).StoreRejectionCount > 0);
+    }
+
+    private static void AssertRejectedEligibility(ProxyCacheEligibilityResult result, string reason)
+    {
+        if (result is not ProxyCacheEligibilityResult.RejectedResult rejected)
+        {
+            throw new InvalidOperationException("Expected rejected cache eligibility.");
+        }
+
+        AssertEx.Equal(reason, rejected.Reason);
     }
 
     private static void SeedCache(ResponseCacheStore cache, RuntimeRoute route, RuntimeListener listener)

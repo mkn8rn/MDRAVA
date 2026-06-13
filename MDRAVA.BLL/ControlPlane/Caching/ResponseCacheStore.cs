@@ -173,9 +173,9 @@ public sealed class ResponseCacheStore : IProxyCacheControl
         string upstreamTarget)
     {
         var requestEligibility = ProxyCacheEligibilityPolicy.EvaluateRequest(scope.Policy, requestHead);
-        if (!requestEligibility.CanCache)
+        if (requestEligibility is ProxyCacheEligibilityResult.RejectedResult rejected)
         {
-            return CacheKeyCreation.Reject(requestEligibility.RejectionReason);
+            return CacheKeyCreation.Reject(rejected.Reason);
         }
 
         var builder = new StringBuilder();
@@ -206,7 +206,7 @@ public sealed class ResponseCacheStore : IProxyCacheControl
             return new Created(key);
         }
 
-        public static CacheKeyCreation Reject(string? reason)
+        public static CacheKeyCreation Reject(string reason)
         {
             return new Rejected(reason);
         }
@@ -228,12 +228,17 @@ public sealed class ResponseCacheStore : IProxyCacheControl
 
         public sealed record Rejected : CacheKeyCreation
         {
-            public Rejected(string? reason)
+            public Rejected(string reason)
             {
+                if (string.IsNullOrWhiteSpace(reason))
+                {
+                    throw new ArgumentException("Cache key rejection reason is required.", nameof(reason));
+                }
+
                 Reason = reason;
             }
 
-            public string? Reason { get; }
+            public string Reason { get; }
         }
     }
 

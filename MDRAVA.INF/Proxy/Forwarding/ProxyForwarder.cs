@@ -528,7 +528,8 @@ public sealed class ProxyForwarder
 
         var keepClientConnectionOpen = preferClientKeepAlive;
         var responseHeaders = BuildResponseHeaders(responseHead, route);
-        if (ProxyCacheEligibilityPolicy.EvaluateResponseForBuffering(ProxyCacheRuntimeMapper.ToPolicyFacts(route.Cache), requestHead, responseHead).CanCache)
+        if (ProxyCacheEligibilityPolicy.EvaluateResponseForBuffering(ProxyCacheRuntimeMapper.ToPolicyFacts(route.Cache), requestHead, responseHead)
+            is ProxyCacheEligibilityResult.AcceptedResult)
         {
             var body = await ReadFramedUpstreamCacheCandidateBodyAsync(
                 (readTimeouts, token) => ReadHttp2DataChunkAsync(upstreamHttp2, readTimeouts, token),
@@ -651,7 +652,8 @@ public sealed class ProxyForwarder
 
         var keepClientConnectionOpen = preferClientKeepAlive;
         var responseHeaders = BuildResponseHeaders(responseHead, route);
-        if (ProxyCacheEligibilityPolicy.EvaluateResponseForBuffering(ProxyCacheRuntimeMapper.ToPolicyFacts(route.Cache), requestHead, responseHead).CanCache)
+        if (ProxyCacheEligibilityPolicy.EvaluateResponseForBuffering(ProxyCacheRuntimeMapper.ToPolicyFacts(route.Cache), requestHead, responseHead)
+            is ProxyCacheEligibilityResult.AcceptedResult)
         {
             var body = await ReadFramedUpstreamCacheCandidateBodyAsync(
                 (readTimeouts, token) => ReadHttp3DataChunkAsync(upstreamHttp3, readTimeouts, token),
@@ -1232,7 +1234,8 @@ public sealed class ProxyForwarder
                 }
 
                 var responseHeaders = BuildResponseHeaders(responseHead, route);
-                if (ProxyCacheEligibilityPolicy.EvaluateResponseForBuffering(ProxyCacheRuntimeMapper.ToPolicyFacts(route.Cache), requestHead, responseHead).CanCache)
+                if (ProxyCacheEligibilityPolicy.EvaluateResponseForBuffering(ProxyCacheRuntimeMapper.ToPolicyFacts(route.Cache), requestHead, responseHead)
+                    is ProxyCacheEligibilityResult.AcceptedResult)
                 {
                     var body = await ReadCacheCandidateBodyAsync(
                         upstreamStream,

@@ -12,6 +12,7 @@ public static class ProxyCacheEligibilityPolicy
     public const string ReasonCacheControlNoStore = "cache-control-no-store";
     public const string ReasonCacheControlPrivate = "cache-control-private";
     public const string ReasonCookie = "cookie";
+    public const string ReasonDisabled = "disabled";
     public const string ReasonFraming = "framing";
     public const string ReasonMethod = "method";
     public const string ReasonOversized = "oversized";
@@ -26,30 +27,30 @@ public static class ProxyCacheEligibilityPolicy
     {
         if (!policy.Enabled)
         {
-            return ProxyCacheEligibilityResult.Reject(null);
+            return ProxyCacheEligibilityResult.Rejected(ReasonDisabled);
         }
 
         if (!ContainsMethod(policy.Methods, requestHead.Method))
         {
-            return ProxyCacheEligibilityResult.Reject(ReasonMethod);
+            return ProxyCacheEligibilityResult.Rejected(ReasonMethod);
         }
 
         if (requestHead.Framing.Kind != Http1BodyKind.None)
         {
-            return ProxyCacheEligibilityResult.Reject(ReasonRequestBody);
+            return ProxyCacheEligibilityResult.Rejected(ReasonRequestBody);
         }
 
         if (ContainsHeader(requestHead.Headers, "Authorization"))
         {
-            return ProxyCacheEligibilityResult.Reject(ReasonAuthorization);
+            return ProxyCacheEligibilityResult.Rejected(ReasonAuthorization);
         }
 
         if (ContainsHeader(requestHead.Headers, "Cookie"))
         {
-            return ProxyCacheEligibilityResult.Reject(ReasonCookie);
+            return ProxyCacheEligibilityResult.Rejected(ReasonCookie);
         }
 
-        return ProxyCacheEligibilityResult.Accept();
+        return ProxyCacheEligibilityResult.Accepted();
     }
 
     public static ProxyCacheEligibilityResult EvaluateResponseForBuffering(
@@ -58,7 +59,7 @@ public static class ProxyCacheEligibilityPolicy
         Http1ResponseHead responseHead)
     {
         var requestEligibility = EvaluateRequest(policy, requestHead);
-        if (!requestEligibility.CanCache)
+        if (requestEligibility is ProxyCacheEligibilityResult.RejectedResult)
         {
             return requestEligibility;
         }
@@ -66,16 +67,16 @@ public static class ProxyCacheEligibilityPolicy
         var metadataEligibility = EvaluateResponseMetadata(policy, responseHead);
         if (metadataEligibility is CacheResponseMetadataEligibility.Rejected rejectedMetadata)
         {
-            return ProxyCacheEligibilityResult.Reject(rejectedMetadata.Reason);
+            return ProxyCacheEligibilityResult.Rejected(rejectedMetadata.Reason);
         }
 
         var framingEligibility = EvaluateResponseFraming(policy, responseHead);
         if (framingEligibility is ProxyCacheResponseFramingEligibility.Rejected rejectedFraming)
         {
-            return ProxyCacheEligibilityResult.Reject(rejectedFraming.Reason);
+            return ProxyCacheEligibilityResult.Rejected(rejectedFraming.Reason);
         }
 
-        return ProxyCacheEligibilityResult.Accept();
+        return ProxyCacheEligibilityResult.Accepted();
     }
 
     public static ProxyCacheStorageEligibilityResult EvaluateStoredResponse(
