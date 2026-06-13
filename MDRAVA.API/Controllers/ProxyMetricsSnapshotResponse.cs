@@ -141,6 +141,7 @@ public sealed record ProxyMetricsSnapshotResponse(
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         var http3 = snapshot.Http3;
+        var upstreamHttp3 = snapshot.UpstreamHttp3;
 
         return new ProxyMetricsSnapshotResponse(
             snapshot.AcceptedConnections,
@@ -241,17 +242,17 @@ public sealed record ProxyMetricsSnapshotResponse(
             snapshot.UpstreamHttp2Requests,
             snapshot.UpstreamHttp2AlpnFailures,
             snapshot.UpstreamHttp2ProtocolErrors,
-            snapshot.UpstreamHttp3Requests,
-            snapshot.UpstreamHttp3ConnectionAttempts,
-            snapshot.UpstreamHttp3ConnectionSuccesses,
-            snapshot.UpstreamHttp3ConnectionFailures,
-            snapshot.UpstreamHttp3PoolConnectionsOpened,
-            snapshot.UpstreamHttp3PoolConnectionsReused,
-            snapshot.UpstreamHttp3PoolConnectionsClosed,
-            snapshot.UpstreamHttp3StreamLimitRejections,
-            snapshot.ActiveUpstreamHttp3Connections,
-            snapshot.ActiveUpstreamHttp3Streams,
-            new Dictionary<string, long>(snapshot.UpstreamHttp3ProtocolErrors),
+            upstreamHttp3.Requests,
+            upstreamHttp3.ConnectionAttempts,
+            upstreamHttp3.ConnectionSuccesses,
+            upstreamHttp3.ConnectionFailures,
+            upstreamHttp3.PoolConnectionsOpened,
+            upstreamHttp3.PoolConnectionsReused,
+            upstreamHttp3.PoolConnectionsClosed,
+            upstreamHttp3.StreamLimitRejections,
+            upstreamHttp3.ActiveConnections,
+            upstreamHttp3.ActiveStreams,
+            new Dictionary<string, long>(upstreamHttp3.ProtocolErrors),
             http3.AcceptedConnections,
             http3.ActiveConnections,
             http3.Requests,

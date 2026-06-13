@@ -102,17 +102,7 @@ public sealed record ProxyMetricsSnapshot(
     long UpstreamHttp2Requests,
     long UpstreamHttp2AlpnFailures,
     long UpstreamHttp2ProtocolErrors,
-    long UpstreamHttp3Requests,
-    long UpstreamHttp3ConnectionAttempts,
-    long UpstreamHttp3ConnectionSuccesses,
-    long UpstreamHttp3ConnectionFailures,
-    long UpstreamHttp3PoolConnectionsOpened,
-    long UpstreamHttp3PoolConnectionsReused,
-    long UpstreamHttp3PoolConnectionsClosed,
-    long UpstreamHttp3StreamLimitRejections,
-    long ActiveUpstreamHttp3Connections,
-    long ActiveUpstreamHttp3Streams,
-    IReadOnlyDictionary<string, long> UpstreamHttp3ProtocolErrors,
+    ProxyUpstreamHttp3MetricsSnapshot UpstreamHttp3,
     ProxyHttp3MetricsSnapshot Http3,
     long ConfigLintRuns,
     IReadOnlyList<ProxyConfigLintFindingMetricSnapshot> ConfigLintFindings,
@@ -121,6 +111,9 @@ public sealed record ProxyMetricsSnapshot(
 {
     public ProxyHttp3MetricsSnapshot Http3 { get; } =
         Http3 ?? throw new ArgumentNullException(nameof(Http3));
+
+    public ProxyUpstreamHttp3MetricsSnapshot UpstreamHttp3 { get; } =
+        UpstreamHttp3 ?? throw new ArgumentNullException(nameof(UpstreamHttp3));
 
     public IReadOnlyDictionary<string, long> RequestFailuresByKind { get; } =
         MetricsList.CopyDictionary(RequestFailuresByKind, StringComparer.Ordinal);
@@ -136,9 +129,6 @@ public sealed record ProxyMetricsSnapshot(
 
     public IReadOnlyDictionary<string, long> Http2ProtocolErrors { get; } =
         MetricsList.CopyDictionary(Http2ProtocolErrors, StringComparer.Ordinal);
-
-    public IReadOnlyDictionary<string, long> UpstreamHttp3ProtocolErrors { get; } =
-        MetricsList.CopyDictionary(UpstreamHttp3ProtocolErrors, StringComparer.Ordinal);
 
     public IReadOnlyList<ProxyConfigLintFindingMetricSnapshot> ConfigLintFindings { get; } =
         MetricsList.Copy(ConfigLintFindings);

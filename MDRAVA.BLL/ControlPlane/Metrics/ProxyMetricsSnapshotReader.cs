@@ -103,17 +103,7 @@ public sealed partial class ProxyMetrics
             Interlocked.Read(ref _upstreamHttp2Requests),
             Interlocked.Read(ref _upstreamHttp2AlpnFailures),
             Interlocked.Read(ref _upstreamHttp2ProtocolErrors),
-            Interlocked.Read(ref _upstreamHttp3Requests),
-            Interlocked.Read(ref _upstreamHttp3ConnectionAttempts),
-            Interlocked.Read(ref _upstreamHttp3ConnectionSuccesses),
-            Interlocked.Read(ref _upstreamHttp3ConnectionFailures),
-            Interlocked.Read(ref _upstreamHttp3PoolConnectionsOpened),
-            Interlocked.Read(ref _upstreamHttp3PoolConnectionsReused),
-            Interlocked.Read(ref _upstreamHttp3PoolConnectionsClosed),
-            Interlocked.Read(ref _upstreamHttp3StreamLimitRejections),
-            Interlocked.Read(ref _activeUpstreamHttp3Connections),
-            Interlocked.Read(ref _activeUpstreamHttp3Streams),
-            ReadUpstreamHttp3ProtocolErrors(),
+            ReadUpstreamHttp3MetricsSnapshot(),
             ReadHttp3MetricsSnapshot(),
             Interlocked.Read(ref _configLintRuns),
             ReadConfigLintFindings(),
@@ -144,6 +134,22 @@ public sealed partial class ProxyMetrics
             Interlocked.Read(ref _quicListenerStartSuccesses),
             Interlocked.Read(ref _quicListenerStartFailures),
             Interlocked.Read(ref _activeQuicListeners));
+    }
+
+    private ProxyUpstreamHttp3MetricsSnapshot ReadUpstreamHttp3MetricsSnapshot()
+    {
+        return new ProxyUpstreamHttp3MetricsSnapshot(
+            Interlocked.Read(ref _upstreamHttp3Requests),
+            Interlocked.Read(ref _upstreamHttp3ConnectionAttempts),
+            Interlocked.Read(ref _upstreamHttp3ConnectionSuccesses),
+            Interlocked.Read(ref _upstreamHttp3ConnectionFailures),
+            Interlocked.Read(ref _upstreamHttp3PoolConnectionsOpened),
+            Interlocked.Read(ref _upstreamHttp3PoolConnectionsReused),
+            Interlocked.Read(ref _upstreamHttp3PoolConnectionsClosed),
+            Interlocked.Read(ref _upstreamHttp3StreamLimitRejections),
+            Interlocked.Read(ref _activeUpstreamHttp3Connections),
+            Interlocked.Read(ref _activeUpstreamHttp3Streams),
+            ReadUpstreamHttp3ProtocolErrors());
     }
 
     public ProxyMetricsSnapshot ReadMetrics()

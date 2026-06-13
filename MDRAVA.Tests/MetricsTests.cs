@@ -220,17 +220,18 @@ internal static class MetricsTests
             UpstreamHttp2Requests: 0,
             UpstreamHttp2AlpnFailures: 0,
             UpstreamHttp2ProtocolErrors: 0,
-            UpstreamHttp3Requests: 0,
-            UpstreamHttp3ConnectionAttempts: 0,
-            UpstreamHttp3ConnectionSuccesses: 0,
-            UpstreamHttp3ConnectionFailures: 0,
-            UpstreamHttp3PoolConnectionsOpened: 0,
-            UpstreamHttp3PoolConnectionsReused: 0,
-            UpstreamHttp3PoolConnectionsClosed: 0,
-            UpstreamHttp3StreamLimitRejections: 0,
-            ActiveUpstreamHttp3Connections: 0,
-            ActiveUpstreamHttp3Streams: 0,
-            UpstreamHttp3ProtocolErrors: upstreamHttp3ProtocolErrors,
+            UpstreamHttp3: new ProxyUpstreamHttp3MetricsSnapshot(
+                Requests: 0,
+                ConnectionAttempts: 0,
+                ConnectionSuccesses: 0,
+                ConnectionFailures: 0,
+                PoolConnectionsOpened: 0,
+                PoolConnectionsReused: 0,
+                PoolConnectionsClosed: 0,
+                StreamLimitRejections: 0,
+                ActiveConnections: 0,
+                ActiveStreams: 0,
+                ProtocolErrors: upstreamHttp3ProtocolErrors),
             Http3: new ProxyHttp3MetricsSnapshot(
                 AcceptedConnections: 0,
                 ActiveConnections: 0,
@@ -274,7 +275,7 @@ internal static class MetricsTests
         AssertEx.Equal("unsafe_method", snapshot.RetrySkipped[0].Reason);
         AssertEx.Equal("upstream-a", snapshot.UpstreamSelectionsByUpstream[0].Upstream);
         AssertEx.Equal(6L, snapshot.Http2ProtocolErrors["stream_error"]);
-        AssertEx.Equal(7L, snapshot.UpstreamHttp3ProtocolErrors["goaway"]);
+        AssertEx.Equal(7L, snapshot.UpstreamHttp3.ProtocolErrors["goaway"]);
         AssertEx.Equal("proxied", snapshot.Http3.RequestsByOutcome[0].Outcome);
         AssertEx.Equal(9L, snapshot.Http3.RejectedRequests["malformed"]);
         AssertEx.Equal(10L, snapshot.Http3.ProtocolErrors["qpack"]);
@@ -285,7 +286,7 @@ internal static class MetricsTests
         AssertEx.False(snapshot.RetrySkipped is ProxyRetrySkippedSnapshot[]);
         AssertEx.False(snapshot.UpstreamSelectionsByUpstream is ProxyUpstreamSelectionSnapshot[]);
         AssertEx.False(snapshot.Http2ProtocolErrors is Dictionary<string, long>);
-        AssertEx.False(snapshot.UpstreamHttp3ProtocolErrors is Dictionary<string, long>);
+        AssertEx.False(snapshot.UpstreamHttp3.ProtocolErrors is Dictionary<string, long>);
         AssertEx.False(snapshot.Http3.RequestsByOutcome is ProxyHttp3RequestOutcomeSnapshot[]);
         AssertEx.False(snapshot.Http3.RejectedRequests is Dictionary<string, long>);
         AssertEx.False(snapshot.Http3.ProtocolErrors is Dictionary<string, long>);
