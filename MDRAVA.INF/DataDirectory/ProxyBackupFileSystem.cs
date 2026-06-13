@@ -30,9 +30,9 @@ public sealed class ProxyBackupFileSystem : IProxyBackupFileSystem
         return ProxyBackupFileSystemScanResult.Scanned(files, warnings);
     }
 
-    public bool TryGetSafeRelativePath(string root, string path, out string relativePath)
+    public ProxySafeRelativePathResult GetSafeRelativePath(string root, string path)
     {
-        return _pathSafety.TryGetSafeRelativePath(root, path, out relativePath);
+        return _pathSafety.GetSafeRelativePath(root, path);
     }
 
     private void ScanDirectory(
@@ -85,7 +85,8 @@ public sealed class ProxyBackupFileSystem : IProxyBackupFileSystem
                 continue;
             }
 
-            if (!_pathSafety.TryGetSafeRelativePath(root, file.FullName, out var relativePath))
+            var safePath = _pathSafety.GetSafeRelativePath(root, file.FullName);
+            if (safePath is not ProxySafeRelativePathResult.SafeResult safeRelativePath)
             {
                 warnings.Add(new ProxyBackupFileSystemWarning(
                     "unsafe_path_skipped",
@@ -94,7 +95,7 @@ public sealed class ProxyBackupFileSystem : IProxyBackupFileSystem
             }
 
             files.Add(new ProxyBackupFileSystemEntry(
-                relativePath,
+                safeRelativePath.RelativePath,
                 file.Length,
                 file.LastWriteTimeUtc));
         }
@@ -135,8 +136,8 @@ public sealed class ProxyBackupFileSystem : IProxyBackupFileSystem
             return null;
         }
 
-        return _pathSafety.TryGetSafeRelativePath(root, path, out var relativePath)
-            ? relativePath
+        return _pathSafety.GetSafeRelativePath(root, path) is ProxySafeRelativePathResult.SafeResult safePath
+            ? safePath.RelativePath
             : null;
     }
 }

@@ -6,14 +6,13 @@ public sealed class ProxyDataDirectoryPathSafety : IProxyDataDirectoryPathSafety
 {
     private const int MaxRelativePathLength = 240;
 
-    public bool TryGetSafeRelativePath(string root, string path, out string relativePath)
+    public ProxySafeRelativePathResult GetSafeRelativePath(string root, string path)
     {
-        relativePath = "";
         var fullRoot = Path.GetFullPath(root);
         var fullPath = Path.GetFullPath(path);
         if (!IsInRoot(fullRoot, fullPath))
         {
-            return false;
+            return ProxySafeRelativePathResult.Unsafe;
         }
 
         var relative = Path.GetRelativePath(fullRoot, fullPath).Replace(Path.DirectorySeparatorChar, '/');
@@ -22,13 +21,13 @@ public sealed class ProxyDataDirectoryPathSafety : IProxyDataDirectoryPathSafety
             || relative.StartsWith("..", StringComparison.Ordinal)
             || Path.IsPathRooted(relative))
         {
-            return false;
+            return ProxySafeRelativePathResult.Unsafe;
         }
 
-        relativePath = relative.Length <= MaxRelativePathLength
+        var safeRelativePath = relative.Length <= MaxRelativePathLength
             ? relative
             : string.Concat(relative.AsSpan(0, MaxRelativePathLength - 12), "...truncated");
-        return true;
+        return ProxySafeRelativePathResult.Safe(safeRelativePath);
     }
 
     private static bool IsInRoot(string root, string path)

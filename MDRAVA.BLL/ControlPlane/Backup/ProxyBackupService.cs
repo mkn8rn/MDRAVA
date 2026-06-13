@@ -128,8 +128,8 @@ public sealed class ProxyBackupService : IProxyBackupOperations
             return null;
         }
 
-        return _backupFileSystem.TryGetSafeRelativePath(root, path, out var relativePath)
-            ? relativePath
+        return _backupFileSystem.GetSafeRelativePath(root, path) is ProxySafeRelativePathResult.SafeResult safePath
+            ? safePath.RelativePath
             : null;
     }
 }

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using MDRAVA.BLL.Configuration;
 using MDRAVA.INF.Configuration.Loading;
 using MDRAVA.INF.Configuration.Paths;
 using MDRAVA.INF.DataDirectory;
@@ -222,9 +223,13 @@ internal static class BackupRestoreTests
         var outside = Path.Combine(temp.Path, "..", "outside.json");
         var pathSafety = new ProxyDataDirectoryPathSafety();
 
-        AssertEx.True(pathSafety.TryGetSafeRelativePath(temp.Path, inside, out var relative));
-        AssertEx.Equal("config/proxy.json", relative);
-        AssertEx.False(pathSafety.TryGetSafeRelativePath(temp.Path, outside, out _));
+        var insideResult = pathSafety.GetSafeRelativePath(temp.Path, inside);
+        AssertEx.True(insideResult is ProxySafeRelativePathResult.SafeResult);
+        var insideSafePath = (ProxySafeRelativePathResult.SafeResult)insideResult;
+        AssertEx.Equal("config/proxy.json", insideSafePath.RelativePath);
+
+        var outsideResult = pathSafety.GetSafeRelativePath(temp.Path, outside);
+        AssertEx.True(outsideResult is ProxySafeRelativePathResult.UnsafeResult);
     }
 
     public static async Task RestoreValidationCatchesInvalidConfigWithoutCreatingBootstrapFiles()

@@ -51,7 +51,7 @@ public interface IProxyBackupFileSystem
 
     ProxyBackupFileSystemScanResult ScanDataDirectory(string root);
 
-    bool TryGetSafeRelativePath(string root, string path, out string relativePath);
+    ProxySafeRelativePathResult GetSafeRelativePath(string root, string path);
 }
 
 public sealed record ProxyBackupFileSystemScanResult

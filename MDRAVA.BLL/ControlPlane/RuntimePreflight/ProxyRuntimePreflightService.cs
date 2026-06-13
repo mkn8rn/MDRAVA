@@ -79,7 +79,7 @@ public sealed class ProxyRuntimePreflightService : IProxyStatusRuntimePreflightS
             bool createMissing)
         {
             if (requirement.Kind != ProxyRuntimePreflightDirectoryKind.Data
-                && !_pathSafety.TryGetSafeRelativePath(dataDirectory, path, out _))
+                && _pathSafety.GetSafeRelativePath(dataDirectory, path) is not ProxySafeRelativePathResult.SafeResult)
             {
                 return ProxyRuntimePreflightCheckFactory.UnsafePath(requirement);
             }
