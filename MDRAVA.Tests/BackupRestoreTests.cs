@@ -185,6 +185,10 @@ internal static class BackupRestoreTests
             errors: [],
             fileErrors: [],
             wouldBeVersion: 7);
+        var invalidConfigValidation = ProxyRestoreConfigurationValidationResult.Completed(
+            errors: ["parse failed"],
+            fileErrors: [],
+            wouldBeVersion: null);
         ProxyRestoreValidationFinding[] errors =
         [
             new ProxyRestoreValidationFinding(ProxyStatusText.Error, "first", "First.", null),
@@ -204,7 +208,20 @@ internal static class BackupRestoreTests
             errors,
             warnings,
             maxFindings: 1);
+        var invalidResponse = ProxyRestoreValidationResponseBuilder.Build(
+            generatedAtUtc,
+            activeConfigVersion: 3,
+            invalidConfigValidation,
+            manifest,
+            [],
+            [],
+            maxFindings: 1);
 
+        AssertEx.True(configValidation is ProxyRestoreConfigurationValidationResult.ValidResult);
+        AssertEx.True(invalidConfigValidation is ProxyRestoreConfigurationValidationResult.InvalidResult);
+        AssertEx.False(invalidResponse.Succeeded);
+        AssertEx.False(invalidResponse.ConfigValidationSucceeded);
+        AssertEx.Equal("parse failed", invalidConfigValidation.Errors[0]);
         AssertEx.False(response.Succeeded);
         AssertEx.Equal(generatedAtUtc, response.GeneratedAtUtc);
         AssertEx.Equal(3, response.ActiveConfigVersion);

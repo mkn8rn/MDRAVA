@@ -7,27 +7,17 @@ public interface IProxyRestoreConfigurationValidator
     ValueTask<ProxyRestoreConfigurationValidationResult> ValidateExistingLayoutAsync(CancellationToken cancellationToken);
 }
 
-public sealed record ProxyRestoreConfigurationValidationResult
+public abstract record ProxyRestoreConfigurationValidationResult
 {
-    private ProxyRestoreConfigurationValidationResult(
-        bool succeeded,
-        IReadOnlyList<string> errors,
-        IReadOnlyList<ProxyConfigurationFileError> fileErrors,
-        int? wouldBeVersion)
+    private ProxyRestoreConfigurationValidationResult()
     {
-        Succeeded = succeeded;
-        Errors = errors;
-        FileErrors = fileErrors;
-        WouldBeVersion = wouldBeVersion;
     }
 
-    public bool Succeeded { get; }
+    public abstract IReadOnlyList<string> Errors { get; }
 
-    public IReadOnlyList<string> Errors { get; }
+    public abstract IReadOnlyList<ProxyConfigurationFileError> FileErrors { get; }
 
-    public IReadOnlyList<ProxyConfigurationFileError> FileErrors { get; }
-
-    public int? WouldBeVersion { get; }
+    public abstract int? WouldBeVersion { get; }
 
     public static ProxyRestoreConfigurationValidationResult Completed(
         IReadOnlyList<string> errors,
@@ -37,11 +27,49 @@ public sealed record ProxyRestoreConfigurationValidationResult
         ArgumentNullException.ThrowIfNull(errors);
         ArgumentNullException.ThrowIfNull(fileErrors);
 
-        return new ProxyRestoreConfigurationValidationResult(
-            errors.Count == 0 && fileErrors.Count == 0,
-            errors,
-            fileErrors,
-            wouldBeVersion);
+        return errors.Count == 0 && fileErrors.Count == 0
+            ? new ValidResult(wouldBeVersion)
+            : new InvalidResult(errors, fileErrors, wouldBeVersion);
+    }
+
+    public sealed record ValidResult : ProxyRestoreConfigurationValidationResult
+    {
+        public ValidResult(int? wouldBeVersion)
+        {
+            WouldBeVersion = wouldBeVersion;
+        }
+
+        public override IReadOnlyList<string> Errors => [];
+
+        public override IReadOnlyList<ProxyConfigurationFileError> FileErrors => [];
+
+        public override int? WouldBeVersion { get; }
+    }
+
+    public sealed record InvalidResult : ProxyRestoreConfigurationValidationResult
+    {
+        public InvalidResult(
+            IReadOnlyList<string> errors,
+            IReadOnlyList<ProxyConfigurationFileError> fileErrors,
+            int? wouldBeVersion)
+        {
+            ArgumentNullException.ThrowIfNull(errors);
+            ArgumentNullException.ThrowIfNull(fileErrors);
+            if (errors.Count == 0 && fileErrors.Count == 0)
+            {
+                throw new ArgumentException("Invalid restore configuration validation requires at least one error.");
+            }
+
+            Errors = errors;
+            FileErrors = fileErrors;
+            WouldBeVersion = wouldBeVersion;
+        }
+
+        public override IReadOnlyList<string> Errors { get; }
+
+        public override IReadOnlyList<ProxyConfigurationFileError> FileErrors { get; }
+
+        public override int? WouldBeVersion { get; }
     }
 }
 

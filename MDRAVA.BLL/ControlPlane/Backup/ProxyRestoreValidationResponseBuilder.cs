@@ -12,12 +12,13 @@ public static class ProxyRestoreValidationResponseBuilder
         int maxFindings)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(maxFindings);
+        var configValidationSucceeded = configValidation is ProxyRestoreConfigurationValidationResult.ValidResult;
 
         return new ProxyRestoreValidationResponse(
-            configValidation.Succeeded && errors.Count == 0,
+            configValidationSucceeded && errors.Count == 0,
             generatedAtUtc,
             activeConfigVersion,
-            configValidation.Succeeded,
+            configValidationSucceeded,
             configValidation.WouldBeVersion,
             manifest,
             errors.Take(maxFindings).ToArray(),
