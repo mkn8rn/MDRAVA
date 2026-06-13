@@ -11,11 +11,13 @@ public sealed class ProxyAcmeAdministrationService
 
     public AcmeStatusResponse? GetStatus()
     {
-        if (!_statusReader.TryGetSnapshot(out var snapshot) || snapshot is null)
+        var snapshotResult = _statusReader.ReadSnapshot();
+        if (snapshotResult is not ProxyAcmeStatusSnapshotReadResult.AvailableResult available)
         {
             return null;
         }
 
+        var snapshot = available.Snapshot;
         var statusById = _statusReader.GetLifecycleStatuses()
             .ToDictionary(static status => status.CertificateId, StringComparer.OrdinalIgnoreCase);
         var statuses = snapshot.Certificates

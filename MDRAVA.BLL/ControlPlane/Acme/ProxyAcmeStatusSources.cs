@@ -28,15 +28,14 @@ public sealed class ProxyAcmeStatusConfigurationSource : IProxyAcmeStatusConfigu
         _configurationStore = configurationStore;
     }
 
-    public bool TryGetSnapshot(out ProxyAcmeStatusConfigurationSourceSnapshot? snapshot)
+    public ProxyAcmeStatusConfigurationSourceReadResult Read()
     {
         if (!_configurationStore.TryGetSnapshot(out var runtimeSnapshot) || runtimeSnapshot is null)
         {
-            snapshot = null;
-            return false;
+            return ProxyAcmeStatusConfigurationSourceReadResult.MissingConfiguration;
         }
 
-        snapshot = new ProxyAcmeStatusConfigurationSourceSnapshot(
+        return ProxyAcmeStatusConfigurationSourceReadResult.Available(new ProxyAcmeStatusConfigurationSourceSnapshot(
             runtimeSnapshot.Acme.Enabled,
             runtimeSnapshot.Acme.DirectoryUrl,
             runtimeSnapshot.Acme.UseStaging,
@@ -54,7 +53,6 @@ public sealed class ProxyAcmeStatusConfigurationSource : IProxyAcmeStatusConfigu
                     certificate.Value.Source,
                     new DateTimeOffset(certificate.Value.Certificate.NotBefore.ToUniversalTime()),
                     new DateTimeOffset(certificate.Value.Certificate.NotAfter.ToUniversalTime())))
-                .ToArray());
-        return true;
+                .ToArray()));
     }
 }

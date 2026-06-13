@@ -13,21 +13,21 @@ public sealed class ProxyAcmeStatusSnapshotReader : IProxyAcmeStatusSnapshotRead
         _lifecycleStatusSource = lifecycleStatusSource;
     }
 
-    public bool TryGetSnapshot(out ProxyAcmeStatusSnapshot? snapshot)
+    public ProxyAcmeStatusSnapshotReadResult ReadSnapshot()
     {
-        if (!_configurationSource.TryGetSnapshot(out var sourceSnapshot) || sourceSnapshot is null)
+        var sourceResult = _configurationSource.Read();
+        if (sourceResult is not ProxyAcmeStatusConfigurationSourceReadResult.AvailableResult available)
         {
-            snapshot = null;
-            return false;
+            return ProxyAcmeStatusSnapshotReadResult.MissingConfiguration;
         }
 
-        snapshot = new ProxyAcmeStatusSnapshot(
+        var sourceSnapshot = available.Snapshot;
+        return ProxyAcmeStatusSnapshotReadResult.Available(new ProxyAcmeStatusSnapshot(
             sourceSnapshot.Enabled,
             sourceSnapshot.DirectoryUrl,
             sourceSnapshot.UseStaging,
             sourceSnapshot.Certificates,
-            ProxyAcmeRuntimeCertificateStatusMapper.FromSources(sourceSnapshot.RuntimeCertificates));
-        return true;
+            ProxyAcmeRuntimeCertificateStatusMapper.FromSources(sourceSnapshot.RuntimeCertificates)));
     }
 
     public IReadOnlyList<AcmeCertificateLifecycleStatus> GetLifecycleStatuses()

@@ -311,15 +311,15 @@ internal static class AcmeTests
                 [new ProxyAcmeRuntimeCertificateSource("home-acme", "home-acme", "acme", notBefore, notAfter)])),
             new FixedAcmeCertificateLifecycleStatusSource([lifecycle]));
 
-        var found = reader.TryGetSnapshot(out var snapshot);
+        var result = reader.ReadSnapshot();
         var statuses = reader.GetLifecycleStatuses();
         var missingReader = new ProxyAcmeStatusSnapshotReader(
             new FixedAcmeStatusConfigurationSource(null),
             new FixedAcmeCertificateLifecycleStatusSource([]));
-        var missing = missingReader.TryGetSnapshot(out var missingSnapshot);
+        var missing = missingReader.ReadSnapshot();
 
-        AssertEx.True(found);
-        var projected = AssertEx.NotNull(snapshot);
+        AssertEx.True(result is ProxyAcmeStatusSnapshotReadResult.AvailableResult);
+        var projected = ((ProxyAcmeStatusSnapshotReadResult.AvailableResult)result).Snapshot;
         AssertEx.True(projected.Enabled);
         AssertEx.Equal("https://acme.example.test/directory", projected.DirectoryUrl);
         AssertEx.True(projected.UseStaging);
@@ -333,8 +333,7 @@ internal static class AcmeTests
         AssertEx.Equal(notAfter, projected.RuntimeCertificates["home-acme"].NotAfterUtc);
         AssertEx.Equal(1, statuses.Count);
         AssertEx.Equal(lifecycle, statuses[0]);
-        AssertEx.False(missing);
-        AssertEx.Equal(null, missingSnapshot);
+        AssertEx.True(missing is ProxyAcmeStatusSnapshotReadResult.MissingConfigurationResult);
     }
 
     public static void AcmeRuntimeCertificateStatusMapperReadsSourcesWithoutConfigurationSnapshot()
@@ -709,10 +708,11 @@ internal static class AcmeTests
             _snapshot = snapshot;
         }
 
-        public bool TryGetSnapshot(out ProxyAcmeStatusConfigurationSourceSnapshot? snapshot)
+        public ProxyAcmeStatusConfigurationSourceReadResult Read()
         {
-            snapshot = _snapshot;
-            return snapshot is not null;
+            return _snapshot is null
+                ? ProxyAcmeStatusConfigurationSourceReadResult.MissingConfiguration
+                : ProxyAcmeStatusConfigurationSourceReadResult.Available(_snapshot);
         }
     }
 
