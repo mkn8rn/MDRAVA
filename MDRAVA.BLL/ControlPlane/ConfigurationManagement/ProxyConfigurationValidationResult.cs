@@ -2,10 +2,9 @@ using MDRAVA.BLL.Configuration;
 
 namespace MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 
-public sealed record ProxyConfigurationValidationResult
+public abstract record ProxyConfigurationValidationResult
 {
     private ProxyConfigurationValidationResult(
-        bool succeeded,
         string sourceDirectory,
         DateTimeOffset attemptedAtUtc,
         int? activeVersion,
@@ -16,7 +15,6 @@ public sealed record ProxyConfigurationValidationResult
         IReadOnlyList<string> errors,
         IReadOnlyList<ProxyConfigurationFileError> fileErrors)
     {
-        Succeeded = succeeded;
         SourceDirectory = sourceDirectory;
         AttemptedAtUtc = attemptedAtUtc;
         ActiveVersion = activeVersion;
@@ -27,8 +25,6 @@ public sealed record ProxyConfigurationValidationResult
         Errors = errors;
         FileErrors = fileErrors;
     }
-
-    public bool Succeeded { get; }
 
     public string SourceDirectory { get; }
 
@@ -57,17 +53,14 @@ public sealed record ProxyConfigurationValidationResult
         IReadOnlyList<string> sourceFiles,
         ProxyConfigurationDiscovery discovery)
     {
-        return new ProxyConfigurationValidationResult(
-            succeeded: true,
-            sourceDirectory: sourceDirectory,
-            attemptedAtUtc: attemptedAtUtc,
-            activeVersion: activeVersion,
-            lastSuccessfulLoadAtUtc: lastSuccessfulLoadAtUtc,
-            wouldBeVersion: wouldBeVersion,
-            sourceFiles: sourceFiles,
-            discovery: discovery,
-            errors: [],
-            fileErrors: []);
+        return new ValidResult(
+            sourceDirectory,
+            attemptedAtUtc,
+            activeVersion,
+            lastSuccessfulLoadAtUtc,
+            wouldBeVersion,
+            sourceFiles,
+            discovery);
     }
 
     public static ProxyConfigurationValidationResult Invalid(
@@ -81,16 +74,65 @@ public sealed record ProxyConfigurationValidationResult
         IReadOnlyList<string> errors,
         IReadOnlyList<ProxyConfigurationFileError> fileErrors)
     {
-        return new ProxyConfigurationValidationResult(
-            succeeded: false,
-            sourceDirectory: sourceDirectory,
-            attemptedAtUtc: attemptedAtUtc,
-            activeVersion: activeVersion,
-            lastSuccessfulLoadAtUtc: lastSuccessfulLoadAtUtc,
-            wouldBeVersion: wouldBeVersion,
-            sourceFiles: sourceFiles,
-            discovery: discovery,
-            errors: errors,
-            fileErrors: fileErrors);
+        return new InvalidResult(
+            sourceDirectory,
+            attemptedAtUtc,
+            activeVersion,
+            lastSuccessfulLoadAtUtc,
+            wouldBeVersion,
+            sourceFiles,
+            discovery,
+            errors,
+            fileErrors);
+    }
+
+    public sealed record ValidResult : ProxyConfigurationValidationResult
+    {
+        internal ValidResult(
+            string sourceDirectory,
+            DateTimeOffset attemptedAtUtc,
+            int? activeVersion,
+            DateTimeOffset? lastSuccessfulLoadAtUtc,
+            int? wouldBeVersion,
+            IReadOnlyList<string> sourceFiles,
+            ProxyConfigurationDiscovery discovery)
+            : base(
+                sourceDirectory,
+                attemptedAtUtc,
+                activeVersion,
+                lastSuccessfulLoadAtUtc,
+                wouldBeVersion,
+                sourceFiles,
+                discovery,
+                [],
+                [])
+        {
+        }
+    }
+
+    public sealed record InvalidResult : ProxyConfigurationValidationResult
+    {
+        internal InvalidResult(
+            string sourceDirectory,
+            DateTimeOffset attemptedAtUtc,
+            int? activeVersion,
+            DateTimeOffset? lastSuccessfulLoadAtUtc,
+            int? wouldBeVersion,
+            IReadOnlyList<string> sourceFiles,
+            ProxyConfigurationDiscovery discovery,
+            IReadOnlyList<string> errors,
+            IReadOnlyList<ProxyConfigurationFileError> fileErrors)
+            : base(
+                sourceDirectory,
+                attemptedAtUtc,
+                activeVersion,
+                lastSuccessfulLoadAtUtc,
+                wouldBeVersion,
+                sourceFiles,
+                discovery,
+                errors,
+                fileErrors)
+        {
+        }
     }
 }

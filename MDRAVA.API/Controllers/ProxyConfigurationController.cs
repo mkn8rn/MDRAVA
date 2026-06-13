@@ -38,10 +38,11 @@ public sealed class ProxyConfigurationController : ControllerBase
     }
 
     [HttpPost("validate")]
-    public async ValueTask<ActionResult<ProxyConfigurationValidationResult>> Validate(CancellationToken cancellationToken)
+    public async ValueTask<ActionResult<ProxyConfigurationValidationResponse>> Validate(CancellationToken cancellationToken)
     {
         var result = await _configurationAdministration.ValidateAsync(cancellationToken);
-        return ProxyAdminHttpResultMapper.OkOrBadRequest(this, result, result.Succeeded);
+        var response = ProxyConfigurationValidationResponse.FromResult(result);
+        return ProxyAdminHttpResultMapper.OkOrBadRequest(this, response, response.Succeeded);
     }
 
     [HttpGet("active")]

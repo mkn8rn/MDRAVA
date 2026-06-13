@@ -154,14 +154,14 @@ internal static class ConfigurationTests
             errors: ["parse failed"],
             fileErrors: [ProxyConfigurationFileError.ForPath("sites/broken.json", "parse failed")]);
 
-        AssertEx.True(valid.Succeeded);
+        AssertEx.True(valid is ProxyConfigurationValidationResult.ValidResult);
         AssertEx.Equal(4, valid.ActiveVersion!.Value);
         AssertEx.Equal(loadedAtUtc, valid.LastSuccessfulLoadAtUtc!.Value);
         AssertEx.Equal(5, valid.WouldBeVersion!.Value);
         AssertEx.Equal("sites/home.json", valid.SourceFiles[0]);
         AssertEx.Equal(0, valid.Errors.Count);
         AssertEx.Equal(0, valid.FileErrors.Count);
-        AssertEx.False(invalid.Succeeded);
+        AssertEx.True(invalid is ProxyConfigurationValidationResult.InvalidResult);
         AssertEx.Equal(4, invalid.ActiveVersion!.Value);
         AssertEx.Equal(loadedAtUtc, invalid.LastSuccessfulLoadAtUtc!.Value);
         AssertEx.Equal<int?>(null, invalid.WouldBeVersion);
@@ -925,10 +925,20 @@ internal static class ConfigurationTests
 
         var validation = await service.ValidateAsync(CancellationToken.None);
 
-        AssertEx.True(validation.Succeeded, string.Join("; ", validation.Errors));
+        AssertEx.True(validation is ProxyConfigurationValidationResult.ValidResult, string.Join("; ", validation.Errors));
         AssertEx.Equal(1, store.Snapshot.Version);
         AssertEx.Equal(2, validation.WouldBeVersion);
         AssertEx.Equal(18080, store.Snapshot.Listeners[0].Port);
+
+        var controller = new ProxyConfigurationController(
+            new ProxyConfigurationAdministrationService(CreateNormalizer(), service),
+            CreateReadAdministration(store),
+            new ProxyConfigurationReloadAdministrationService<ProxyConfigurationProjection>(service));
+        var actionResult = await controller.Validate(CancellationToken.None);
+        var ok = (OkObjectResult)AssertEx.NotNull(actionResult.Result);
+        var response = (ProxyConfigurationValidationResponse)AssertEx.NotNull(ok.Value);
+        AssertEx.True(response.Succeeded, string.Join("; ", response.Errors));
+        AssertEx.Equal(2, response.WouldBeVersion);
     }
 
     public static async Task ConfigValidateReportsInvalidWithoutReplacingActiveConfig()
@@ -943,9 +953,19 @@ internal static class ConfigurationTests
         File.WriteAllText(Path.Combine(temp.Path, "config", "sites", "broken.json"), "{ nope");
         var validation = await service.ValidateAsync(CancellationToken.None);
 
-        AssertEx.False(validation.Succeeded);
+        AssertEx.True(validation is ProxyConfigurationValidationResult.InvalidResult);
         AssertEx.Equal(1, store.Snapshot.Version);
         AssertEx.True(validation.FileErrors.Any(error => error.Path?.EndsWith("broken.json", StringComparison.OrdinalIgnoreCase) == true));
+
+        var controller = new ProxyConfigurationController(
+            new ProxyConfigurationAdministrationService(CreateNormalizer(), service),
+            CreateReadAdministration(store),
+            new ProxyConfigurationReloadAdministrationService<ProxyConfigurationProjection>(service));
+        var actionResult = await controller.Validate(CancellationToken.None);
+        var badRequest = (BadRequestObjectResult)AssertEx.NotNull(actionResult.Result);
+        var response = (ProxyConfigurationValidationResponse)AssertEx.NotNull(badRequest.Value);
+        AssertEx.False(response.Succeeded);
+        AssertEx.True(response.FileErrors.Any(error => error.Path?.EndsWith("broken.json", StringComparison.OrdinalIgnoreCase) == true));
     }
 
     public static async Task ConfigNormalizeConvertsYamlToJsonWithoutApplying()
