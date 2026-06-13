@@ -371,15 +371,44 @@ internal static class AcmeTests
             null,
             "loaded",
             null);
+        var configuredDomains = new List<string> { "home.example.test" };
+        var configured = new ProxyAcmeConfiguredCertificateStatus(
+            "home-acme",
+            true,
+            configuredDomains,
+            30);
+        var configuredCertificates = new List<ProxyAcmeConfiguredCertificateStatus> { configured };
+        var runtimeSource = new ProxyAcmeRuntimeCertificateSource(
+            "home-acme",
+            "home-acme",
+            "acme",
+            notBefore,
+            notAfter);
+        var runtimeSources = new List<ProxyAcmeRuntimeCertificateSource> { runtimeSource };
         var reader = new ProxyAcmeStatusSnapshotReader(
             new FixedAcmeStatusConfigurationSource(new ProxyAcmeStatusConfigurationSourceSnapshot(
                 true,
                 "https://acme.example.test/directory",
                 true,
-                [new ProxyAcmeConfiguredCertificateStatus("home-acme", true, ["home.example.test"], 30)],
-                [new ProxyAcmeRuntimeCertificateSource("home-acme", "home-acme", "acme", notBefore, notAfter)])),
+                configuredCertificates,
+                runtimeSources)),
             new FixedAcmeCertificateLifecycleStatusSource([lifecycle]));
 
+        configuredDomains[0] = "replacement.example.test";
+        configuredCertificates[0] = new ProxyAcmeConfiguredCertificateStatus(
+            "replacement",
+            true,
+            ["replacement.example.test"],
+            10);
+        runtimeSources[0] = new ProxyAcmeRuntimeCertificateSource(
+            "replacement",
+            "replacement",
+            "manualPfx",
+            notBefore.AddDays(1),
+            notAfter.AddDays(1));
+        configuredDomains.Clear();
+        configuredCertificates.Clear();
+        runtimeSources.Clear();
         var result = reader.ReadSnapshot();
         var statuses = reader.GetLifecycleStatuses();
         var missingReader = new ProxyAcmeStatusSnapshotReader(
@@ -400,6 +429,25 @@ internal static class AcmeTests
         AssertEx.Equal("acme", projected.RuntimeCertificates["home-acme"].Source);
         AssertEx.Equal(notBefore, projected.RuntimeCertificates["home-acme"].NotBeforeUtc);
         AssertEx.Equal(notAfter, projected.RuntimeCertificates["home-acme"].NotAfterUtc);
+        AssertEx.False(projected.Certificates is ProxyAcmeConfiguredCertificateStatus[], "ACME status snapshot certificates should not expose a mutable array.");
+        AssertEx.False(projected.Certificates[0].Domains is string[], "ACME configured certificate domains should not expose a mutable array.");
+        var runtimeStatusDictionary = new Dictionary<string, ProxyAcmeRuntimeCertificateStatus>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["home-acme"] = new ProxyAcmeRuntimeCertificateStatus("home-acme", "acme", notBefore, notAfter)
+        };
+        var directSnapshot = new ProxyAcmeStatusSnapshot(
+            Enabled: true,
+            DirectoryUrl: "https://acme.example.test/directory",
+            UseStaging: true,
+            Certificates: [configured],
+            RuntimeCertificates: runtimeStatusDictionary);
+        runtimeStatusDictionary["home-acme"] = new ProxyAcmeRuntimeCertificateStatus(
+            "home-acme",
+            "manualPfx",
+            notBefore.AddDays(1),
+            notAfter.AddDays(1));
+
+        AssertEx.Equal("acme", directSnapshot.RuntimeCertificates["home-acme"].Source);
         AssertEx.Equal(1, statuses.Count);
         AssertEx.Equal(lifecycle, statuses[0]);
         AssertEx.True(missing is ProxyAcmeStatusSnapshotReadResult.MissingConfigurationResult);
