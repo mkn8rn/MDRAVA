@@ -34,7 +34,7 @@ internal static class RuntimePreflightTests
         using var temp = TemporaryDirectory.Create();
         var probe = new DelegateProbe(path =>
             path.EndsWith("logs", StringComparison.OrdinalIgnoreCase)
-                ? ProxyRuntimeDirectoryProbeResult.NotWritable(created: false, secret)
+                ? ProxyRuntimeDirectoryProbeResult.Probed(created: false, canRead: true, canWrite: false)
                 : ProxyRuntimeDirectoryProbeResult.Probed(created: false, canRead: true, canWrite: true));
         var service = new ProxyRuntimePreflightService(
             Provider(temp.Path),
@@ -101,7 +101,7 @@ internal static class RuntimePreflightTests
             ProxyRuntimeDirectoryProbeResult.Missing(),
             critical: true);
         var nonCriticalDenied = ProxyRuntimePreflightProbePolicy.Classify(
-            ProxyRuntimeDirectoryProbeResult.Failed(exists: true, created: false, "access_denied"),
+            ProxyRuntimeDirectoryProbeResult.AccessDenied(exists: true, created: false),
             critical: false);
         var healthy = ProxyRuntimePreflightProbePolicy.Classify(
             ProxyRuntimeDirectoryProbeResult.Probed(created: false, canRead: true, canWrite: true),
@@ -126,28 +126,26 @@ internal static class RuntimePreflightTests
             created: false,
             canRead: true,
             canWrite: false);
-        var secretNotWritable = ProxyRuntimeDirectoryProbeResult.NotWritable(
-            created: false,
-            "secret-detail");
-        var accessDenied = ProxyRuntimeDirectoryProbeResult.Failed(
+        var accessDenied = ProxyRuntimeDirectoryProbeResult.AccessDenied(
             exists: true,
-            created: false,
-            "access_denied");
+            created: false);
+        var ioError = ProxyRuntimeDirectoryProbeResult.IoError(
+            exists: false,
+            created: false);
 
         AssertEx.False(missing.Exists);
-        AssertEx.Equal("missing", missing.FailureReason);
+        AssertEx.True(missing is ProxyRuntimeDirectoryProbeResult.MissingResult);
         AssertEx.True(createdWritable.Exists);
         AssertEx.True(createdWritable.Created);
-        AssertEx.Equal(null, createdWritable.FailureReason);
+        AssertEx.True(createdWritable is ProxyRuntimeDirectoryProbeResult.ProbedResult);
         AssertEx.True(existingNotWritable.Exists);
         AssertEx.False(existingNotWritable.CanWrite);
-        AssertEx.Equal("not_writable", existingNotWritable.FailureReason);
-        AssertEx.True(secretNotWritable.CanRead);
-        AssertEx.False(secretNotWritable.CanWrite);
-        AssertEx.Equal("secret-detail", secretNotWritable.FailureReason);
+        AssertEx.True(existingNotWritable is ProxyRuntimeDirectoryProbeResult.ProbedResult);
         AssertEx.True(accessDenied.Exists);
         AssertEx.False(accessDenied.CanRead);
-        AssertEx.Equal("access_denied", accessDenied.FailureReason);
+        AssertEx.True(accessDenied is ProxyRuntimeDirectoryProbeResult.AccessDeniedResult);
+        AssertEx.False(ioError.Exists);
+        AssertEx.True(ioError is ProxyRuntimeDirectoryProbeResult.IoErrorResult);
     }
 
     public static void RuntimePreflightDirectoryPolicyListsExpectedDirectories()

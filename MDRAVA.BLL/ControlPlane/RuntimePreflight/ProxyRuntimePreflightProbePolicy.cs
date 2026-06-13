@@ -22,17 +22,17 @@ public static class ProxyRuntimePreflightProbePolicy
 
     private static string Reason(ProxyRuntimeDirectoryProbeResult result)
     {
-        if (string.Equals(result.FailureReason, "access_denied", StringComparison.OrdinalIgnoreCase))
+        if (result is ProxyRuntimeDirectoryProbeResult.AccessDeniedResult)
         {
             return "directory_access_denied";
         }
 
-        if (string.Equals(result.FailureReason, "io_error", StringComparison.OrdinalIgnoreCase))
+        if (result is ProxyRuntimeDirectoryProbeResult.IoErrorResult)
         {
             return "directory_io_error";
         }
 
-        if (!result.Exists)
+        if (result is ProxyRuntimeDirectoryProbeResult.MissingResult)
         {
             return "missing_directory";
         }

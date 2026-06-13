@@ -26,11 +26,11 @@ public sealed class ProxyRuntimeDirectoryProbe : IProxyRuntimeDirectoryProbe
         }
         catch (UnauthorizedAccessException)
         {
-            return ProxyRuntimeDirectoryProbeResult.Failed(Directory.Exists(path), created, "access_denied");
+            return ProxyRuntimeDirectoryProbeResult.AccessDenied(Directory.Exists(path), created);
         }
         catch (IOException)
         {
-            return ProxyRuntimeDirectoryProbeResult.Failed(Directory.Exists(path), created, "io_error");
+            return ProxyRuntimeDirectoryProbeResult.IoError(Directory.Exists(path), created);
         }
     }
 
