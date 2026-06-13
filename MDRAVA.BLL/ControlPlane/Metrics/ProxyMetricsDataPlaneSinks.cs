@@ -1,5 +1,3 @@
-using MDRAVA.BLL.ControlPlane.Forwarding;
-
 namespace MDRAVA.BLL.ControlPlane.Metrics;
 
 public sealed partial class ProxyMetrics
@@ -51,21 +49,6 @@ public sealed partial class ProxyMetrics
         }
     }
 
-    public void ParseFailed()
-    {
-        Interlocked.Increment(ref _parseErrors);
-    }
-
-    public void MalformedRequestRejected()
-    {
-        Interlocked.Increment(ref _rejectedMalformedRequests);
-    }
-
-    public void UnsupportedRequestFramingRejected()
-    {
-        Interlocked.Increment(ref _rejectedUnsupportedRequestFraming);
-    }
-
     public void UpstreamMalformedResponse()
     {
         Interlocked.Increment(ref _upstreamMalformedResponses);
@@ -100,18 +83,4 @@ public sealed partial class ProxyMetrics
     public void DownstreamWriteTimedOut() => Interlocked.Increment(ref _downstreamWriteTimeouts);
 
     public void UpstreamRequestFailed() => Interlocked.Increment(ref _upstreamRequestFailures);
-
-    public void RequestFailed(ProxyFailureKind failureKind)
-    {
-        if (failureKind == ProxyFailureKind.None)
-        {
-            return;
-        }
-
-        var index = (int)failureKind;
-        if ((uint)index < (uint)_requestFailuresByKind.Length)
-        {
-            Interlocked.Increment(ref _requestFailuresByKind[index]);
-        }
-    }
 }
