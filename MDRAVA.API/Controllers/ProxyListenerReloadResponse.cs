@@ -1,4 +1,5 @@
-using MDRAVA.BLL.ControlPlane.Listeners;
+using BusinessProxyListenerReloadChange = MDRAVA.BLL.ControlPlane.Listeners.ProxyListenerReloadChange;
+using BusinessProxyListenerReloadResult = MDRAVA.BLL.ControlPlane.Listeners.ProxyListenerReloadResult;
 
 namespace MDRAVA.API.Controllers;
 
@@ -9,23 +10,25 @@ public sealed record ProxyListenerReloadResponse(
     int Removed,
     int Changed,
     int Unchanged,
-    IReadOnlyList<ProxyListenerReloadChange> Changes,
+    IReadOnlyList<ProxyListenerReloadChangeResponse> Changes,
     IReadOnlyList<string> Errors)
 {
-    public static ProxyListenerReloadResponse FromResult(ProxyListenerReloadResult result)
+    public static ProxyListenerReloadResponse FromResult(BusinessProxyListenerReloadResult result)
     {
         return result switch
         {
-            ProxyListenerReloadResult.AppliedResult applied => FromResult(applied, succeeded: true),
-            ProxyListenerReloadResult.FailedResult failed => FromResult(failed, succeeded: false),
+            BusinessProxyListenerReloadResult.AppliedResult applied => FromResult(applied, succeeded: true),
+            BusinessProxyListenerReloadResult.FailedResult failed => FromResult(failed, succeeded: false),
             _ => throw new InvalidOperationException($"Unknown listener reload result '{result.GetType().Name}'.")
         };
     }
 
     private static ProxyListenerReloadResponse FromResult(
-        ProxyListenerReloadResult result,
+        BusinessProxyListenerReloadResult result,
         bool succeeded)
     {
+        ArgumentNullException.ThrowIfNull(result);
+
         return new ProxyListenerReloadResponse(
             Succeeded: succeeded,
             AttemptedAtUtc: result.AttemptedAtUtc,
@@ -33,7 +36,37 @@ public sealed record ProxyListenerReloadResponse(
             Removed: result.Removed,
             Changed: result.Changed,
             Unchanged: result.Unchanged,
-            Changes: result.Changes,
-            Errors: result.Errors);
+            Changes: ProxyListenerReloadChangeResponse.FromChanges(result.Changes),
+            Errors: result.Errors.ToArray());
+    }
+}
+
+public sealed record ProxyListenerReloadChangeResponse(
+    string Action,
+    string Name,
+    string Identity,
+    string BindKey,
+    string State,
+    string? Error)
+{
+    public static IReadOnlyList<ProxyListenerReloadChangeResponse> FromChanges(
+        IReadOnlyList<BusinessProxyListenerReloadChange> changes)
+    {
+        ArgumentNullException.ThrowIfNull(changes);
+
+        return changes.Select(FromChange).ToArray();
+    }
+
+    private static ProxyListenerReloadChangeResponse FromChange(BusinessProxyListenerReloadChange change)
+    {
+        ArgumentNullException.ThrowIfNull(change);
+
+        return new ProxyListenerReloadChangeResponse(
+            change.Action,
+            change.Name,
+            change.Identity,
+            change.BindKey,
+            change.State,
+            change.Error);
     }
 }
