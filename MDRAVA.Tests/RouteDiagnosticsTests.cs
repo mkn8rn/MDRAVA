@@ -436,6 +436,21 @@ internal static class RouteDiagnosticsTests
         AssertEx.Equal(17L, context.TunnelBytesUpstreamToClient);
     }
 
+    public static void RequestContextRecordsClientDisconnect()
+    {
+        var context = new ProxyRequestContext(
+            "req-disconnect",
+            "listener",
+            "tcp",
+            "127.0.0.1:50000",
+            7,
+            TimeProvider.System);
+
+        context.RecordClientDisconnect();
+
+        AssertEx.Equal(ProxyFailureKind.ClientDisconnected, context.FailureKind);
+    }
+
     public static void RouteDiagnosticsStatusNamesEnabledAvailability()
     {
         var status = RouteDiagnosticsStatus.Enabled;

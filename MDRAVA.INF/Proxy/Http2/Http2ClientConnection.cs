@@ -469,7 +469,7 @@ public sealed class Http2ClientConnection
         catch (Exception exception) when (exception is SocketException or IOException)
         {
             _metrics.ClientPrematureDisconnect();
-            context.FailureKind = ProxyFailureKind.ClientDisconnected;
+            context.RecordClientDisconnect();
             CompleteContext(ref context);
         }
     }

@@ -493,7 +493,7 @@ public sealed class ClientConnection
             _logger.LogDebug(exception, "Timed out while writing a generated response to the client.");
             if (currentContext is not null)
             {
-                currentContext.FailureKind = ProxyFailureKind.ClientDisconnected;
+                currentContext.RecordClientDisconnect();
                 CompleteContext(ref currentContext);
             }
         }
@@ -503,7 +503,7 @@ public sealed class ClientConnection
             _logger.LogDebug(exception, "Client disconnected during request processing.");
             if (currentContext is not null)
             {
-                currentContext.FailureKind = ProxyFailureKind.ClientDisconnected;
+                currentContext.RecordClientDisconnect();
                 CompleteContext(ref currentContext);
             }
         }

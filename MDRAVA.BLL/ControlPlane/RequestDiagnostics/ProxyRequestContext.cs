@@ -172,6 +172,11 @@ public sealed class ProxyRequestContext
         TunnelBytesUpstreamToClient = result.Tunnel.BytesUpstreamToClient;
     }
 
+    public void RecordClientDisconnect()
+    {
+        FailureKind = ProxyFailureKind.ClientDisconnected;
+    }
+
 }
 
 public sealed record ProxyRequestRoute(
