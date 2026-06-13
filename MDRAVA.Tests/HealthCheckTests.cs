@@ -132,9 +132,9 @@ internal static class HealthCheckTests
 
         AssertEx.Equal(1, client.Calls);
         var counters = metrics.Snapshot();
-        AssertEx.Equal(1L, counters.HealthChecksAttempted);
-        AssertEx.Equal(1L, counters.HealthChecksSucceeded);
-        AssertEx.Equal(0L, counters.HealthChecksFailed);
+        AssertEx.Equal(1L, counters.Health.ChecksAttempted);
+        AssertEx.Equal(1L, counters.Health.ChecksSucceeded);
+        AssertEx.Equal(0L, counters.Health.ChecksFailed);
         AssertEx.True(store.IsUsable(HealthSource(upstream)));
         AssertEx.Equal(1, events.Events.Count);
         AssertEx.Equal(UpstreamHealthState.Healthy, events.Events[0].State);
@@ -165,8 +165,8 @@ internal static class HealthCheckTests
 
         AssertEx.Equal(2, client.Calls);
         var counters = metrics.Snapshot();
-        AssertEx.Equal(2L, counters.HealthChecksAttempted);
-        AssertEx.Equal(2L, counters.HealthChecksFailed);
+        AssertEx.Equal(2L, counters.Health.ChecksAttempted);
+        AssertEx.Equal(2L, counters.Health.ChecksFailed);
     }
 
     public static void HealthCheckTargetSourceReadsOnlyMappedActiveTargets()

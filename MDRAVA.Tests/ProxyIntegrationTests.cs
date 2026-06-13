@@ -1661,7 +1661,7 @@ internal static class ProxyIntegrationTests
             var diagnostic = host.Services.GetRequiredService<RecentRequestDiagnosticsStore>().Recent(10)[0];
 
             AssertEx.True(response.Contains("503 Service Unavailable", StringComparison.Ordinal), response);
-            AssertEx.Equal(1L, metrics.NoHealthyUpstreamFailures);
+            AssertEx.Equal(1L, metrics.Health.NoHealthyUpstreamFailures);
             AssertEx.Equal("NoHealthyUpstream", diagnostic.FailureKind);
             AssertEx.Equal(503, diagnostic.ResponseStatusCode);
             await host.StopAsync(CancellationToken.None);

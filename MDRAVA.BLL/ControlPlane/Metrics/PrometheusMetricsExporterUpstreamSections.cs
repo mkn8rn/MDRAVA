@@ -14,6 +14,7 @@ public sealed partial class PrometheusMetricsExporter
         var upstreamHttp3 = proxy.UpstreamHttp3;
         var upstreamHttp2 = proxy.UpstreamHttp2;
         var upstreamPool = proxy.UpstreamPool;
+        var healthMetrics = proxy.Health;
         var resilience = proxy.Resilience;
         AppendCounter(builder, "mdrava_upstream_request_attempts_total", "Selected upstream request attempts.", proxy.UpstreamSelections);
         AppendCounter(builder, "mdrava_upstream_http2_requests_total", "Upstream HTTP/2 request attempts.", upstreamHttp2.Requests);
@@ -35,7 +36,7 @@ public sealed partial class PrometheusMetricsExporter
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.UpstreamResponseBodyTimeouts, new Label("reason", "response_body_timeout"));
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.UpstreamMalformedResponses, new Label("reason", "malformed_response"));
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.UpstreamPrematureDisconnects, new Label("reason", "premature_disconnect"));
-        AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.NoHealthyUpstreamFailures, new Label("reason", "no_healthy_upstream"));
+        AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, healthMetrics.NoHealthyUpstreamFailures, new Label("reason", "no_healthy_upstream"));
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, resilience.NoAvailableUpstreamFailures, new Label("reason", "no_available_upstream"));
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.UpstreamRequestFailures, new Label("reason", "request_failure"));
         AppendLabeledCounter(builder, "mdrava_upstream_http2_failures_total", "Upstream HTTP/2 failures by bounded reason.", upstreamHttp2.AlpnFailures, new Label("reason", "alpn_failure"));
@@ -72,10 +73,10 @@ public sealed partial class PrometheusMetricsExporter
         AppendCounter(builder, "mdrava_upstream_connections_reused_total", "Reused upstream connections.", upstreamPool.ConnectionsReused);
         AppendCounter(builder, "mdrava_upstream_connections_discarded_total", "Discarded upstream connections.", upstreamPool.ConnectionsDiscarded);
 
-        AppendLabeledCounter(builder, "mdrava_health_checks_total", "Health checks by result.", proxy.HealthChecksAttempted, new Label("result", "attempted"));
-        AppendLabeledCounter(builder, "mdrava_health_checks_total", null, proxy.HealthChecksSucceeded, new Label("result", "success"));
-        AppendLabeledCounter(builder, "mdrava_health_checks_total", null, proxy.HealthChecksFailed, new Label("result", "failure"));
-        AppendCounter(builder, "mdrava_upstream_health_transitions_total", "Upstream health state transitions.", proxy.UpstreamHealthTransitions);
+        AppendLabeledCounter(builder, "mdrava_health_checks_total", "Health checks by result.", healthMetrics.ChecksAttempted, new Label("result", "attempted"));
+        AppendLabeledCounter(builder, "mdrava_health_checks_total", null, healthMetrics.ChecksSucceeded, new Label("result", "success"));
+        AppendLabeledCounter(builder, "mdrava_health_checks_total", null, healthMetrics.ChecksFailed, new Label("result", "failure"));
+        AppendCounter(builder, "mdrava_upstream_health_transitions_total", "Upstream health state transitions.", healthMetrics.UpstreamTransitions);
         AppendUpstreamHealth(builder, input.IncludePerUpstreamLabels, health);
     }
 }

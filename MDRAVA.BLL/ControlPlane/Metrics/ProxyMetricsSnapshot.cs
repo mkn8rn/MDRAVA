@@ -35,11 +35,7 @@ public sealed record ProxyMetricsSnapshot(
     ProxyUpgradeMetricsSnapshot Upgrades,
     ProxyTunnelMetricsSnapshot Tunnels,
     long UpstreamSelections,
-    long NoHealthyUpstreamFailures,
-    long HealthChecksAttempted,
-    long HealthChecksSucceeded,
-    long HealthChecksFailed,
-    long UpstreamHealthTransitions,
+    ProxyHealthMetricsSnapshot Health,
     long UpstreamRequestFailures,
     long RequestIdsGenerated,
     long AccessLogsEmitted,
@@ -90,6 +86,9 @@ public sealed record ProxyMetricsSnapshot(
 
     public ProxyUpgradeMetricsSnapshot Upgrades { get; } =
         Upgrades ?? throw new ArgumentNullException(nameof(Upgrades));
+
+    public ProxyHealthMetricsSnapshot Health { get; } =
+        Health ?? throw new ArgumentNullException(nameof(Health));
 
     public ProxyResilienceMetricsSnapshot Resilience { get; } =
         Resilience ?? throw new ArgumentNullException(nameof(Resilience));
