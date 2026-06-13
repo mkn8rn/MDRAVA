@@ -233,6 +233,62 @@ internal static class BackupRestoreTests
         AssertEx.Equal("first_warning", response.Warnings[0].Code);
     }
 
+    public static void BackupAndRestoreResultsCopyInputCollections()
+    {
+        var generatedAtUtc = new DateTimeOffset(2026, 6, 12, 11, 30, 0, TimeSpan.Zero);
+        var file = new ProxyBackupFileSystemEntry("config/proxy.json", 10, generatedAtUtc);
+        var warning = new ProxyBackupFileSystemWarning("directory_unreadable", "logs");
+        var scanFiles = new List<ProxyBackupFileSystemEntry> { file };
+        var scanWarnings = new List<ProxyBackupFileSystemWarning> { warning };
+        var configErrors = new List<string> { "parse failed" };
+        var configFileErrors = new List<ProxyConfigurationFileError>
+        {
+            ProxyConfigurationFileError.ForPath("config/proxy.json", "parse failed")
+        };
+        var restoreErrors = new List<ProxyRestoreValidationFinding>
+        {
+            new(ProxyStatusText.Error, "config_invalid", "Configuration invalid.", "config/proxy.json")
+        };
+        var restoreWarnings = new List<ProxyRestoreValidationFinding>
+        {
+            new(ProxyStatusText.Warning, "manifest_warning", "Manifest warning.", null)
+        };
+        var manifest = new ProxyBackupManifest(
+            generatedAtUtc,
+            [],
+            [],
+            [],
+            [],
+            Truncated: false);
+
+        var scan = ProxyBackupFileSystemScanResult.Scanned(scanFiles, scanWarnings);
+        var configValidation = ProxyRestoreConfigurationValidationResult.Completed(
+            configErrors,
+            configFileErrors,
+            wouldBeVersion: null);
+        var restoreValidation = ProxyRestoreValidationResult.Completed(
+            generatedAtUtc,
+            activeConfigVersion: 3,
+            configValidation,
+            manifest,
+            restoreErrors,
+            restoreWarnings);
+
+        scanFiles.Clear();
+        scanWarnings.Clear();
+        configErrors.Clear();
+        configFileErrors.Clear();
+        restoreErrors.Clear();
+        restoreWarnings.Clear();
+
+        AssertEx.Equal("config/proxy.json", scan.Files[0].RelativePath);
+        AssertEx.Equal("directory_unreadable", scan.Warnings[0].Code);
+        AssertEx.Equal("parse failed", configValidation.Errors[0]);
+        AssertEx.Equal("config/proxy.json", configValidation.FileErrors[0].Path);
+        AssertEx.Equal("config_invalid", restoreValidation.Errors[0].Code);
+        AssertEx.Equal("manifest_warning", restoreValidation.Warnings[0].Code);
+    }
+
     public static void BackupPathSafetyRejectsTraversalOutsideDataDirectory()
     {
         using var temp = TemporaryDirectory.Create();

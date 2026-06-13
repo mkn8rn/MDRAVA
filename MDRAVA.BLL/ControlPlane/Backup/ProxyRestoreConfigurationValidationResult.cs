@@ -55,8 +55,8 @@ public abstract record ProxyRestoreConfigurationValidationResult
                 throw new ArgumentException("Invalid restore configuration validation requires at least one error.");
             }
 
-            Errors = errors;
-            FileErrors = fileErrors;
+            Errors = errors.ToArray();
+            FileErrors = fileErrors.ToArray();
             WouldBeVersion = wouldBeVersion;
         }
 

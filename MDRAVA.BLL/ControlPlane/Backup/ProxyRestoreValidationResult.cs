@@ -20,8 +20,8 @@ public abstract record ProxyRestoreValidationResult
         ConfigValidationSucceeded = configValidation is ProxyRestoreConfigurationValidationResult.ValidResult;
         WouldBeConfigVersion = configValidation.WouldBeVersion;
         Manifest = manifest;
-        Errors = errors;
-        Warnings = warnings;
+        Errors = errors.ToArray();
+        Warnings = warnings.ToArray();
     }
 
     public DateTimeOffset GeneratedAtUtc { get; }

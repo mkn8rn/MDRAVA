@@ -7,9 +7,12 @@ public sealed record ProxyBackupFileSystemScanResult
         IReadOnlyList<ProxyBackupFileSystemEntry> files,
         IReadOnlyList<ProxyBackupFileSystemWarning> warnings)
     {
+        ArgumentNullException.ThrowIfNull(files);
+        ArgumentNullException.ThrowIfNull(warnings);
+
         RootExists = rootExists;
-        Files = files;
-        Warnings = warnings;
+        Files = files.ToArray();
+        Warnings = warnings.ToArray();
     }
 
     public bool RootExists { get; }
