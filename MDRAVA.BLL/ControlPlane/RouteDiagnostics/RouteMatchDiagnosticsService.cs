@@ -33,11 +33,13 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
     public RouteMatchDryRunResult Explain(RouteMatchDryRunRequest? request)
     {
         var evaluatedAtUtc = _timeProvider.GetUtcNow();
-        if (!_configurationSource.TryRead(out var snapshot) || snapshot is null)
+        var configuration = _configurationSource.Read();
+        if (configuration is not ProxyRouteDiagnosticsConfigurationReadResult.AvailableResult available)
         {
             return Complete(Failure(evaluatedAtUtc, "no_active_config", "No active proxy configuration is loaded."));
         }
 
+        var snapshot = available.Snapshot;
         var requestDecision = ProxyRouteDiagnosticsRequestReader.Read(
             request,
             evaluatedAtUtc,

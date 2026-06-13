@@ -13,16 +13,15 @@ public sealed class ProxyRouteDiagnosticsConfigurationSource
         _configurationStore = configurationStore;
     }
 
-    public bool TryRead(out IProxyRouteDiagnosticsConfigurationSnapshot? snapshot)
+    public ProxyRouteDiagnosticsConfigurationReadResult Read()
     {
         if (!_configurationStore.TryGetSnapshot(out var runtimeSnapshot) || runtimeSnapshot is null)
         {
-            snapshot = null;
-            return false;
+            return ProxyRouteDiagnosticsConfigurationReadResult.MissingConfiguration;
         }
 
-        snapshot = new ProxyRouteDiagnosticsRuntimeConfigurationSnapshot(runtimeSnapshot.Listeners, runtimeSnapshot.Routes);
-        return true;
+        return ProxyRouteDiagnosticsConfigurationReadResult.Available(
+            new ProxyRouteDiagnosticsRuntimeConfigurationSnapshot(runtimeSnapshot.Listeners, runtimeSnapshot.Routes));
     }
 }
 
