@@ -14,7 +14,7 @@ public sealed partial class CircuitBreakerStore
         if (now - state.OpenedAtUtc.Value >= policy.OpenDuration)
         {
             state.State = CircuitBreakerRuntimeState.HalfOpen;
-            state.HalfOpenInFlight = 0;
+            state.ResetHalfOpenProbes();
             _metrics.CircuitHalfOpened();
         }
     }
@@ -23,7 +23,7 @@ public sealed partial class CircuitBreakerStore
     {
         state.State = CircuitBreakerRuntimeState.Open;
         state.OpenedAtUtc = now;
-        state.HalfOpenInFlight = 0;
+        state.ResetHalfOpenProbes();
         state.WindowStartedAtUtc = now;
         state.FailureCount = 0;
         _metrics.CircuitOpened();
@@ -35,7 +35,7 @@ public sealed partial class CircuitBreakerStore
         state.OpenedAtUtc = null;
         state.WindowStartedAtUtc = null;
         state.FailureCount = 0;
-        state.HalfOpenInFlight = 0;
+        state.ResetHalfOpenProbes();
         state.LastFailureReason = null;
         _metrics.CircuitClosed();
     }
@@ -50,7 +50,7 @@ public sealed partial class CircuitBreakerStore
         var state = GetOrCreate(lease.Source.UpstreamIdentity);
         lock (state.Gate)
         {
-            state.HalfOpenInFlight = Math.Max(0, state.HalfOpenInFlight - 1);
+            state.RecordHalfOpenProbeCompleted();
         }
     }
 
@@ -78,7 +78,7 @@ public sealed partial class CircuitBreakerStore
 
         public int FailureCount { get; set; }
 
-        public int HalfOpenInFlight { get; set; }
+        public int HalfOpenInFlight { get; private set; }
 
         public long RejectedRequests { get; private set; }
 
@@ -87,6 +87,21 @@ public sealed partial class CircuitBreakerStore
         public void RecordRejectedRequest()
         {
             RejectedRequests++;
+        }
+
+        public void RecordHalfOpenProbeStarted()
+        {
+            HalfOpenInFlight++;
+        }
+
+        public void RecordHalfOpenProbeCompleted()
+        {
+            HalfOpenInFlight = Math.Max(0, HalfOpenInFlight - 1);
+        }
+
+        public void ResetHalfOpenProbes()
+        {
+            HalfOpenInFlight = 0;
         }
     }
 }

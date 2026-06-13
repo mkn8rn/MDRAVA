@@ -85,7 +85,7 @@ public sealed partial class CircuitBreakerStore
                     return CircuitBreakerAcquisitionResult.Rejected;
                 }
 
-                state.HalfOpenInFlight++;
+                state.RecordHalfOpenProbeStarted();
             }
 
             return CircuitBreakerAcquisitionResult.Accepted(
@@ -107,7 +107,7 @@ public sealed partial class CircuitBreakerStore
         {
             if (lease.HalfOpenProbe)
             {
-                state.HalfOpenInFlight = Math.Max(0, state.HalfOpenInFlight - 1);
+                state.RecordHalfOpenProbeCompleted();
                 Close(state);
                 return;
             }
@@ -140,7 +140,7 @@ public sealed partial class CircuitBreakerStore
             state.LastFailureReason = NormalizeReason(reason);
             if (lease.HalfOpenProbe)
             {
-                state.HalfOpenInFlight = Math.Max(0, state.HalfOpenInFlight - 1);
+                state.RecordHalfOpenProbeCompleted();
                 Open(state, now);
                 return;
             }
