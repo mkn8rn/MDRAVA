@@ -129,7 +129,7 @@ public sealed record ProxyBackupFileSystemWarning(
     string Code,
     string? RelativePath);
 
-public sealed record ProxyBackupManifestResponse(
+public sealed record ProxyBackupManifest(
     DateTimeOffset GeneratedAtUtc,
     IReadOnlyList<ProxyBackupDirectoryStatus> Directories,
     IReadOnlyList<ProxyBackupManifestEntry> Entries,
@@ -168,7 +168,7 @@ public abstract record ProxyRestoreValidationResponse
         DateTimeOffset generatedAtUtc,
         int? activeConfigVersion,
         ProxyRestoreConfigurationValidationResult configValidation,
-        ProxyBackupManifestResponse manifest,
+        ProxyBackupManifest manifest,
         IReadOnlyList<ProxyRestoreValidationFinding> errors,
         IReadOnlyList<ProxyRestoreValidationFinding> warnings)
     {
@@ -194,7 +194,7 @@ public abstract record ProxyRestoreValidationResponse
 
     public int? WouldBeConfigVersion => ConfigValidation.WouldBeVersion;
 
-    public ProxyBackupManifestResponse Manifest { get; }
+    public ProxyBackupManifest Manifest { get; }
 
     public IReadOnlyList<ProxyRestoreValidationFinding> Errors { get; }
 
@@ -204,7 +204,7 @@ public abstract record ProxyRestoreValidationResponse
         DateTimeOffset generatedAtUtc,
         int? activeConfigVersion,
         ProxyRestoreConfigurationValidationResult configValidation,
-        ProxyBackupManifestResponse manifest,
+        ProxyBackupManifest manifest,
         IReadOnlyList<ProxyRestoreValidationFinding> errors,
         IReadOnlyList<ProxyRestoreValidationFinding> warnings)
     {
@@ -233,7 +233,7 @@ public abstract record ProxyRestoreValidationResponse
             DateTimeOffset generatedAtUtc,
             int? activeConfigVersion,
             ProxyRestoreConfigurationValidationResult configValidation,
-            ProxyBackupManifestResponse manifest,
+            ProxyBackupManifest manifest,
             IReadOnlyList<ProxyRestoreValidationFinding> errors,
             IReadOnlyList<ProxyRestoreValidationFinding> warnings)
             : base(generatedAtUtc, activeConfigVersion, configValidation, manifest, errors, warnings)
@@ -247,7 +247,7 @@ public abstract record ProxyRestoreValidationResponse
             DateTimeOffset generatedAtUtc,
             int? activeConfigVersion,
             ProxyRestoreConfigurationValidationResult configValidation,
-            ProxyBackupManifestResponse manifest,
+            ProxyBackupManifest manifest,
             IReadOnlyList<ProxyRestoreValidationFinding> errors,
             IReadOnlyList<ProxyRestoreValidationFinding> warnings)
             : base(generatedAtUtc, activeConfigVersion, configValidation, manifest, errors, warnings)

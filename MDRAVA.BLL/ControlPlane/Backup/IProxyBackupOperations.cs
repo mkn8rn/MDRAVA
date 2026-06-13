@@ -2,7 +2,7 @@ namespace MDRAVA.BLL.ControlPlane.Backup;
 
 public interface IProxyBackupOperations
 {
-    ProxyBackupManifestResponse CreateManifest();
+    ProxyBackupManifest CreateManifest();
 
     ValueTask<ProxyRestoreValidationResponse> ValidateAsync(CancellationToken cancellationToken);
 }

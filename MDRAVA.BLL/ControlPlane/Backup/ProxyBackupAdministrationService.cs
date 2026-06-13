@@ -9,7 +9,7 @@ public sealed class ProxyBackupAdministrationService
         _backupOperations = backupOperations;
     }
 
-    public ProxyBackupManifestResponse CreateManifest()
+    public ProxyBackupManifest CreateManifest()
     {
         return _backupOperations.CreateManifest();
     }

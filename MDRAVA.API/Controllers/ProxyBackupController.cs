@@ -17,7 +17,9 @@ public sealed class ProxyBackupController : ControllerBase
     [HttpGet("manifest")]
     public ProxyBackupManifestResponse Manifest()
     {
-        return _backupAdministration.CreateManifest();
+        var manifest = _backupAdministration.CreateManifest();
+
+        return ProxyBackupManifestResponse.FromManifest(manifest);
     }
 
     [HttpPost("validate")]

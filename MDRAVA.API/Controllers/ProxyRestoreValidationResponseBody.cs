@@ -34,7 +34,7 @@ public sealed record ProxyRestoreValidationResponseBody(
             ActiveConfigVersion: result.ActiveConfigVersion,
             ConfigValidationSucceeded: configValidationSucceeded,
             WouldBeConfigVersion: result.WouldBeConfigVersion,
-            Manifest: result.Manifest,
+            Manifest: ProxyBackupManifestResponse.FromManifest(result.Manifest),
             Errors: result.Errors,
             Warnings: result.Warnings);
     }

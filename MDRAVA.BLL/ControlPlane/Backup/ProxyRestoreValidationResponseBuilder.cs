@@ -6,7 +6,7 @@ public static class ProxyRestoreValidationResponseBuilder
         DateTimeOffset generatedAtUtc,
         int? activeConfigVersion,
         ProxyRestoreConfigurationValidationResult configValidation,
-        ProxyBackupManifestResponse manifest,
+        ProxyBackupManifest manifest,
         IReadOnlyList<ProxyRestoreValidationFinding> errors,
         IReadOnlyList<ProxyRestoreValidationFinding> warnings,
         int maxFindings)

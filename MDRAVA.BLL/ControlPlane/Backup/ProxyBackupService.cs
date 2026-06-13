@@ -28,7 +28,7 @@ public sealed class ProxyBackupService : IProxyBackupOperations
         _timeProvider = timeProvider;
     }
 
-    public ProxyBackupManifestResponse CreateManifest()
+    public ProxyBackupManifest CreateManifest()
     {
         var generatedAtUtc = _timeProvider.GetUtcNow();
         var root = _dataDirectoryProvider.GetDataDirectory();

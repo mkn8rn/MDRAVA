@@ -174,7 +174,7 @@ internal static class BackupRestoreTests
     public static void RestoreValidationResponseBuilderBoundsFindingsAndRequiresNoErrors()
     {
         var generatedAtUtc = new DateTimeOffset(2026, 6, 12, 11, 0, 0, TimeSpan.Zero);
-        var manifest = new ProxyBackupManifestResponse(
+        var manifest = new ProxyBackupManifest(
             generatedAtUtc,
             [],
             [],

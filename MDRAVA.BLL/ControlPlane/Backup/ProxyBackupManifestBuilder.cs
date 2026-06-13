@@ -2,7 +2,7 @@ namespace MDRAVA.BLL.ControlPlane.Backup;
 
 public static class ProxyBackupManifestBuilder
 {
-    public static ProxyBackupManifestResponse Build(
+    public static ProxyBackupManifest Build(
         DateTimeOffset generatedAtUtc,
         IReadOnlyList<ProxyBackupDirectoryStatus> directories,
         IReadOnlyList<ProxyBackupManifestEntry> entries,
@@ -38,7 +38,7 @@ public static class ProxyBackupManifestBuilder
             .ThenBy(static count => count.Classification, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        return new ProxyBackupManifestResponse(
+        return new ProxyBackupManifest(
             generatedAtUtc,
             directories.ToArray(),
             boundedEntries,
