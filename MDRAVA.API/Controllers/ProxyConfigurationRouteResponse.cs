@@ -1,7 +1,5 @@
-using BusinessProxyHeaderField = MDRAVA.BLL.Http.ProxyHeaderField;
 using BusinessRuntimeCachePolicy = MDRAVA.BLL.Configuration.RuntimeCachePolicy;
 using BusinessRuntimeCanonicalHostPolicy = MDRAVA.BLL.Configuration.RuntimeCanonicalHostPolicy;
-using BusinessRuntimeHeaderPolicy = MDRAVA.BLL.Configuration.RuntimeHeaderPolicy;
 using BusinessRuntimeHealthCheckOptions = MDRAVA.BLL.Configuration.RuntimeHealthCheckOptions;
 using BusinessRuntimeHttpsRedirectPolicy = MDRAVA.BLL.Configuration.RuntimeHttpsRedirectPolicy;
 using BusinessRuntimeMaintenancePolicy = MDRAVA.BLL.Configuration.RuntimeMaintenancePolicy;
@@ -117,42 +115,6 @@ public sealed record RuntimeCanonicalHostResponse(
         ArgumentNullException.ThrowIfNull(policy);
 
         return new RuntimeCanonicalHostResponse(policy.Enabled, policy.TargetHost, policy.StatusCode);
-    }
-}
-
-public sealed record RuntimeHeaderPolicyResponse(
-    IReadOnlyList<RuntimeHeaderFieldResponse> SetRequestHeaders,
-    IReadOnlyList<string> RemoveRequestHeaders,
-    IReadOnlyList<RuntimeHeaderFieldResponse> SetResponseHeaders,
-    IReadOnlyList<string> RemoveResponseHeaders)
-{
-    public static RuntimeHeaderPolicyResponse FromPolicy(BusinessRuntimeHeaderPolicy policy)
-    {
-        ArgumentNullException.ThrowIfNull(policy);
-
-        return new RuntimeHeaderPolicyResponse(
-            RuntimeHeaderFieldResponse.FromFields(policy.SetRequestHeaders),
-            policy.RemoveRequestHeaders.ToArray(),
-            RuntimeHeaderFieldResponse.FromFields(policy.SetResponseHeaders),
-            policy.RemoveResponseHeaders.ToArray());
-    }
-}
-
-public sealed record RuntimeHeaderFieldResponse(string Name, string Value)
-{
-    public static IReadOnlyList<RuntimeHeaderFieldResponse> FromFields(
-        IReadOnlyList<BusinessProxyHeaderField> fields)
-    {
-        ArgumentNullException.ThrowIfNull(fields);
-
-        return fields.Select(FromField).ToArray();
-    }
-
-    private static RuntimeHeaderFieldResponse FromField(BusinessProxyHeaderField field)
-    {
-        ArgumentNullException.ThrowIfNull(field);
-
-        return new RuntimeHeaderFieldResponse(field.Name, field.Value);
     }
 }
 
