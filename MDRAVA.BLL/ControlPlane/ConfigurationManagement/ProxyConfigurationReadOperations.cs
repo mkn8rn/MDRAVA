@@ -27,6 +27,6 @@ public sealed class ProxyConfigurationReadOperations<TConfiguration>
         return _projectionSource.ReadCurrent() is
             ProxyConfigurationReadProjectionResult<TConfiguration>.AvailableResult available
                 ? ProxyConfigurationReadResult<TConfiguration>.Available(available.Configuration)
-                : ProxyConfigurationReadResult<TConfiguration>.Missing();
+                : ProxyConfigurationReadResult<TConfiguration>.MissingConfiguration;
     }
 }

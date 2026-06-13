@@ -47,13 +47,17 @@ public sealed class ProxyConfigurationController : ControllerBase
     public ActionResult<ProxyConfigurationProjection> Active()
     {
         var result = _configurationReads.ReadActive();
-        return ProxyAdminHttpResultMapper.OkOrNotFound(this, result.Found, result.Configuration);
+        return result is ProxyConfigurationReadResult<ProxyConfigurationProjection>.AvailableResult available
+            ? Ok(available.Configuration)
+            : NotFound();
     }
 
     [HttpGet("effective")]
     public ActionResult<ProxyConfigurationProjection> Effective()
     {
         var result = _configurationReads.ReadEffective();
-        return ProxyAdminHttpResultMapper.OkOrNotFound(this, result.Found, result.Configuration);
+        return result is ProxyConfigurationReadResult<ProxyConfigurationProjection>.AvailableResult available
+            ? Ok(available.Configuration)
+            : NotFound();
     }
 }

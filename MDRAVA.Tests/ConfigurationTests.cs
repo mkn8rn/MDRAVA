@@ -173,12 +173,13 @@ internal static class ConfigurationTests
     {
         var projection = new TestConfigurationProjection("current");
         var available = ProxyConfigurationReadResult<TestConfigurationProjection>.Available(projection);
-        var missing = ProxyConfigurationReadResult<TestConfigurationProjection>.Missing();
+        var missing = ProxyConfigurationReadResult<TestConfigurationProjection>.MissingConfiguration;
 
-        AssertEx.True(available.Found);
-        AssertEx.Equal(projection, AssertEx.NotNull(available.Configuration));
-        AssertEx.False(missing.Found);
-        AssertEx.Equal<TestConfigurationProjection?>(null, missing.Configuration);
+        AssertEx.True(available is ProxyConfigurationReadResult<TestConfigurationProjection>.AvailableResult);
+        AssertEx.Equal(
+            projection,
+            ((ProxyConfigurationReadResult<TestConfigurationProjection>.AvailableResult)available).Configuration);
+        AssertEx.True(missing is not ProxyConfigurationReadResult<TestConfigurationProjection>.AvailableResult);
     }
 
     public static async Task ConfigurationLoadResultNamesLoadedValidatedAndFailedOutcomes()
@@ -776,14 +777,16 @@ internal static class ConfigurationTests
         var missingActive = missingOperations.ReadActive();
         var missingEffective = missingOperations.ReadEffective();
 
-        AssertEx.True(active.Found);
-        AssertEx.Equal(projection, AssertEx.NotNull(active.Configuration));
-        AssertEx.True(effective.Found);
-        AssertEx.Equal(projection, AssertEx.NotNull(effective.Configuration));
-        AssertEx.False(missingActive.Found);
-        AssertEx.Equal(null, missingActive.Configuration);
-        AssertEx.False(missingEffective.Found);
-        AssertEx.Equal(null, missingEffective.Configuration);
+        AssertEx.True(active is ProxyConfigurationReadResult<TestConfigurationProjection>.AvailableResult);
+        AssertEx.Equal(
+            projection,
+            ((ProxyConfigurationReadResult<TestConfigurationProjection>.AvailableResult)active).Configuration);
+        AssertEx.True(effective is ProxyConfigurationReadResult<TestConfigurationProjection>.AvailableResult);
+        AssertEx.Equal(
+            projection,
+            ((ProxyConfigurationReadResult<TestConfigurationProjection>.AvailableResult)effective).Configuration);
+        AssertEx.True(missingActive is not ProxyConfigurationReadResult<TestConfigurationProjection>.AvailableResult);
+        AssertEx.True(missingEffective is not ProxyConfigurationReadResult<TestConfigurationProjection>.AvailableResult);
     }
 
     public static async Task LoaderRejectsUnsafeHeaderRule()
