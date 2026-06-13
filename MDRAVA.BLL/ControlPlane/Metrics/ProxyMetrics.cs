@@ -16,7 +16,7 @@ using MDRAVA.BLL.ControlPlane.UpstreamSelection;
 
 namespace MDRAVA.BLL.ControlPlane.Metrics;
 
-public sealed class ProxyMetrics :
+public sealed partial class ProxyMetrics :
     IProxyStatusMetricsSource,
     IProxyUpstreamSelectionMetricsSink,
     IProxyCircuitBreakerMetricsSink,
@@ -850,44 +850,4 @@ public sealed class ProxyMetrics :
         return Snapshot();
     }
 
-    private readonly record struct RequestSeriesKey(
-        string Site,
-        string Route,
-        string Action,
-        string StatusClass);
-
-    private readonly record struct UpstreamSelectionKey(
-        string Route,
-        string Upstream,
-        string Scheme,
-        string Protocol);
-
-    private readonly record struct Http3OutcomeKey(
-        string Method,
-        string Outcome,
-        string StatusClass);
-
-    private readonly record struct ConfigLintFindingKey(
-        string Severity,
-        string Code);
-
-    private sealed class RequestSeriesCounter
-    {
-        public long Count;
-    }
-}
-
-public abstract record ProxyTunnelAdmissionDecision
-{
-    private ProxyTunnelAdmissionDecision()
-    {
-    }
-
-    public static ProxyTunnelAdmissionDecision Accepted { get; } = new AcceptedResult();
-
-    public static ProxyTunnelAdmissionDecision Rejected { get; } = new RejectedResult();
-
-    public sealed record AcceptedResult : ProxyTunnelAdmissionDecision;
-
-    public sealed record RejectedResult : ProxyTunnelAdmissionDecision;
 }
