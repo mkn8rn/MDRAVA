@@ -112,9 +112,7 @@ public sealed partial class CircuitBreakerStore
                 return;
             }
 
-            state.FailureCount = 0;
-            state.WindowStartedAtUtc = null;
-            state.LastFailureReason = null;
+            state.ClearFailureTracking();
         }
     }
 
@@ -137,22 +135,20 @@ public sealed partial class CircuitBreakerStore
         var now = _timeProvider.GetUtcNow();
         lock (state.Gate)
         {
-            state.LastFailureReason = NormalizeReason(reason);
+            var normalizedReason = NormalizeReason(reason);
             if (lease.HalfOpenProbe)
             {
+                state.RecordFailureReason(normalizedReason);
                 state.RecordHalfOpenProbeCompleted();
                 Open(state, now);
                 return;
             }
 
-            if (state.WindowStartedAtUtc is null || now - state.WindowStartedAtUtc > lease.Source.Policy.SamplingWindow)
-            {
-                state.WindowStartedAtUtc = now;
-                state.FailureCount = 0;
-            }
-
-            state.FailureCount++;
-            if (state.FailureCount >= lease.Source.Policy.FailureThreshold)
+            var failureCount = state.RecordFailure(
+                normalizedReason,
+                now,
+                lease.Source.Policy.SamplingWindow);
+            if (failureCount >= lease.Source.Policy.FailureThreshold)
             {
                 Open(state, now);
             }

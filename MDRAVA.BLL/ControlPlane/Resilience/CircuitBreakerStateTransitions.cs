@@ -24,8 +24,7 @@ public sealed partial class CircuitBreakerStore
         state.State = CircuitBreakerRuntimeState.Open;
         state.OpenedAtUtc = now;
         state.ResetHalfOpenProbes();
-        state.WindowStartedAtUtc = now;
-        state.FailureCount = 0;
+        state.ResetFailureWindow(now);
         _metrics.CircuitOpened();
     }
 
@@ -33,10 +32,8 @@ public sealed partial class CircuitBreakerStore
     {
         state.State = CircuitBreakerRuntimeState.Closed;
         state.OpenedAtUtc = null;
-        state.WindowStartedAtUtc = null;
-        state.FailureCount = 0;
+        state.ClearFailureTracking();
         state.ResetHalfOpenProbes();
-        state.LastFailureReason = null;
         _metrics.CircuitClosed();
     }
 
@@ -72,21 +69,54 @@ public sealed partial class CircuitBreakerStore
 
         public CircuitBreakerRuntimeState State { get; set; } = CircuitBreakerRuntimeState.Closed;
 
-        public DateTimeOffset? WindowStartedAtUtc { get; set; }
+        public DateTimeOffset? WindowStartedAtUtc { get; private set; }
 
         public DateTimeOffset? OpenedAtUtc { get; set; }
 
-        public int FailureCount { get; set; }
+        public int FailureCount { get; private set; }
 
         public int HalfOpenInFlight { get; private set; }
 
         public long RejectedRequests { get; private set; }
 
-        public string? LastFailureReason { get; set; }
+        public string? LastFailureReason { get; private set; }
 
         public void RecordRejectedRequest()
         {
             RejectedRequests++;
+        }
+
+        public int RecordFailure(
+            string reason,
+            DateTimeOffset now,
+            TimeSpan samplingWindow)
+        {
+            RecordFailureReason(reason);
+            if (WindowStartedAtUtc is null || now - WindowStartedAtUtc > samplingWindow)
+            {
+                WindowStartedAtUtc = now;
+                FailureCount = 0;
+            }
+
+            FailureCount++;
+            return FailureCount;
+        }
+
+        public void RecordFailureReason(string reason)
+        {
+            LastFailureReason = reason;
+        }
+
+        public void ResetFailureWindow(DateTimeOffset? windowStartedAtUtc)
+        {
+            WindowStartedAtUtc = windowStartedAtUtc;
+            FailureCount = 0;
+        }
+
+        public void ClearFailureTracking()
+        {
+            ResetFailureWindow(windowStartedAtUtc: null);
+            LastFailureReason = null;
         }
 
         public void RecordHalfOpenProbeStarted()
