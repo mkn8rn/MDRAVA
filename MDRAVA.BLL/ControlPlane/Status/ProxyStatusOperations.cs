@@ -11,6 +11,6 @@ public sealed class ProxyStatusOperations : IProxyStatusOperations
 
     public ProxyStatus GetStatus()
     {
-        return ProxyStatusResponseBuilder.Build(_inputReader.Read());
+        return ProxyStatusBuilder.Build(_inputReader.Read());
     }
 }

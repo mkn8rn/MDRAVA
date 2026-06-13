@@ -281,7 +281,7 @@ internal static class OperatorStatusTests
             readiness,
             ConfigLintStatus.Empty);
 
-        var status = ProxyStatusResponseBuilder.Build(input);
+        var status = ProxyStatusBuilder.Build(input);
 
         AssertEx.True(status.ListenerLive);
         AssertEx.Equal("main", status.ListenerName);

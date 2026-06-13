@@ -2,7 +2,7 @@ using MDRAVA.BLL.ControlPlane.RouteDiagnostics;
 
 namespace MDRAVA.BLL.ControlPlane.Status;
 
-public static class ProxyStatusResponseBuilder
+public static class ProxyStatusBuilder
 {
     public static ProxyStatus Build(ProxyStatusInput input)
     {
