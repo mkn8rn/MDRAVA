@@ -39,8 +39,7 @@ public sealed record ProxyMetricsSnapshot(
     ProxyDiagnosticsMetricsSnapshot Diagnostics,
     IReadOnlyDictionary<string, long> RequestFailuresByKind,
     IReadOnlyList<ProxyRequestSeriesSnapshot> RequestsByRoute,
-    long ConfigReloadSuccesses,
-    long ConfigReloadFailures,
+    ProxyConfigReloadMetricsSnapshot ConfigReloads,
     long AdminAuthSuccesses,
     long AdminAuthFailures,
     long AcmeRenewalAttempts,
@@ -87,6 +86,9 @@ public sealed record ProxyMetricsSnapshot(
 
     public ProxyDiagnosticsMetricsSnapshot Diagnostics { get; } =
         Diagnostics ?? throw new ArgumentNullException(nameof(Diagnostics));
+
+    public ProxyConfigReloadMetricsSnapshot ConfigReloads { get; } =
+        ConfigReloads ?? throw new ArgumentNullException(nameof(ConfigReloads));
 
     public ProxyResilienceMetricsSnapshot Resilience { get; } =
         Resilience ?? throw new ArgumentNullException(nameof(Resilience));

@@ -12,6 +12,7 @@ public sealed partial class PrometheusMetricsExporter
         var cache = input.CacheStatus;
         var health = input.UpstreamHealth;
         var acme = input.AcmeCertificates;
+        var configReloads = proxy.ConfigReloads;
         var rejections = proxy.Rejections;
         var builder = new StringBuilder();
 
@@ -45,8 +46,8 @@ public sealed partial class PrometheusMetricsExporter
                 new Label("reason", rejection.Reason));
         }
 
-        AppendLabeledCounter(builder, "mdrava_config_reloads_total", "Configuration reloads by result.", proxy.ConfigReloadSuccesses, new Label("result", "success"));
-        AppendLabeledCounter(builder, "mdrava_config_reloads_total", null, proxy.ConfigReloadFailures, new Label("result", "failure"));
+        AppendLabeledCounter(builder, "mdrava_config_reloads_total", "Configuration reloads by result.", configReloads.Successes, new Label("result", "success"));
+        AppendLabeledCounter(builder, "mdrava_config_reloads_total", null, configReloads.Failures, new Label("result", "failure"));
         AppendCounter(builder, "mdrava_config_lint_runs_total", "Configuration lint runs.", proxy.ConfigLintRuns);
         if (proxy.ConfigLintFindings.Count > 0)
         {

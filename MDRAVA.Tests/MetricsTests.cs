@@ -194,8 +194,9 @@ internal static class MetricsTests
                 RecentDiagnosticsOverwritten: 0),
             RequestFailuresByKind: requestFailures,
             RequestsByRoute: requestsByRoute,
-            ConfigReloadSuccesses: 0,
-            ConfigReloadFailures: 0,
+            ConfigReloads: new ProxyConfigReloadMetricsSnapshot(
+                Successes: 0,
+                Failures: 0),
             AdminAuthSuccesses: 0,
             AdminAuthFailures: 0,
             AcmeRenewalAttempts: 0,
