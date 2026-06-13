@@ -116,12 +116,6 @@ public sealed partial class ProxyMetrics
 
     public void ClientConnectionClosedByMaxRequests() => Interlocked.Increment(ref _clientConnectionsClosedByMaxRequests);
 
-    public void UpstreamConnectionOpened() => Interlocked.Increment(ref _upstreamConnectionsOpened);
-
-    public void UpstreamConnectionReused() => Interlocked.Increment(ref _upstreamConnectionsReused);
-
-    public void UpstreamConnectionDiscarded() => Interlocked.Increment(ref _upstreamConnectionsDiscarded);
-
     public void UpstreamRequestFailed() => Interlocked.Increment(ref _upstreamRequestFailures);
 
     public void RequestFailed(ProxyFailureKind failureKind)
