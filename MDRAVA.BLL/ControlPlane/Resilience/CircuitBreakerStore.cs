@@ -50,7 +50,7 @@ public sealed partial class CircuitBreakerStore
                 || (state.State == CircuitBreakerRuntimeState.HalfOpen
                     && state.HalfOpenInFlight >= source.Policy.HalfOpenMaxAttempts))
             {
-                state.RejectedRequests++;
+                state.RecordRejectedRequest();
                 _metrics.CircuitRejected();
             }
         }
@@ -70,7 +70,7 @@ public sealed partial class CircuitBreakerStore
             RefreshOpenState(source.Policy, state, _timeProvider.GetUtcNow());
             if (state.State == CircuitBreakerRuntimeState.Open)
             {
-                state.RejectedRequests++;
+                state.RecordRejectedRequest();
                 _metrics.CircuitRejected();
                 return CircuitBreakerAcquisitionResult.Rejected;
             }
@@ -80,7 +80,7 @@ public sealed partial class CircuitBreakerStore
             {
                 if (state.HalfOpenInFlight >= source.Policy.HalfOpenMaxAttempts)
                 {
-                    state.RejectedRequests++;
+                    state.RecordRejectedRequest();
                     _metrics.CircuitRejected();
                     return CircuitBreakerAcquisitionResult.Rejected;
                 }

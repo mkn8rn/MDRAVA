@@ -80,8 +80,13 @@ public sealed partial class CircuitBreakerStore
 
         public int HalfOpenInFlight { get; set; }
 
-        public long RejectedRequests { get; set; }
+        public long RejectedRequests { get; private set; }
 
         public string? LastFailureReason { get; set; }
+
+        public void RecordRejectedRequest()
+        {
+            RejectedRequests++;
+        }
     }
 }
