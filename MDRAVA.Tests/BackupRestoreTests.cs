@@ -219,13 +219,13 @@ internal static class BackupRestoreTests
 
         AssertEx.True(configValidation is ProxyRestoreConfigurationValidationResult.ValidResult);
         AssertEx.True(invalidConfigValidation is ProxyRestoreConfigurationValidationResult.InvalidResult);
-        AssertEx.False(invalidResponse.Succeeded);
-        AssertEx.False(invalidResponse.ConfigValidationSucceeded);
+        AssertRejected(invalidResponse);
+        AssertEx.True(invalidResponse.ConfigValidation is ProxyRestoreConfigurationValidationResult.InvalidResult);
         AssertEx.Equal("parse failed", invalidConfigValidation.Errors[0]);
-        AssertEx.False(response.Succeeded);
+        AssertRejected(response);
         AssertEx.Equal(generatedAtUtc, response.GeneratedAtUtc);
         AssertEx.Equal(3, response.ActiveConfigVersion);
-        AssertEx.True(response.ConfigValidationSucceeded);
+        AssertEx.True(response.ConfigValidation is ProxyRestoreConfigurationValidationResult.ValidResult);
         AssertEx.Equal(7, response.WouldBeConfigVersion);
         AssertEx.Equal(1, response.Errors.Count);
         AssertEx.Equal("first", response.Errors[0].Code);
@@ -257,7 +257,7 @@ internal static class BackupRestoreTests
 
         var result = await CreateService(temp.Path).ValidateAsync(CancellationToken.None);
 
-        AssertEx.False(result.Succeeded);
+        AssertRejected(result);
         AssertEx.True(result.Errors.Any(static error => error.Code == "config_parse_failed"), string.Join(",", result.Errors.Select(static error => error.Code)));
         AssertEx.False(File.Exists(Path.Combine(temp.Path, "config", "proxy.json")));
         AssertEx.False(File.Exists(Path.Combine(temp.Path, "config", "sites", "example.site.yaml")));
@@ -271,7 +271,7 @@ internal static class BackupRestoreTests
 
         var result = await CreateService(temp.Path).ValidateAsync(CancellationToken.None);
 
-        AssertEx.False(result.Succeeded);
+        AssertRejected(result);
         AssertEx.True(result.Errors.Any(static error => error.Code == "certificate_file_missing"), string.Join(",", result.Errors.Select(static error => error.Code)));
         AssertEx.False(JsonSerializer.Serialize(result).Contains("missing.pfx", StringComparison.OrdinalIgnoreCase));
     }
@@ -289,7 +289,7 @@ internal static class BackupRestoreTests
 
         var result = await CreateService(temp.Path, store, loader).ValidateAsync(CancellationToken.None);
 
-        AssertEx.False(result.Succeeded);
+        AssertRejected(result);
         AssertEx.Equal(1, result.ActiveConfigVersion);
         AssertEx.Equal(1, store.Snapshot.Version);
         AssertEx.Equal(loadedAt, store.Snapshot.LoadedAtUtc);
@@ -305,7 +305,7 @@ internal static class BackupRestoreTests
 
         var result = await CreateService(temp.Path, loader: loader, timeProvider: new FixedTimeProvider(generatedAtUtc)).ValidateAsync(CancellationToken.None);
 
-        AssertEx.True(result.Succeeded, string.Join(",", result.Errors.Select(static error => error.Code)));
+        AssertAccepted(result, string.Join(",", result.Errors.Select(static error => error.Code)));
         AssertEx.Equal(generatedAtUtc, result.GeneratedAtUtc);
         AssertEx.Equal(generatedAtUtc, result.Manifest.GeneratedAtUtc);
         AssertEx.True(result.Manifest.Directories
@@ -351,6 +351,16 @@ internal static class BackupRestoreTests
         {
             DataDirectory = dataDirectory
         });
+    }
+
+    private static void AssertAccepted(ProxyRestoreValidationResponse result, string? message = null)
+    {
+        AssertEx.True(result is ProxyRestoreValidationResponse.AcceptedResult, message ?? string.Join(",", result.Errors.Select(static error => error.Code)));
+    }
+
+    private static void AssertRejected(ProxyRestoreValidationResponse result, string? message = null)
+    {
+        AssertEx.True(result is ProxyRestoreValidationResponse.RejectedResult, message ?? string.Join(",", result.Errors.Select(static error => error.Code)));
     }
 
     private sealed class TemporaryDirectory : IDisposable

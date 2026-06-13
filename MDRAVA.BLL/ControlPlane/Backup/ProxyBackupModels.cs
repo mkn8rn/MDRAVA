@@ -1,4 +1,5 @@
 using MDRAVA.BLL.Configuration;
+using System.Text.Json.Serialization;
 
 namespace MDRAVA.BLL.ControlPlane.Backup;
 
@@ -161,15 +162,99 @@ public sealed record ProxyBackupWarning(
     string Message,
     string? RelativePath);
 
-public sealed record ProxyRestoreValidationResponse(
-    bool Succeeded,
-    DateTimeOffset GeneratedAtUtc,
-    int? ActiveConfigVersion,
-    bool ConfigValidationSucceeded,
-    int? WouldBeConfigVersion,
-    ProxyBackupManifestResponse Manifest,
-    IReadOnlyList<ProxyRestoreValidationFinding> Errors,
-    IReadOnlyList<ProxyRestoreValidationFinding> Warnings);
+public abstract record ProxyRestoreValidationResponse
+{
+    private ProxyRestoreValidationResponse(
+        DateTimeOffset generatedAtUtc,
+        int? activeConfigVersion,
+        ProxyRestoreConfigurationValidationResult configValidation,
+        ProxyBackupManifestResponse manifest,
+        IReadOnlyList<ProxyRestoreValidationFinding> errors,
+        IReadOnlyList<ProxyRestoreValidationFinding> warnings)
+    {
+        ArgumentNullException.ThrowIfNull(configValidation);
+        ArgumentNullException.ThrowIfNull(manifest);
+        ArgumentNullException.ThrowIfNull(errors);
+        ArgumentNullException.ThrowIfNull(warnings);
+
+        GeneratedAtUtc = generatedAtUtc;
+        ActiveConfigVersion = activeConfigVersion;
+        ConfigValidation = configValidation;
+        Manifest = manifest;
+        Errors = errors;
+        Warnings = warnings;
+    }
+
+    public DateTimeOffset GeneratedAtUtc { get; }
+
+    public int? ActiveConfigVersion { get; }
+
+    [JsonIgnore]
+    public ProxyRestoreConfigurationValidationResult ConfigValidation { get; }
+
+    public int? WouldBeConfigVersion => ConfigValidation.WouldBeVersion;
+
+    public ProxyBackupManifestResponse Manifest { get; }
+
+    public IReadOnlyList<ProxyRestoreValidationFinding> Errors { get; }
+
+    public IReadOnlyList<ProxyRestoreValidationFinding> Warnings { get; }
+
+    public static ProxyRestoreValidationResponse Completed(
+        DateTimeOffset generatedAtUtc,
+        int? activeConfigVersion,
+        ProxyRestoreConfigurationValidationResult configValidation,
+        ProxyBackupManifestResponse manifest,
+        IReadOnlyList<ProxyRestoreValidationFinding> errors,
+        IReadOnlyList<ProxyRestoreValidationFinding> warnings)
+    {
+        ArgumentNullException.ThrowIfNull(errors);
+
+        return configValidation is ProxyRestoreConfigurationValidationResult.ValidResult && errors.Count == 0
+            ? new AcceptedResult(
+                generatedAtUtc,
+                activeConfigVersion,
+                configValidation,
+                manifest,
+                errors,
+                warnings)
+            : new RejectedResult(
+                generatedAtUtc,
+                activeConfigVersion,
+                configValidation,
+                manifest,
+                errors,
+                warnings);
+    }
+
+    public sealed record AcceptedResult : ProxyRestoreValidationResponse
+    {
+        internal AcceptedResult(
+            DateTimeOffset generatedAtUtc,
+            int? activeConfigVersion,
+            ProxyRestoreConfigurationValidationResult configValidation,
+            ProxyBackupManifestResponse manifest,
+            IReadOnlyList<ProxyRestoreValidationFinding> errors,
+            IReadOnlyList<ProxyRestoreValidationFinding> warnings)
+            : base(generatedAtUtc, activeConfigVersion, configValidation, manifest, errors, warnings)
+        {
+        }
+    }
+
+    public sealed record RejectedResult : ProxyRestoreValidationResponse
+    {
+        internal RejectedResult(
+            DateTimeOffset generatedAtUtc,
+            int? activeConfigVersion,
+            ProxyRestoreConfigurationValidationResult configValidation,
+            ProxyBackupManifestResponse manifest,
+            IReadOnlyList<ProxyRestoreValidationFinding> errors,
+            IReadOnlyList<ProxyRestoreValidationFinding> warnings)
+            : base(generatedAtUtc, activeConfigVersion, configValidation, manifest, errors, warnings)
+        {
+        }
+    }
+}
 
 public sealed record ProxyRestoreValidationFinding(
     string Severity,
