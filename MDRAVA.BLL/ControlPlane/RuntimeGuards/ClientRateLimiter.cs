@@ -73,7 +73,7 @@ public sealed class ClientRateLimiter
                 _buckets.Add(clientAddressKey, buckets);
             }
 
-            buckets.LastSeenUtc = now;
+            buckets.RecordSeen(now);
             var bucket = selectBucket(buckets);
             var allowed = bucket.TryConsume(now, perMinuteLimit);
 
@@ -108,11 +108,16 @@ public sealed class ClientRateLimiter
             Upgrades = new TokenBucket(now);
         }
 
-        public DateTimeOffset LastSeenUtc { get; set; }
+        public DateTimeOffset LastSeenUtc { get; private set; }
 
         public TokenBucket Requests { get; }
 
         public TokenBucket Upgrades { get; }
+
+        public void RecordSeen(DateTimeOffset seenAtUtc)
+        {
+            LastSeenUtc = seenAtUtc;
+        }
     }
 
     private sealed class TokenBucket
