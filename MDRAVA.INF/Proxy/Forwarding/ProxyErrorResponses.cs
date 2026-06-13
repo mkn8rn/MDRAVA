@@ -33,6 +33,18 @@ public static class ProxyErrorResponses
 
     public static ReadOnlyMemory<byte> ServiceUnavailable => ServiceUnavailableResponse;
 
+    public static ReadOnlyMemory<byte> BadGatewayWithRequestId(string requestId)
+    {
+        return Encoding.ASCII.GetBytes(
+            $"HTTP/1.1 502 Bad Gateway\r\nConnection: close\r\nContent-Length: 11\r\nContent-Type: text/plain\r\nX-Request-Id: {requestId}\r\n\r\nBad Gateway");
+    }
+
+    public static ReadOnlyMemory<byte> GatewayTimeoutWithRequestId(string requestId)
+    {
+        return Encoding.ASCII.GetBytes(
+            $"HTTP/1.1 504 Gateway Timeout\r\nConnection: close\r\nContent-Length: 15\r\nContent-Type: text/plain\r\nX-Request-Id: {requestId}\r\n\r\nGateway Timeout");
+    }
+
     public static ValueTask WriteGeneratedAsync(
         Stream stream,
         int statusCode,

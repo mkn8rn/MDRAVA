@@ -178,7 +178,7 @@ public sealed class UpgradeForwarder
                 _metrics.GeneratedFailureResponse(502);
                 await ProxyErrorResponses.WriteAsync(
                     clientStream,
-                    BuildGeneratedBadGateway(requestId),
+                    ProxyErrorResponses.BadGatewayWithRequestId(requestId),
                     timeouts.DownstreamWriteTimeout,
                     _metrics,
                     cancellationToken);
@@ -205,7 +205,7 @@ public sealed class UpgradeForwarder
                 _metrics.GeneratedFailureResponse(502);
                 await ProxyErrorResponses.WriteAsync(
                     clientStream,
-                    BuildGeneratedBadGateway(requestId),
+                    ProxyErrorResponses.BadGatewayWithRequestId(requestId),
                     timeouts.DownstreamWriteTimeout,
                     _metrics,
                     cancellationToken);
@@ -242,7 +242,7 @@ public sealed class UpgradeForwarder
                 if (ProxyGeneratedFailurePolicy.CanWriteFailureResponse(responseStarted, suppressGeneratedFailureResponse: false))
                 {
                     _metrics.GeneratedFailureResponse(504);
-                    await ProxyErrorResponses.WriteAsync(clientStream, BuildGeneratedGatewayTimeout(requestId), timeouts.DownstreamWriteTimeout, _metrics, cancellationToken);
+                    await ProxyErrorResponses.WriteAsync(clientStream, ProxyErrorResponses.GatewayTimeoutWithRequestId(requestId), timeouts.DownstreamWriteTimeout, _metrics, cancellationToken);
                 }
                 break;
             case ProxyTimeoutKind.UpstreamResponseHead:
@@ -253,7 +253,7 @@ public sealed class UpgradeForwarder
                 if (ProxyGeneratedFailurePolicy.CanWriteFailureResponse(responseStarted, suppressGeneratedFailureResponse: false))
                 {
                     _metrics.GeneratedFailureResponse(504);
-                    await ProxyErrorResponses.WriteAsync(clientStream, BuildGeneratedGatewayTimeout(requestId), timeouts.DownstreamWriteTimeout, _metrics, cancellationToken);
+                    await ProxyErrorResponses.WriteAsync(clientStream, ProxyErrorResponses.GatewayTimeoutWithRequestId(requestId), timeouts.DownstreamWriteTimeout, _metrics, cancellationToken);
                 }
                 break;
             case ProxyTimeoutKind.UpstreamResponseBodyIdle:
@@ -633,18 +633,6 @@ public sealed class UpgradeForwarder
             timeout,
             ProxyTimeoutKind.DownstreamWrite,
             cancellationToken);
-    }
-
-    private static ReadOnlyMemory<byte> BuildGeneratedBadGateway(string requestId)
-    {
-        return Encoding.ASCII.GetBytes(
-            $"HTTP/1.1 502 Bad Gateway\r\nConnection: close\r\nContent-Length: 11\r\nContent-Type: text/plain\r\nX-Request-Id: {requestId}\r\n\r\nBad Gateway");
-    }
-
-    private static ReadOnlyMemory<byte> BuildGeneratedGatewayTimeout(string requestId)
-    {
-        return Encoding.ASCII.GetBytes(
-            $"HTTP/1.1 504 Gateway Timeout\r\nConnection: close\r\nContent-Length: 15\r\nContent-Type: text/plain\r\nX-Request-Id: {requestId}\r\n\r\nGateway Timeout");
     }
 
     private static ReadOnlyMemory<byte> BuildGeneratedServiceUnavailable(string requestId)
