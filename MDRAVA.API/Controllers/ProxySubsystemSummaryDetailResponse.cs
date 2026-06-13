@@ -1,6 +1,4 @@
-using BusinessProxyAcmeSubsystemSummary = MDRAVA.BLL.ControlPlane.Status.ProxyAcmeSubsystemSummary;
 using BusinessProxyCacheSubsystemSummary = MDRAVA.BLL.ControlPlane.Status.ProxyCacheSubsystemSummary;
-using BusinessProxyCertificateSubsystemSummary = MDRAVA.BLL.ControlPlane.Status.ProxyCertificateSubsystemSummary;
 using BusinessProxyCircuitSubsystemSummary = MDRAVA.BLL.ControlPlane.Status.ProxyCircuitSubsystemSummary;
 using BusinessProxyConfigSubsystemSummary = MDRAVA.BLL.ControlPlane.Status.ProxyConfigSubsystemSummary;
 using BusinessProxyLimitSubsystemSummary = MDRAVA.BLL.ControlPlane.Status.ProxyLimitSubsystemSummary;
@@ -9,7 +7,6 @@ using BusinessProxyLogSubsystemSummary = MDRAVA.BLL.ControlPlane.Status.ProxyLog
 using BusinessProxyProtocolSubsystemSummary = MDRAVA.BLL.ControlPlane.Status.ProxyProtocolSubsystemSummary;
 using BusinessProxyRouteSubsystemSummary = MDRAVA.BLL.ControlPlane.Status.ProxyRouteSubsystemSummary;
 using BusinessProxyShutdownSubsystemSummary = MDRAVA.BLL.ControlPlane.Status.ProxyShutdownSubsystemSummary;
-using BusinessProxySubsystemIssueSummary = MDRAVA.BLL.ControlPlane.Status.ProxySubsystemIssueSummary;
 using BusinessProxyUpstreamSubsystemSummary = MDRAVA.BLL.ControlPlane.Status.ProxyUpstreamSubsystemSummary;
 
 namespace MDRAVA.API.Controllers;
@@ -79,70 +76,6 @@ public sealed record ProxyRouteSubsystemSummaryResponse(
             summary.ProxyRoutes,
             summary.GeneratedRoutes,
             summary.CacheEnabledRoutes);
-    }
-}
-
-public sealed record ProxySubsystemIssueSummaryResponse(
-    DateTimeOffset TimestampUtc,
-    string Category,
-    string Reason,
-    string? AffectedIdentity)
-{
-    public static ProxySubsystemIssueSummaryResponse FromSummary(BusinessProxySubsystemIssueSummary summary)
-    {
-        ArgumentNullException.ThrowIfNull(summary);
-
-        return new ProxySubsystemIssueSummaryResponse(
-            summary.TimestampUtc,
-            summary.Category,
-            summary.Reason,
-            summary.AffectedIdentity);
-    }
-}
-
-public sealed record ProxyCertificateSubsystemSummaryResponse(
-    int Configured,
-    int Loaded,
-    int MissingReferences,
-    int Expired,
-    int NotYetValid,
-    int ExpiringSoon,
-    ProxySubsystemIssueSummaryResponse? LastIssue)
-{
-    public static ProxyCertificateSubsystemSummaryResponse FromSummary(BusinessProxyCertificateSubsystemSummary summary)
-    {
-        ArgumentNullException.ThrowIfNull(summary);
-
-        return new ProxyCertificateSubsystemSummaryResponse(
-            summary.Configured,
-            summary.Loaded,
-            summary.MissingReferences,
-            summary.Expired,
-            summary.NotYetValid,
-            summary.ExpiringSoon,
-            summary.LastIssue is null ? null : ProxySubsystemIssueSummaryResponse.FromSummary(summary.LastIssue));
-    }
-}
-
-public sealed record ProxyAcmeSubsystemSummaryResponse(
-    bool Enabled,
-    int Configured,
-    int Active,
-    int Failed,
-    int RenewalBackoff,
-    ProxySubsystemIssueSummaryResponse? LastIssue)
-{
-    public static ProxyAcmeSubsystemSummaryResponse FromSummary(BusinessProxyAcmeSubsystemSummary summary)
-    {
-        ArgumentNullException.ThrowIfNull(summary);
-
-        return new ProxyAcmeSubsystemSummaryResponse(
-            summary.Enabled,
-            summary.Configured,
-            summary.Active,
-            summary.Failed,
-            summary.RenewalBackoff,
-            summary.LastIssue is null ? null : ProxySubsystemIssueSummaryResponse.FromSummary(summary.LastIssue));
     }
 }
 
