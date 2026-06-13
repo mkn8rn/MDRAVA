@@ -36,7 +36,7 @@ public sealed record ProxyStatusResponse(
 
     public ConfigLintStatus ConfigLint { get; init; } = null!;
 
-    public ProxyLogPersistenceStatus LogPersistence { get; init; } = null!;
+    public ProxyLogPersistenceStatusResponse LogPersistence { get; init; } = null!;
 
     public ProxyReadinessStatus Readiness { get; init; } = null!;
 
@@ -72,7 +72,7 @@ public sealed record ProxyStatusResponse(
             Http3 = response.Http3,
             RouteDiagnostics = response.RouteDiagnostics,
             ConfigLint = response.ConfigLint,
-            LogPersistence = response.LogPersistence,
+            LogPersistence = ProxyLogPersistenceStatusResponse.FromStatus(response.LogPersistence),
             Readiness = response.Readiness,
             Subsystems = response.Subsystems,
             RuntimePreflight = response.RuntimePreflight
