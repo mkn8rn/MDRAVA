@@ -13,7 +13,38 @@ public sealed record AcmeRenewalScheduleSource(
 
 public interface IAcmeRenewalScheduleInputSource
 {
-    AcmeRenewalScheduleInput? ReadInput();
+    AcmeRenewalScheduleInputReadResult ReadInput();
+}
+
+public abstract record AcmeRenewalScheduleInputReadResult
+{
+    private AcmeRenewalScheduleInputReadResult()
+    {
+    }
+
+    public static AcmeRenewalScheduleInputReadResult MissingConfiguration { get; } =
+        new MissingConfigurationResult();
+
+    public static AcmeRenewalScheduleInputReadResult Available(AcmeRenewalScheduleInput input)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+
+        return new AvailableResult(input);
+    }
+
+    public sealed record AvailableResult : AcmeRenewalScheduleInputReadResult
+    {
+        public AvailableResult(AcmeRenewalScheduleInput input)
+        {
+            ArgumentNullException.ThrowIfNull(input);
+
+            Input = input;
+        }
+
+        public AcmeRenewalScheduleInput Input { get; }
+    }
+
+    public sealed record MissingConfigurationResult : AcmeRenewalScheduleInputReadResult;
 }
 
 public static class AcmeRenewalScheduleInputMapper
@@ -45,22 +76,23 @@ public sealed class ProxyConfigurationAcmeRenewalScheduleInputSource : IAcmeRene
         _configurationStore = configurationStore;
     }
 
-    public AcmeRenewalScheduleInput? ReadInput()
+    public AcmeRenewalScheduleInputReadResult ReadInput()
     {
         return _configurationStore.ReadSnapshot() is ProxyConfigurationSnapshotReadResult.AvailableResult available
-            ? AcmeRenewalScheduleInputMapper.FromSource(
-                AcmeRenewalScheduleSourceMapper.FromRuntimeConfiguration(available.Snapshot.Acme))
-            : null;
+            ? AcmeRenewalScheduleInputReadResult.Available(
+                AcmeRenewalScheduleInputMapper.FromSource(
+                    AcmeRenewalScheduleSourceMapper.FromRuntimeConfiguration(available.Snapshot.Acme)))
+            : AcmeRenewalScheduleInputReadResult.MissingConfiguration;
     }
 }
 
 public sealed class AcmeRenewalSchedulePolicy
 {
-    public TimeSpan ResolveDelay(AcmeRenewalScheduleInput? input)
+    public TimeSpan ResolveDelay(AcmeRenewalScheduleInputReadResult input)
     {
-        if (input is not null && input.Enabled)
+        if (input is AcmeRenewalScheduleInputReadResult.AvailableResult { Input.Enabled: true } available)
         {
-            return TimeSpan.FromMinutes(Math.Clamp(input.CheckIntervalMinutes, 5, 1440));
+            return TimeSpan.FromMinutes(Math.Clamp(available.Input.CheckIntervalMinutes, 5, 1440));
         }
 
         return TimeSpan.FromHours(12);

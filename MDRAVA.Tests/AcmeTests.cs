@@ -381,7 +381,8 @@ internal static class AcmeTests
 
     public static void AcmeRenewalScheduleUsesDisabledBackoffWithoutActiveConfig()
     {
-        var delay = new AcmeRenewalSchedulePolicy().ResolveDelay(null);
+        var delay = new AcmeRenewalSchedulePolicy().ResolveDelay(
+            AcmeRenewalScheduleInputReadResult.MissingConfiguration);
 
         AssertEx.Equal(TimeSpan.FromHours(12), delay);
     }
@@ -397,8 +398,10 @@ internal static class AcmeTests
             AcmeRenewalScheduleSourceMapper.FromRuntimeConfiguration(
                 CreateStore(temp.Path, checkIntervalMinutes: 2000).Snapshot.Acme));
 
-        AssertEx.Equal(TimeSpan.FromMinutes(5), policy.ResolveDelay(belowMinimum));
-        AssertEx.Equal(TimeSpan.FromMinutes(1440), policy.ResolveDelay(aboveMaximum));
+        AssertEx.Equal(TimeSpan.FromMinutes(5), policy.ResolveDelay(
+            AcmeRenewalScheduleInputReadResult.Available(belowMinimum)));
+        AssertEx.Equal(TimeSpan.FromMinutes(1440), policy.ResolveDelay(
+            AcmeRenewalScheduleInputReadResult.Available(aboveMaximum)));
     }
 
     public static void AcmeRenewalScheduleInputMapperConsumesSourceWithoutRuntimeConfiguration()
@@ -418,8 +421,10 @@ internal static class AcmeTests
         var source = new ProxyConfigurationAcmeRenewalScheduleInputSource(
             CreateStore(temp.Path, checkIntervalMinutes: 17));
 
-        var input = AssertEx.NotNull(source.ReadInput());
+        var result = source.ReadInput();
 
+        AssertEx.True(result is AcmeRenewalScheduleInputReadResult.AvailableResult);
+        var input = ((AcmeRenewalScheduleInputReadResult.AvailableResult)result).Input;
         AssertEx.True(input.Enabled);
         AssertEx.Equal(17, input.CheckIntervalMinutes);
     }
