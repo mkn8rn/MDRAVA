@@ -15,16 +15,20 @@ public sealed class ProxyConfigLintController : ControllerBase
     }
 
     [HttpGet]
-    public ActionResult<ConfigLintResult> Active()
+    public ActionResult<ConfigLintResponse> Active()
     {
         var result = _configLintAdministration.LintActive();
-        return ProxyAdminHttpResultMapper.OkOrBadRequest(this, result, result.Succeeded);
+        var response = ConfigLintResponse.FromResult(result);
+
+        return ProxyAdminHttpResultMapper.OkOrBadRequest(this, response, response.Succeeded);
     }
 
     [HttpPost]
-    public ActionResult<ConfigLintResult> Submitted([FromBody] ProxyConfigLintSubmissionRequest? request)
+    public ActionResult<ConfigLintResponse> Submitted([FromBody] ProxyConfigLintSubmissionRequest? request)
     {
         var result = _configLintAdministration.LintSubmitted(request?.ToConfigLintRequest());
-        return ProxyAdminHttpResultMapper.OkOrBadRequest(this, result, result.Succeeded);
+        var response = ConfigLintResponse.FromResult(result);
+
+        return ProxyAdminHttpResultMapper.OkOrBadRequest(this, response, response.Succeeded);
     }
 }

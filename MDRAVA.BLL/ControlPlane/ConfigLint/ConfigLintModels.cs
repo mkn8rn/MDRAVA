@@ -6,23 +6,19 @@ public sealed record ConfigLintRequest(
     string? Format,
     string? Text);
 
-public sealed record ConfigLintResult
+public abstract record ConfigLintResult
 {
     private ConfigLintResult(
-        bool succeeded,
         DateTimeOffset lintedAtUtc,
         ConfigLintSummary summary,
         IReadOnlyList<ConfigLintFinding> findings,
         IReadOnlyList<ProxyConfigurationFileError> validationErrors)
     {
-        Succeeded = succeeded;
         LintedAtUtc = lintedAtUtc;
         Summary = summary;
         Findings = findings;
         ValidationErrors = validationErrors;
     }
-
-    public bool Succeeded { get; }
 
     public DateTimeOffset LintedAtUtc { get; }
 
@@ -44,7 +40,34 @@ public sealed record ConfigLintResult
             findings.Count(static finding => string.Equals(finding.Severity, "info", StringComparison.OrdinalIgnoreCase)),
             findings.Count(static finding => string.Equals(finding.Severity, "warning", StringComparison.OrdinalIgnoreCase)),
             findings.Count(static finding => string.Equals(finding.Severity, "error", StringComparison.OrdinalIgnoreCase)));
-        return new ConfigLintResult(summary.Error == 0, lintedAtUtc, summary, findings, validationErrors);
+
+        return summary.Error == 0
+            ? new AcceptedResult(lintedAtUtc, summary, findings, validationErrors)
+            : new RejectedResult(lintedAtUtc, summary, findings, validationErrors);
+    }
+
+    public sealed record AcceptedResult : ConfigLintResult
+    {
+        internal AcceptedResult(
+            DateTimeOffset lintedAtUtc,
+            ConfigLintSummary summary,
+            IReadOnlyList<ConfigLintFinding> findings,
+            IReadOnlyList<ProxyConfigurationFileError> validationErrors)
+            : base(lintedAtUtc, summary, findings, validationErrors)
+        {
+        }
+    }
+
+    public sealed record RejectedResult : ConfigLintResult
+    {
+        internal RejectedResult(
+            DateTimeOffset lintedAtUtc,
+            ConfigLintSummary summary,
+            IReadOnlyList<ConfigLintFinding> findings,
+            IReadOnlyList<ProxyConfigurationFileError> validationErrors)
+            : base(lintedAtUtc, summary, findings, validationErrors)
+        {
+        }
     }
 }
 

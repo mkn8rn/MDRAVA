@@ -540,7 +540,7 @@ internal static class RouteDiagnosticsTests
         var jsonResult = service.LintSubmitted(new ConfigLintRequest("json", json));
         var yamlResult = service.LintSubmitted(new ConfigLintRequest("yaml", yaml));
 
-        AssertEx.True(jsonResult.Succeeded, string.Join("; ", jsonResult.Findings.Select(static finding => finding.Message)));
+        AssertAccepted(jsonResult, string.Join("; ", jsonResult.Findings.Select(static finding => finding.Message)));
         AssertFinding(yamlResult, "route_shadowed", "warning");
         AssertEx.Equal("active", store.Snapshot.Routes[0].Name);
     }
@@ -573,7 +573,7 @@ internal static class RouteDiagnosticsTests
 
         var result = service.LintActive();
 
-        AssertEx.True(result.Succeeded);
+        AssertAccepted(result);
         AssertFinding(result, "route_shadowed", "warning");
         AssertEx.Equal("active.json", result.Findings.First(static finding => finding.Code == "route_shadowed").Source);
         AssertEx.Equal(result.Summary, service.LastActiveStatus.LastActiveLintSummary);
@@ -633,7 +633,7 @@ internal static class RouteDiagnosticsTests
 
         var result = service.LintSubmitted(new ConfigLintRequest("yml", "submitted"));
 
-        AssertEx.False(result.Succeeded);
+        AssertRejected(result);
         AssertEx.Equal(ProxyConfigurationNormalizeFormat.Yaml, source.LastFormat);
         AssertFinding(result, "validation_error", "error");
         AssertFinding(result, "route_shadowed", "warning");
@@ -647,7 +647,7 @@ internal static class RouteDiagnosticsTests
 
         var result = service.LintSubmitted(null);
 
-        AssertEx.False(result.Succeeded);
+        AssertRejected(result);
         AssertFinding(result, "missing_request", "error");
         AssertEx.True(result.Findings[0].Message.Contains("request body is required", StringComparison.Ordinal));
     }
@@ -681,7 +681,7 @@ internal static class RouteDiagnosticsTests
         var actionResult = controller.Submitted(null);
 
         var badRequest = (BadRequestObjectResult)AssertEx.NotNull(actionResult.Result);
-        var result = (ConfigLintResult)AssertEx.NotNull(badRequest.Value);
+        var result = (ConfigLintResponse)AssertEx.NotNull(badRequest.Value);
         AssertEx.False(result.Succeeded);
         AssertFinding(result, "missing_request", "error");
         AssertEx.True(result.Findings[0].Message.Contains("request body is required", StringComparison.Ordinal));
@@ -697,10 +697,10 @@ internal static class RouteDiagnosticsTests
         var missingText = controller.Submitted(new ProxyConfigLintSubmissionRequest("json", null));
 
         var formatResponse = (BadRequestObjectResult)AssertEx.NotNull(missingFormat.Result);
-        var formatResult = (ConfigLintResult)AssertEx.NotNull(formatResponse.Value);
+        var formatResult = (ConfigLintResponse)AssertEx.NotNull(formatResponse.Value);
         AssertFinding(formatResult, "invalid_format", "error");
         var textResponse = (BadRequestObjectResult)AssertEx.NotNull(missingText.Result);
-        var textResult = (ConfigLintResult)AssertEx.NotNull(textResponse.Value);
+        var textResult = (ConfigLintResponse)AssertEx.NotNull(textResponse.Value);
         AssertFinding(textResult, "empty_config", "error");
         AssertEx.True(textResult.Findings[0].Message.Contains("config text is required", StringComparison.Ordinal));
     }
@@ -1368,10 +1368,31 @@ internal static class RouteDiagnosticsTests
             string.Join("; ", result.Findings.Select(static finding => $"{finding.Severity}:{finding.Code}:{finding.Message}")));
     }
 
+    private static void AssertFinding(ConfigLintResponse result, string code, string severity)
+    {
+        AssertEx.True(
+            result.Findings.Any(finding => finding.Code == code && finding.Severity == severity),
+            string.Join("; ", result.Findings.Select(static finding => $"{finding.Severity}:{finding.Code}:{finding.Message}")));
+    }
+
     private static void AssertNoFinding(ConfigLintResult result, string code)
     {
         AssertEx.False(
             result.Findings.Any(finding => finding.Code == code),
             string.Join("; ", result.Findings.Select(static finding => $"{finding.Severity}:{finding.Code}:{finding.Message}")));
+    }
+
+    private static void AssertAccepted(ConfigLintResult result, string? message = null)
+    {
+        AssertEx.True(
+            result is ConfigLintResult.AcceptedResult,
+            message ?? string.Join("; ", result.Findings.Select(static finding => finding.Message)));
+    }
+
+    private static void AssertRejected(ConfigLintResult result, string? message = null)
+    {
+        AssertEx.True(
+            result is ConfigLintResult.RejectedResult,
+            message ?? string.Join("; ", result.Findings.Select(static finding => finding.Message)));
     }
 }
