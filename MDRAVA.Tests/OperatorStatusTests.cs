@@ -870,11 +870,8 @@ internal static class OperatorStatusTests
             certificate,
             "manualPfx",
             ["status-cert.example.test"]);
-        var listener = Listener() with
-        {
-            DefaultCertificateId = "default",
-            SniCertificates = [new RuntimeSniCertificateBinding("alt.example.test", "alt")]
-        };
+        var listener = (Listener() with { DefaultCertificateId = "default" })
+            .WithSniCertificates([new RuntimeSniCertificateBinding("alt.example.test", "alt")]);
 
         var source = ProxyCertificateSummarySourceMapper.FromConfiguration(
             [listener],

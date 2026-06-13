@@ -392,6 +392,122 @@ internal static class ConfigurationTests
         AssertEx.False(retry.RetryMethods is string[]);
     }
 
+    public static void RuntimeConfigurationGraphRecordsCopyInputCollections()
+    {
+        var sourceFiles = new List<string> { "sites/home.json" };
+        var sniCertificates = new List<RuntimeSniCertificateBinding>
+        {
+            new("home.test", "home-cert")
+        };
+        var upstreams = new List<RuntimeUpstream>
+        {
+            new("home", "local", "http", RuntimeUpstreamProtocol.Http1, "127.0.0.1", 5000, 1, RuntimeUpstreamTlsOptions.Default)
+        };
+
+        using var certificate = X509CertificateLoader.LoadPkcs12(
+            TestCertificates.CreateSelfSignedPfxBytes("home.test"),
+            password: null);
+        var runtimeCertificate = new RuntimeCertificate(
+            "home-cert",
+            "certs/home.pfx",
+            "pfx",
+            HasConfiguredPassword: false,
+            certificate,
+            "manual",
+            ["home.test"]);
+        var certificates = new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["home-cert"] = runtimeCertificate
+        };
+
+        var listener = new RuntimeListener(
+            "web",
+            "127.0.0.1",
+            18080,
+            Enabled: true,
+            RuntimeListenerTransport.Https,
+            DefaultCertificateId: "home-cert",
+            sniCertificates,
+            Backlog: 512,
+            MaxRequestHeadBytes: 32768,
+            MaxResponseHeadBytes: 32768,
+            MaxChunkLineBytes: 8192,
+            ForwardingBufferBytes: 8192);
+        var route = new RuntimeRoute(
+            "home",
+            "home.test",
+            "/",
+            RuntimeRouteAction.Proxy,
+            "round-robin",
+            new RuntimeHealthCheckOptions(false, "/health", TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), 1, 1),
+            upstreams,
+            new RuntimeHttpsRedirectPolicy(false, 308, null),
+            new RuntimeCanonicalHostPolicy(false, "", 308),
+            RuntimeHeaderPolicy.Empty,
+            new RuntimePathRewritePolicy("", "", ""),
+            new RuntimeRedirectPolicy(308, "", "", true),
+            new RuntimeStaticResponse(200, "text/plain; charset=utf-8", "ok"),
+            new RuntimeMaintenancePolicy(false, null, "text/plain; charset=utf-8", "Service Unavailable"),
+            RuntimeCachePolicy.Disabled,
+            new RuntimeRouteResolvedOptions(104857600, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30), true))
+        {
+            SiteName = "home"
+        };
+        var listeners = new List<RuntimeListener> { listener };
+        var routes = new List<RuntimeRoute> { route };
+        var snapshot = new ProxyConfigurationSnapshot(
+            1,
+            DateTimeOffset.UnixEpoch,
+            "tests",
+            sourceFiles,
+            new ProxyConfigurationDiscovery(
+                new ProxyFilesystemLayout("tests", "tests/config", "tests/config/sites", "tests/logs", "tests/certs", "tests/state", "tests/config/proxy.json"),
+                [],
+                [],
+                []),
+            new RuntimeAdminSecurityOptions([], true, true, "secret", "MDRAVA_ADMIN_TOKEN", "configured", 100),
+            new RuntimeAcmeOptions(false, true, "", [], false, "acme", 30, 720, 60, []),
+            new RuntimeTimeouts(
+                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(10)),
+            new RuntimeConnectionLimits(100, 16, 1024),
+            new RuntimeObservabilityOptions(true, 100, new RuntimeLogPersistenceOptions(true, true, 1_048_576, 8)),
+            new RuntimeLimits(4096, 128, 240, 30, 32768, 128, 8192, 104857600, 8192, TimeSpan.FromSeconds(15)),
+            new RuntimeForwardedHeadersOptions(true, []),
+            certificates,
+            listeners,
+            routes);
+
+        sourceFiles.Clear();
+        sniCertificates.Clear();
+        upstreams.Clear();
+        certificates.Clear();
+        listeners.Clear();
+        routes.Clear();
+
+        AssertEx.Equal("home.test", listener.SniCertificates[0].HostName);
+        AssertEx.Equal("local", route.Upstreams[0].Name);
+        AssertEx.Equal("sites/home.json", snapshot.SourceFiles[0]);
+        AssertEx.True(snapshot.Certificates.ContainsKey("HOME-CERT"));
+        AssertEx.Equal("home-cert", snapshot.Certificates["HOME-CERT"].Id);
+        AssertEx.Equal("web", snapshot.Listeners[0].Name);
+        AssertEx.Equal("home", snapshot.Routes[0].Name);
+        AssertEx.False(listener.SniCertificates is RuntimeSniCertificateBinding[]);
+        AssertEx.False(route.Upstreams is RuntimeUpstream[]);
+        AssertEx.False(snapshot.SourceFiles is string[]);
+        AssertEx.False(snapshot.Certificates is Dictionary<string, RuntimeCertificate>);
+        AssertEx.False(snapshot.Listeners is RuntimeListener[]);
+        AssertEx.False(snapshot.Routes is RuntimeRoute[]);
+    }
+
     public static void ConfigurationValidationResultNamesValidationOutcomes()
     {
         var attemptedAtUtc = DateTimeOffset.UnixEpoch.AddMinutes(3);

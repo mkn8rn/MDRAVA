@@ -278,6 +278,6 @@ public sealed class ProxyConfigurationAcmeCertificateActivator : IAcmeCertificat
             [certificate.Id] = certificate
         };
 
-        _configurationStore.Replace(snapshot with { Certificates = certificates });
+        _configurationStore.Replace(snapshot.WithCertificates(certificates));
     }
 }

@@ -310,13 +310,11 @@ internal static class AcmeTests
             temp.Path,
             DateTimeOffset.UnixEpoch.AddHours(11),
             TestCertificates.CreateSelfSignedPfxBytes("home.example.test", validDays: 10)));
-        store.Replace(store.Snapshot with
-        {
-            Certificates = new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase)
+        store.Replace(store.Snapshot.WithCertificates(
+            new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase)
             {
                 ["home-acme"] = initial
-            }
-        });
+            }));
         var originalThumbprint = initial.Certificate.Thumbprint;
         var statusStore = new AcmeCertificateStatusStore();
         var manager = CreateManager(temp.Path, store, new FakeIssuer("issuer failed"), statusStore);

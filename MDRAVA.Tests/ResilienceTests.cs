@@ -573,7 +573,9 @@ internal static class ResilienceTests
         {
             Retry = new RuntimeRetryPolicy(true, 2, null, true, false, [], ["GET", "HEAD"], TimeSpan.Zero)
         };
-        fixture.Store.Replace(fixture.Store.Snapshot with { Routes = [route] });
+        fixture.Store.Replace(fixture.Store.Snapshot.WithListenersAndRoutes(
+            fixture.Store.Snapshot.Listeners,
+            [route]));
         var selection = AssertEx.NotNull(fixture.Selector.Select(SelectionRoute(route)));
         fixture.Circuit.RecordFailure(selection.CircuitBreakerLease, "connect_failure");
 

@@ -14,6 +14,7 @@ internal static partial class TestRegistry
     Test("Listener reload result copies changes and errors", Sync(ConfigurationTests.ListenerReloadResultCopiesChangesAndErrors), TestTaxonomy.Config),
     Test("Configuration management results copy input collections", Sync(ConfigurationTests.ConfigurationManagementResultsCopyInputCollections), TestTaxonomy.Config),
     Test("Runtime configuration policy records copy input collections", Sync(ConfigurationTests.RuntimeConfigurationPolicyRecordsCopyInputCollections), TestTaxonomy.Config),
+    Test("Runtime configuration graph records copy input collections", Sync(ConfigurationTests.RuntimeConfigurationGraphRecordsCopyInputCollections), TestTaxonomy.Config),
     Test("Configuration validation result names validation outcomes", Sync(ConfigurationTests.ConfigurationValidationResultNamesValidationOutcomes), TestTaxonomy.Config),
     Test("Configuration read result names available and missing outcomes", Sync(ConfigurationTests.ConfigurationReadResultNamesAvailableAndMissingOutcomes), TestTaxonomy.Config),
     Test("Configuration load result names loaded validated and failed outcomes", ConfigurationTests.ConfigurationLoadResultNamesLoadedValidatedAndFailedOutcomes, TestTaxonomy.Config),

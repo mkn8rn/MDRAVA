@@ -118,10 +118,7 @@ internal static class MetricsTests
             443,
             1,
             RuntimeUpstreamTlsOptions.Default);
-        var route = Route(RuntimeCachePolicy.Disabled) with
-        {
-            Upstreams = [upstream]
-        };
+        var route = Route(RuntimeCachePolicy.Disabled).WithUpstreams([upstream]);
 
         var labelOptions = ProxyMetricsExportLabelOptionsMapper.FromMetrics(metrics);
         var http3Facts = ProxyMetricsExportHttp3FactsMapper.FromRuntimeConfiguration([listener], [route]);
@@ -654,11 +651,7 @@ internal static class MetricsTests
             DateTimeOffset.UtcNow,
             "tests",
             [],
-            Discovery()) with
-        {
-            Listeners = [Listener()],
-            Routes = [route]
-        };
+            Discovery()).WithListenersAndRoutes([Listener()], [route]);
         var store = new ProxyConfigurationStore();
         store.Replace(snapshot);
         return store;
