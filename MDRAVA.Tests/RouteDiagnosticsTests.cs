@@ -412,6 +412,30 @@ internal static class RouteDiagnosticsTests
         AssertEx.False(context.KeepClientConnectionOpen);
     }
 
+    public static void RequestContextRecordsTunnelCompletion()
+    {
+        var context = new ProxyRequestContext(
+            "req-tunnel",
+            "listener",
+            "tcp",
+            "127.0.0.1:50000",
+            7,
+            TimeProvider.System);
+        var result = ForwardingResult.TunnelCompleted(
+            101,
+            TunnelRelayResult.Closed(
+                bytesClientToUpstream: 11,
+                bytesUpstreamToClient: 17,
+                duration: TimeSpan.FromSeconds(2)));
+
+        context.RecordTunnelCompletion((ForwardingResult.TunnelCompletedResult)result);
+
+        AssertEx.True(context.TunnelEstablished);
+        AssertEx.Equal("Closed", context.TunnelCloseReason);
+        AssertEx.Equal(11L, context.TunnelBytesClientToUpstream);
+        AssertEx.Equal(17L, context.TunnelBytesUpstreamToClient);
+    }
+
     public static void RouteDiagnosticsStatusNamesEnabledAvailability()
     {
         var status = RouteDiagnosticsStatus.Enabled;

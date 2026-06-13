@@ -996,10 +996,7 @@ public sealed class ClientConnection
             result.KeepClientConnectionOpen);
         if (result is ForwardingResult.TunnelCompletedResult tunnelCompleted)
         {
-            context.TunnelEstablished = result.ResponseStatusCode == 101;
-            context.TunnelCloseReason = tunnelCompleted.Tunnel.CloseReason;
-            context.TunnelBytesClientToUpstream = tunnelCompleted.Tunnel.BytesClientToUpstream;
-            context.TunnelBytesUpstreamToClient = tunnelCompleted.Tunnel.BytesUpstreamToClient;
+            context.RecordTunnelCompletion(tunnelCompleted);
         }
     }
 

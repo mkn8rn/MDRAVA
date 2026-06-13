@@ -162,6 +162,16 @@ public sealed class ProxyRequestContext
         KeepClientConnectionOpen = keepClientConnectionOpen;
     }
 
+    public void RecordTunnelCompletion(ForwardingResult.TunnelCompletedResult result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+
+        TunnelEstablished = result.ResponseStatusCode == 101;
+        TunnelCloseReason = result.Tunnel.CloseReason;
+        TunnelBytesClientToUpstream = result.Tunnel.BytesClientToUpstream;
+        TunnelBytesUpstreamToClient = result.Tunnel.BytesUpstreamToClient;
+    }
+
 }
 
 public sealed record ProxyRequestRoute(
