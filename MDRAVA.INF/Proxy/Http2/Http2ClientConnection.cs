@@ -823,10 +823,8 @@ public sealed class Http2ClientConnection
 
         await WriteGeneratedResponseAsync(
             streamId,
-            response.StatusCode,
-            response.ReasonPhrase,
+            response,
             context,
-            response.FailureKind,
             method,
             cancellationToken);
         return response.ToForwardingResult();
@@ -885,23 +883,36 @@ public sealed class Http2ClientConnection
         string method,
         CancellationToken cancellationToken)
     {
-        var bodyBytes = Encoding.UTF8.GetBytes(body);
-        List<ProxyHeaderField> headers =
-        [
-            new ProxyHeaderField("content-type", "text/plain"),
-            new ProxyHeaderField("x-request-id", context.RequestId),
-            new ProxyHeaderField("content-length", bodyBytes.Length.ToString(CultureInfo.InvariantCulture))
-        ];
+        await WriteGeneratedResponseAsync(
+            streamId,
+            new ProxyGeneratedFailureResponse(statusCode, body, failureKind),
+            context,
+            method,
+            cancellationToken);
+    }
+
+    private async ValueTask WriteGeneratedResponseAsync(
+        int streamId,
+        ProxyGeneratedFailureResponse response,
+        ProxyRequestContext context,
+        string method,
+        CancellationToken cancellationToken)
+    {
+        var bodyBytes = Encoding.UTF8.GetBytes(response.ReasonPhrase);
+        var headers = ProxyGeneratedFailurePolicy.BuildFramedResponseHeaders(
+            response,
+            context.RequestId,
+            bodyBytes.Length).ToList();
         AddAltSvcHeader(headers);
         await WriteHeadersAndBodyAsync(
             streamId,
-            statusCode,
+            response.StatusCode,
             headers,
             string.Equals(method, "HEAD", StringComparison.OrdinalIgnoreCase) ? [] : bodyBytes,
             cancellationToken);
         context.ResponseStarted = true;
-        context.ResponseStatusCode = statusCode;
-        context.FailureKind = failureKind;
+        context.ResponseStatusCode = response.StatusCode;
+        context.FailureKind = response.FailureKind;
         context.KeepClientConnectionOpen = true;
     }
 

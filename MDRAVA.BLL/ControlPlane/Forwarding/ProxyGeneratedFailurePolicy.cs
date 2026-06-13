@@ -1,4 +1,5 @@
 using MDRAVA.BLL.ControlPlane.Routing;
+using MDRAVA.BLL.Http;
 
 namespace MDRAVA.BLL.ControlPlane.Forwarding;
 
@@ -18,6 +19,8 @@ public sealed record ProxyGeneratedFailureResponse(
 
 public static class ProxyGeneratedFailurePolicy
 {
+    private const string ContentType = "text/plain";
+
     public static bool CanWriteFailureResponse(
         bool responseStarted,
         bool suppressGeneratedFailureResponse)
@@ -34,5 +37,22 @@ public static class ProxyGeneratedFailurePolicy
             statusCode,
             ProxyRouteActionPolicy.ReasonPhrase(statusCode),
             failure.FailureKind);
+    }
+
+    public static IReadOnlyList<ProxyHeaderField> BuildFramedResponseHeaders(
+        ProxyGeneratedFailureResponse response,
+        string requestId,
+        int bodyByteLength)
+    {
+        ArgumentNullException.ThrowIfNull(response);
+        ArgumentException.ThrowIfNullOrWhiteSpace(requestId);
+        ArgumentOutOfRangeException.ThrowIfNegative(bodyByteLength);
+
+        return
+        [
+            new ProxyHeaderField("content-type", ContentType),
+            new ProxyHeaderField("x-request-id", requestId),
+            new ProxyHeaderField("content-length", bodyByteLength.ToString(System.Globalization.CultureInfo.InvariantCulture))
+        ];
     }
 }

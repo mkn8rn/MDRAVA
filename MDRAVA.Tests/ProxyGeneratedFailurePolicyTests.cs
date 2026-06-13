@@ -44,4 +44,21 @@ internal static class ProxyGeneratedFailurePolicyTests
         AssertEx.Equal(504, forwardingResult.ResponseStatusCode);
         AssertEx.Equal(ProxyFailureKind.UpstreamResponseHeadTimeout, forwardingResult.FailureKind);
     }
+
+    public static void BuildsGeneratedFailureFramedHeaders()
+    {
+        var response = new ProxyGeneratedFailureResponse(
+            502,
+            "Bad Gateway",
+            ProxyFailureKind.UpstreamConnectFailed);
+
+        var headers = ProxyGeneratedFailurePolicy.BuildFramedResponseHeaders(
+            response,
+            "req-789",
+            11);
+
+        AssertEx.Equal("text/plain", headers.Single(static header => header.Name == "content-type").Value);
+        AssertEx.Equal("req-789", headers.Single(static header => header.Name == "x-request-id").Value);
+        AssertEx.Equal("11", headers.Single(static header => header.Name == "content-length").Value);
+    }
 }

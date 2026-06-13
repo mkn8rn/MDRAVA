@@ -157,7 +157,7 @@ public sealed class Http3Connection
             if (!headerRead.Success)
             {
                 var closeConnection = RecordProtocolError(rejectionReason);
-                await WriteGeneratedResponseAsync(stream, 400, "Bad Request", context, "GET", cancellationToken);
+                await WriteGeneratedResponseAsync(stream, 400, "Bad Request", context, ProxyFailureKind.ClientMalformedRequest, "GET", cancellationToken);
                 CompleteContext(ref context);
                 return !closeConnection;
             }
@@ -170,7 +170,7 @@ public sealed class Http3Connection
             {
                 rejectionReason = ((Http3RequestTranslationResult.RejectedResult)translationResult).Reason;
                 var closeConnection = RecordProtocolError(rejectionReason);
-                await WriteGeneratedResponseAsync(stream, 400, "Bad Request", context, "GET", cancellationToken);
+                await WriteGeneratedResponseAsync(stream, 400, "Bad Request", context, ProxyFailureKind.ClientMalformedRequest, "GET", cancellationToken);
                 CompleteContext(ref context);
                 return !closeConnection;
             }
@@ -184,7 +184,7 @@ public sealed class Http3Connection
             if (methodDecision is ProxyRequestApplicationMethodDecision.RejectedDecision rejectedMethod)
             {
                 _metrics.Http3RequestRejected(rejectedMethod.Reason);
-                await WriteGeneratedResponseAsync(stream, 501, "Not Implemented", context, requestHead.Method, cancellationToken);
+                await WriteGeneratedResponseAsync(stream, 501, "Not Implemented", context, ProxyFailureKind.ClientMalformedRequest, requestHead.Method, cancellationToken);
                 CompleteContext(ref context);
                 return true;
             }
@@ -195,7 +195,7 @@ public sealed class Http3Connection
             if (!noBodyFrames.Success)
             {
                 var closeConnection = RecordProtocolError(noBodyFrames.Reason);
-                await WriteGeneratedResponseAsync(stream, 400, "Bad Request", context, requestHead.Method, cancellationToken);
+                await WriteGeneratedResponseAsync(stream, 400, "Bad Request", context, ProxyFailureKind.ClientMalformedRequest, requestHead.Method, cancellationToken);
                 CompleteContext(ref context);
                 return !closeConnection;
             }
@@ -214,7 +214,7 @@ public sealed class Http3Connection
                 _configurationSnapshot.Limits.RequestsPerMinutePerIp)
                 is ClientRateLimitDecision.RejectedResult)
             {
-                await WriteGeneratedResponseAsync(stream, 429, "Too Many Requests", context, requestHead.Method, cancellationToken);
+                await WriteGeneratedResponseAsync(stream, 429, "Too Many Requests", context, ProxyFailureKind.RateLimited, requestHead.Method, cancellationToken);
                 CompleteContext(ref context);
                 return true;
             }
@@ -231,7 +231,7 @@ public sealed class Http3Connection
             var routeMatch = _routeMatcher.Match(_configurationSnapshot.Routes, requestHead);
             if (routeMatch is null)
             {
-                await WriteGeneratedResponseAsync(stream, 404, "Not Found", context, requestHead.Method, cancellationToken);
+                await WriteGeneratedResponseAsync(stream, 404, "Not Found", context, ProxyFailureKind.NoMatchingRoute, requestHead.Method, cancellationToken);
                 CompleteContext(ref context);
                 return true;
             }
@@ -361,6 +361,7 @@ public sealed class Http3Connection
             413,
             "Payload Too Large",
             context,
+            ProxyFailureKind.RequestPayloadTooLarge,
             requestHead.Method,
             cancellationToken);
         return true;
@@ -623,6 +624,7 @@ public sealed class Http3Connection
                     503,
                     "Service Unavailable",
                     context,
+                    ProxyFailureKind.NoHealthyUpstream,
                     requestHead.Method,
                     cancellationToken);
                 return ForwardingResult.Failure(
@@ -715,8 +717,7 @@ public sealed class Http3Connection
 
         await WriteGeneratedResponseAsync(
             stream,
-            response.StatusCode,
-            response.ReasonPhrase,
+            response,
             context,
             method,
             cancellationToken);
@@ -771,59 +772,40 @@ public sealed class Http3Connection
         int statusCode,
         string body,
         ProxyRequestContext context,
+        ProxyFailureKind failureKind,
         string method,
         CancellationToken cancellationToken)
     {
         return WriteGeneratedResponseAsync(
             stream,
-            statusCode,
-            body,
+            new ProxyGeneratedFailureResponse(statusCode, body, failureKind),
             context,
             method,
-            cancellationToken,
-            "text/plain; charset=utf-8",
-            []);
+            cancellationToken);
     }
 
     private async ValueTask WriteGeneratedResponseAsync(
         QuicStream stream,
-        int statusCode,
-        string body,
+        ProxyGeneratedFailureResponse response,
         ProxyRequestContext context,
         string method,
-        CancellationToken cancellationToken,
-        string? contentType,
-        IReadOnlyList<ProxyHeaderField> extraHeaders)
+        CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(extraHeaders);
-
-        var bodyBytes = Encoding.UTF8.GetBytes(body);
-        List<ProxyHeaderField> headers =
-        [
-            new("x-request-id", context.RequestId),
-            new("content-length", bodyBytes.Length.ToString(System.Globalization.CultureInfo.InvariantCulture))
-        ];
-        if (!string.IsNullOrWhiteSpace(contentType))
-        {
-            headers.Add(new ProxyHeaderField("content-type", contentType));
-        }
-
-        foreach (var header in extraHeaders)
-        {
-            if (!HopByHopHeaderPolicy.IsHopByHopHeader(header.Name))
-            {
-                headers.Add(new ProxyHeaderField(header.Name.ToLowerInvariant(), header.Value));
-            }
-        }
+        var bodyBytes = Encoding.UTF8.GetBytes(response.ReasonPhrase);
+        var headers = ProxyGeneratedFailurePolicy.BuildFramedResponseHeaders(
+            response,
+            context.RequestId,
+            bodyBytes.Length);
 
         await WriteHeadersAndBodyAsync(
             stream,
-            statusCode,
+            response.StatusCode,
             headers,
             string.Equals(method, "HEAD", StringComparison.OrdinalIgnoreCase) ? [] : bodyBytes,
             cancellationToken);
         context.ResponseStarted = true;
-        context.ResponseStatusCode = statusCode;
+        context.ResponseStatusCode = response.StatusCode;
+        context.FailureKind = response.FailureKind;
         context.KeepClientConnectionOpen = true;
     }
 
