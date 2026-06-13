@@ -1,5 +1,4 @@
-using MDRAVA.BLL.ControlPlane.ConfigLint;
-
+using BusinessConfigLintSummary = MDRAVA.BLL.ControlPlane.ConfigLint.ConfigLintSummary;
 using BusinessConfigLintStatus = MDRAVA.BLL.ControlPlane.ConfigLint.ConfigLintStatus;
 
 namespace MDRAVA.API.Controllers;
@@ -27,7 +26,7 @@ public sealed record ConfigLintSummaryResponse(
     int Warning,
     int Error)
 {
-    public static ConfigLintSummaryResponse FromSummary(ConfigLintSummary summary)
+    public static ConfigLintSummaryResponse FromSummary(BusinessConfigLintSummary summary)
     {
         ArgumentNullException.ThrowIfNull(summary);
 
