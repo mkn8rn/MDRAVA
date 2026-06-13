@@ -70,8 +70,8 @@ internal static class MetricsTests
         metrics.GeneratedFailureResponse(408);
 
         var snapshot = metrics.Snapshot();
-        AssertEx.Equal(1L, snapshot.ProxyGenerated502Responses);
-        AssertEx.Equal(1L, snapshot.ProxyGenerated504Responses);
+        AssertEx.Equal(1L, snapshot.GeneratedResponses.BadGatewayResponses);
+        AssertEx.Equal(1L, snapshot.GeneratedResponses.GatewayTimeoutResponses);
     }
 
     public static void MetricsSnapshotCopiesCollectionInputs()
@@ -154,8 +154,9 @@ internal static class MetricsTests
                 PrematureDisconnects: 0,
                 RequestFailures: 0),
             ClientPrematureDisconnects: 0,
-            ProxyGenerated502Responses: 0,
-            ProxyGenerated504Responses: 0,
+            GeneratedResponses: new ProxyGeneratedResponseMetricsSnapshot(
+                BadGatewayResponses: 0,
+                GatewayTimeoutResponses: 0),
             DownstreamWriteTimeouts: 0,
             Tls: new ProxyTlsMetricsSnapshot(
                 HandshakeAttempts: 0,

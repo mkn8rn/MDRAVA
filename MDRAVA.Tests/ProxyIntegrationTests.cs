@@ -1018,7 +1018,7 @@ internal static class ProxyIntegrationTests
             expectUpstreamConnection: false);
 
         AssertEx.True(result.ClientResponse.Contains("502 Bad Gateway", StringComparison.Ordinal), result.ClientResponse);
-        AssertEx.Equal(1L, result.Metrics.ProxyGenerated502Responses);
+        AssertEx.Equal(1L, result.Metrics.GeneratedResponses.BadGatewayResponses);
     }
 
     public static async Task UpstreamResponseHeadTimeoutProducesGatewayTimeout()
@@ -1032,7 +1032,7 @@ internal static class ProxyIntegrationTests
 
         AssertEx.True(result.ClientResponse.Contains("504 Gateway Timeout", StringComparison.Ordinal), result.ClientResponse);
         AssertEx.Equal(1L, result.Metrics.UpstreamFailureReasons.ResponseHeadTimeouts);
-        AssertEx.Equal(1L, result.Metrics.ProxyGenerated504Responses);
+        AssertEx.Equal(1L, result.Metrics.GeneratedResponses.GatewayTimeoutResponses);
     }
 
     public static async Task UpstreamContentLengthEarlyCloseClosesAfterStartedResponse()

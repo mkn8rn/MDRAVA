@@ -19,8 +19,7 @@ public sealed partial class ProxyMetrics
             Interlocked.Read(ref _clientRequestBodyTimeouts),
             ReadUpstreamFailureMetricsSnapshot(),
             Interlocked.Read(ref _clientPrematureDisconnects),
-            Interlocked.Read(ref _proxyGenerated502Responses),
-            Interlocked.Read(ref _proxyGenerated504Responses),
+            ReadGeneratedResponseMetricsSnapshot(),
             Interlocked.Read(ref _downstreamWriteTimeouts),
             ReadTlsMetricsSnapshot(),
             ReadUpstreamPoolMetricsSnapshot(),
@@ -66,6 +65,13 @@ public sealed partial class ProxyMetrics
             Interlocked.Read(ref _upstreamMalformedResponses),
             Interlocked.Read(ref _upstreamPrematureDisconnects),
             Interlocked.Read(ref _upstreamRequestFailures));
+    }
+
+    private ProxyGeneratedResponseMetricsSnapshot ReadGeneratedResponseMetricsSnapshot()
+    {
+        return new ProxyGeneratedResponseMetricsSnapshot(
+            Interlocked.Read(ref _proxyGenerated502Responses),
+            Interlocked.Read(ref _proxyGenerated504Responses));
     }
 
     private ProxyHttp3MetricsSnapshot ReadHttp3MetricsSnapshot()

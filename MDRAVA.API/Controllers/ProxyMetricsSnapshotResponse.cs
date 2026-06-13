@@ -145,6 +145,7 @@ public sealed record ProxyMetricsSnapshotResponse(
         var clientConnections = snapshot.ClientConnections;
         var configReloads = snapshot.ConfigReloads;
         var diagnostics = snapshot.Diagnostics;
+        var generatedResponses = snapshot.GeneratedResponses;
         var health = snapshot.Health;
         var http2 = snapshot.Http2;
         var http3 = snapshot.Http3;
@@ -181,8 +182,8 @@ public sealed record ProxyMetricsSnapshotResponse(
             upstreamFailureReasons.ResponseBodyTimeouts,
             upstreamFailureReasons.PrematureDisconnects,
             snapshot.ClientPrematureDisconnects,
-            snapshot.ProxyGenerated502Responses,
-            snapshot.ProxyGenerated504Responses,
+            generatedResponses.BadGatewayResponses,
+            generatedResponses.GatewayTimeoutResponses,
             snapshot.DownstreamWriteTimeouts,
             tls.HandshakeAttempts,
             tls.HandshakeSuccesses,

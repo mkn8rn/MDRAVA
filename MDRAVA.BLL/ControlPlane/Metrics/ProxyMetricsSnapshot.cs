@@ -18,8 +18,7 @@ public sealed record ProxyMetricsSnapshot(
     long ClientRequestBodyTimeouts,
     ProxyUpstreamFailureMetricsSnapshot UpstreamFailureReasons,
     long ClientPrematureDisconnects,
-    long ProxyGenerated502Responses,
-    long ProxyGenerated504Responses,
+    ProxyGeneratedResponseMetricsSnapshot GeneratedResponses,
     long DownstreamWriteTimeouts,
     ProxyTlsMetricsSnapshot Tls,
     ProxyUpstreamPoolMetricsSnapshot UpstreamPool,
@@ -77,6 +76,9 @@ public sealed record ProxyMetricsSnapshot(
 
     public ProxyUpstreamFailureMetricsSnapshot UpstreamFailureReasons { get; } =
         UpstreamFailureReasons ?? throw new ArgumentNullException(nameof(UpstreamFailureReasons));
+
+    public ProxyGeneratedResponseMetricsSnapshot GeneratedResponses { get; } =
+        GeneratedResponses ?? throw new ArgumentNullException(nameof(GeneratedResponses));
 
     public ProxyDiagnosticsMetricsSnapshot Diagnostics { get; } =
         Diagnostics ?? throw new ArgumentNullException(nameof(Diagnostics));
