@@ -3,11 +3,10 @@ using MDRAVA.BLL.ControlPlane.Listeners;
 
 namespace MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 
-public sealed record ProxyConfigurationReloadResult<TProjection>
+public abstract record ProxyConfigurationReloadResult<TProjection>
     where TProjection : class
 {
     private ProxyConfigurationReloadResult(
-        bool succeeded,
         string sourceDirectory,
         DateTimeOffset attemptedAtUtc,
         int? activeVersion,
@@ -15,11 +14,8 @@ public sealed record ProxyConfigurationReloadResult<TProjection>
         DateTimeOffset? lastSuccessfulLoadAtUtc,
         ProxyConfigurationDiscovery discovery,
         IReadOnlyList<string> errors,
-        IReadOnlyList<ProxyConfigurationFileError> fileErrors,
-        TProjection? activeConfiguration,
-        ProxyListenerReloadResult? listenerReload)
+        IReadOnlyList<ProxyConfigurationFileError> fileErrors)
     {
-        Succeeded = succeeded;
         SourceDirectory = sourceDirectory;
         AttemptedAtUtc = attemptedAtUtc;
         ActiveVersion = activeVersion;
@@ -28,11 +24,7 @@ public sealed record ProxyConfigurationReloadResult<TProjection>
         Discovery = discovery;
         Errors = errors;
         FileErrors = fileErrors;
-        ActiveConfiguration = activeConfiguration;
-        ListenerReload = listenerReload;
     }
-
-    public bool Succeeded { get; }
 
     public string SourceDirectory { get; }
 
@@ -50,10 +42,6 @@ public sealed record ProxyConfigurationReloadResult<TProjection>
 
     public IReadOnlyList<ProxyConfigurationFileError> FileErrors { get; }
 
-    public TProjection? ActiveConfiguration { get; }
-
-    public ProxyListenerReloadResult? ListenerReload { get; }
-
     public static ProxyConfigurationReloadResult<TProjection> LoadFailed(
         string sourceDirectory,
         DateTimeOffset attemptedAtUtc,
@@ -64,18 +52,15 @@ public sealed record ProxyConfigurationReloadResult<TProjection>
         IReadOnlyList<ProxyConfigurationFileError> fileErrors,
         TProjection? activeConfiguration)
     {
-        return new ProxyConfigurationReloadResult<TProjection>(
-            succeeded: false,
-            sourceDirectory: sourceDirectory,
-            attemptedAtUtc: attemptedAtUtc,
-            activeVersion: activeVersion,
-            loadedAtUtc: loadedAtUtc,
-            lastSuccessfulLoadAtUtc: loadedAtUtc,
-            discovery: discovery,
-            errors: errors,
-            fileErrors: fileErrors,
-            activeConfiguration: activeConfiguration,
-            listenerReload: null);
+        return new LoadFailedResult(
+            sourceDirectory,
+            attemptedAtUtc,
+            activeVersion,
+            loadedAtUtc,
+            discovery,
+            errors,
+            fileErrors,
+            activeConfiguration);
     }
 
     public static ProxyConfigurationReloadResult<TProjection> ListenerReloadFailed(
@@ -92,18 +77,14 @@ public sealed record ProxyConfigurationReloadResult<TProjection>
             throw new ArgumentException("A listener reload failure result requires a failed listener reload.", nameof(listenerReload));
         }
 
-        return new ProxyConfigurationReloadResult<TProjection>(
-            succeeded: false,
-            sourceDirectory: sourceDirectory,
-            attemptedAtUtc: attemptedAtUtc,
-            activeVersion: activeVersion,
-            loadedAtUtc: loadedAtUtc,
-            lastSuccessfulLoadAtUtc: loadedAtUtc,
-            discovery: discovery,
-            errors: listenerReload.Errors,
-            fileErrors: listenerReload.Errors.Select(static error => ProxyConfigurationFileError.Global(error)).ToArray(),
-            activeConfiguration: activeConfiguration,
-            listenerReload: listenerReload);
+        return new ListenerReloadFailedResult(
+            sourceDirectory,
+            attemptedAtUtc,
+            activeVersion,
+            loadedAtUtc,
+            discovery,
+            listenerReload,
+            activeConfiguration);
     }
 
     public static ProxyConfigurationReloadResult<TProjection> Reloaded(
@@ -120,17 +101,109 @@ public sealed record ProxyConfigurationReloadResult<TProjection>
             throw new ArgumentException("A successful reload result requires a successful listener reload.", nameof(listenerReload));
         }
 
-        return new ProxyConfigurationReloadResult<TProjection>(
-            succeeded: true,
-            sourceDirectory: sourceDirectory,
-            attemptedAtUtc: attemptedAtUtc,
-            activeVersion: activeVersion,
-            loadedAtUtc: loadedAtUtc,
-            lastSuccessfulLoadAtUtc: loadedAtUtc,
-            discovery: discovery,
-            errors: [],
-            fileErrors: [],
-            activeConfiguration: activeConfiguration,
-            listenerReload: listenerReload);
+        return new ReloadedResult(
+            sourceDirectory,
+            attemptedAtUtc,
+            activeVersion,
+            loadedAtUtc,
+            discovery,
+            listenerReload,
+            activeConfiguration);
+    }
+
+    public sealed record LoadFailedResult : ProxyConfigurationReloadResult<TProjection>
+    {
+        internal LoadFailedResult(
+            string sourceDirectory,
+            DateTimeOffset attemptedAtUtc,
+            int? activeVersion,
+            DateTimeOffset? loadedAtUtc,
+            ProxyConfigurationDiscovery discovery,
+            IReadOnlyList<string> errors,
+            IReadOnlyList<ProxyConfigurationFileError> fileErrors,
+            TProjection? activeConfiguration)
+            : base(
+                sourceDirectory,
+                attemptedAtUtc,
+                activeVersion,
+                loadedAtUtc,
+                loadedAtUtc,
+                discovery,
+                errors,
+                fileErrors)
+        {
+            ActiveConfiguration = activeConfiguration;
+        }
+
+        public TProjection? ActiveConfiguration { get; }
+    }
+
+    public sealed record ListenerReloadFailedResult : ProxyConfigurationReloadResult<TProjection>
+    {
+        internal ListenerReloadFailedResult(
+            string sourceDirectory,
+            DateTimeOffset attemptedAtUtc,
+            int? activeVersion,
+            DateTimeOffset? loadedAtUtc,
+            ProxyConfigurationDiscovery discovery,
+            ProxyListenerReloadResult listenerReload,
+            TProjection? activeConfiguration)
+            : base(
+                sourceDirectory,
+                attemptedAtUtc,
+                activeVersion,
+                loadedAtUtc,
+                loadedAtUtc,
+                discovery,
+                listenerReload.Errors,
+                listenerReload.Errors.Select(static error => ProxyConfigurationFileError.Global(error)).ToArray())
+        {
+            if (listenerReload is not ProxyListenerReloadResult.FailedResult)
+            {
+                throw new ArgumentException("A listener reload failure result requires a failed listener reload.", nameof(listenerReload));
+            }
+
+            ListenerReload = listenerReload;
+            ActiveConfiguration = activeConfiguration;
+        }
+
+        public ProxyListenerReloadResult ListenerReload { get; }
+
+        public TProjection? ActiveConfiguration { get; }
+    }
+
+    public sealed record ReloadedResult : ProxyConfigurationReloadResult<TProjection>
+    {
+        internal ReloadedResult(
+            string sourceDirectory,
+            DateTimeOffset attemptedAtUtc,
+            int activeVersion,
+            DateTimeOffset loadedAtUtc,
+            ProxyConfigurationDiscovery discovery,
+            ProxyListenerReloadResult listenerReload,
+            TProjection activeConfiguration)
+            : base(
+                sourceDirectory,
+                attemptedAtUtc,
+                activeVersion,
+                loadedAtUtc,
+                loadedAtUtc,
+                discovery,
+                [],
+                [])
+        {
+            if (listenerReload is not ProxyListenerReloadResult.AppliedResult)
+            {
+                throw new ArgumentException("A successful reload result requires a successful listener reload.", nameof(listenerReload));
+            }
+
+            ArgumentNullException.ThrowIfNull(activeConfiguration);
+            ListenerReload = listenerReload;
+            ActiveConfiguration = activeConfiguration;
+        }
+
+        public ProxyListenerReloadResult ListenerReload { get; }
+
+        public TProjection ActiveConfiguration { get; }
     }
 }

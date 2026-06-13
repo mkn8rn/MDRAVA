@@ -492,12 +492,12 @@ internal static class CacheTests
             TestHttp3PlatformSupport.SupportedSource);
 
         var first = await service.ReloadAsync(CancellationToken.None);
-        AssertEx.True(first.Succeeded);
+        ProxyConfigurationReloadResultAssertions.Reloaded(first);
         SeedCache(cache, store.Snapshot.Routes[0], store.Snapshot.Listeners[0]);
 
         var second = await service.ReloadAsync(CancellationToken.None);
 
-        AssertEx.True(second.Succeeded);
+        ProxyConfigurationReloadResultAssertions.Reloaded(second);
         var cacheStatus = CacheStatus(cache, store.Snapshot);
         AssertEx.Equal(0, cacheStatus.EntryCount);
         AssertEx.Equal("reload", cacheStatus.LastClearReason);
@@ -518,13 +518,13 @@ internal static class CacheTests
             SilentProxyConfigurationReloadEventSink.Instance,
             TestHttp3PlatformSupport.SupportedSource);
         var first = await service.ReloadAsync(CancellationToken.None);
-        AssertEx.True(first.Succeeded);
+        ProxyConfigurationReloadResultAssertions.Reloaded(first);
         SeedCache(cache, store.Snapshot.Routes[0], store.Snapshot.Listeners[0]);
         ConfigurationTests.WriteCustomSite(temp.Path, "broken.json", "{ nope");
 
         var second = await service.ReloadAsync(CancellationToken.None);
 
-        AssertEx.False(second.Succeeded);
+        ProxyConfigurationReloadResultAssertions.Failed(second);
         AssertEx.Equal(1, CacheStatus(cache, store.Snapshot).EntryCount);
     }
 

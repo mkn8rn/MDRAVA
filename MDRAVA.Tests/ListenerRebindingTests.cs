@@ -32,9 +32,7 @@ internal static class ListenerRebindingTests
                 .GetRequiredService<IProxyConfigurationReloadOperations<ProxyConfigurationProjection>>()
                 .ReloadAsync(timeout.Token);
             var after = await WaitForListenerAsync(runtime, "main", ProxyListenerState.Active, timeout.Token);
-            var listenerReload = AssertEx.NotNull(reload.ListenerReload);
-
-            AssertEx.True(reload.Succeeded, string.Join("; ", reload.Errors));
+            var listenerReload = ProxyConfigurationReloadResultAssertions.Reloaded(reload, string.Join("; ", reload.Errors)).ListenerReload;
             AssertEx.Equal(0, listenerReload.Added);
             AssertEx.Equal(0, listenerReload.Removed);
             AssertEx.Equal(0, listenerReload.Changed);
@@ -73,9 +71,7 @@ internal static class ListenerRebindingTests
                 "GET /added HTTP/1.1\r\nHost: reload.test\r\nConnection: close\r\n\r\n",
                 timeout.Token);
             await upstreamTask.WaitAsync(timeout.Token);
-            var listenerReload = AssertEx.NotNull(reload.ListenerReload);
-
-            AssertEx.True(reload.Succeeded, string.Join("; ", reload.Errors));
+            var listenerReload = ProxyConfigurationReloadResultAssertions.Reloaded(reload, string.Join("; ", reload.Errors)).ListenerReload;
             AssertEx.Equal(1, listenerReload.Added);
             AssertEx.Equal(1, listenerReload.Unchanged);
             AssertEx.True(response.Contains("200 OK", StringComparison.Ordinal), response);
@@ -106,8 +102,7 @@ internal static class ListenerRebindingTests
                 .GetRequiredService<IProxyConfigurationReloadOperations<ProxyConfigurationProjection>>()
                 .ReloadAsync(timeout.Token);
 
-            AssertEx.True(reload.Succeeded, string.Join("; ", reload.Errors));
-            AssertEx.Equal(1, AssertEx.NotNull(reload.ListenerReload).Removed);
+            AssertEx.Equal(1, ProxyConfigurationReloadResultAssertions.Reloaded(reload, string.Join("; ", reload.Errors)).ListenerReload.Removed);
             await WaitForConnectAsync(secondProxyPort, shouldSucceed: false, timeout.Token);
         }
         finally
@@ -142,8 +137,7 @@ internal static class ListenerRebindingTests
                 timeout.Token);
             await upstreamTask.WaitAsync(timeout.Token);
 
-            AssertEx.True(reload.Succeeded, string.Join("; ", reload.Errors));
-            AssertEx.Equal(1, AssertEx.NotNull(reload.ListenerReload).Changed);
+            AssertEx.Equal(1, ProxyConfigurationReloadResultAssertions.Reloaded(reload, string.Join("; ", reload.Errors)).ListenerReload.Changed);
             AssertEx.True(response.Contains("200 OK", StringComparison.Ordinal), response);
             await WaitForConnectAsync(oldProxyPort, shouldSucceed: false, timeout.Token);
         }
@@ -179,10 +173,10 @@ internal static class ListenerRebindingTests
                 timeout.Token);
             await upstreamTask.WaitAsync(timeout.Token);
 
-            AssertEx.False(reload.Succeeded);
+            var failedReload = ProxyConfigurationReloadResultAssertions.ListenerReloadFailed(reload);
             AssertEx.Equal(1, host.Services.GetRequiredService<IProxyConfigurationStore>().Snapshot.Version);
             AssertEx.True(response.Contains("200 OK", StringComparison.Ordinal), response);
-            AssertEx.True(AssertEx.NotNull(reload.ListenerReload).Errors.Count > 0);
+            AssertEx.True(failedReload.ListenerReload.Errors.Count > 0);
         }
         finally
         {
@@ -214,7 +208,7 @@ internal static class ListenerRebindingTests
                 timeout.Token);
             await upstreamTask.WaitAsync(timeout.Token);
 
-            AssertEx.False(reload.Succeeded);
+            ProxyConfigurationReloadResultAssertions.Failed(reload);
             AssertEx.Equal(1, host.Services.GetRequiredService<IProxyConfigurationStore>().Snapshot.Version);
             AssertEx.True(response.Contains("200 OK", StringComparison.Ordinal), response);
         }
@@ -248,8 +242,7 @@ internal static class ListenerRebindingTests
                 .ReloadAsync(timeout.Token);
             var after = await WaitForListenerAsync(runtime, "main", ProxyListenerState.Active, timeout.Token);
 
-            AssertEx.True(reload.Succeeded, string.Join("; ", reload.Errors));
-            AssertEx.Equal(2, AssertEx.NotNull(reload.ListenerReload).Unchanged);
+            AssertEx.Equal(2, ProxyConfigurationReloadResultAssertions.Reloaded(reload, string.Join("; ", reload.Errors)).ListenerReload.Unchanged);
             AssertEx.Equal(before.StartedAtUtc, after.StartedAtUtc);
         }
         finally
@@ -276,9 +269,9 @@ internal static class ListenerRebindingTests
                 .ReloadAsync(timeout.Token);
             var after = host.Services.GetRequiredService<IProxyConfigurationStore>().Snapshot.AdminSecurity.Urls;
 
-            AssertEx.True(reload.Succeeded, string.Join("; ", reload.Errors));
+            var reloaded = ProxyConfigurationReloadResultAssertions.Reloaded(reload, string.Join("; ", reload.Errors));
             AssertEx.Equal(string.Join('|', before), string.Join('|', after));
-            AssertEx.Equal(1, AssertEx.NotNull(reload.ListenerReload).Changed);
+            AssertEx.Equal(1, reloaded.ListenerReload.Changed);
         }
         finally
         {
@@ -304,9 +297,7 @@ internal static class ListenerRebindingTests
             var reload = await host.Services
                 .GetRequiredService<IProxyConfigurationReloadOperations<ProxyConfigurationProjection>>()
                 .ReloadAsync(timeout.Token);
-            var listenerReload = AssertEx.NotNull(reload.ListenerReload);
-
-            AssertEx.True(reload.Succeeded, string.Join("; ", reload.Errors));
+            var listenerReload = ProxyConfigurationReloadResultAssertions.Reloaded(reload, string.Join("; ", reload.Errors)).ListenerReload;
             AssertEx.Equal(1, listenerReload.Added);
             AssertEx.Equal(1, listenerReload.Removed);
             AssertEx.Equal(1, listenerReload.Changed);
@@ -344,8 +335,8 @@ internal static class ListenerRebindingTests
 
             var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
 
-            AssertEx.True(success.Succeeded, string.Join("; ", success.Errors));
-            AssertEx.False(failure.Succeeded);
+            ProxyConfigurationReloadResultAssertions.Reloaded(success, string.Join("; ", success.Errors));
+            ProxyConfigurationReloadResultAssertions.ListenerReloadFailed(failure);
             AssertEx.True(metrics.ListenerReloadAttempts >= 3);
             AssertEx.True(metrics.ListenerReloadSuccesses >= 2);
             AssertEx.True(metrics.ListenerReloadFailures >= 1);

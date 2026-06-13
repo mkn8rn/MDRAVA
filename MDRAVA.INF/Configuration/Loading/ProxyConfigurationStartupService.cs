@@ -42,7 +42,7 @@ public sealed class ProxyConfigurationStartupService : IHostedService
         }
 
         var result = await _reloadService.ReloadAsync(cancellationToken);
-        if (!result.Succeeded)
+        if (result is not ProxyConfigurationReloadResult<ProxyConfigurationProjection>.ReloadedResult)
         {
             var message = $"MDRAVA could not load a valid proxy configuration from '{result.SourceDirectory}'. "
                 + string.Join(" ", result.Errors);

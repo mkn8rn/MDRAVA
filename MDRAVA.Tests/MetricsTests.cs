@@ -279,10 +279,10 @@ internal static class MetricsTests
             TestHttp3PlatformSupport.SupportedSource);
 
         var first = await service.ReloadAsync(CancellationToken.None);
-        AssertEx.True(first.Succeeded);
+        ProxyConfigurationReloadResultAssertions.Reloaded(first);
         ConfigurationTests.WriteCustomSite(temp.Path, "broken.json", "{ nope");
         var second = await service.ReloadAsync(CancellationToken.None);
-        AssertEx.False(second.Succeeded);
+        ProxyConfigurationReloadResultAssertions.Failed(second);
 
         var text = fixture.Export(store.Snapshot);
 

@@ -281,7 +281,7 @@ internal static class ClientHttp2Tests
                     new Http2RequestSpec { Authority = "home.test", Path = "/after-reload-new" },
                     timeout.Token);
 
-                AssertEx.True(reload.Succeeded, string.Join("; ", reload.Errors));
+                ProxyConfigurationReloadResultAssertions.Reloaded(reload, string.Join("; ", reload.Errors));
                 AssertEx.True(beforeSubject.Contains("CN=home.test", StringComparison.Ordinal), beforeSubject);
                 AssertEx.Equal(203, before.StatusCode);
                 AssertEx.Equal(203, afterOnActiveConnection.StatusCode);
@@ -326,7 +326,7 @@ internal static class ClientHttp2Tests
                     new Http2RequestSpec { Authority = "home.test", Path = "/after-failed-reload" },
                     timeout.Token);
 
-                AssertEx.False(reload.Succeeded);
+                ProxyConfigurationReloadResultAssertions.Failed(reload);
                 AssertEx.True(beforeSubject.Contains("CN=home.test", StringComparison.Ordinal), beforeSubject);
                 AssertEx.True(afterSubject.Contains("CN=home.test", StringComparison.Ordinal), afterSubject);
                 AssertEx.Equal(203, response.StatusCode);

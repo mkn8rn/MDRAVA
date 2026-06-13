@@ -108,22 +108,34 @@ internal static class ConfigurationTests
             listenerReload: listenerReload,
             activeConfiguration: active);
 
-        AssertEx.False(loadFailed.Succeeded);
+        var loadFailedResult = ProxyConfigurationReloadResultAssertions.LoadFailed(loadFailed);
         AssertEx.Equal(7, loadFailed.ActiveVersion!.Value);
         AssertEx.Equal(loadedAtUtc, loadFailed.LastSuccessfulLoadAtUtc!.Value);
-        AssertEx.Equal<ProxyListenerReloadResult?>(null, loadFailed.ListenerReload);
         AssertEx.Equal("parse failed", loadFailed.Errors[0]);
         AssertEx.Equal("sites/broken.json", loadFailed.FileErrors[0].Path);
-        AssertEx.False(listenerFailed.Succeeded);
-        AssertEx.Equal(failedListenerReload, AssertEx.NotNull(listenerFailed.ListenerReload));
+        AssertEx.Equal(active, AssertEx.NotNull(loadFailedResult.ActiveConfiguration));
+        var listenerFailedResult = ProxyConfigurationReloadResultAssertions.ListenerReloadFailed(listenerFailed);
+        AssertEx.Equal(failedListenerReload, listenerFailedResult.ListenerReload);
         AssertEx.Equal("listener failed", listenerFailed.Errors[0]);
         AssertEx.Equal("listener failed", listenerFailed.FileErrors[0].Message);
-        AssertEx.True(reloaded.Succeeded);
+        var reloadedResult = ProxyConfigurationReloadResultAssertions.Reloaded(reloaded);
         AssertEx.Equal(8, reloaded.ActiveVersion!.Value);
         AssertEx.Equal(0, reloaded.Errors.Count);
         AssertEx.Equal(0, reloaded.FileErrors.Count);
-        AssertEx.Equal(listenerReload, AssertEx.NotNull(reloaded.ListenerReload));
-        AssertEx.Equal(active, AssertEx.NotNull(reloaded.ActiveConfiguration));
+        AssertEx.Equal(listenerReload, reloadedResult.ListenerReload);
+        AssertEx.Equal(active, reloadedResult.ActiveConfiguration);
+
+        var loadFailedResponse = ProxyConfigurationReloadResponse<TestConfigurationProjection>.FromResult(loadFailed);
+        var listenerFailedResponse = ProxyConfigurationReloadResponse<TestConfigurationProjection>.FromResult(listenerFailed);
+        var reloadedResponse = ProxyConfigurationReloadResponse<TestConfigurationProjection>.FromResult(reloaded);
+
+        AssertEx.False(loadFailedResponse.Succeeded);
+        AssertEx.Equal<ProxyListenerReloadResponse?>(null, loadFailedResponse.ListenerReload);
+        AssertEx.False(listenerFailedResponse.Succeeded);
+        AssertEx.False(AssertEx.NotNull(listenerFailedResponse.ListenerReload).Succeeded);
+        AssertEx.True(reloadedResponse.Succeeded);
+        AssertEx.True(AssertEx.NotNull(reloadedResponse.ListenerReload).Succeeded);
+        AssertEx.Equal(active, AssertEx.NotNull(reloadedResponse.ActiveConfiguration));
     }
 
     public static void ConfigurationValidationResultNamesValidationOutcomes()
@@ -683,13 +695,13 @@ internal static class ConfigurationTests
         var store = new ProxyConfigurationStore();
         var service = CreateReloadService(temp.Path, store);
         var first = await service.ReloadAsync(CancellationToken.None);
-        AssertEx.True(first.Succeeded);
+        ProxyConfigurationReloadResultAssertions.Reloaded(first);
         AssertEx.Equal(1, store.Snapshot.Version);
 
         File.WriteAllText(Path.Combine(temp.Path, "config", "sites", "broken.json"), "{ nope");
         var second = await service.ReloadAsync(CancellationToken.None);
 
-        AssertEx.False(second.Succeeded);
+        ProxyConfigurationReloadResultAssertions.Failed(second);
         AssertEx.Equal(1, store.Snapshot.Version);
     }
 
@@ -701,7 +713,7 @@ internal static class ConfigurationTests
         var store = new ProxyConfigurationStore();
         var service = CreateReloadService(temp.Path, store);
         var first = await service.ReloadAsync(CancellationToken.None);
-        AssertEx.True(first.Succeeded);
+        ProxyConfigurationReloadResultAssertions.Reloaded(first);
 
         File.WriteAllText(
             Path.Combine(temp.Path, "config", "sites", "home.json"),
@@ -709,7 +721,7 @@ internal static class ConfigurationTests
 
         var second = await service.ReloadAsync(CancellationToken.None);
 
-        AssertEx.True(second.Succeeded, string.Join("; ", second.Errors));
+        ProxyConfigurationReloadResultAssertions.Reloaded(second, string.Join("; ", second.Errors));
         AssertEx.Equal(2, store.Snapshot.Version);
         AssertEx.Equal(18081, store.Snapshot.Listeners[0].Port);
     }
@@ -722,7 +734,7 @@ internal static class ConfigurationTests
         var store = new ProxyConfigurationStore();
         var service = CreateReloadService(temp.Path, store);
         var first = await service.ReloadAsync(CancellationToken.None);
-        AssertEx.True(first.Succeeded);
+        ProxyConfigurationReloadResultAssertions.Reloaded(first);
 
         foreach (var siteFile in Directory.EnumerateFiles(Path.Combine(temp.Path, "config", "sites"), "*.json"))
         {
@@ -731,7 +743,7 @@ internal static class ConfigurationTests
 
         var second = await service.ReloadAsync(CancellationToken.None);
 
-        AssertEx.True(second.Succeeded, string.Join("; ", second.Errors));
+        ProxyConfigurationReloadResultAssertions.Reloaded(second, string.Join("; ", second.Errors));
         AssertEx.Equal(2, store.Snapshot.Version);
         AssertEx.Equal(0, store.Snapshot.Listeners.Count);
         AssertEx.Equal(0, store.Snapshot.Routes.Count);
@@ -746,8 +758,8 @@ internal static class ConfigurationTests
         var service = CreateReloadService(temp.Path, store);
         var result = await service.ReloadAsync(CancellationToken.None);
 
-        AssertEx.True(result.Succeeded);
-        var projection = AssertEx.NotNull(result.ActiveConfiguration);
+        var reload = ProxyConfigurationReloadResultAssertions.Reloaded(result);
+        var projection = reload.ActiveConfiguration;
         AssertEx.Equal(1, projection.Version);
         AssertEx.Equal("home", projection.Routes[0].Name);
         AssertEx.Equal(1, projection.SourceFiles.Count);
@@ -917,7 +929,7 @@ internal static class ConfigurationTests
         var store = new ProxyConfigurationStore();
         var service = CreateReloadService(temp.Path, store);
         var first = await service.ReloadAsync(CancellationToken.None);
-        AssertEx.True(first.Succeeded);
+        ProxyConfigurationReloadResultAssertions.Reloaded(first);
 
         File.WriteAllText(
             Path.Combine(temp.Path, "config", "sites", "home.json"),
@@ -948,7 +960,7 @@ internal static class ConfigurationTests
         var store = new ProxyConfigurationStore();
         var service = CreateReloadService(temp.Path, store);
         var first = await service.ReloadAsync(CancellationToken.None);
-        AssertEx.True(first.Succeeded);
+        ProxyConfigurationReloadResultAssertions.Reloaded(first);
 
         File.WriteAllText(Path.Combine(temp.Path, "config", "sites", "broken.json"), "{ nope");
         var validation = await service.ValidateAsync(CancellationToken.None);
@@ -975,7 +987,7 @@ internal static class ConfigurationTests
         var store = new ProxyConfigurationStore();
         var service = CreateReloadService(temp.Path, store);
         var first = await service.ReloadAsync(CancellationToken.None);
-        AssertEx.True(first.Succeeded);
+        ProxyConfigurationReloadResultAssertions.Reloaded(first);
         var normalizer = CreateNormalizer();
         var reloadAdministration = new ProxyConfigurationReloadAdministrationService<ProxyConfigurationProjection>(
             service);
@@ -1082,7 +1094,7 @@ internal static class ConfigurationTests
         var store = new ProxyConfigurationStore();
         var service = CreateReloadService(temp.Path, store);
         var result = await service.ReloadAsync(CancellationToken.None);
-        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
+        ProxyConfigurationReloadResultAssertions.Reloaded(result, string.Join("; ", result.Errors));
 
         var reloadAdministration = new ProxyConfigurationReloadAdministrationService<ProxyConfigurationProjection>(
             service);
@@ -1153,13 +1165,13 @@ internal static class ConfigurationTests
         var store = new ProxyConfigurationStore();
         var service = CreateReloadService(temp.Path, store);
         var first = await service.ReloadAsync(CancellationToken.None);
-        AssertEx.True(first.Succeeded);
+        ProxyConfigurationReloadResultAssertions.Reloaded(first);
         var loadedAt = store.Snapshot.LoadedAtUtc;
 
         File.WriteAllText(Path.Combine(temp.Path, "config", "sites", "broken.json"), "{ nope");
         var second = await service.ReloadAsync(CancellationToken.None);
 
-        AssertEx.False(second.Succeeded);
+        ProxyConfigurationReloadResultAssertions.Failed(second);
         AssertEx.Equal(1, store.Snapshot.Version);
         AssertEx.Equal(1, second.ActiveVersion);
         AssertEx.Equal(loadedAt, second.LastSuccessfulLoadAtUtc);
@@ -1174,12 +1186,12 @@ internal static class ConfigurationTests
         var store = new ProxyConfigurationStore();
         var service = CreateReloadService(temp.Path, store);
         var first = await service.ReloadAsync(CancellationToken.None);
-        AssertEx.True(first.Succeeded);
+        ProxyConfigurationReloadResultAssertions.Reloaded(first);
 
         WriteOperationalConfig(temp.Path, logMaxFileBytes: 1024, logMaxFiles: 0);
         var second = await service.ReloadAsync(CancellationToken.None);
 
-        AssertEx.False(second.Succeeded);
+        ProxyConfigurationReloadResultAssertions.Failed(second);
         AssertEx.Equal(1, store.Snapshot.Version);
         AssertEx.Equal(8192L, store.Snapshot.Observability.LogPersistence.MaxFileBytes);
         AssertEx.Equal(2, store.Snapshot.Observability.LogPersistence.MaxFiles);

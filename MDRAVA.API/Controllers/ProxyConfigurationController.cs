@@ -30,11 +30,12 @@ public sealed class ProxyConfigurationController : ControllerBase
     }
 
     [HttpPost("reload")]
-    public async ValueTask<ActionResult<ProxyConfigurationReloadResult<ProxyConfigurationProjection>>> Reload(
+    public async ValueTask<ActionResult<ProxyConfigurationReloadResponse<ProxyConfigurationProjection>>> Reload(
         CancellationToken cancellationToken)
     {
         var result = await _configurationReloads.ReloadAsync(cancellationToken);
-        return ProxyAdminHttpResultMapper.OkOrBadRequest(this, result, result.Succeeded);
+        var response = ProxyConfigurationReloadResponse<ProxyConfigurationProjection>.FromResult(result);
+        return ProxyAdminHttpResultMapper.OkOrBadRequest(this, response, response.Succeeded);
     }
 
     [HttpPost("validate")]

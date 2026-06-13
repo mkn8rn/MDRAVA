@@ -216,10 +216,10 @@ internal static class ClientHttp3Tests
                 .ReloadAsync(timeout.Token);
             await WaitForNoListenerAsync(runtime, "main", "quic", timeout.Token);
 
-            AssertEx.True(add.Succeeded, string.Join("; ", add.Errors));
-            AssertEx.True(remove.Succeeded, string.Join("; ", remove.Errors));
-            AssertEx.True(AssertEx.NotNull(add.ListenerReload).Added >= 1);
-            AssertEx.True(AssertEx.NotNull(remove.ListenerReload).Removed >= 1);
+            var addReload = ProxyConfigurationReloadResultAssertions.Reloaded(add, string.Join("; ", add.Errors));
+            var removeReload = ProxyConfigurationReloadResultAssertions.Reloaded(remove, string.Join("; ", remove.Errors));
+            AssertEx.True(addReload.ListenerReload.Added >= 1);
+            AssertEx.True(removeReload.ListenerReload.Removed >= 1);
         }
         finally
         {
@@ -253,7 +253,7 @@ internal static class ClientHttp3Tests
                 .ReloadAsync(timeout.Token);
             var after = await WaitForListenerAsync(runtime, "main", "quic", ProxyListenerState.Active, timeout.Token);
 
-            AssertEx.False(reload.Succeeded);
+            ProxyConfigurationReloadResultAssertions.Failed(reload);
             AssertEx.Equal(before.StartedAtUtc, after.StartedAtUtc);
         }
         finally
@@ -312,7 +312,7 @@ internal static class ClientHttp3Tests
                 timeout.Token,
                 certificateSubjectObserver: subject => afterSubject = subject);
 
-            AssertEx.True(reload.Succeeded, string.Join("; ", reload.Errors));
+            ProxyConfigurationReloadResultAssertions.Reloaded(reload, string.Join("; ", reload.Errors));
             AssertEx.Equal("200", HeaderValue(afterResponse.Headers, ":status"));
             AssertEx.Equal("cert-live", afterResponse.Body);
             AssertEx.True(beforeSubject.Contains("CN=localhost", StringComparison.Ordinal), beforeSubject);
@@ -367,7 +367,7 @@ internal static class ClientHttp3Tests
                 timeout.Token,
                 certificateSubjectObserver: subject => afterSubject = subject);
 
-            AssertEx.False(reload.Succeeded);
+            ProxyConfigurationReloadResultAssertions.Failed(reload);
             AssertEx.Equal("200", HeaderValue(beforeResponse.Headers, ":status"));
             AssertEx.Equal("200", HeaderValue(afterResponse.Headers, ":status"));
             AssertEx.True(beforeSubject.Contains("CN=localhost", StringComparison.Ordinal), beforeSubject);

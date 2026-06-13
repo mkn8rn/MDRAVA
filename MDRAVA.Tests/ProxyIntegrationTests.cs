@@ -697,7 +697,7 @@ internal static class ProxyIntegrationTests
             var store = host.Services.GetRequiredService<IProxyConfigurationStore>();
 
             AssertEx.True(firstResponse.EndsWith("old", StringComparison.Ordinal), firstResponse);
-            AssertEx.False(reload.Succeeded);
+            ProxyConfigurationReloadResultAssertions.Failed(reload);
             AssertEx.Equal(1, store.Snapshot.Version);
             AssertEx.Equal(upstreamPort, store.Snapshot.Routes[0].Upstreams[0].Port);
             AssertEx.True(secondResponse.EndsWith("old", StringComparison.Ordinal), secondResponse);
