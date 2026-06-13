@@ -152,6 +152,73 @@ internal static class AcmeTests
             ((AcmeCertificateIssueResult.FailedResult)failed).ErrorSummary);
     }
 
+    public static void AcmeRequestAndStatusRecordsCopyInputCollections()
+    {
+        var issueDomains = new List<string> { "home.example.test" };
+        var contactEmails = new List<string> { "ops@example.test" };
+        var issue = new AcmeCertificateIssueRequest(
+            CertificateId: "home-acme",
+            Domains: issueDomains,
+            DirectoryUrl: "https://acme.example.test/directory",
+            ContactEmails: contactEmails,
+            TermsAccepted: true);
+        var writeDomains = new List<string> { "home.example.test" };
+        var pfxBytes = new byte[] { 1, 2, 3 };
+        var write = new AcmeCertificateMaterialWriteRequest(
+            StoragePath: "acme",
+            CertificateId: "home-acme",
+            Domains: writeDomains,
+            DataDirectory: "data",
+            WrittenAtUtc: DateTimeOffset.UnixEpoch,
+            PfxBytes: pfxBytes);
+        var lifecycleDomains = new List<string> { "home.example.test" };
+        var lifecycle = new AcmeCertificateLifecycleStatus(
+            CertificateId: "home-acme",
+            Enabled: true,
+            Domains: lifecycleDomains,
+            Active: true,
+            Source: "acme",
+            NotBeforeUtc: DateTimeOffset.UnixEpoch,
+            NotAfterUtc: DateTimeOffset.UnixEpoch.AddDays(30),
+            RenewalDueAtUtc: DateTimeOffset.UnixEpoch.AddDays(20),
+            LastAttemptAtUtc: null,
+            LastSucceededAtUtc: DateTimeOffset.UnixEpoch,
+            LastFailedAtUtc: null,
+            NextAttemptNotBeforeUtc: null,
+            LastResult: "loaded",
+            ErrorSummary: null);
+        var certificates = new List<AcmeCertificateLifecycleStatus> { lifecycle };
+        var status = new AcmeStatus(
+            Enabled: true,
+            DirectoryUrl: "https://acme.example.test/directory",
+            UseStaging: false,
+            Certificates: certificates);
+        var replacementLifecycle = lifecycle with { CertificateId = "replacement" };
+
+        issueDomains[0] = "replacement.example.test";
+        contactEmails[0] = "security@example.test";
+        writeDomains[0] = "write-replacement.example.test";
+        pfxBytes[0] = 99;
+        lifecycleDomains[0] = "lifecycle-replacement.example.test";
+        certificates[0] = replacementLifecycle;
+        issueDomains.Clear();
+        contactEmails.Clear();
+        writeDomains.Clear();
+        lifecycleDomains.Clear();
+        certificates.Clear();
+
+        AssertEx.Equal("home.example.test", issue.Domains[0]);
+        AssertEx.Equal("ops@example.test", issue.ContactEmails[0]);
+        AssertEx.Equal("home.example.test", write.Domains[0]);
+        AssertEx.Equal(1, write.PfxBytes[0]);
+        AssertEx.Equal("home.example.test", lifecycle.Domains[0]);
+        AssertEx.Equal("home-acme", status.Certificates[0].CertificateId);
+        AssertEx.False(issue.Domains is string[], "ACME issue domains should not expose a mutable array.");
+        AssertEx.False(write.Domains is string[], "ACME material domains should not expose a mutable array.");
+        AssertEx.False(lifecycle.Domains is string[], "ACME lifecycle domains should not expose a mutable array.");
+        AssertEx.False(status.Certificates is AcmeCertificateLifecycleStatus[], "ACME status certificates should not expose a mutable array.");
+    }
+
     public static async Task AcmeRenewalStoresMaterialUnderCertsDirectory()
     {
         using var temp = TemporaryDirectory.Create();
