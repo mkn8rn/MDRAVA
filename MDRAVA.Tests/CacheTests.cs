@@ -25,8 +25,7 @@ internal static class CacheTests
 
         var result = await CreateLoader(temp.Path).LoadAsync(CancellationToken.None);
 
-        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
-        AssertEx.False(AssertEx.NotNull(result.Snapshot).Routes[0].Cache.Enabled);
+        AssertEx.False(ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(result).Routes[0].Cache.Enabled);
     }
 
     public static async Task DisabledCacheKeepsExistingProxyBehavior()

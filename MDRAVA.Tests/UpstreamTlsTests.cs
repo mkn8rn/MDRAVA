@@ -27,8 +27,7 @@ internal static class UpstreamTlsTests
 
         var result = await CreateLoader(temp.Path).LoadAsync(CancellationToken.None);
 
-        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
-        var upstream = AssertEx.NotNull(result.Snapshot).Routes[0].Upstreams[0];
+        var upstream = ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(result).Routes[0].Upstreams[0];
         AssertEx.Equal("http", upstream.Scheme);
         AssertEx.Equal("127.0.0.1:15000", upstream.Endpoint);
         AssertEx.True(upstream.Tls.ValidateCertificate);
@@ -46,8 +45,7 @@ internal static class UpstreamTlsTests
 
         var result = await CreateLoader(temp.Path).LoadAsync(CancellationToken.None);
 
-        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
-        var upstream = AssertEx.NotNull(result.Snapshot).Routes[0].Upstreams[0];
+        var upstream = ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(result).Routes[0].Upstreams[0];
         AssertEx.Equal("https", upstream.Scheme);
         AssertEx.Equal("app.internal", upstream.EffectiveSniHost);
         AssertEx.True(upstream.Tls.ValidateCertificate);
@@ -60,7 +58,7 @@ internal static class UpstreamTlsTests
 
         var result = await CreateLoader(temp.Path).LoadAsync(CancellationToken.None);
 
-        AssertEx.False(result.Succeeded);
+        ProxyConfigurationLoadResultAssertions.AssertFailed(result);
         AssertEx.True(result.Errors.Any(static error => error.Contains("Scheme", StringComparison.Ordinal)));
     }
 
@@ -79,7 +77,7 @@ internal static class UpstreamTlsTests
 
         var result = await CreateLoader(temp.Path).LoadAsync(CancellationToken.None);
 
-        AssertEx.False(result.Succeeded);
+        ProxyConfigurationLoadResultAssertions.AssertFailed(result);
         AssertEx.True(result.Errors.Any(static error => error.Contains("Address", StringComparison.Ordinal)));
     }
 
@@ -198,8 +196,7 @@ internal static class UpstreamTlsTests
 
         var result = await CreateLoader(temp.Path).LoadAsync(CancellationToken.None);
 
-        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
-        var upstream = AssertEx.NotNull(result.Snapshot).Routes[0].Upstreams[0];
+        var upstream = ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(result).Routes[0].Upstreams[0];
         AssertEx.True(upstream.Tls.ValidateCertificate);
     }
 
@@ -215,9 +212,9 @@ internal static class UpstreamTlsTests
 
         var result = await CreateLoader(temp.Path).LoadAsync(CancellationToken.None);
 
-        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
+        var snapshot = ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(result);
         var projection = ProxyConfigurationProjectionMapper.ToProjection(
-            AssertEx.NotNull(result.Snapshot),
+            snapshot,
             TestHttp3PlatformSupport.Supported);
         var upstream = projection.Routes[0].Upstreams[0];
         AssertEx.Equal("https", upstream.Scheme);
@@ -276,9 +273,9 @@ internal static class UpstreamTlsTests
             "\"upstreamTls\": { \"sniHost\": \"*.internal\" }");
         var wildcardResult = await CreateLoader(wildcardTemp.Path).LoadAsync(CancellationToken.None);
 
-        AssertEx.False(urlResult.Succeeded);
-        AssertEx.False(portResult.Succeeded);
-        AssertEx.False(wildcardResult.Succeeded);
+        ProxyConfigurationLoadResultAssertions.AssertFailed(urlResult);
+        ProxyConfigurationLoadResultAssertions.AssertFailed(portResult);
+        ProxyConfigurationLoadResultAssertions.AssertFailed(wildcardResult);
         AssertEx.True(urlResult.Errors.Any(static error => error.Contains("SniHost", StringComparison.Ordinal)));
         AssertEx.True(portResult.Errors.Any(static error => error.Contains("SniHost", StringComparison.Ordinal)));
         AssertEx.True(wildcardResult.Errors.Any(static error => error.Contains("SniHost", StringComparison.Ordinal)));

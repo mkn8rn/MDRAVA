@@ -185,7 +185,7 @@ internal static class ConfigurationTests
         using var temp = TemporaryDirectory.Create();
         WriteSite(temp.Path, "home.json", port: 18080, upstreamPort: 15000);
         var load = await CreateLoader(temp.Path).LoadAsync(CancellationToken.None);
-        var snapshot = AssertEx.NotNull(load.Snapshot);
+        var snapshot = ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(load);
         var loaded = ProxyConfigurationLoadResult.Loaded(load.SourceDirectory, snapshot, load.Discovery);
         var validated = ProxyConfigurationLoadResult.Validated(
             load.SourceDirectory,
@@ -201,19 +201,20 @@ internal static class ConfigurationTests
             [ProxyConfigurationFileError.ForPath("sites/broken.json", "parse failed")],
             wouldBeVersion: null);
 
-        AssertEx.True(loaded.Succeeded);
-        AssertEx.Equal(snapshot, AssertEx.NotNull(loaded.Snapshot));
-        AssertEx.Equal(snapshot.Version, loaded.WouldBeVersion!.Value);
-        AssertEx.Equal(0, loaded.Errors.Count);
-        AssertEx.True(validated.Succeeded);
-        AssertEx.Equal<ProxyConfigurationSnapshot?>(null, validated.Snapshot);
-        AssertEx.Equal(snapshot.Version + 1, validated.WouldBeVersion!.Value);
-        AssertEx.Equal(0, validated.Errors.Count);
-        AssertEx.False(failed.Succeeded);
-        AssertEx.Equal<ProxyConfigurationSnapshot?>(null, failed.Snapshot);
-        AssertEx.Equal<int?>(null, failed.WouldBeVersion);
-        AssertEx.Equal("sites/broken.json: parse failed", failed.Errors[0]);
-        AssertEx.Equal("sites/broken.json", failed.FileErrors[0].Path);
+        AssertEx.True(loaded is ProxyConfigurationLoadResult.LoadedResult);
+        var loadedResult = (ProxyConfigurationLoadResult.LoadedResult)loaded;
+        AssertEx.Equal(snapshot, loadedResult.Snapshot);
+        AssertEx.Equal(snapshot.Version, loadedResult.WouldBeVersion!.Value);
+        AssertEx.Equal(0, loadedResult.Errors.Count);
+        AssertEx.True(validated is ProxyConfigurationLoadResult.ValidatedResult);
+        var validatedResult = (ProxyConfigurationLoadResult.ValidatedResult)validated;
+        AssertEx.Equal(snapshot.Version + 1, validatedResult.WouldBeVersion!.Value);
+        AssertEx.Equal(0, validatedResult.Errors.Count);
+        AssertEx.True(failed is ProxyConfigurationLoadResult.FailedResult);
+        var failedResult = (ProxyConfigurationLoadResult.FailedResult)failed;
+        AssertEx.Equal<int?>(null, failedResult.WouldBeVersion);
+        AssertEx.Equal("sites/broken.json: parse failed", failedResult.Errors[0]);
+        AssertEx.Equal("sites/broken.json", failedResult.FileErrors[0].Path);
     }
 
     public static void DataDirectoryUsesConfiguredOverride()
@@ -287,8 +288,7 @@ internal static class ConfigurationTests
 
         var result = await loader.LoadAsync(CancellationToken.None);
 
-        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
-        var snapshot = AssertEx.NotNull(result.Snapshot);
+        var snapshot = ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(result);
         AssertEx.Equal(loadedAtUtc, result.AttemptedAtUtc);
         AssertEx.Equal(loadedAtUtc, snapshot.LoadedAtUtc);
         AssertEx.Equal(Path.Combine(temp.Path, "config", "sites"), result.SourceDirectory);
@@ -309,10 +309,8 @@ internal static class ConfigurationTests
         var jsonResult = await CreateLoader(jsonTemp.Path).LoadAsync(CancellationToken.None);
         var yamlResult = await CreateLoader(yamlTemp.Path).LoadAsync(CancellationToken.None);
 
-        AssertEx.True(jsonResult.Succeeded, string.Join("; ", jsonResult.Errors));
-        AssertEx.True(yamlResult.Succeeded, string.Join("; ", yamlResult.Errors));
-        var jsonSnapshot = AssertEx.NotNull(jsonResult.Snapshot);
-        var yamlSnapshot = AssertEx.NotNull(yamlResult.Snapshot);
+        var jsonSnapshot = ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(jsonResult);
+        var yamlSnapshot = ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(yamlResult);
         AssertEx.Equal(jsonSnapshot.Listeners[0].Name, yamlSnapshot.Listeners[0].Name);
         AssertEx.Equal(jsonSnapshot.Listeners[0].Port, yamlSnapshot.Listeners[0].Port);
         AssertEx.Equal(jsonSnapshot.Routes[0].Name, yamlSnapshot.Routes[0].Name);
@@ -331,7 +329,7 @@ internal static class ConfigurationTests
 
         var result = await loader.LoadAsync(CancellationToken.None);
 
-        AssertEx.False(result.Succeeded);
+        ProxyConfigurationLoadResultAssertions.AssertFailed(result);
         AssertEx.Equal(attemptedAtUtc, result.AttemptedAtUtc);
         AssertEx.True(result.FileErrors.Any(error => string.Equals(error.Path, yamlPath, StringComparison.OrdinalIgnoreCase)));
         AssertEx.True(result.Errors.Any(static error => error.Contains("YAML", StringComparison.OrdinalIgnoreCase)), string.Join("; ", result.Errors));
@@ -349,8 +347,7 @@ internal static class ConfigurationTests
 
         var result = await loader.LoadAsync(CancellationToken.None);
 
-        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
-        var route = AssertEx.NotNull(result.Snapshot).Routes[0];
+        var route = ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(result).Routes[0];
         AssertEx.Equal("round-robin", route.LoadBalancingPolicy);
         AssertEx.True(route.HealthCheck.Enabled);
         AssertEx.Equal(2, route.Upstreams.Count);
@@ -366,7 +363,7 @@ internal static class ConfigurationTests
 
         var result = await loader.LoadAsync(CancellationToken.None);
 
-        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
+        var snapshot = ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(result);
         AssertEx.True(Directory.Exists(configDirectory));
         AssertEx.True(Directory.Exists(sitesDirectory));
         AssertEx.True(Directory.Exists(Path.Combine(temp.Path, "logs")));
@@ -374,7 +371,6 @@ internal static class ConfigurationTests
         AssertEx.True(Directory.Exists(Path.Combine(temp.Path, "state")));
         AssertEx.True(File.Exists(Path.Combine(configDirectory, "proxy.json")));
         AssertEx.True(File.Exists(Path.Combine(sitesDirectory, "example.site.yaml")));
-        var snapshot = AssertEx.NotNull(result.Snapshot);
         AssertEx.Equal(0, snapshot.Listeners.Count);
         AssertEx.Equal(0, snapshot.Routes.Count);
         AssertEx.Equal(0, snapshot.SourceFiles.Count);
@@ -395,10 +391,10 @@ internal static class ConfigurationTests
 
         var result = await loader.LoadAsync(CancellationToken.None);
 
-        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
+        var snapshot = ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(result);
         AssertEx.Equal("{ \"observability\": { \"accessLogEnabled\": false } }", File.ReadAllText(proxyPath));
         AssertEx.Equal("# custom example", File.ReadAllText(examplePath));
-        AssertEx.False(AssertEx.NotNull(result.Snapshot).Observability.AccessLogEnabled);
+        AssertEx.False(snapshot.Observability.AccessLogEnabled);
     }
 
     public static async Task LoaderLoadsExistingEmptySitesDirectory()
@@ -409,8 +405,7 @@ internal static class ConfigurationTests
 
         var result = await loader.LoadAsync(CancellationToken.None);
 
-        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
-        var snapshot = AssertEx.NotNull(result.Snapshot);
+        var snapshot = ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(result);
         AssertEx.Equal(0, snapshot.Listeners.Count);
         AssertEx.Equal(0, snapshot.Routes.Count);
     }
@@ -423,9 +418,9 @@ internal static class ConfigurationTests
 
         var result = await loader.LoadAsync(CancellationToken.None);
 
-        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
+        var snapshot = ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(result);
         AssertEx.True(File.Exists(Path.Combine(temp.Path, "config", "proxy.json")));
-        AssertEx.Equal(TimeSpan.FromSeconds(10), AssertEx.NotNull(result.Snapshot).Timeouts.ClientRequestHeadTimeout);
+        AssertEx.Equal(TimeSpan.FromSeconds(10), snapshot.Timeouts.ClientRequestHeadTimeout);
     }
 
     public static async Task LoaderLoadsExplicitOperationalTimeouts()
@@ -437,9 +432,9 @@ internal static class ConfigurationTests
 
         var result = await loader.LoadAsync(CancellationToken.None);
 
-        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
-        AssertEx.Equal(TimeSpan.FromMilliseconds(250), AssertEx.NotNull(result.Snapshot).Timeouts.ClientRequestHeadTimeout);
-        AssertEx.Equal(TimeSpan.FromMilliseconds(750), AssertEx.NotNull(result.Snapshot).Timeouts.TunnelIdleTimeout);
+        var snapshot = ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(result);
+        AssertEx.Equal(TimeSpan.FromMilliseconds(250), snapshot.Timeouts.ClientRequestHeadTimeout);
+        AssertEx.Equal(TimeSpan.FromMilliseconds(750), snapshot.Timeouts.TunnelIdleTimeout);
     }
 
     public static async Task LoaderLoadsObservabilityDefaults()
@@ -450,8 +445,7 @@ internal static class ConfigurationTests
 
         var result = await loader.LoadAsync(CancellationToken.None);
 
-        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
-        var observability = AssertEx.NotNull(result.Snapshot).Observability;
+        var observability = ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(result).Observability;
         AssertEx.True(observability.AccessLogEnabled);
         AssertEx.Equal(500, observability.RecentDiagnosticsCapacity);
         AssertEx.True(observability.LogPersistence.AccessLogEnabled);
@@ -476,8 +470,7 @@ internal static class ConfigurationTests
 
         var result = await loader.LoadAsync(CancellationToken.None);
 
-        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
-        var observability = AssertEx.NotNull(result.Snapshot).Observability;
+        var observability = ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(result).Observability;
         AssertEx.False(observability.AccessLogEnabled);
         AssertEx.Equal(12, observability.RecentDiagnosticsCapacity);
         AssertEx.False(observability.LogPersistence.AccessLogEnabled);
@@ -495,7 +488,7 @@ internal static class ConfigurationTests
 
         var result = await loader.LoadAsync(CancellationToken.None);
 
-        AssertEx.False(result.Succeeded);
+        ProxyConfigurationLoadResultAssertions.AssertFailed(result);
         AssertEx.True(result.Errors.Any(static error => error.Contains("RecentDiagnosticsCapacity", StringComparison.Ordinal)));
     }
 
@@ -508,7 +501,7 @@ internal static class ConfigurationTests
 
         var result = await loader.LoadAsync(CancellationToken.None);
 
-        AssertEx.False(result.Succeeded);
+        ProxyConfigurationLoadResultAssertions.AssertFailed(result);
         AssertEx.True(result.Errors.Any(static error => error.Contains("MaxFileBytes", StringComparison.Ordinal)), string.Join("; ", result.Errors));
         AssertEx.True(result.Errors.Any(static error => error.Contains("MaxFiles", StringComparison.Ordinal)), string.Join("; ", result.Errors));
     }
@@ -521,8 +514,7 @@ internal static class ConfigurationTests
 
         var result = await loader.LoadAsync(CancellationToken.None);
 
-        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
-        var limits = AssertEx.NotNull(result.Snapshot).Limits;
+        var limits = ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(result).Limits;
         AssertEx.Equal(4096, limits.MaxActiveClientConnections);
         AssertEx.Equal(128, limits.MaxConcurrentTlsHandshakes);
         AssertEx.Equal(240, limits.RequestsPerMinutePerIp);
@@ -538,7 +530,7 @@ internal static class ConfigurationTests
 
         var result = await loader.LoadAsync(CancellationToken.None);
 
-        AssertEx.False(result.Succeeded);
+        ProxyConfigurationLoadResultAssertions.AssertFailed(result);
         AssertEx.True(result.Errors.Any(static error => error.Contains("MaxActiveClientConnections", StringComparison.Ordinal)));
     }
 
@@ -551,7 +543,7 @@ internal static class ConfigurationTests
 
         var result = await loader.LoadAsync(CancellationToken.None);
 
-        AssertEx.False(result.Succeeded);
+        ProxyConfigurationLoadResultAssertions.AssertFailed(result);
         AssertEx.True(result.Errors.Count > 0);
     }
 
@@ -564,7 +556,7 @@ internal static class ConfigurationTests
 
         var result = await loader.LoadAsync(CancellationToken.None);
 
-        AssertEx.False(result.Succeeded);
+        ProxyConfigurationLoadResultAssertions.AssertFailed(result);
         AssertEx.True(result.Errors.Any(static error => error.Contains("MaxActiveUpgradedTunnels", StringComparison.Ordinal)));
     }
 
@@ -579,8 +571,7 @@ internal static class ConfigurationTests
 
         var result = await loader.LoadAsync(CancellationToken.None);
 
-        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
-        var snapshot = AssertEx.NotNull(result.Snapshot);
+        var snapshot = ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(result);
         AssertEx.Equal(RuntimeListenerTransport.Https, snapshot.Listeners[0].Transport);
         AssertEx.Equal(1, snapshot.Certificates.Count);
         var projection = ProxyConfigurationProjectionMapper.ToProjection(
@@ -598,7 +589,7 @@ internal static class ConfigurationTests
 
         var result = await loader.LoadAsync(CancellationToken.None);
 
-        AssertEx.False(result.Succeeded);
+        ProxyConfigurationLoadResultAssertions.AssertFailed(result);
         AssertEx.True(result.Errors.Any(static error => error.Contains("unknown certificate", StringComparison.OrdinalIgnoreCase)));
     }
 
@@ -611,7 +602,7 @@ internal static class ConfigurationTests
 
         var result = await loader.LoadAsync(CancellationToken.None);
 
-        AssertEx.False(result.Succeeded);
+        ProxyConfigurationLoadResultAssertions.AssertFailed(result);
         AssertEx.True(result.Errors.Any(static error => error.Contains("file does not exist", StringComparison.OrdinalIgnoreCase)));
     }
 
@@ -626,7 +617,7 @@ internal static class ConfigurationTests
 
         var result = await loader.LoadAsync(CancellationToken.None);
 
-        AssertEx.False(result.Succeeded);
+        ProxyConfigurationLoadResultAssertions.AssertFailed(result);
         AssertEx.True(result.Errors.Any(static error => error.Contains("could not be loaded", StringComparison.OrdinalIgnoreCase)));
     }
 
@@ -647,7 +638,7 @@ internal static class ConfigurationTests
 
         var result = await loader.LoadAsync(CancellationToken.None);
 
-        AssertEx.False(result.Succeeded);
+        ProxyConfigurationLoadResultAssertions.AssertFailed(result);
         AssertEx.True(result.Errors.Any(static error => error.Contains("duplicated", StringComparison.OrdinalIgnoreCase)));
     }
 
@@ -663,8 +654,7 @@ internal static class ConfigurationTests
 
         var result = await loader.LoadAsync(CancellationToken.None);
 
-        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
-        var snapshot = AssertEx.NotNull(result.Snapshot);
+        var snapshot = ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(result);
         AssertEx.Equal(1, snapshot.Listeners.Count);
         AssertEx.Equal(2, snapshot.Listeners[0].SniCertificates.Count);
         AssertEx.Equal(2, snapshot.Routes.Count);
@@ -679,9 +669,8 @@ internal static class ConfigurationTests
 
         var result = await loader.LoadAsync(CancellationToken.None);
 
-        AssertEx.False(result.Succeeded);
+        ProxyConfigurationLoadResultAssertions.AssertFailed(result);
         AssertEx.True(result.Errors.Count > 0);
-        AssertEx.Equal(null, result.Snapshot);
     }
 
     public static async Task ReloadPreservesActiveSnapshotWhenLoadFails()
@@ -832,7 +821,7 @@ internal static class ConfigurationTests
 
         var result = await loader.LoadAsync(CancellationToken.None);
 
-        AssertEx.False(result.Succeeded);
+        ProxyConfigurationLoadResultAssertions.AssertFailed(result);
         AssertEx.True(result.Errors.Any(static error => error.Contains("restricted", StringComparison.OrdinalIgnoreCase)), string.Join("; ", result.Errors));
     }
 
@@ -880,7 +869,7 @@ internal static class ConfigurationTests
 
         var result = await CreateLoader(temp.Path).LoadAsync(CancellationToken.None);
 
-        AssertEx.False(result.Succeeded);
+        ProxyConfigurationLoadResultAssertions.AssertFailed(result);
         AssertEx.True(result.Errors.Any(static error => error.Contains("restricted", StringComparison.OrdinalIgnoreCase)), string.Join("; ", result.Errors));
     }
 
@@ -913,8 +902,8 @@ internal static class ConfigurationTests
         var first = await CreateLoader(temp.Path).LoadAsync(CancellationToken.None);
         var second = await CreateLoader(temp.Path).LoadAsync(CancellationToken.None);
 
-        AssertEx.False(first.Succeeded);
-        AssertEx.False(second.Succeeded);
+        ProxyConfigurationLoadResultAssertions.AssertFailed(first);
+        ProxyConfigurationLoadResultAssertions.AssertFailed(second);
         AssertEx.Equal(string.Join("\n", first.Errors), string.Join("\n", second.Errors));
         AssertEx.True(first.Errors.Any(static error => error.Contains("default certificate", StringComparison.OrdinalIgnoreCase)), string.Join("; ", first.Errors));
     }
@@ -1106,9 +1095,9 @@ internal static class ConfigurationTests
 
         var result = await CreateLoader(temp.Path).LoadAsync(CancellationToken.None);
 
-        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
+        var snapshot = ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(result);
         var projection = ProxyConfigurationProjectionMapper.ToProjection(
-            AssertEx.NotNull(result.Snapshot),
+            snapshot,
             TestHttp3PlatformSupport.Supported);
         AssertEx.True(projection.Certificates[0].NotAfter < DateTime.UtcNow);
         AssertEx.True(projection.Certificates[0].NotBefore < projection.Certificates[0].NotAfter);
@@ -1129,9 +1118,9 @@ internal static class ConfigurationTests
 
         var result = await CreateLoader(temp.Path).LoadAsync(CancellationToken.None);
 
-        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
+        var snapshot = ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(result);
         var projection = ProxyConfigurationProjectionMapper.ToProjection(
-            AssertEx.NotNull(result.Snapshot),
+            snapshot,
             TestHttp3PlatformSupport.Supported);
         AssertEx.True(projection.Certificates[0].NotBefore > DateTime.UtcNow);
         AssertEx.True(projection.Certificates[0].NotAfter > projection.Certificates[0].NotBefore);

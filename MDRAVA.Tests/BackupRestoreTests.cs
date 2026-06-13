@@ -283,7 +283,7 @@ internal static class BackupRestoreTests
         var store = new ProxyConfigurationStore();
         var loader = CreateLoader(temp.Path);
         var load = await loader.LoadAsync(CancellationToken.None);
-        store.Replace(AssertEx.NotNull(load.Snapshot));
+        store.Replace(ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(load));
         var loadedAt = store.Snapshot.LoadedAtUtc;
         File.WriteAllText(Path.Combine(temp.Path, "config", "sites", "broken.json"), "{ nope");
 
@@ -300,7 +300,7 @@ internal static class BackupRestoreTests
         using var temp = TemporaryDirectory.Create();
         var loader = CreateLoader(temp.Path);
         var load = await loader.LoadAsync(CancellationToken.None);
-        AssertEx.True(load.Succeeded, string.Join(";", load.Errors));
+        ProxyConfigurationLoadResultAssertions.AssertLoaded(load);
         var generatedAtUtc = new DateTimeOffset(2026, 6, 10, 8, 5, 0, TimeSpan.Zero);
 
         var result = await CreateService(temp.Path, loader: loader, timeProvider: new FixedTimeProvider(generatedAtUtc)).ValidateAsync(CancellationToken.None);

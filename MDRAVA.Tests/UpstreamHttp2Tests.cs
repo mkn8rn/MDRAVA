@@ -30,8 +30,9 @@ internal static class UpstreamHttp2Tests
 
         var result = await CreateLoader(temp.Path).LoadAsync(CancellationToken.None);
 
-        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
-        AssertEx.Equal(RuntimeUpstreamProtocol.Http1, AssertEx.NotNull(result.Snapshot).Routes[0].Upstreams[0].Protocol);
+        AssertEx.Equal(
+            RuntimeUpstreamProtocol.Http1,
+            ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(result).Routes[0].Upstreams[0].Protocol);
     }
 
     public static void Http2UpstreamRequiresHttps()

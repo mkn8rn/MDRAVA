@@ -48,8 +48,7 @@ internal static class UpstreamHttp3Tests
 
         var result = await CreateLoader(temp.Path).LoadAsync(CancellationToken.None);
 
-        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
-        var upstream = AssertEx.NotNull(result.Snapshot).Routes[0].Upstreams[0];
+        var upstream = ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(result).Routes[0].Upstreams[0];
         AssertEx.Equal(RuntimeUpstreamProtocol.Http3, upstream.Protocol);
         AssertEx.Equal("https", upstream.Scheme);
     }
@@ -63,8 +62,9 @@ internal static class UpstreamHttp3Tests
             SiteJson(proxyPort: 18080, upstreamPort: 18443));
 
         var result = await CreateLoader(temp.Path).LoadAsync(CancellationToken.None);
+        var snapshot = ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(result);
         var projection = ProxyConfigurationProjectionMapper.ToProjection(
-            AssertEx.NotNull(result.Snapshot),
+            snapshot,
             TestHttp3PlatformSupport.Supported);
 
         AssertEx.True(projection.Http3.UpstreamHttp3Configured);

@@ -25,8 +25,7 @@ internal static class AcmeTests
 
         var result = await CreateLoader(temp.Path).LoadAsync(CancellationToken.None);
 
-        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
-        var snapshot = AssertEx.NotNull(result.Snapshot);
+        var snapshot = ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(result);
         var certificate = snapshot.Certificates["manual-cert"];
         AssertEx.Equal("manualPfx", certificate.Source);
         var projection = ProxyConfigurationProjectionMapper.ToProjection(
@@ -227,8 +226,9 @@ internal static class AcmeTests
 
         var result = await CreateLoader(temp.Path).LoadAsync(CancellationToken.None);
 
-        AssertEx.True(result.Succeeded, string.Join("; ", result.Errors));
-        AssertEx.Equal("acme", AssertEx.NotNull(result.Snapshot).Certificates["home-acme"].Source);
+        AssertEx.Equal(
+            "acme",
+            ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(result).Certificates["home-acme"].Source);
     }
 
     public static async Task FailedAcmeRenewalPreservesCurrentActiveCertificate()

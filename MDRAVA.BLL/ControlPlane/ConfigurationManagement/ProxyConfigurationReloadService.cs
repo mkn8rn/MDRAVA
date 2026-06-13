@@ -39,25 +39,26 @@ public sealed class ProxyConfigurationReloadService
         CancellationToken cancellationToken)
     {
         var loadResult = await _loader.LoadAsync(cancellationToken);
-        if (!loadResult.Succeeded || loadResult.Snapshot is null)
+        if (loadResult is ProxyConfigurationLoadResult.FailedResult failedLoad)
         {
             _metrics.ConfigReloadFailed();
-            _events.LoadFailed(loadResult.SourceDirectory, loadResult.Errors);
+            _events.LoadFailed(failedLoad.SourceDirectory, failedLoad.Errors);
 
             var existing = ReadExistingSnapshot();
             return ProxyConfigurationReloadResult<ProxyConfigurationProjection>.LoadFailed(
-                sourceDirectory: loadResult.SourceDirectory,
-                attemptedAtUtc: loadResult.AttemptedAtUtc,
+                sourceDirectory: failedLoad.SourceDirectory,
+                attemptedAtUtc: failedLoad.AttemptedAtUtc,
                 activeVersion: existing?.Version,
                 loadedAtUtc: existing?.LoadedAtUtc,
-                discovery: loadResult.Discovery,
-                errors: loadResult.Errors,
-                fileErrors: loadResult.FileErrors,
+                discovery: failedLoad.Discovery,
+                errors: failedLoad.Errors,
+                fileErrors: failedLoad.FileErrors,
                 activeConfiguration: existing is null ? null : ToProjection(existing));
         }
 
+        var loaded = (ProxyConfigurationLoadResult.LoadedResult)loadResult;
         var listenerReload = await _listenerReloadApplier.ApplyReloadAsync(
-            loadResult.Snapshot,
+            loaded.Snapshot,
             candidate => _store.Replace(candidate),
             cancellationToken);
         if (!listenerReload.Succeeded)
@@ -65,11 +66,11 @@ public sealed class ProxyConfigurationReloadService
             _metrics.ConfigReloadFailed();
             var existing = ReadExistingSnapshot();
             return ProxyConfigurationReloadResult<ProxyConfigurationProjection>.ListenerReloadFailed(
-                sourceDirectory: loadResult.SourceDirectory,
-                attemptedAtUtc: loadResult.AttemptedAtUtc,
+                sourceDirectory: loaded.SourceDirectory,
+                attemptedAtUtc: loaded.AttemptedAtUtc,
                 activeVersion: existing?.Version,
                 loadedAtUtc: existing?.LoadedAtUtc,
-                discovery: loadResult.Discovery,
+                discovery: loaded.Discovery,
                 listenerReload: listenerReload,
                 activeConfiguration: existing is null ? null : ToProjection(existing));
         }
@@ -81,10 +82,10 @@ public sealed class ProxyConfigurationReloadService
 
         return ProxyConfigurationReloadResult<ProxyConfigurationProjection>.Reloaded(
             sourceDirectory: snapshot.SourceDirectory,
-            attemptedAtUtc: loadResult.AttemptedAtUtc,
+            attemptedAtUtc: loaded.AttemptedAtUtc,
             activeVersion: snapshot.Version,
             loadedAtUtc: snapshot.LoadedAtUtc,
-            discovery: loadResult.Discovery,
+            discovery: loaded.Discovery,
             listenerReload: listenerReload,
             activeConfiguration: ToProjection(snapshot));
     }
@@ -95,28 +96,29 @@ public sealed class ProxyConfigurationReloadService
         var existing = ReadExistingSnapshot();
         int? activeVersion = existing?.Version;
         var lastSuccessfulLoadAtUtc = existing?.LoadedAtUtc;
-        if (loadResult.Succeeded)
+        if (loadResult is ProxyConfigurationLoadResult.ValidatedResult validated)
         {
             return ProxyConfigurationValidationResult.Valid(
-                sourceDirectory: loadResult.SourceDirectory,
-                attemptedAtUtc: loadResult.AttemptedAtUtc,
+                sourceDirectory: validated.SourceDirectory,
+                attemptedAtUtc: validated.AttemptedAtUtc,
                 activeVersion: activeVersion,
                 lastSuccessfulLoadAtUtc: lastSuccessfulLoadAtUtc,
-                wouldBeVersion: loadResult.WouldBeVersion,
-                sourceFiles: loadResult.SourceFiles,
-                discovery: loadResult.Discovery);
+                wouldBeVersion: validated.WouldBeVersion,
+                sourceFiles: validated.SourceFiles,
+                discovery: validated.Discovery);
         }
 
+        var failedValidation = (ProxyConfigurationLoadResult.FailedResult)loadResult;
         return ProxyConfigurationValidationResult.Invalid(
-            sourceDirectory: loadResult.SourceDirectory,
-            attemptedAtUtc: loadResult.AttemptedAtUtc,
+            sourceDirectory: failedValidation.SourceDirectory,
+            attemptedAtUtc: failedValidation.AttemptedAtUtc,
             activeVersion: activeVersion,
             lastSuccessfulLoadAtUtc: lastSuccessfulLoadAtUtc,
-            wouldBeVersion: loadResult.WouldBeVersion,
-            sourceFiles: loadResult.SourceFiles,
-            discovery: loadResult.Discovery,
-            errors: loadResult.Errors,
-            fileErrors: loadResult.FileErrors);
+            wouldBeVersion: failedValidation.WouldBeVersion,
+            sourceFiles: failedValidation.SourceFiles,
+            discovery: failedValidation.Discovery,
+            errors: failedValidation.Errors,
+            fileErrors: failedValidation.FileErrors);
     }
 
     private ProxyConfigurationSnapshot? ReadExistingSnapshot()
