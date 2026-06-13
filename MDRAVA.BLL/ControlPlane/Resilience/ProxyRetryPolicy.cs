@@ -57,6 +57,15 @@ public static class ProxyRetryPolicy
             && retry.RetryOnStatusCodes.Any(code => code == statusCode);
     }
 
+    public static bool ShouldSuppressAttemptFailureResponse(
+        bool retryAllowed,
+        int attempt,
+        int maxAttempts)
+    {
+        return retryAllowed
+            && attempt < maxAttempts;
+    }
+
     public static bool DidExhaustAttempts(
         RuntimeRetryPolicy retry,
         ForwardingResult result,

@@ -593,6 +593,22 @@ internal static class ResilienceTests
         AssertEx.False(ProxyRetryPolicy.ShouldSuppressRetryableStatusResponse(retry with { Enabled = false }, 503, true));
     }
 
+    public static void RetryPolicySuppressesAttemptFailureOnlyBeforeFinalAttempt()
+    {
+        AssertEx.True(ProxyRetryPolicy.ShouldSuppressAttemptFailureResponse(
+            retryAllowed: true,
+            attempt: 1,
+            maxAttempts: 2));
+        AssertEx.False(ProxyRetryPolicy.ShouldSuppressAttemptFailureResponse(
+            retryAllowed: true,
+            attempt: 2,
+            maxAttempts: 2));
+        AssertEx.False(ProxyRetryPolicy.ShouldSuppressAttemptFailureResponse(
+            retryAllowed: false,
+            attempt: 1,
+            maxAttempts: 2));
+    }
+
     public static void RetryPolicyNamesAdmissionDecisions()
     {
         var retryRoute = Route([]) with

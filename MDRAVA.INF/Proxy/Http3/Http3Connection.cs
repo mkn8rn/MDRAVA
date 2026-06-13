@@ -634,7 +634,10 @@ public sealed class Http3Connection
             }
 
             context.SetUpstream(ProxyRequestContextRuntimeMapper.ToRequestUpstream(selection.Upstream));
-            var suppressGeneratedFailureResponse = retryAllowed && attempt < maxAttempts;
+            var suppressGeneratedFailureResponse = ProxyRetryPolicy.ShouldSuppressAttemptFailureResponse(
+                retryAllowed,
+                attempt,
+                maxAttempts);
             var translator = new Http3ResponseTranslationStream(
                 this,
                 stream,

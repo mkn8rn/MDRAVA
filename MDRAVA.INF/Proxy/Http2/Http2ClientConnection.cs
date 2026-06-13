@@ -740,7 +740,10 @@ public sealed class Http2ClientConnection
             }
 
             context.SetUpstream(ProxyRequestContextRuntimeMapper.ToRequestUpstream(selection.Upstream));
-            var suppressGeneratedFailureResponse = retryAllowed && attempt < maxAttempts;
+            var suppressGeneratedFailureResponse = ProxyRetryPolicy.ShouldSuppressAttemptFailureResponse(
+                retryAllowed,
+                attempt,
+                maxAttempts);
             var translator = new Http2ResponseTranslationStream(
                 this,
                 streamId,
