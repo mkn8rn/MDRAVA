@@ -112,7 +112,7 @@ internal static partial class TestRegistry
     Test("Config normalizer rejects missing request body", Sync(ConfigurationTests.ConfigNormalizerRejectsMissingRequestBody), TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
     Test("Config normalizer rejects incomplete request fields", Sync(ConfigurationTests.ConfigNormalizerRejectsIncompleteRequestFields), TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
     Test("Config normalize controller rejects missing request body", Sync(ConfigurationTests.ConfigNormalizeControllerRejectsMissingRequestBody), TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
-    Test("Effective config projection redacts certificate secrets", ConfigurationTests.EffectiveConfigProjectionRedactsCertificateSecrets, TestTaxonomy.Config, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
+    Test("Effective config response redacts certificate secrets", ConfigurationTests.EffectiveConfigResponseRedactsCertificateSecrets, TestTaxonomy.Config, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),
     Test("Expired certificate projection keeps validity window visible", ConfigurationTests.ExpiredCertificateProjectionKeepsValidityWindowVisible, TestTaxonomy.Config, TestTaxonomy.Tls),
     Test("Not-yet-valid certificate projection keeps validity window visible", ConfigurationTests.NotYetValidCertificateProjectionKeepsValidityWindowVisible, TestTaxonomy.Config, TestTaxonomy.Tls),
     Test("Reload failure reports per-file error and preserves active config", ConfigurationTests.ReloadFailureReportsPerFileErrorAndPreservesActiveConfig, TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),

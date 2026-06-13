@@ -1097,7 +1097,7 @@ internal static class ConfigurationTests
         AssertEx.True(normalize.Errors.Any(static error => error.Contains("request body is required", StringComparison.Ordinal)), string.Join("; ", normalize.Errors));
     }
 
-    public static async Task EffectiveConfigProjectionRedactsCertificateSecrets()
+    public static async Task EffectiveConfigResponseRedactsCertificateSecrets()
     {
         using var temp = TemporaryDirectory.Create();
         var certificatePath = Path.Combine(temp.Path, "certs", "home.pfx");
