@@ -153,6 +153,89 @@ internal static class MetricsTests
         AssertEx.False(configuration.Http3Facts.UpstreamMultiplexingConfigured);
     }
 
+    public static void MetricsExportInputMapperCopiesSourceLists()
+    {
+        var upstreamHealth = new List<ProxyUpstreamStatus>
+        {
+            new(
+                "route-a",
+                "upstream-a",
+                "127.0.0.1:5000",
+                "http",
+                TlsCertificateValidationEnabled: true,
+                SniHost: null,
+                HealthCheckEnabled: true,
+                UpstreamHealthState.Healthy,
+                LastHealthCheckResult: "success",
+                LastHealthCheckAtUtc: DateTimeOffset.UnixEpoch,
+                ConsecutiveSuccesses: 1,
+                ConsecutiveFailures: 0,
+                SelectedRequests: 3,
+                RequestFailures: 0)
+        };
+        var acmeCertificates = new List<AcmeCertificateLifecycleStatus>
+        {
+            new(
+                "home-cert",
+                Enabled: true,
+                Domains: ["home.test"],
+                Active: true,
+                Source: "acme",
+                NotBeforeUtc: DateTimeOffset.UnixEpoch,
+                NotAfterUtc: DateTimeOffset.UnixEpoch.AddDays(30),
+                RenewalDueAtUtc: DateTimeOffset.UnixEpoch.AddDays(20),
+                LastAttemptAtUtc: DateTimeOffset.UnixEpoch.AddHours(1),
+                LastSucceededAtUtc: DateTimeOffset.UnixEpoch.AddHours(1),
+                LastFailedAtUtc: null,
+                NextAttemptNotBeforeUtc: null,
+                LastResult: "success",
+                ErrorSummary: null)
+        };
+        var cacheStatus = ProxyCacheStatus.FromRuntimeSnapshot(
+            new ProxyCacheRuntimeStatusSnapshot(
+                EntryCount: 0,
+                ApproximateBytes: 0,
+                HitCount: 0,
+                MissCount: 0,
+                StoreCount: 0,
+                EvictionCount: 0,
+                StoreRejectionCount: 0,
+                LastClearedAtUtc: null,
+                LastClearReason: null,
+                Rejections: [],
+                Entries: []),
+            rejections: [],
+            routes: []);
+
+        var input = ProxyMetricsExportInputMapper.FromSources(
+            new ProxyMetrics().Snapshot(),
+            new ProxyMetricsExportLabelOptions(
+                IncludePerRouteLabels: true,
+                IncludePerUpstreamLabels: true),
+            new ProxyMetricsExportHttp3Facts(
+                DefaultEnabledListenerCount: 1,
+                RequestBodyStreamingEnabled: true,
+                UpstreamMultiplexingConfigured: true),
+            cacheStatus,
+            upstreamHealth,
+            acmeCertificates);
+
+        upstreamHealth.Clear();
+        acmeCertificates.Clear();
+
+        AssertEx.Equal("route-a", input.UpstreamHealth[0].RouteName);
+        AssertEx.Equal("upstream-a", input.UpstreamHealth[0].UpstreamName);
+        AssertEx.Equal("home-cert", input.AcmeCertificates[0].CertificateId);
+        AssertEx.Equal("home.test", input.AcmeCertificates[0].Domains[0]);
+        AssertEx.True(input.IncludePerRouteLabels);
+        AssertEx.True(input.IncludePerUpstreamLabels);
+        AssertEx.Equal(1, input.DefaultEnabledHttp3ListenerCount);
+        AssertEx.True(input.Http3RequestBodyStreamingEnabled);
+        AssertEx.True(input.UpstreamHttp3MultiplexingConfigured);
+        AssertEx.False(input.UpstreamHealth is ProxyUpstreamStatus[]);
+        AssertEx.False(input.AcmeCertificates is AcmeCertificateLifecycleStatus[]);
+    }
+
     public static void MetricsEndpointReturnsNotFoundWhenMetricsDisabled()
     {
         using var fixture = MetricsFixture.Create();
