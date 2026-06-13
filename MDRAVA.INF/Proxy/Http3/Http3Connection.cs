@@ -698,10 +698,7 @@ public sealed class Http3Connection
             return await WriteSuppressedFailureAsync(stream, lastFailure, context, requestHead.Method, cancellationToken);
         }
 
-        return lastResult ?? ForwardingResult.Failure(
-            responseStarted: false,
-            responseStatusCode: null,
-            failureKind: ProxyFailureKind.NoHealthyUpstream);
+        return ProxyRetryPolicy.RequireCompletedAttemptResult(lastResult);
     }
 
     private async ValueTask<ForwardingResult> WriteSuppressedFailureAsync(

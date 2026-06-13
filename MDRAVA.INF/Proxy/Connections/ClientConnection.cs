@@ -699,10 +699,7 @@ public sealed class ClientConnection
             return await WriteSuppressedFailureAsync(clientStream, lastFailure, context, cancellationToken);
         }
 
-        return lastResult ?? ForwardingResult.Failure(
-            responseStarted: false,
-            responseStatusCode: null,
-            failureKind: ProxyFailureKind.NoHealthyUpstream);
+        return ProxyRetryPolicy.RequireCompletedAttemptResult(lastResult);
     }
 
     private async ValueTask<bool> HandleUpgradeAsync(

@@ -804,10 +804,7 @@ public sealed class Http2ClientConnection
             return await WriteSuppressedFailureAsync(streamId, lastFailure, context, requestHead.Method, cancellationToken);
         }
 
-        return lastResult ?? ForwardingResult.Failure(
-            responseStarted: false,
-            responseStatusCode: null,
-            failureKind: ProxyFailureKind.NoHealthyUpstream);
+        return ProxyRetryPolicy.RequireCompletedAttemptResult(lastResult);
     }
 
     private async ValueTask<ForwardingResult> WriteSuppressedFailureAsync(

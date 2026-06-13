@@ -685,6 +685,15 @@ internal static class ResilienceTests
         AssertEx.Equal(ProxyRetryAdmissionDecision.Allowed, allowed.Admission);
         AssertEx.True(allowed.IsAllowed);
         AssertEx.Equal(3, allowed.MaxAttempts);
+
+        var malformedRetryRoute = retryRoute with
+        {
+            Retry = new RuntimeRetryPolicy(true, 0, null, true, false, [], ["GET"], TimeSpan.Zero)
+        };
+        var malformedAllowed = ProxyRetryPolicy.CreatePlan(malformedRetryRoute, RequestHead("GET", Http1RequestFraming.None));
+
+        AssertEx.True(malformedAllowed.IsAllowed);
+        AssertEx.Equal(1, malformedAllowed.MaxAttempts);
     }
 
     public static void RetryPolicyNamesAttemptDecisions()
@@ -727,6 +736,7 @@ internal static class ResilienceTests
         AssertEx.False(ProxyRetryPolicy.DidExhaustAttempts(retry, success, attempt: 2, maxAttempts: 2));
         AssertEx.False(ProxyRetryPolicy.DidExhaustAttemptsBeforeUpstreamSelection(attempt: 1));
         AssertEx.True(ProxyRetryPolicy.DidExhaustAttemptsBeforeUpstreamSelection(attempt: 2));
+        AssertEx.Equal(success, ProxyRetryPolicy.RequireCompletedAttemptResult(success));
     }
 
     public static void ForwardingResultNamesSuccessAndFailureOutcomes()

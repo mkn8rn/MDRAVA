@@ -13,7 +13,7 @@ public static class ProxyRetryPolicy
         return new ProxyRetryPlan(
             admission,
             isAllowed,
-            isAllowed ? route.Retry.MaxAttempts : 1);
+            isAllowed ? Math.Max(1, route.Retry.MaxAttempts) : 1);
     }
 
     public static ProxyRetryAdmissionDecision EvaluateAdmission(RuntimeRoute route, Http1RequestHead requestHead)
@@ -89,6 +89,11 @@ public static class ProxyRetryPolicy
     public static bool DidExhaustAttemptsBeforeUpstreamSelection(int attempt)
     {
         return attempt > 1;
+    }
+
+    public static ForwardingResult RequireCompletedAttemptResult(ForwardingResult? result)
+    {
+        return result ?? throw new InvalidOperationException("Retry attempt loop completed without running an attempt.");
     }
 
     public static bool IsRetryableFailure(RuntimeRetryPolicy retry, ForwardingResult result)
