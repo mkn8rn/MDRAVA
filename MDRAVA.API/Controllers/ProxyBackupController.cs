@@ -1,5 +1,5 @@
-using MDRAVA.BLL.ControlPlane.Backup;
 using Microsoft.AspNetCore.Mvc;
+using BusinessProxyBackupAdministrationService = MDRAVA.BLL.ControlPlane.Backup.ProxyBackupAdministrationService;
 
 namespace MDRAVA.API.Controllers;
 
@@ -7,9 +7,9 @@ namespace MDRAVA.API.Controllers;
 [Route("admin/proxy/backup")]
 public sealed class ProxyBackupController : ControllerBase
 {
-    private readonly ProxyBackupAdministrationService _backupAdministration;
+    private readonly BusinessProxyBackupAdministrationService _backupAdministration;
 
-    public ProxyBackupController(ProxyBackupAdministrationService backupAdministration)
+    public ProxyBackupController(BusinessProxyBackupAdministrationService backupAdministration)
     {
         _backupAdministration = backupAdministration;
     }

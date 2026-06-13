@@ -1,5 +1,5 @@
-using MDRAVA.BLL.ControlPlane.Status;
 using Microsoft.AspNetCore.Mvc;
+using BusinessProxyStatusAdministrationService = MDRAVA.BLL.ControlPlane.Status.ProxyStatusAdministrationService;
 
 namespace MDRAVA.API.Controllers;
 
@@ -7,9 +7,9 @@ namespace MDRAVA.API.Controllers;
 [Route("admin/proxy")]
 public sealed class ProxyStatusController : ControllerBase
 {
-    private readonly ProxyStatusAdministrationService _statusAdministration;
+    private readonly BusinessProxyStatusAdministrationService _statusAdministration;
 
-    public ProxyStatusController(ProxyStatusAdministrationService statusAdministration)
+    public ProxyStatusController(BusinessProxyStatusAdministrationService statusAdministration)
     {
         _statusAdministration = statusAdministration;
     }

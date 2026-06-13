@@ -1,5 +1,6 @@
-using MDRAVA.BLL.ControlPlane.RouteDiagnostics;
 using Microsoft.AspNetCore.Mvc;
+using BusinessProxyRouteDiagnosticsAdministrationService =
+    MDRAVA.BLL.ControlPlane.RouteDiagnostics.ProxyRouteDiagnosticsAdministrationService;
 
 namespace MDRAVA.API.Controllers;
 
@@ -7,9 +8,9 @@ namespace MDRAVA.API.Controllers;
 [Route("admin/proxy/routes")]
 public sealed class ProxyRouteDiagnosticsController : ControllerBase
 {
-    private readonly ProxyRouteDiagnosticsAdministrationService _routeDiagnosticsAdministration;
+    private readonly BusinessProxyRouteDiagnosticsAdministrationService _routeDiagnosticsAdministration;
 
-    public ProxyRouteDiagnosticsController(ProxyRouteDiagnosticsAdministrationService routeDiagnosticsAdministration)
+    public ProxyRouteDiagnosticsController(BusinessProxyRouteDiagnosticsAdministrationService routeDiagnosticsAdministration)
     {
         _routeDiagnosticsAdministration = routeDiagnosticsAdministration;
     }

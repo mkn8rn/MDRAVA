@@ -1,5 +1,5 @@
-using MDRAVA.BLL.ControlPlane.Acme;
 using Microsoft.AspNetCore.Mvc;
+using BusinessProxyAcmeAdministrationService = MDRAVA.BLL.ControlPlane.Acme.ProxyAcmeAdministrationService;
 
 namespace MDRAVA.API.Controllers;
 
@@ -7,9 +7,9 @@ namespace MDRAVA.API.Controllers;
 [Route("admin/proxy/acme")]
 public sealed class ProxyAcmeController : ControllerBase
 {
-    private readonly ProxyAcmeAdministrationService _acmeAdministration;
+    private readonly BusinessProxyAcmeAdministrationService _acmeAdministration;
 
-    public ProxyAcmeController(ProxyAcmeAdministrationService acmeAdministration)
+    public ProxyAcmeController(BusinessProxyAcmeAdministrationService acmeAdministration)
     {
         _acmeAdministration = acmeAdministration;
     }

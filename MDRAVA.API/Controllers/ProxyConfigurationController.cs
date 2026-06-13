@@ -1,5 +1,14 @@
-using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 using Microsoft.AspNetCore.Mvc;
+using BusinessProxyConfigurationAdministrationService =
+    MDRAVA.BLL.ControlPlane.ConfigurationManagement.ProxyConfigurationAdministrationService;
+using BusinessProxyConfigurationProjection =
+    MDRAVA.BLL.ControlPlane.ConfigurationManagement.ProxyConfigurationProjection;
+using BusinessProxyConfigurationReadAdministrationService =
+    MDRAVA.BLL.ControlPlane.ConfigurationManagement.ProxyConfigurationReadAdministrationService<MDRAVA.BLL.ControlPlane.ConfigurationManagement.ProxyConfigurationProjection>;
+using BusinessProxyConfigurationReadResult =
+    MDRAVA.BLL.ControlPlane.ConfigurationManagement.ProxyConfigurationReadResult<MDRAVA.BLL.ControlPlane.ConfigurationManagement.ProxyConfigurationProjection>;
+using BusinessProxyConfigurationReloadAdministrationService =
+    MDRAVA.BLL.ControlPlane.ConfigurationManagement.ProxyConfigurationReloadAdministrationService<MDRAVA.BLL.ControlPlane.ConfigurationManagement.ProxyConfigurationProjection>;
 
 namespace MDRAVA.API.Controllers;
 
@@ -7,14 +16,14 @@ namespace MDRAVA.API.Controllers;
 [Route("admin/proxy/config")]
 public sealed class ProxyConfigurationController : ControllerBase
 {
-    private readonly ProxyConfigurationAdministrationService _configurationAdministration;
-    private readonly ProxyConfigurationReadAdministrationService<ProxyConfigurationProjection> _configurationReads;
-    private readonly ProxyConfigurationReloadAdministrationService<ProxyConfigurationProjection> _configurationReloads;
+    private readonly BusinessProxyConfigurationAdministrationService _configurationAdministration;
+    private readonly BusinessProxyConfigurationReadAdministrationService _configurationReads;
+    private readonly BusinessProxyConfigurationReloadAdministrationService _configurationReloads;
 
     public ProxyConfigurationController(
-        ProxyConfigurationAdministrationService configurationAdministration,
-        ProxyConfigurationReadAdministrationService<ProxyConfigurationProjection> configurationReads,
-        ProxyConfigurationReloadAdministrationService<ProxyConfigurationProjection> configurationReloads)
+        BusinessProxyConfigurationAdministrationService configurationAdministration,
+        BusinessProxyConfigurationReadAdministrationService configurationReads,
+        BusinessProxyConfigurationReloadAdministrationService configurationReloads)
     {
         _configurationAdministration = configurationAdministration;
         _configurationReads = configurationReads;
@@ -30,11 +39,11 @@ public sealed class ProxyConfigurationController : ControllerBase
     }
 
     [HttpPost("reload")]
-    public async ValueTask<ActionResult<ProxyConfigurationReloadResponse<ProxyConfigurationProjection>>> Reload(
+    public async ValueTask<ActionResult<ProxyConfigurationReloadResponse<BusinessProxyConfigurationProjection>>> Reload(
         CancellationToken cancellationToken)
     {
         var result = await _configurationReloads.ReloadAsync(cancellationToken);
-        var response = ProxyConfigurationReloadResponse<ProxyConfigurationProjection>.FromResult(result);
+        var response = ProxyConfigurationReloadResponse<BusinessProxyConfigurationProjection>.FromResult(result);
         return ProxyAdminHttpResultMapper.OkOrBadRequest(this, response, response.Succeeded);
     }
 
@@ -47,19 +56,19 @@ public sealed class ProxyConfigurationController : ControllerBase
     }
 
     [HttpGet("active")]
-    public ActionResult<ProxyConfigurationProjection> Active()
+    public ActionResult<BusinessProxyConfigurationProjection> Active()
     {
         var result = _configurationReads.ReadActive();
-        return result is ProxyConfigurationReadResult<ProxyConfigurationProjection>.AvailableResult available
+        return result is BusinessProxyConfigurationReadResult.AvailableResult available
             ? Ok(available.Configuration)
             : NotFound();
     }
 
     [HttpGet("effective")]
-    public ActionResult<ProxyConfigurationProjection> Effective()
+    public ActionResult<BusinessProxyConfigurationProjection> Effective()
     {
         var result = _configurationReads.ReadEffective();
-        return result is ProxyConfigurationReadResult<ProxyConfigurationProjection>.AvailableResult available
+        return result is BusinessProxyConfigurationReadResult.AvailableResult available
             ? Ok(available.Configuration)
             : NotFound();
     }

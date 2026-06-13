@@ -1,5 +1,5 @@
-using MDRAVA.BLL.ControlPlane.Caching;
 using Microsoft.AspNetCore.Mvc;
+using BusinessProxyCacheAdministrationService = MDRAVA.BLL.ControlPlane.Caching.ProxyCacheAdministrationService;
 
 namespace MDRAVA.API.Controllers;
 
@@ -7,9 +7,9 @@ namespace MDRAVA.API.Controllers;
 [Route("admin/proxy/cache")]
 public sealed class ProxyCacheController : ControllerBase
 {
-    private readonly ProxyCacheAdministrationService _cacheAdministration;
+    private readonly BusinessProxyCacheAdministrationService _cacheAdministration;
 
-    public ProxyCacheController(ProxyCacheAdministrationService cacheAdministration)
+    public ProxyCacheController(BusinessProxyCacheAdministrationService cacheAdministration)
     {
         _cacheAdministration = cacheAdministration;
     }

@@ -1,5 +1,6 @@
-using MDRAVA.BLL.ControlPlane.ConfigLint;
 using Microsoft.AspNetCore.Mvc;
+using BusinessProxyConfigLintAdministrationService =
+    MDRAVA.BLL.ControlPlane.ConfigLint.ProxyConfigLintAdministrationService;
 
 namespace MDRAVA.API.Controllers;
 
@@ -7,9 +8,9 @@ namespace MDRAVA.API.Controllers;
 [Route("admin/proxy/config/lint")]
 public sealed class ProxyConfigLintController : ControllerBase
 {
-    private readonly ProxyConfigLintAdministrationService _configLintAdministration;
+    private readonly BusinessProxyConfigLintAdministrationService _configLintAdministration;
 
-    public ProxyConfigLintController(ProxyConfigLintAdministrationService configLintAdministration)
+    public ProxyConfigLintController(BusinessProxyConfigLintAdministrationService configLintAdministration)
     {
         _configLintAdministration = configLintAdministration;
     }

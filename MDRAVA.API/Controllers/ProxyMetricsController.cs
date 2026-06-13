@@ -1,5 +1,5 @@
-using MDRAVA.BLL.ControlPlane.Metrics;
 using Microsoft.AspNetCore.Mvc;
+using BusinessProxyMetricsAdministrationService = MDRAVA.BLL.ControlPlane.Metrics.ProxyMetricsAdministrationService;
 
 namespace MDRAVA.API.Controllers;
 
@@ -7,9 +7,9 @@ namespace MDRAVA.API.Controllers;
 [Route("admin/proxy/metrics")]
 public sealed class ProxyMetricsController : ControllerBase
 {
-    private readonly ProxyMetricsAdministrationService _metricsAdministration;
+    private readonly BusinessProxyMetricsAdministrationService _metricsAdministration;
 
-    public ProxyMetricsController(ProxyMetricsAdministrationService metricsAdministration)
+    public ProxyMetricsController(BusinessProxyMetricsAdministrationService metricsAdministration)
     {
         _metricsAdministration = metricsAdministration;
     }

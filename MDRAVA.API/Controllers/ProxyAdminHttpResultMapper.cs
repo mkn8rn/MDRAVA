@@ -1,6 +1,6 @@
 using System.Text;
-using MDRAVA.BLL.ControlPlane.Metrics;
 using Microsoft.AspNetCore.Mvc;
+using BusinessProxyMetricsExportResult = MDRAVA.BLL.ControlPlane.Metrics.ProxyMetricsExportResult;
 
 namespace MDRAVA.API.Controllers;
 
@@ -33,9 +33,9 @@ internal static class ProxyAdminHttpResultMapper
 
     public static IActionResult TextExportOrNotFound(
         ControllerBase controller,
-        ProxyMetricsExportResult result)
+        BusinessProxyMetricsExportResult result)
     {
-        return result is ProxyMetricsExportResult.ExportedResult exported
+        return result is BusinessProxyMetricsExportResult.ExportedResult exported
             ? controller.Content(exported.Content, exported.ContentType, Encoding.UTF8)
             : controller.NotFound();
     }
