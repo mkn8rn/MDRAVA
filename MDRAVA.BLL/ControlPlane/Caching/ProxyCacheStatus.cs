@@ -15,6 +15,9 @@ public sealed record ProxyCacheStatus
         IReadOnlyList<ProxyCacheRejectionStatus> rejections,
         IReadOnlyList<ProxyCacheRouteStatus> routes)
     {
+        ArgumentNullException.ThrowIfNull(rejections);
+        ArgumentNullException.ThrowIfNull(routes);
+
         EntryCount = entryCount;
         ApproximateBytes = approximateBytes;
         HitCount = hitCount;
@@ -24,8 +27,8 @@ public sealed record ProxyCacheStatus
         StoreRejectionCount = storeRejectionCount;
         LastClearedAtUtc = lastClearedAtUtc;
         LastClearReason = lastClearReason;
-        Rejections = rejections;
-        Routes = routes;
+        Rejections = rejections.ToArray();
+        Routes = routes.ToArray();
     }
 
     public int EntryCount { get; }

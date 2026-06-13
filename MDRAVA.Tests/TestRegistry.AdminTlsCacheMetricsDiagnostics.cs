@@ -79,6 +79,7 @@ internal static partial class TestRegistry
     Test("Cache-Control max-age controls TTL and expiry", Sync(CacheTests.MaxAgeControlsTtlAndExpiredEntryIsNotServed), TestTaxonomy.Caching),
     Test("Cache Age uses elapsed whole seconds", Sync(CacheTests.CacheAgeUsesElapsedWholeSecondsAndClampsFutureStoredTime), TestTaxonomy.Caching),
     Test("Cached response header policy builds framed headers", Sync(CacheTests.CachedResponseHeaderPolicyBuildsFramedHeaders), TestTaxonomy.Headers, TestTaxonomy.Caching),
+    Test("Cache response and status copy input collections", Sync(CacheTests.CacheResponseAndStatusCopyInputCollections), TestTaxonomy.Caching),
     Test("Oversized response is streamed but not cached", CacheTests.OversizedResponseIsStreamedButNotCached, TestTaxonomy.Caching, TestTaxonomy.Limits, TestTaxonomy.SecurityNegativePaths),
     Test("Cache eligibility classifies unbufferable framing", Sync(CacheTests.CacheEligibilityClassifiesUnbufferableFraming), TestTaxonomy.Caching, TestTaxonomy.SecurityNegativePaths),
     Test("Cache eligibility classifies oversized content length", Sync(CacheTests.CacheEligibilityClassifiesOversizedContentLength), TestTaxonomy.Caching, TestTaxonomy.Limits, TestTaxonomy.SecurityNegativePaths),

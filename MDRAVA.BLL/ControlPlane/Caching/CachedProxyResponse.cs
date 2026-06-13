@@ -12,10 +12,13 @@ public sealed class CachedProxyResponse
         DateTimeOffset storedAtUtc,
         DateTimeOffset expiresAtUtc)
     {
+        ArgumentNullException.ThrowIfNull(headers);
+        ArgumentNullException.ThrowIfNull(body);
+
         StatusCode = statusCode;
         ReasonPhrase = reasonPhrase;
-        Headers = headers;
-        Body = body;
+        Headers = headers.ToArray();
+        Body = body.ToArray();
         StoredAtUtc = storedAtUtc;
         ExpiresAtUtc = expiresAtUtc;
     }

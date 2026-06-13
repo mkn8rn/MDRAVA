@@ -316,6 +316,57 @@ internal static class CacheTests
         AssertEx.Equal("11", headers.Single(static header => header.Name == "content-length").Value);
     }
 
+    public static void CacheResponseAndStatusCopyInputCollections()
+    {
+        var storedAtUtc = DateTimeOffset.UnixEpoch.AddMinutes(1);
+        var headers = new List<ProxyHeaderField>
+        {
+            new("Content-Type", "text/plain")
+        };
+        var body = Encoding.ASCII.GetBytes("cached-body");
+        var rejections = new List<ProxyCacheRejectionStatus>
+        {
+            ProxyCacheRejectionStatus.FromRuntimeRejection(new ProxyCacheRuntimeRejectionSnapshot("authorization", 1))
+        };
+        var routes = new List<ProxyCacheRouteStatus>
+        {
+            ProxyCacheRouteStatus.FromRuntimeEntries(
+                new ProxyCacheStatusRouteSource("api", true, 1024, 4096),
+                [new ProxyCacheRuntimeEntrySnapshot("api", 11)])
+        };
+        var runtime = new ProxyCacheRuntimeStatusSnapshot(
+            EntryCount: 1,
+            ApproximateBytes: 11,
+            HitCount: 2,
+            MissCount: 3,
+            StoreCount: 4,
+            EvictionCount: 5,
+            StoreRejectionCount: 6,
+            LastClearedAtUtc: null,
+            LastClearReason: null,
+            Rejections: [],
+            Entries: []);
+
+        var response = new CachedProxyResponse(
+            200,
+            "OK",
+            headers,
+            body,
+            storedAtUtc,
+            storedAtUtc.AddMinutes(1));
+        var status = ProxyCacheStatus.FromRuntimeSnapshot(runtime, rejections, routes);
+
+        headers.Clear();
+        body[0] = (byte)'X';
+        rejections.Clear();
+        routes.Clear();
+
+        AssertEx.Equal("Content-Type", response.Headers[0].Name);
+        AssertEx.Equal((byte)'c', response.Body[0]);
+        AssertEx.Equal("authorization", status.Rejections[0].Reason);
+        AssertEx.Equal("api", status.Routes[0].RouteName);
+    }
+
     public static async Task OversizedResponseIsStreamedButNotCached()
     {
         var body = "0123456789";
