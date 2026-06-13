@@ -32,6 +32,7 @@ internal static partial class TestRegistry
     Test("Status configuration source mapper shapes status facts from active configuration", Sync(OperatorStatusTests.StatusConfigurationSourceMapperShapesStatusFactsFromActiveConfiguration), TestTaxonomy.Admin, TestTaxonomy.Config),
     Test("Status response builder builds response from named input", Sync(OperatorStatusTests.StatusResponseBuilderBuildsResponseFromNamedInput), TestTaxonomy.Admin, TestTaxonomy.Config, TestTaxonomy.Metrics),
     Test("Status response copies upstream and listener lists", Sync(OperatorStatusTests.StatusResponseCopiesUpstreamAndListenerLists), TestTaxonomy.Admin, TestTaxonomy.Config, TestTaxonomy.Metrics),
+    Test("Status input copies runtime upstream and ACME lists", Sync(OperatorStatusTests.StatusInputCopiesRuntimeUpstreamAndAcmeLists), TestTaxonomy.Admin, TestTaxonomy.Config, TestTaxonomy.Metrics),
     Test("Status readiness reports healthy for active snapshot", Sync(OperatorStatusTests.StatusReadinessReportsHealthyForActiveSnapshot), TestTaxonomy.Admin, TestTaxonomy.Config, TestTaxonomy.Caching, TestTaxonomy.Metrics),
     Test("Status readiness source mapper consumes runtime summary without runtime snapshot", Sync(OperatorStatusTests.StatusReadinessSourceMapperConsumesRuntimeSummaryWithoutRuntimeSnapshot), TestTaxonomy.Admin, TestTaxonomy.Config),
     Test("Status readiness configuration source set names missing configuration", Sync(OperatorStatusTests.StatusReadinessConfigurationSourceSetNamesMissingConfiguration), TestTaxonomy.Admin, TestTaxonomy.Config),

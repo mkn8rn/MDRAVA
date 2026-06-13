@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using MDRAVA.BLL.ControlPlane.ConfigLint;
 using MDRAVA.BLL.ControlPlane.Http3;
 using MDRAVA.BLL.ControlPlane.Listeners;
@@ -44,7 +43,7 @@ public sealed record ProxyStatus
         ConfiguredListeners = configuredListeners;
         ConfiguredRoutes = configuredRoutes;
         Metrics = metrics;
-        Upstreams = Copy(upstreams);
+        Upstreams = ProxyStatusList.Copy(upstreams);
     }
 
     public bool ListenerLive { get; }
@@ -83,7 +82,7 @@ public sealed record ProxyStatus
         init
         {
             ArgumentNullException.ThrowIfNull(value);
-            _listeners = Copy(value);
+            _listeners = ProxyStatusList.Copy(value);
         }
     }
 
@@ -115,9 +114,4 @@ public sealed record ProxyStatus
     public ProxySubsystemSummaries Subsystems { get; init; } = ProxySubsystemSummaries.Unknown;
 
     public ProxyRuntimePreflightStatus RuntimePreflight { get; init; } = ProxyRuntimePreflightStatus.Unknown;
-
-    private static ReadOnlyCollection<T> Copy<T>(IReadOnlyList<T> values)
-    {
-        return new ReadOnlyCollection<T>(values.ToArray());
-    }
 }

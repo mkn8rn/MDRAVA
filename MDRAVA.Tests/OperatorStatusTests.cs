@@ -388,6 +388,106 @@ internal static class OperatorStatusTests
         AssertEx.False(status.Listeners is ProxyListenerStatus[], "Status listeners should not expose a mutable array.");
     }
 
+    public static void StatusInputCopiesRuntimeUpstreamAndAcmeLists()
+    {
+        var listener = Listener();
+        var active = ListenerStatus(listener, ProxyListenerState.Active);
+        var failed = ListenerStatus(listener, ProxyListenerState.Failed);
+        var listenerStatuses = new List<ProxyListenerStatus> { active };
+        var runtime = new ProxyStatusRuntimeSummary(
+            ListenerLive: true,
+            ListenerName: "main",
+            Endpoint: "127.0.0.1:18080",
+            StartedAt: DateTimeOffset.UnixEpoch,
+            StoppedAt: null,
+            LastError: null,
+            IsShuttingDown: false,
+            ShutdownStartedAtUtc: null,
+            ShutdownDeadlineUtc: null,
+            Listeners: listenerStatuses,
+            LastListenerReload: null);
+        var upstream = new ProxyUpstreamStatus(
+            RouteName: "main",
+            UpstreamName: "primary",
+            Endpoint: "https://primary.internal",
+            Scheme: "https",
+            TlsCertificateValidationEnabled: true,
+            SniHost: "primary.internal",
+            HealthCheckEnabled: true,
+            HealthState: UpstreamHealthState.Healthy,
+            LastHealthCheckResult: "status_200",
+            LastHealthCheckAtUtc: DateTimeOffset.UnixEpoch,
+            ConsecutiveSuccesses: 2,
+            ConsecutiveFailures: 0,
+            SelectedRequests: 11,
+            RequestFailures: 0);
+        var replacementUpstream = upstream with { UpstreamName = "replacement" };
+        var upstreams = new List<ProxyUpstreamStatus> { upstream };
+        var acme = new AcmeCertificateLifecycleStatus(
+            CertificateId: "cert-a",
+            Enabled: true,
+            Domains: ["example.test"],
+            Active: true,
+            Source: "acme",
+            NotBeforeUtc: DateTimeOffset.UnixEpoch,
+            NotAfterUtc: DateTimeOffset.UnixEpoch.AddDays(30),
+            RenewalDueAtUtc: DateTimeOffset.UnixEpoch.AddDays(20),
+            LastAttemptAtUtc: null,
+            LastSucceededAtUtc: DateTimeOffset.UnixEpoch,
+            LastFailedAtUtc: null,
+            NextAttemptNotBeforeUtc: null,
+            LastResult: "loaded",
+            ErrorSummary: null);
+        var replacementAcme = acme with { CertificateId = "cert-b" };
+        var acmeStatuses = new List<AcmeCertificateLifecycleStatus> { acme };
+        var metrics = new ProxyMetrics().Snapshot();
+        var observedAtUtc = new DateTimeOffset(2026, 6, 13, 21, 20, 0, TimeSpan.Zero);
+        var http3 = UnknownHttp3();
+        var readiness = ProxyStatusReadinessInputMapper.FromSources(
+            sources: ProxyStatusReadinessSourceMapper.FromSources(
+                ProxyStatusReadinessConfigurationSourceSet.Missing,
+                runtime,
+                metrics,
+                upstreams,
+                http3,
+                ProxyLogPersistenceStatus.Unknown),
+            cacheStatus: null,
+            acmeStatuses: acmeStatuses,
+            runtimePreflight: ProxyRuntimePreflightStatus.Unknown,
+            observedAtUtc: observedAtUtc);
+
+        var input = new ProxyStatusInput(
+            Runtime: runtime,
+            Configuration: null,
+            Metrics: metrics,
+            Upstreams: upstreams,
+            Http3: http3,
+            LogPersistence: ProxyLogPersistenceStatus.Unknown,
+            CacheStatus: null,
+            AcmeStatuses: acmeStatuses,
+            RuntimePreflight: ProxyRuntimePreflightStatus.Unknown,
+            ObservedAtUtc: observedAtUtc,
+            Readiness: readiness,
+            ConfigLint: ConfigLintStatus.Empty);
+
+        listenerStatuses[0] = failed;
+        upstreams[0] = replacementUpstream;
+        acmeStatuses[0] = replacementAcme;
+        listenerStatuses.Clear();
+        upstreams.Clear();
+        acmeStatuses.Clear();
+
+        AssertEx.Equal(1, runtime.Listeners.Count);
+        AssertEx.Equal(ProxyListenerState.Active, runtime.Listeners[0].State);
+        AssertEx.Equal(1, input.Upstreams.Count);
+        AssertEx.Equal("primary", input.Upstreams[0].UpstreamName);
+        AssertEx.Equal(1, input.AcmeStatuses.Count);
+        AssertEx.Equal("cert-a", input.AcmeStatuses[0].CertificateId);
+        AssertEx.False(runtime.Listeners is ProxyListenerStatus[], "Runtime summary listeners should not expose a mutable array.");
+        AssertEx.False(input.Upstreams is ProxyUpstreamStatus[], "Status input upstreams should not expose a mutable array.");
+        AssertEx.False(input.AcmeStatuses is AcmeCertificateLifecycleStatus[], "Status input ACME statuses should not expose a mutable array.");
+    }
+
     public static void StatusReadinessSourceMapperConsumesRuntimeSummaryWithoutRuntimeSnapshot()
     {
         var listener = Listener();
@@ -1292,6 +1392,24 @@ internal static class OperatorStatusTests
             TimeSpan.FromSeconds(10),
             TimeSpan.FromSeconds(10),
             TimeSpan.FromSeconds(10));
+    }
+
+    private static RuntimeHttp3SupportProjection UnknownHttp3()
+    {
+        return new RuntimeHttp3SupportProjection(
+            "unknown",
+            QuicListenerSupported: false,
+            QuicConnectionSupported: false,
+            "disabled",
+            "disabled",
+            EnabledForTraffic: false,
+            QuicListenerReady: false,
+            AltSvcConfigured: false,
+            AltSvcActive: false,
+            AltSvcMaxAgeSeconds: null,
+            "not_configured",
+            UdpQuicListenerIdentityModeled: true,
+            "client_http3_default_enabled_for_eligible_tls_proxy_listeners");
     }
 
     private static ProxySubsystemSummaries HealthyReadinessSubsystems()
