@@ -821,7 +821,7 @@ public sealed class ClientConnection
         CancellationToken cancellationToken)
     {
         var response = ProxyGeneratedFailurePolicy.BuildFailureResponse(result);
-        _metrics.GeneratedFailureResponse(response.StatusCode);
+        ProxyGeneratedFailureMetrics.Record(_metrics, response);
 
         await WriteGeneratedResponseAsync(
             clientStream,
