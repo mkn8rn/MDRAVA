@@ -703,18 +703,87 @@ internal static class RouteDiagnosticsTests
     public static void ConfigLintSnapshotMapperReadsRuntimeSourceWithoutConfigurationSnapshot()
     {
         var snapshot = Snapshot(BaseOptions([ProxyRoute("api", "diag.test", "/api")]));
-        var source = ProxyConfigLintRuntimeConfigurationSourceMapper.FromConfiguration(snapshot);
+        var sourceFiles = new List<string> { "site.json" };
+        var adminUrls = new List<string> { AdminBindPolicy.DefaultAdminUrl };
+        var listeners = new List<RuntimeListener> { snapshot.Listeners[0] };
+        var cacheVaryByHeaders = new List<string> { "X-Tenant" };
+        var retryMethods = new List<string> { "GET" };
+        var upstreams = new List<RuntimeUpstream>
+        {
+            new(
+                "api",
+                "local",
+                "http",
+                RuntimeUpstreamProtocol.Http1,
+                "127.0.0.1",
+                5000,
+                1,
+                RuntimeUpstreamTlsOptions.Default)
+        };
+        var route = new RuntimeRoute(
+            "api",
+            "diag.test",
+            "/api",
+            RuntimeRouteAction.Proxy,
+            "round-robin",
+            new RuntimeHealthCheckOptions(false, "/health", TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), 1, 1),
+            upstreams,
+            new RuntimeHttpsRedirectPolicy(false, 308, null),
+            new RuntimeCanonicalHostPolicy(false, "", 308),
+            RuntimeHeaderPolicy.Empty,
+            new RuntimePathRewritePolicy("", "", ""),
+            new RuntimeRedirectPolicy(308, "", "", true),
+            new RuntimeStaticResponse(200, "text/plain; charset=utf-8", ""),
+            new RuntimeMaintenancePolicy(false, null, "text/plain; charset=utf-8", "Service Unavailable"),
+            new RuntimeCachePolicy(true, 1024, 4096, TimeSpan.FromSeconds(60), true, cacheVaryByHeaders, [200], ["GET"]),
+            new RuntimeRouteResolvedOptions(104857600, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30), true))
+        {
+            SiteName = "diag",
+            Retry = new RuntimeRetryPolicy(true, 2, null, true, false, [], retryMethods, TimeSpan.Zero)
+        };
+        var routes = new List<RuntimeRoute> { route };
+        var source = new ProxyConfigLintRuntimeConfigurationSource(
+            sourceFiles,
+            adminUrls,
+            snapshot.AdminSecurity.RequireAuthentication,
+            snapshot.Metrics.PublicMetricsEnabled,
+            listeners,
+            routes);
 
         var lintSnapshot = ProxyConfigLintConfigurationSnapshotMapper.ToLintSnapshot(
             source,
             TestHttp3PlatformSupport.Supported);
 
-        AssertEx.Equal(snapshot.SourceFiles.Count, lintSnapshot.SourceFiles.Count);
+        sourceFiles[0] = "replacement.json";
+        adminUrls[0] = "http://0.0.0.0:9999";
+        listeners.Clear();
+        routes.Clear();
+        cacheVaryByHeaders[0] = "X-Replacement";
+        retryMethods[0] = "POST";
+        upstreams[0] = upstreams[0] with { Name = "replacement" };
+        sourceFiles.Clear();
+        adminUrls.Clear();
+        cacheVaryByHeaders.Clear();
+        retryMethods.Clear();
+        upstreams.Clear();
+
+        AssertEx.Equal(1, lintSnapshot.SourceFiles.Count);
+        AssertEx.Equal("site.json", lintSnapshot.SourceFiles[0]);
         AssertEx.Equal(snapshot.AdminSecurity.RequireAuthentication, lintSnapshot.AdminSecurity.RequireAuthentication);
+        AssertEx.Equal(AdminBindPolicy.DefaultAdminUrl, lintSnapshot.AdminSecurity.Urls[0]);
         AssertEx.Equal(snapshot.Metrics.PublicMetricsEnabled, lintSnapshot.Metrics.PublicMetricsEnabled);
-        AssertEx.Equal(snapshot.Listeners.Count, lintSnapshot.Listeners.Count);
-        AssertEx.Equal(snapshot.Routes.Count, lintSnapshot.Routes.Count);
+        AssertEx.Equal(1, lintSnapshot.Listeners.Count);
+        AssertEx.Equal(1, lintSnapshot.Routes.Count);
         AssertEx.Equal("api", lintSnapshot.Routes[0].Name);
+        AssertEx.Equal("X-Tenant", lintSnapshot.Routes[0].CacheVaryByHeaders[0]);
+        AssertEx.Equal("GET", lintSnapshot.Routes[0].RetryMethods[0]);
+        AssertEx.Equal("local", lintSnapshot.Routes[0].Upstreams[0].Name);
+        AssertEx.False(source.SourceFiles is string[], "Config lint runtime source files should not expose a mutable array.");
+        AssertEx.False(lintSnapshot.SourceFiles is string[], "Config lint snapshot source files should not expose a mutable array.");
+        AssertEx.False(lintSnapshot.AdminSecurity.Urls is string[], "Config lint admin URLs should not expose a mutable array.");
+        AssertEx.False(lintSnapshot.Routes is ProxyConfigLintRoute[], "Config lint routes should not expose a mutable array.");
+        AssertEx.False(lintSnapshot.Routes[0].CacheVaryByHeaders is string[], "Config lint route vary headers should not expose a mutable array.");
+        AssertEx.False(lintSnapshot.Routes[0].Upstreams is ProxyConfigLintUpstream[], "Config lint route upstreams should not expose a mutable array.");
     }
 
     public static void RouteDiagnosticsRuntimeRouteCopiesPolicyMethodLists()

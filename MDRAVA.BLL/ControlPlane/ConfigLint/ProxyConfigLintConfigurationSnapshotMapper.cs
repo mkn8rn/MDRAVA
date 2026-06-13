@@ -3,13 +3,41 @@ using MDRAVA.BLL.Configuration;
 
 namespace MDRAVA.BLL.ControlPlane.ConfigLint;
 
-public sealed record ProxyConfigLintRuntimeConfigurationSource(
-    IReadOnlyList<string> SourceFiles,
-    IReadOnlyList<string> AdminUrls,
-    bool AdminRequiresAuthentication,
-    bool PublicMetricsEnabled,
-    IReadOnlyList<RuntimeListener> Listeners,
-    IReadOnlyList<RuntimeRoute> Routes);
+public sealed record ProxyConfigLintRuntimeConfigurationSource
+{
+    public ProxyConfigLintRuntimeConfigurationSource(
+        IReadOnlyList<string> SourceFiles,
+        IReadOnlyList<string> AdminUrls,
+        bool AdminRequiresAuthentication,
+        bool PublicMetricsEnabled,
+        IReadOnlyList<RuntimeListener> Listeners,
+        IReadOnlyList<RuntimeRoute> Routes)
+    {
+        ArgumentNullException.ThrowIfNull(SourceFiles);
+        ArgumentNullException.ThrowIfNull(AdminUrls);
+        ArgumentNullException.ThrowIfNull(Listeners);
+        ArgumentNullException.ThrowIfNull(Routes);
+
+        this.SourceFiles = ConfigLintList.Copy(SourceFiles);
+        this.AdminUrls = ConfigLintList.Copy(AdminUrls);
+        this.AdminRequiresAuthentication = AdminRequiresAuthentication;
+        this.PublicMetricsEnabled = PublicMetricsEnabled;
+        this.Listeners = ConfigLintList.Copy(Listeners);
+        this.Routes = ConfigLintList.Copy(Routes);
+    }
+
+    public IReadOnlyList<string> SourceFiles { get; }
+
+    public IReadOnlyList<string> AdminUrls { get; }
+
+    public bool AdminRequiresAuthentication { get; }
+
+    public bool PublicMetricsEnabled { get; }
+
+    public IReadOnlyList<RuntimeListener> Listeners { get; }
+
+    public IReadOnlyList<RuntimeRoute> Routes { get; }
+}
 
 public static class ProxyConfigLintRuntimeConfigurationSourceMapper
 {
