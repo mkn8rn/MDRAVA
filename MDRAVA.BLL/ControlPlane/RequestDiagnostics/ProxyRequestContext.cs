@@ -150,6 +150,18 @@ public sealed class ProxyRequestContext
         SetRouteAction("cache");
     }
 
+    public void RecordForwardingResult(
+        ForwardingResult result,
+        bool keepClientConnectionOpen)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+
+        ResponseStarted = result.ResponseStarted;
+        ResponseStatusCode = result.ResponseStatusCode;
+        FailureKind = result.FailureKind;
+        KeepClientConnectionOpen = keepClientConnectionOpen;
+    }
+
 }
 
 public sealed record ProxyRequestRoute(

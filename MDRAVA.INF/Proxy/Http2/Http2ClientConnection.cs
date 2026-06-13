@@ -1086,10 +1086,9 @@ public sealed class Http2ClientConnection
 
     private static void ApplyForwardingResult(ProxyRequestContext context, ForwardingResult result)
     {
-        context.ResponseStarted = result.ResponseStarted;
-        context.ResponseStatusCode = result.ResponseStatusCode;
-        context.KeepClientConnectionOpen = true;
-        context.FailureKind = result.FailureKind;
+        context.RecordForwardingResult(
+            result,
+            keepClientConnectionOpen: true);
     }
 
     private static string ExtractPath(string target)

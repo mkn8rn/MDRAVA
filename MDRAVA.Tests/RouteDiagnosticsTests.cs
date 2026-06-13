@@ -388,6 +388,30 @@ internal static class RouteDiagnosticsTests
         AssertEx.True(context.KeepClientConnectionOpen);
     }
 
+    public static void RequestContextRecordsForwardingResult()
+    {
+        var context = new ProxyRequestContext(
+            "req-forwarding",
+            "listener",
+            "tcp",
+            "127.0.0.1:50000",
+            7,
+            TimeProvider.System);
+        var result = ForwardingResult.Failure(
+            responseStarted: false,
+            responseStatusCode: 502,
+            failureKind: ProxyFailureKind.UpstreamConnectFailed);
+
+        context.RecordForwardingResult(
+            result,
+            keepClientConnectionOpen: false);
+
+        AssertEx.False(context.ResponseStarted);
+        AssertEx.Equal(502, context.ResponseStatusCode);
+        AssertEx.Equal(ProxyFailureKind.UpstreamConnectFailed, context.FailureKind);
+        AssertEx.False(context.KeepClientConnectionOpen);
+    }
+
     public static void RouteDiagnosticsStatusNamesEnabledAvailability()
     {
         var status = RouteDiagnosticsStatus.Enabled;

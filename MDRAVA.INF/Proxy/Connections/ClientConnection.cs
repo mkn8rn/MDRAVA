@@ -991,10 +991,9 @@ public sealed class ClientConnection
 
     private static void ApplyForwardingResult(ProxyRequestContext context, ForwardingResult result)
     {
-        context.ResponseStarted = result.ResponseStarted;
-        context.ResponseStatusCode = result.ResponseStatusCode;
-        context.KeepClientConnectionOpen = result.KeepClientConnectionOpen;
-        context.FailureKind = result.FailureKind;
+        context.RecordForwardingResult(
+            result,
+            result.KeepClientConnectionOpen);
         if (result is ForwardingResult.TunnelCompletedResult tunnelCompleted)
         {
             context.TunnelEstablished = result.ResponseStatusCode == 101;

@@ -129,6 +129,7 @@ internal static partial class TestRegistry
     Test("Request context records generated failure response", Sync(RouteDiagnosticsTests.RequestContextRecordsGeneratedFailureResponse), TestTaxonomy.Routing, TestTaxonomy.Metrics),
     Test("Request context records generated route response", Sync(RouteDiagnosticsTests.RequestContextRecordsGeneratedRouteResponse), TestTaxonomy.Routing, TestTaxonomy.Metrics),
     Test("Request context records cached response", Sync(RouteDiagnosticsTests.RequestContextRecordsCachedResponse), TestTaxonomy.Routing, TestTaxonomy.Caching),
+    Test("Request context records forwarding result", Sync(RouteDiagnosticsTests.RequestContextRecordsForwardingResult), TestTaxonomy.Routing, TestTaxonomy.Metrics),
     Test("Route diagnostics status names enabled availability", Sync(RouteDiagnosticsTests.RouteDiagnosticsStatusNamesEnabledAvailability), TestTaxonomy.Routing),
     Test("Route dry-run redacts sensitive headers", Sync(RouteDiagnosticsTests.DryRunRedactsSensitiveHeaders), TestTaxonomy.Routing, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
     Test("Route diagnostics service shapes no-listener result", Sync(RouteDiagnosticsTests.RouteDiagnosticsServiceShapesNoListenerResult), TestTaxonomy.Routing),
