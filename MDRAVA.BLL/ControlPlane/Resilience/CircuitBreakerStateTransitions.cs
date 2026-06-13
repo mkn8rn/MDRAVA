@@ -13,27 +13,20 @@ public sealed partial class CircuitBreakerStore
 
         if (now - state.OpenedAtUtc.Value >= policy.OpenDuration)
         {
-            state.State = CircuitBreakerRuntimeState.HalfOpen;
-            state.ResetHalfOpenProbes();
+            state.MoveToHalfOpen();
             _metrics.CircuitHalfOpened();
         }
     }
 
     private void Open(MutableCircuitState state, DateTimeOffset now)
     {
-        state.State = CircuitBreakerRuntimeState.Open;
-        state.OpenedAtUtc = now;
-        state.ResetHalfOpenProbes();
-        state.ResetFailureWindow(now);
+        state.MoveToOpen(now);
         _metrics.CircuitOpened();
     }
 
     private void Close(MutableCircuitState state)
     {
-        state.State = CircuitBreakerRuntimeState.Closed;
-        state.OpenedAtUtc = null;
-        state.ClearFailureTracking();
-        state.ResetHalfOpenProbes();
+        state.MoveToClosed();
         _metrics.CircuitClosed();
     }
 
@@ -67,11 +60,11 @@ public sealed partial class CircuitBreakerStore
     {
         public object Gate { get; } = new();
 
-        public CircuitBreakerRuntimeState State { get; set; } = CircuitBreakerRuntimeState.Closed;
+        public CircuitBreakerRuntimeState State { get; private set; } = CircuitBreakerRuntimeState.Closed;
 
         public DateTimeOffset? WindowStartedAtUtc { get; private set; }
 
-        public DateTimeOffset? OpenedAtUtc { get; set; }
+        public DateTimeOffset? OpenedAtUtc { get; private set; }
 
         public int FailureCount { get; private set; }
 
@@ -80,6 +73,28 @@ public sealed partial class CircuitBreakerStore
         public long RejectedRequests { get; private set; }
 
         public string? LastFailureReason { get; private set; }
+
+        public void MoveToHalfOpen()
+        {
+            State = CircuitBreakerRuntimeState.HalfOpen;
+            ResetHalfOpenProbes();
+        }
+
+        public void MoveToOpen(DateTimeOffset openedAtUtc)
+        {
+            State = CircuitBreakerRuntimeState.Open;
+            OpenedAtUtc = openedAtUtc;
+            ResetHalfOpenProbes();
+            ResetFailureWindow(openedAtUtc);
+        }
+
+        public void MoveToClosed()
+        {
+            State = CircuitBreakerRuntimeState.Closed;
+            OpenedAtUtc = null;
+            ClearFailureTracking();
+            ResetHalfOpenProbes();
+        }
 
         public void RecordRejectedRequest()
         {
