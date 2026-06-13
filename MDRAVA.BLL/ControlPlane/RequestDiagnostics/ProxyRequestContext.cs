@@ -99,11 +99,6 @@ public sealed class ProxyRequestContext
         AccessLogEnabled = route.AccessLogEnabled;
     }
 
-    public void SetRouteAction(string action)
-    {
-        RouteAction = action;
-    }
-
     public void SetUpstream(ProxyRequestUpstream upstream)
     {
         UpstreamName = upstream.Name;
@@ -185,6 +180,11 @@ public sealed class ProxyRequestContext
     public void RecordClientConnectionClose()
     {
         KeepClientConnectionOpen = false;
+    }
+
+    private void SetRouteAction(string action)
+    {
+        RouteAction = action;
     }
 
 }
