@@ -865,22 +865,18 @@ public sealed class ClientConnection
         ProxyRequestContext context,
         CancellationToken cancellationToken)
     {
-        var statusCode = result.ResponseStatusCode ?? ProxyForwardingFailurePolicy.StatusCodeForFailure(result.FailureKind);
-        _metrics.GeneratedFailureResponse(statusCode);
+        var response = ProxyGeneratedFailurePolicy.BuildFailureResponse(result);
+        _metrics.GeneratedFailureResponse(response.StatusCode);
 
-        var reason = ProxyRouteActionPolicy.ReasonPhrase(statusCode);
         await WriteGeneratedResponseAsync(
             clientStream,
-            statusCode,
-            reason,
-            reason,
+            response.StatusCode,
+            response.ReasonPhrase,
+            response.ReasonPhrase,
             context,
-            result.FailureKind,
+            response.FailureKind,
             cancellationToken);
-        return ForwardingResult.Failure(
-            responseStarted: true,
-            responseStatusCode: statusCode,
-            failureKind: result.FailureKind);
+        return response.ToForwardingResult();
     }
 
     private async ValueTask<Http1HeadReadResult> ReadRequestHeadAsync(

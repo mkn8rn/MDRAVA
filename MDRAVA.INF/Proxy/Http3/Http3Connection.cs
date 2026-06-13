@@ -710,21 +710,17 @@ public sealed class Http3Connection
         string method,
         CancellationToken cancellationToken)
     {
-        var statusCode = result.ResponseStatusCode ?? ProxyForwardingFailurePolicy.StatusCodeForFailure(result.FailureKind);
-        _metrics.GeneratedFailureResponse(statusCode);
+        var response = ProxyGeneratedFailurePolicy.BuildFailureResponse(result);
+        _metrics.GeneratedFailureResponse(response.StatusCode);
 
-        var reason = ProxyRouteActionPolicy.ReasonPhrase(statusCode);
         await WriteGeneratedResponseAsync(
             stream,
-            statusCode,
-            reason,
+            response.StatusCode,
+            response.ReasonPhrase,
             context,
             method,
             cancellationToken);
-        return ForwardingResult.Failure(
-            responseStarted: true,
-            responseStatusCode: statusCode,
-            failureKind: result.FailureKind);
+        return response.ToForwardingResult();
     }
 
     private void RecordUpstreamAttemptResult(UpstreamSelection selection, ForwardingResult result)
