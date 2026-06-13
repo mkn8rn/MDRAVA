@@ -44,9 +44,9 @@ internal sealed class ProxyRouteDiagnosticsRuntimeRoute
             .Select(static upstream => new ProxyRouteDiagnosticsRuntimeUpstream(upstream))
             .ToArray();
         CacheEnabled = runtimeRoute.Cache.Enabled;
-        CacheMethods = runtimeRoute.Cache.Methods;
+        CacheMethods = runtimeRoute.Cache.Methods.ToArray();
         RetryEnabled = runtimeRoute.Retry.Enabled;
-        RetryMethods = runtimeRoute.Retry.RetryMethods;
+        RetryMethods = runtimeRoute.Retry.RetryMethods.ToArray();
     }
 
     public string SiteName { get; }

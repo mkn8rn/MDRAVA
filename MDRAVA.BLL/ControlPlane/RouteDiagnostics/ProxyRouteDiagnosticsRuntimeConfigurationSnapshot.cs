@@ -9,6 +9,9 @@ internal sealed class ProxyRouteDiagnosticsRuntimeConfigurationSnapshot
         IReadOnlyList<RuntimeListener> runtimeListeners,
         IReadOnlyList<RuntimeRoute> runtimeRoutes)
     {
+        ArgumentNullException.ThrowIfNull(runtimeListeners);
+        ArgumentNullException.ThrowIfNull(runtimeRoutes);
+
         Listeners = runtimeListeners
             .Select(static listener => new ProxyRouteDiagnosticsRuntimeListener(listener))
             .ToArray();

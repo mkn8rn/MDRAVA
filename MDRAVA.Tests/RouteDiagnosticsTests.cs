@@ -717,6 +717,45 @@ internal static class RouteDiagnosticsTests
         AssertEx.Equal("api", lintSnapshot.Routes[0].Name);
     }
 
+    public static void RouteDiagnosticsRuntimeRouteCopiesPolicyMethodLists()
+    {
+        var cacheMethods = new List<string> { "GET" };
+        var retryMethods = new List<string> { "POST" };
+        var route = new RuntimeRoute(
+            "api",
+            "diag.test",
+            "/api",
+            RuntimeRouteAction.Proxy,
+            "round-robin",
+            new RuntimeHealthCheckOptions(false, "/health", TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), 1, 1),
+            [],
+            new RuntimeHttpsRedirectPolicy(false, 308, null),
+            new RuntimeCanonicalHostPolicy(false, "", 308),
+            RuntimeHeaderPolicy.Empty,
+            new RuntimePathRewritePolicy("", "", ""),
+            new RuntimeRedirectPolicy(308, "", "", true),
+            new RuntimeStaticResponse(200, "text/plain; charset=utf-8", ""),
+            new RuntimeMaintenancePolicy(false, null, "text/plain; charset=utf-8", "Service Unavailable"),
+            new RuntimeCachePolicy(true, 1024, 4096, TimeSpan.FromSeconds(60), true, [], [200], cacheMethods),
+            new RuntimeRouteResolvedOptions(104857600, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30), true))
+        {
+            Retry = new RuntimeRetryPolicy(true, 2, null, true, false, [], retryMethods, TimeSpan.Zero)
+        };
+        var store = new ProxyConfigurationStore();
+        store.Replace(RuntimeSnapshot([route]));
+        var source = new ProxyRouteDiagnosticsConfigurationSource(store);
+        var readResult = source.Read();
+
+        cacheMethods.Clear();
+        retryMethods.Clear();
+
+        AssertEx.True(readResult is ProxyRouteDiagnosticsConfigurationReadResult.AvailableResult);
+        var snapshot = ((ProxyRouteDiagnosticsConfigurationReadResult.AvailableResult)readResult).Snapshot;
+        var diagnosticRoute = snapshot.Routes[0];
+        AssertEx.Equal("GET", diagnosticRoute.CacheMethods[0]);
+        AssertEx.Equal("POST", diagnosticRoute.RetryMethods[0]);
+    }
+
     public static void LintHandlesJsonAndYamlSubmittedConfigWithoutApplying()
     {
         var service = CreateLintService(BaseOptions([ProxyRoute("active", "active.test", "/")]), out var store);
@@ -1175,6 +1214,40 @@ internal static class RouteDiagnosticsTests
                 [],
                 [],
                 []));
+    }
+
+    private static ProxyConfigurationSnapshot RuntimeSnapshot(IReadOnlyList<RuntimeRoute> routes)
+    {
+        return new ProxyConfigurationSnapshot(
+            1,
+            DateTimeOffset.UnixEpoch,
+            "test",
+            ["site.json"],
+            new ProxyConfigurationDiscovery(
+                new ProxyFilesystemLayout("test", "test/config", "test/config/sites", "test/logs", "test/certs", "test/state", "test/config/proxy.json"),
+                [],
+                [],
+                []),
+            new RuntimeAdminSecurityOptions([], true, true, AdminToken, "MDRAVA_ADMIN_TOKEN", "configured", 100),
+            new RuntimeAcmeOptions(false, true, "", [], false, "acme", 30, 720, 60, []),
+            new RuntimeTimeouts(
+                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(10)),
+            new RuntimeConnectionLimits(100, 16, 1024),
+            new RuntimeObservabilityOptions(true, 100, new RuntimeLogPersistenceOptions(true, true, 1_048_576, 8)),
+            new RuntimeLimits(4096, 128, 240, 30, 32768, 128, 8192, 104857600, 8192, TimeSpan.FromSeconds(15)),
+            new RuntimeForwardedHeadersOptions(true, []),
+            new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),
+            [],
+            routes);
     }
 
     private static IReadOnlyDictionary<string, string?> NoHeaders()
