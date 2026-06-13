@@ -1,7 +1,6 @@
 using MDRAVA.BLL.Http;
 using MDRAVA.BLL.ControlPlane.Headers;
 using MDRAVA.BLL.ControlPlane.Forwarding;
-using MDRAVA.BLL.ControlPlane.Timeouts;
 using System.Text;
 using MDRAVA.BLL.ControlPlane.Metrics;
 
@@ -91,13 +90,10 @@ public static class ProxyErrorResponses
         ProxyMetrics metrics,
         CancellationToken cancellationToken)
     {
-        await ProxyTimeoutPolicy.RunAsync(
-            async timeoutToken =>
-            {
-                await stream.WriteAsync(response, timeoutToken);
-            },
+        await ProxyTimedStreamWriter.WriteAsync(
+            stream,
+            response,
             timeout,
-            ProxyTimeoutKind.DownstreamWrite,
             cancellationToken);
 
         metrics.AddBytesWritten(response.Length);
