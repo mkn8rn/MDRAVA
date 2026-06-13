@@ -15,6 +15,7 @@ internal static partial class TestRegistry
     Test("Retry maxAttempts is enforced", ResilienceTests.RetryMaxAttemptsIsEnforced, TestTaxonomy.RetryCircuit),
     Test("Retry exhausted returns clear failure", ResilienceTests.RetryExhaustedReturnsClearFailure, TestTaxonomy.RetryCircuit, TestTaxonomy.SecurityNegativePaths),
     Test("Circuit opens after threshold failures", Sync(ResilienceTests.CircuitOpensAfterThresholdFailures), TestTaxonomy.RetryCircuit, TestTaxonomy.SecurityNegativePaths),
+    Test("Upstream attempt recorder records configured status failures without health failure", Sync(ResilienceTests.UpstreamAttemptRecorderRecordsConfiguredStatusFailuresWithoutHealthFailure), TestTaxonomy.RetryCircuit, TestTaxonomy.HealthChecks),
     Test("Circuit rejects traffic while open", Sync(ResilienceTests.CircuitRejectsTrafficWhileOpen), TestTaxonomy.RetryCircuit, TestTaxonomy.SecurityNegativePaths),
     Test("Circuit transitions to half-open after open duration", Sync(ResilienceTests.CircuitTransitionsToHalfOpenAfterOpenDuration), TestTaxonomy.RetryCircuit),
     Test("Circuit half-open probe count is bounded", Sync(ResilienceTests.HalfOpenProbeCountIsBounded), TestTaxonomy.RetryCircuit, TestTaxonomy.Limits),

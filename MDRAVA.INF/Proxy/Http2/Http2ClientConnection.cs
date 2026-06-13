@@ -764,7 +764,7 @@ public sealed class Http2ClientConnection
                 cancellationToken,
                 suppressGeneratedFailureResponse);
             lastResult = result;
-            RecordUpstreamAttemptResult(selection, result);
+            ProxyUpstreamAttemptRecorder.Record(selection, result, _healthStore, _circuitBreakerStore);
 
             var retryAttempt = retryAllowed
                 ? ProxyRetryPolicy.EvaluateAttempt(route.Retry, result, attempt, maxAttempts)
@@ -830,35 +830,6 @@ public sealed class Http2ClientConnection
             method,
             cancellationToken);
         return response.ToForwardingResult();
-    }
-
-    private void RecordUpstreamAttemptResult(UpstreamSelection selection, ForwardingResult result)
-    {
-        if (result.ResponseStatusCode.HasValue
-            && selection.Upstream.CircuitBreaker.FailureStatusCodes.Any(code => code == result.ResponseStatusCode.Value))
-        {
-            _circuitBreakerStore.RecordFailure(selection.CircuitBreakerLease, "status_code", result.ResponseStatusCode);
-            return;
-        }
-
-        if (result is ForwardingResult.FailureResult)
-        {
-            _healthStore.RecordRequestFailure(UpstreamHealthStateSourceMapper.FromUpstream(selection.Upstream));
-            if (ProxyForwardingFailurePolicy.IsCircuitFailure(result.FailureKind))
-            {
-                _circuitBreakerStore.RecordFailure(
-                    selection.CircuitBreakerLease,
-                    ProxyForwardingFailurePolicy.CircuitFailureReason(result.FailureKind));
-            }
-            else
-            {
-                selection.CircuitBreakerLease.Dispose();
-            }
-
-            return;
-        }
-
-        _circuitBreakerStore.RecordSuccess(selection.CircuitBreakerLease);
     }
 
     private async ValueTask WriteCachedResponseAsync(

@@ -322,6 +322,26 @@ internal static class ResilienceTests
         AssertEx.Equal(CircuitBreakerRuntimeState.Open, fixture.Circuit.Snapshot(StatusSource(route.Upstreams[0])).State);
     }
 
+    public static void UpstreamAttemptRecorderRecordsConfiguredStatusFailuresWithoutHealthFailure()
+    {
+        using var fixture = SelectorFixture.Create();
+        var route = Route([Upstream("first", weight: 1, circuit: Circuit(threshold: 1, failureStatusCodes: [503]))]);
+        var selection = AssertEx.NotNull(fixture.Selector.Select(SelectionRoute(route)));
+
+        ProxyUpstreamAttemptRecorder.Record(
+            selection,
+            ForwardingResult.Success(
+                responseStarted: true,
+                keepClientConnectionOpen: false,
+                responseStatusCode: 503),
+            fixture.Health,
+            fixture.Circuit);
+
+        AssertEx.Equal(CircuitBreakerRuntimeState.Open, fixture.Circuit.Snapshot(StatusSource(route.Upstreams[0])).State);
+        AssertEx.Equal(1L, fixture.Metrics.Snapshot().CircuitOpened);
+        AssertEx.Equal(0L, fixture.Metrics.Snapshot().UpstreamRequestFailures);
+    }
+
     public static void CircuitRejectsTrafficWhileOpen()
     {
         using var fixture = SelectorFixture.Create();
@@ -970,7 +990,10 @@ internal static class ResilienceTests
         };
     }
 
-    private static RuntimeCircuitBreakerPolicy Circuit(int threshold, int openSeconds = 30)
+    private static RuntimeCircuitBreakerPolicy Circuit(
+        int threshold,
+        int openSeconds = 30,
+        IReadOnlyList<int>? failureStatusCodes = null)
     {
         return new RuntimeCircuitBreakerPolicy(
             true,
@@ -978,7 +1001,7 @@ internal static class ResilienceTests
             TimeSpan.FromSeconds(60),
             TimeSpan.FromSeconds(openSeconds),
             1,
-            []);
+            failureStatusCodes ?? []);
     }
 
     private static ProxyConfigurationStore CreateStore(
