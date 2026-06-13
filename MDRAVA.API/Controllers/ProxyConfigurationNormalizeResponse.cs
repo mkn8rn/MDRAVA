@@ -1,5 +1,5 @@
-using MDRAVA.BLL.Configuration;
-using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
+using BusinessProxyConfigurationNormalizeResult =
+    MDRAVA.BLL.ControlPlane.ConfigurationManagement.ProxyConfigurationNormalizeResult;
 
 namespace MDRAVA.API.Controllers;
 
@@ -8,24 +8,24 @@ public sealed record ProxyConfigurationNormalizeResponse(
     string Format,
     string? CanonicalJson,
     IReadOnlyList<string> Errors,
-    IReadOnlyList<ProxyConfigurationFileError> FileErrors)
+    IReadOnlyList<ProxyConfigurationFileErrorResponse> FileErrors)
 {
-    public static ProxyConfigurationNormalizeResponse FromResult(ProxyConfigurationNormalizeResult result)
+    public static ProxyConfigurationNormalizeResponse FromResult(BusinessProxyConfigurationNormalizeResult result)
     {
         return result switch
         {
-            ProxyConfigurationNormalizeResult.NormalizedResult normalized => new ProxyConfigurationNormalizeResponse(
+            BusinessProxyConfigurationNormalizeResult.NormalizedResult normalized => new ProxyConfigurationNormalizeResponse(
                 Succeeded: true,
                 Format: normalized.Format,
                 CanonicalJson: normalized.CanonicalJson,
-                Errors: normalized.Errors,
-                FileErrors: normalized.FileErrors),
-            ProxyConfigurationNormalizeResult.FailedResult failed => new ProxyConfigurationNormalizeResponse(
+                Errors: normalized.Errors.ToArray(),
+                FileErrors: ProxyConfigurationFileErrorResponse.FromErrors(normalized.FileErrors)),
+            BusinessProxyConfigurationNormalizeResult.FailedResult failed => new ProxyConfigurationNormalizeResponse(
                 Succeeded: false,
                 Format: failed.Format,
                 CanonicalJson: null,
-                Errors: failed.Errors,
-                FileErrors: failed.FileErrors),
+                Errors: failed.Errors.ToArray(),
+                FileErrors: ProxyConfigurationFileErrorResponse.FromErrors(failed.FileErrors)),
             _ => throw new InvalidOperationException($"Unknown normalize result '{result.GetType().Name}'.")
         };
     }

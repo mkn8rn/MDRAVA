@@ -1,5 +1,5 @@
-using MDRAVA.BLL.Configuration;
-using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
+using BusinessProxyConfigurationValidationResult =
+    MDRAVA.BLL.ControlPlane.ConfigurationManagement.ProxyConfigurationValidationResult;
 
 namespace MDRAVA.API.Controllers;
 
@@ -11,22 +11,22 @@ public sealed record ProxyConfigurationValidationResponse(
     DateTimeOffset? LastSuccessfulLoadAtUtc,
     int? WouldBeVersion,
     IReadOnlyList<string> SourceFiles,
-    ProxyConfigurationDiscovery Discovery,
+    ProxyConfigurationDiscoveryResponse Discovery,
     IReadOnlyList<string> Errors,
-    IReadOnlyList<ProxyConfigurationFileError> FileErrors)
+    IReadOnlyList<ProxyConfigurationFileErrorResponse> FileErrors)
 {
-    public static ProxyConfigurationValidationResponse FromResult(ProxyConfigurationValidationResult result)
+    public static ProxyConfigurationValidationResponse FromResult(BusinessProxyConfigurationValidationResult result)
     {
         return result switch
         {
-            ProxyConfigurationValidationResult.ValidResult valid => FromResult(valid, succeeded: true),
-            ProxyConfigurationValidationResult.InvalidResult invalid => FromResult(invalid, succeeded: false),
+            BusinessProxyConfigurationValidationResult.ValidResult valid => FromResult(valid, succeeded: true),
+            BusinessProxyConfigurationValidationResult.InvalidResult invalid => FromResult(invalid, succeeded: false),
             _ => throw new InvalidOperationException($"Unknown validation result '{result.GetType().Name}'.")
         };
     }
 
     private static ProxyConfigurationValidationResponse FromResult(
-        ProxyConfigurationValidationResult result,
+        BusinessProxyConfigurationValidationResult result,
         bool succeeded)
     {
         return new ProxyConfigurationValidationResponse(
@@ -36,9 +36,9 @@ public sealed record ProxyConfigurationValidationResponse(
             ActiveVersion: result.ActiveVersion,
             LastSuccessfulLoadAtUtc: result.LastSuccessfulLoadAtUtc,
             WouldBeVersion: result.WouldBeVersion,
-            SourceFiles: result.SourceFiles,
-            Discovery: result.Discovery,
-            Errors: result.Errors,
-            FileErrors: result.FileErrors);
+            SourceFiles: result.SourceFiles.ToArray(),
+            Discovery: ProxyConfigurationDiscoveryResponse.FromDiscovery(result.Discovery),
+            Errors: result.Errors.ToArray(),
+            FileErrors: ProxyConfigurationFileErrorResponse.FromErrors(result.FileErrors));
     }
 }

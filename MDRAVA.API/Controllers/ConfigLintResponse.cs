@@ -1,4 +1,3 @@
-using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.ConfigLint;
 
 namespace MDRAVA.API.Controllers;
@@ -8,7 +7,7 @@ public sealed record ConfigLintResponse(
     DateTimeOffset LintedAtUtc,
     ConfigLintSummary Summary,
     IReadOnlyList<ConfigLintFinding> Findings,
-    IReadOnlyList<ProxyConfigurationFileError> ValidationErrors)
+    IReadOnlyList<ProxyConfigurationFileErrorResponse> ValidationErrors)
 {
     public static ConfigLintResponse FromResult(ConfigLintResult result)
     {
@@ -29,6 +28,6 @@ public sealed record ConfigLintResponse(
             LintedAtUtc: result.LintedAtUtc,
             Summary: result.Summary,
             Findings: result.Findings,
-            ValidationErrors: result.ValidationErrors);
+            ValidationErrors: ProxyConfigurationFileErrorResponse.FromErrors(result.ValidationErrors));
     }
 }
