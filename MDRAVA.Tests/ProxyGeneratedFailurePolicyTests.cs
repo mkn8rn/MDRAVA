@@ -153,6 +153,6 @@ internal static class ProxyGeneratedFailurePolicyTests
         AssertEx.True(text.Contains("Content-Type: text/plain\r\n", StringComparison.Ordinal), text);
         AssertEx.True(text.Contains("X-Request-Id: req-431\r\n", StringComparison.Ordinal), text);
         AssertEx.True(text.EndsWith("\r\n\r\nRequest Head Too Large", StringComparison.Ordinal), text);
-        AssertEx.Equal(stream.Length, metrics.Snapshot().BytesWritten);
+        AssertEx.Equal(stream.Length, metrics.Snapshot().Traffic.BytesWritten);
     }
 }

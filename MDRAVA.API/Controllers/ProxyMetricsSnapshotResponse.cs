@@ -153,6 +153,7 @@ public sealed record ProxyMetricsSnapshotResponse(
         var rejections = snapshot.Rejections;
         var resilience = snapshot.Resilience;
         var tls = snapshot.Tls;
+        var traffic = snapshot.Traffic;
         var tunnels = snapshot.Tunnels;
         var upstreamFailureReasons = snapshot.UpstreamFailureReasons;
         var upstreamHttp2 = snapshot.UpstreamHttp2;
@@ -163,11 +164,11 @@ public sealed record ProxyMetricsSnapshotResponse(
         return new ProxyMetricsSnapshotResponse(
             clientConnections.Accepted,
             clientConnections.Active,
-            snapshot.TotalRequests,
+            traffic.Requests,
             snapshot.UpstreamSuccesses,
             snapshot.UpstreamFailures,
-            snapshot.BytesRead,
-            snapshot.BytesWritten,
+            traffic.BytesRead,
+            traffic.BytesWritten,
             snapshot.ParseErrors,
             rejections.MalformedRequests,
             rejections.UnsupportedRequestFraming,

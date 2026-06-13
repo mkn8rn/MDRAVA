@@ -127,11 +127,12 @@ internal static class MetricsTests
                 Active: 0,
                 ClosedByIdleTimeout: 0,
                 ClosedByMaxRequests: 0),
-            TotalRequests: 0,
+            Traffic: new ProxyTrafficMetricsSnapshot(
+                Requests: 0,
+                BytesRead: 0,
+                BytesWritten: 0),
             UpstreamSuccesses: 0,
             UpstreamFailures: 0,
-            BytesRead: 0,
-            BytesWritten: 0,
             ParseErrors: 0,
             Rejections: new ProxyRejectionMetricsSnapshot(
                 ClientConnectionAdmissionRejections: 0,
@@ -324,7 +325,7 @@ internal static class MetricsTests
 
         AssertEx.True(result is ProxyMetricsExportInputReadResult.AvailableResult);
         var input = ((ProxyMetricsExportInputReadResult.AvailableResult)result).Input;
-        AssertEx.Equal(0L, input.Metrics.TotalRequests);
+        AssertEx.Equal(0L, input.Metrics.Traffic.Requests);
         AssertEx.Equal(0L, input.Metrics.UpstreamFailures);
         AssertEx.Equal(0, input.DefaultEnabledHttp3ListenerCount);
         AssertEx.False(input.Http3RequestBodyStreamingEnabled);

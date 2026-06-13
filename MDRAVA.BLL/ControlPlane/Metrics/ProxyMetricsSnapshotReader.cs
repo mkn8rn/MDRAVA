@@ -6,11 +6,9 @@ public sealed partial class ProxyMetrics
     {
         return new ProxyMetricsSnapshot(
             ReadClientConnectionMetricsSnapshot(),
-            Interlocked.Read(ref _totalRequests),
+            ReadTrafficMetricsSnapshot(),
             Interlocked.Read(ref _upstreamSuccesses),
             Interlocked.Read(ref _upstreamFailures),
-            Interlocked.Read(ref _bytesRead),
-            Interlocked.Read(ref _bytesWritten),
             Interlocked.Read(ref _parseErrors),
             ReadRejectionMetricsSnapshot(),
             Interlocked.Read(ref _clientBodyRelayFailures),
@@ -44,6 +42,14 @@ public sealed partial class ProxyMetrics
             ReadConfigLintFindings(),
             Interlocked.Read(ref _routeMatchDryRuns),
             ReadRouteMatchDryRunFailures());
+    }
+
+    private ProxyTrafficMetricsSnapshot ReadTrafficMetricsSnapshot()
+    {
+        return new ProxyTrafficMetricsSnapshot(
+            Interlocked.Read(ref _totalRequests),
+            Interlocked.Read(ref _bytesRead),
+            Interlocked.Read(ref _bytesWritten));
     }
 
     private ProxyClientConnectionMetricsSnapshot ReadClientConnectionMetricsSnapshot()

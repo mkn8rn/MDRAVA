@@ -5,11 +5,9 @@ namespace MDRAVA.BLL.ControlPlane.Metrics;
 
 public sealed record ProxyMetricsSnapshot(
     ProxyClientConnectionMetricsSnapshot ClientConnections,
-    long TotalRequests,
+    ProxyTrafficMetricsSnapshot Traffic,
     long UpstreamSuccesses,
     long UpstreamFailures,
-    long BytesRead,
-    long BytesWritten,
     long ParseErrors,
     ProxyRejectionMetricsSnapshot Rejections,
     long ClientBodyRelayFailures,
@@ -46,6 +44,9 @@ public sealed record ProxyMetricsSnapshot(
 {
     public ProxyClientConnectionMetricsSnapshot ClientConnections { get; } =
         ClientConnections ?? throw new ArgumentNullException(nameof(ClientConnections));
+
+    public ProxyTrafficMetricsSnapshot Traffic { get; } =
+        Traffic ?? throw new ArgumentNullException(nameof(Traffic));
 
     public ProxyHttp3MetricsSnapshot Http3 { get; } =
         Http3 ?? throw new ArgumentNullException(nameof(Http3));
