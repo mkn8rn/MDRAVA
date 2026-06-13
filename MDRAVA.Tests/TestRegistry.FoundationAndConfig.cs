@@ -17,6 +17,7 @@ internal static partial class TestRegistry
     Test("Configuration read result names available and missing outcomes", Sync(ConfigurationTests.ConfigurationReadResultNamesAvailableAndMissingOutcomes), TestTaxonomy.Config),
     Test("Configuration load result names loaded validated and failed outcomes", ConfigurationTests.ConfigurationLoadResultNamesLoadedValidatedAndFailedOutcomes, TestTaxonomy.Config),
     Test("Http1RequestParser parses a valid GET request", Sync(Http1RequestParserTests.ParsesValidGet), TestTaxonomy.Http1),
+    Test("HTTP heads copy input header lists", Sync(Http1RequestParserTests.HttpHeadsCopyInputHeaderLists), TestTaxonomy.Http1, TestTaxonomy.Headers, TestTaxonomy.Routing),
     Test("Http1RequestParser rejects missing Host", Sync(Http1RequestParserTests.RejectsMissingHost), TestTaxonomy.Http1, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
     Test("Http1RequestParser rejects invalid Content-Length", Sync(Http1RequestParserTests.RejectsInvalidContentLength), TestTaxonomy.Http1, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
     Test("Http1RequestParser detects request bodies", Sync(Http1RequestParserTests.DetectsRequestBodyIndicators), TestTaxonomy.Http1),

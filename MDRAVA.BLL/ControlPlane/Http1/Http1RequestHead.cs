@@ -13,13 +13,15 @@ public sealed class Http1RequestHead
         Http1RequestFraming framing,
         IReadOnlyList<ProxyHeaderField> headers)
     {
+        ArgumentNullException.ThrowIfNull(headers);
+
         Method = method;
         Target = target;
         Path = path;
         Version = version;
         Host = host;
         Framing = framing;
-        Headers = headers;
+        Headers = headers.ToArray();
     }
 
     public string Method { get; }

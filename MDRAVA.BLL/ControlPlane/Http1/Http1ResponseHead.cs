@@ -11,11 +11,13 @@ public sealed class Http1ResponseHead
         Http1ResponseFraming framing,
         IReadOnlyList<ProxyHeaderField> headers)
     {
+        ArgumentNullException.ThrowIfNull(headers);
+
         Version = version;
         StatusCode = statusCode;
         ReasonPhrase = reasonPhrase;
         Framing = framing;
-        Headers = headers;
+        Headers = headers.ToArray();
     }
 
     public string Version { get; }

@@ -23,6 +23,53 @@ internal static class Http1RequestParserTests
         AssertEx.False(head.HasTransferEncoding);
     }
 
+    public static void HttpHeadsCopyInputHeaderLists()
+    {
+        var requestHeaders = new List<ProxyHeaderField>
+        {
+            new("Host", "example.test")
+        };
+        var responseHeaders = new List<ProxyHeaderField>
+        {
+            new("Content-Type", "text/plain")
+        };
+        var diagnosticsHeaders = new List<ProxyHeaderField>
+        {
+            new("X-Debug", "true")
+        };
+
+        var requestHead = new Http1RequestHead(
+            "GET",
+            "/",
+            "/",
+            "HTTP/1.1",
+            "example.test",
+            Http1RequestFraming.None,
+            requestHeaders);
+        var responseHead = new Http1ResponseHead(
+            "HTTP/1.1",
+            200,
+            "OK",
+            Http1ResponseFraming.None,
+            responseHeaders);
+        var diagnosticsHead = new ProxyRouteDiagnosticsRequestHead(
+            "GET",
+            "/",
+            "/",
+            "HTTP/1.1",
+            "example.test",
+            ProxyRouteDiagnosticsRequestFraming.None,
+            diagnosticsHeaders);
+
+        requestHeaders.Clear();
+        responseHeaders.Clear();
+        diagnosticsHeaders.Clear();
+
+        AssertEx.Equal("Host", requestHead.Headers[0].Name);
+        AssertEx.Equal("Content-Type", responseHead.Headers[0].Name);
+        AssertEx.Equal("X-Debug", diagnosticsHead.Headers[0].Name);
+    }
+
     public static void RejectsMissingHost()
     {
         var bytes = Bytes("GET / HTTP/1.1\r\nUser-Agent: test\r\n\r\n");
