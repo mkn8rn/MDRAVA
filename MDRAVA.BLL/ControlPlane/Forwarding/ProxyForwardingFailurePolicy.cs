@@ -24,9 +24,11 @@ public static class ProxyForwardingFailurePolicy
     {
         return failureKind switch
         {
+            ProxyFailureKind.ClientRequestBodyTimeout => 408,
             ProxyFailureKind.UpstreamConnectTimeout => 504,
             ProxyFailureKind.UpstreamResponseHeadTimeout => 504,
             ProxyFailureKind.NoHealthyUpstream => 503,
+            ProxyFailureKind.UpgradeRejected => 503,
             ProxyFailureKind.RequestPayloadTooLarge => 413,
             ProxyFailureKind.ClientMalformedRequest => 400,
             _ => 502

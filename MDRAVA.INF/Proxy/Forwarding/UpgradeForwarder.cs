@@ -66,8 +66,6 @@ public sealed class UpgradeForwarder
                 _metrics.UpgradeRequestRejected();
                 await ProxyGeneratedFailureWriter.WriteAsync(
                     clientStream,
-                    503,
-                    "Service Unavailable",
                     ProxyFailureKind.UpgradeRejected,
                     timeouts,
                     requestId,
@@ -182,8 +180,6 @@ public sealed class UpgradeForwarder
                 _metrics.GeneratedFailureResponse(502);
                 await ProxyGeneratedFailureWriter.WriteAsync(
                     clientStream,
-                    502,
-                    "Bad Gateway",
                     ProxyFailureKind.UpstreamMalformedResponse,
                     timeouts,
                     requestId,
@@ -212,8 +208,6 @@ public sealed class UpgradeForwarder
                 _metrics.GeneratedFailureResponse(502);
                 await ProxyGeneratedFailureWriter.WriteAsync(
                     clientStream,
-                    502,
-                    "Bad Gateway",
                     ProxyFailureKind.UpstreamConnectFailed,
                     timeouts,
                     requestId,
@@ -254,8 +248,6 @@ public sealed class UpgradeForwarder
                     _metrics.GeneratedFailureResponse(504);
                     await ProxyGeneratedFailureWriter.WriteAsync(
                         clientStream,
-                        504,
-                        "Gateway Timeout",
                         ProxyFailureKind.UpstreamConnectTimeout,
                         timeouts,
                         requestId,
@@ -273,8 +265,6 @@ public sealed class UpgradeForwarder
                     _metrics.GeneratedFailureResponse(504);
                     await ProxyGeneratedFailureWriter.WriteAsync(
                         clientStream,
-                        504,
-                        "Gateway Timeout",
                         ProxyFailureKind.UpstreamResponseHeadTimeout,
                         timeouts,
                         requestId,

@@ -38,6 +38,8 @@ internal static class ProxyGeneratedFailurePolicyTests
         var defaultResponse = ProxyGeneratedFailurePolicy.BuildFailureResponse((ForwardingResult.FailureResult)defaultFailure);
         var timeoutResponse = ProxyGeneratedFailurePolicy.BuildFailureResponse((ForwardingResult.FailureResult)timeoutFailure);
         var noHealthyResponse = ProxyGeneratedFailurePolicy.BuildFailureResponse((ForwardingResult.FailureResult)noHealthyFailure);
+        var clientBodyTimeoutResponse = ProxyGeneratedFailurePolicy.BuildFailureResponse(ProxyFailureKind.ClientRequestBodyTimeout);
+        var upgradeRejectedResponse = ProxyGeneratedFailurePolicy.BuildFailureResponse(ProxyFailureKind.UpgradeRejected);
 
         AssertEx.Equal(502, defaultResponse.StatusCode);
         AssertEx.Equal("Bad Gateway", defaultResponse.ReasonPhrase);
@@ -51,6 +53,14 @@ internal static class ProxyGeneratedFailurePolicyTests
         AssertEx.Equal("Service Unavailable", noHealthyResponse.ReasonPhrase);
         AssertEx.Equal("Service Unavailable", noHealthyResponse.Body);
         AssertEx.Equal(ProxyFailureKind.NoHealthyUpstream, noHealthyResponse.FailureKind);
+        AssertEx.Equal(408, clientBodyTimeoutResponse.StatusCode);
+        AssertEx.Equal("Request Timeout", clientBodyTimeoutResponse.ReasonPhrase);
+        AssertEx.Equal("Request Timeout", clientBodyTimeoutResponse.Body);
+        AssertEx.Equal(ProxyFailureKind.ClientRequestBodyTimeout, clientBodyTimeoutResponse.FailureKind);
+        AssertEx.Equal(503, upgradeRejectedResponse.StatusCode);
+        AssertEx.Equal("Service Unavailable", upgradeRejectedResponse.ReasonPhrase);
+        AssertEx.Equal("Service Unavailable", upgradeRejectedResponse.Body);
+        AssertEx.Equal(ProxyFailureKind.UpgradeRejected, upgradeRejectedResponse.FailureKind);
 
         var forwardingResult = (ForwardingResult.FailureResult)timeoutResponse.ToForwardingResult();
         AssertEx.True(forwardingResult.ResponseStarted);

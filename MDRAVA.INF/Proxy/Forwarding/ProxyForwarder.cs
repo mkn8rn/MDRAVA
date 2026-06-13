@@ -208,8 +208,6 @@ public sealed class ProxyForwarder
             {
                 await ProxyGeneratedFailureWriter.WriteAsync(
                     clientStream,
-                    413,
-                    "Payload Too Large",
                     ProxyFailureKind.RequestPayloadTooLarge,
                     timeouts,
                     requestId,
@@ -235,8 +233,6 @@ public sealed class ProxyForwarder
             {
                 await ProxyGeneratedFailureWriter.WriteAsync(
                     clientStream,
-                    400,
-                    "Bad Request",
                     ProxyFailureKind.ClientMalformedRequest,
                     timeouts,
                     requestId,
@@ -268,8 +264,6 @@ public sealed class ProxyForwarder
                 _metrics.GeneratedFailureResponse(502);
                 await ProxyGeneratedFailureWriter.WriteAsync(
                     clientStream,
-                    502,
-                    "Bad Gateway",
                     ProxyFailureKind.UpstreamMalformedResponse,
                     timeouts,
                     requestId,
@@ -302,8 +296,6 @@ public sealed class ProxyForwarder
                 _metrics.GeneratedFailureResponse(502);
                 await ProxyGeneratedFailureWriter.WriteAsync(
                     clientStream,
-                    502,
-                    "Bad Gateway",
                     ProxyFailureKind.UpstreamMalformedResponse,
                     timeouts,
                     requestId,
@@ -347,8 +339,6 @@ public sealed class ProxyForwarder
                 _metrics.GeneratedFailureResponse(502);
                 await ProxyGeneratedFailureWriter.WriteAsync(
                     clientStream,
-                    502,
-                    "Bad Gateway",
                     failureKind,
                     timeouts,
                     requestId,
@@ -382,8 +372,6 @@ public sealed class ProxyForwarder
                 _metrics.GeneratedFailureResponse(502);
                 await ProxyGeneratedFailureWriter.WriteAsync(
                     clientStream,
-                    502,
-                    "Bad Gateway",
                     ProxyFailureKind.UpstreamConnectFailed,
                     timeouts,
                     requestId,
@@ -411,8 +399,6 @@ public sealed class ProxyForwarder
                 _metrics.GeneratedFailureResponse(502);
                 await ProxyGeneratedFailureWriter.WriteAsync(
                     clientStream,
-                    502,
-                    "Bad Gateway",
                     ProxyFailureKind.UpstreamConnectFailed,
                     timeouts,
                     requestId,
@@ -745,8 +731,6 @@ public sealed class ProxyForwarder
                 {
                     await ProxyGeneratedFailureWriter.WriteAsync(
                         clientStream,
-                        408,
-                        "Request Timeout",
                         ProxyFailureKind.ClientRequestBodyTimeout,
                         timeouts,
                         requestId,
@@ -763,8 +747,6 @@ public sealed class ProxyForwarder
                     _metrics.GeneratedFailureResponse(504);
                     await ProxyGeneratedFailureWriter.WriteAsync(
                         clientStream,
-                        504,
-                        "Gateway Timeout",
                         ProxyFailureKind.UpstreamConnectTimeout,
                         timeouts,
                         requestId,
@@ -781,8 +763,6 @@ public sealed class ProxyForwarder
                     _metrics.GeneratedFailureResponse(504);
                     await ProxyGeneratedFailureWriter.WriteAsync(
                         clientStream,
-                        504,
-                        "Gateway Timeout",
                         ProxyFailureKind.UpstreamResponseHeadTimeout,
                         timeouts,
                         requestId,

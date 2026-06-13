@@ -8,19 +8,13 @@ internal static class ProxyGeneratedFailureWriter
 {
     public static ValueTask WriteAsync(
         Stream clientStream,
-        int statusCode,
-        string reasonPhrase,
         ProxyFailureKind failureKind,
         RuntimeTimeouts timeouts,
         string requestId,
         ProxyMetrics metrics,
         CancellationToken cancellationToken)
     {
-        var response = ProxyGeneratedFailurePolicy.BuildFailureResponse(
-            statusCode,
-            reasonPhrase,
-            reasonPhrase,
-            failureKind);
+        var response = ProxyGeneratedFailurePolicy.BuildFailureResponse(failureKind);
 
         return ProxyErrorResponses.WriteGeneratedFailureAsync(
             clientStream,
