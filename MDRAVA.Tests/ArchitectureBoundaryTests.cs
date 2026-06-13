@@ -25,6 +25,34 @@ internal static class ArchitectureBoundaryTests
             ]);
     }
 
+    public static void BusinessLayerSourceDoesNotReferenceOuterLayers()
+    {
+        var root = FindRepositoryRoot();
+
+        AssertSourceDoesNotContain(
+            root,
+            "MDRAVA.BLL",
+            [
+                "MDRAVA.API",
+                "MDRAVA.INF",
+                "Microsoft.AspNetCore",
+                "Microsoft.Extensions.Hosting"
+            ]);
+    }
+
+    public static void InfrastructureSourceDoesNotReferenceApiLayer()
+    {
+        var root = FindRepositoryRoot();
+
+        AssertSourceDoesNotContain(
+            root,
+            "MDRAVA.INF",
+            [
+                "MDRAVA.API",
+                "Microsoft.AspNetCore"
+            ]);
+    }
+
     private static void AssertReferences(
         string root,
         string projectPath,
@@ -44,6 +72,45 @@ internal static class ArchitectureBoundaryTests
             .ToArray();
 
         AssertEx.Equal(string.Join("|", expected), string.Join("|", actual));
+    }
+
+    private static void AssertSourceDoesNotContain(
+        string root,
+        string projectDirectory,
+        IReadOnlyList<string> forbiddenTokens)
+    {
+        var directory = Path.Combine(root, NormalizePath(projectDirectory));
+        var violations = Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories)
+            .Where(static path => !IsGeneratedOrBuildOutput(path))
+            .SelectMany(path => ForbiddenTokensInFile(root, path, forbiddenTokens))
+            .OrderBy(static violation => violation, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        AssertEx.Equal("", string.Join(Environment.NewLine, violations));
+    }
+
+    private static IEnumerable<string> ForbiddenTokensInFile(
+        string root,
+        string path,
+        IReadOnlyList<string> forbiddenTokens)
+    {
+        var text = File.ReadAllText(path);
+        foreach (var token in forbiddenTokens)
+        {
+            if (text.Contains(token, StringComparison.Ordinal))
+            {
+                yield return $"{NormalizePath(Path.GetRelativePath(root, path))} contains forbidden boundary token '{token}'.";
+            }
+        }
+    }
+
+    private static bool IsGeneratedOrBuildOutput(string path)
+    {
+        var normalized = NormalizePath(path);
+        return normalized.Contains("/bin/", StringComparison.OrdinalIgnoreCase)
+            || normalized.Contains("/obj/", StringComparison.OrdinalIgnoreCase)
+            || normalized.EndsWith(".g.cs", StringComparison.OrdinalIgnoreCase)
+            || normalized.EndsWith(".AssemblyInfo.cs", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string FindRepositoryRoot()

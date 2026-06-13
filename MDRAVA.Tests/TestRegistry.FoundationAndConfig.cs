@@ -5,6 +5,8 @@ internal static partial class TestRegistry
     private static TestCase[] FoundationAndConfig() =>
     [
     Test("Project references preserve layered dependency direction", Sync(ArchitectureBoundaryTests.ProjectReferencesPreserveLayeredDependencyDirection), TestTaxonomy.Config),
+    Test("BLL source does not reference outer layers", Sync(ArchitectureBoundaryTests.BusinessLayerSourceDoesNotReferenceOuterLayers), TestTaxonomy.Config),
+    Test("Infrastructure source does not reference API layer", Sync(ArchitectureBoundaryTests.InfrastructureSourceDoesNotReferenceApiLayer), TestTaxonomy.Config),
     Test("Configuration file error names global and path errors", Sync(ConfigurationTests.ConfigurationFileErrorNamesGlobalAndPathErrors), TestTaxonomy.Config),
     Test("Normalize site parse result names parsed and failed states", Sync(ConfigurationTests.NormalizeSiteParseResultNamesParsedAndFailedStates), TestTaxonomy.Config),
     Test("Configuration normalize result names normalized and failed outcomes", Sync(ConfigurationTests.ConfigurationNormalizeResultNamesNormalizedAndFailedOutcomes), TestTaxonomy.Config),
