@@ -308,7 +308,9 @@ internal static class UpstreamHttp2Tests
             result.ClientResponse);
         AssertEx.Equal("GET", result.Upstream.RequestHeaders[":method"]);
         AssertEx.Equal("/close-before-headers", result.Upstream.RequestHeaders[":path"]);
-        AssertEx.True(result.Metrics.UpstreamFailures >= 1, result.Metrics.UpstreamFailures.ToString());
+        AssertEx.True(
+            result.Metrics.UpstreamForwarding.Failures >= 1,
+            result.Metrics.UpstreamForwarding.Failures.ToString());
     }
 
     public static async Task Http2UpstreamCloseAfterResponseHeadersDoesNotRetryAfterHeadersAreSent()

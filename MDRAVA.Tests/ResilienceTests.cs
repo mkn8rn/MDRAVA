@@ -238,7 +238,7 @@ internal static class ResilienceTests
             AssertEx.True(response.EndsWith("partial", StringComparison.Ordinal), response);
             AssertEx.Equal(1, firstRequests.Count);
             AssertEx.Equal(0L, metrics.Resilience.RetryAttempts);
-            AssertEx.Equal(1L, metrics.UpstreamBodyRelayFailures);
+            AssertEx.Equal(1L, metrics.UpstreamForwarding.BodyRelayFailures);
         }
         finally
         {

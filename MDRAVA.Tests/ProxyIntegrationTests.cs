@@ -1046,7 +1046,7 @@ internal static class ProxyIntegrationTests
         AssertEx.True(result.ClientResponse.Contains("200 OK", StringComparison.Ordinal), result.ClientResponse);
         AssertEx.False(result.ClientResponse.Contains("502 Bad Gateway", StringComparison.Ordinal), result.ClientResponse);
         AssertEx.False(result.ClientResponse.Contains("504 Gateway Timeout", StringComparison.Ordinal), result.ClientResponse);
-        AssertEx.Equal(1L, result.Metrics.UpstreamBodyRelayFailures);
+        AssertEx.Equal(1L, result.Metrics.UpstreamForwarding.BodyRelayFailures);
     }
 
     public static async Task UpstreamChunkedEarlyCloseClosesAfterStartedResponse()
@@ -1060,7 +1060,7 @@ internal static class ProxyIntegrationTests
         AssertEx.True(result.ClientResponse.Contains("200 OK", StringComparison.Ordinal), result.ClientResponse);
         AssertEx.False(result.ClientResponse.Contains("502 Bad Gateway", StringComparison.Ordinal), result.ClientResponse);
         AssertEx.False(result.ClientResponse.Contains("504 Gateway Timeout", StringComparison.Ordinal), result.ClientResponse);
-        AssertEx.Equal(1L, result.Metrics.UpstreamBodyRelayFailures);
+        AssertEx.Equal(1L, result.Metrics.UpstreamForwarding.BodyRelayFailures);
     }
 
     public static async Task HttpsListenerProxiesGetToUpstream()

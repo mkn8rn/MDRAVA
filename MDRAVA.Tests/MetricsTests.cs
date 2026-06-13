@@ -131,8 +131,10 @@ internal static class MetricsTests
                 Requests: 0,
                 BytesRead: 0,
                 BytesWritten: 0),
-            UpstreamSuccesses: 0,
-            UpstreamFailures: 0,
+            UpstreamForwarding: new ProxyUpstreamForwardingMetricsSnapshot(
+                Successes: 0,
+                Failures: 0,
+                BodyRelayFailures: 0),
             ClientFailures: new ProxyClientFailureMetricsSnapshot(
                 ParseErrors: 0,
                 BodyRelayFailures: 0,
@@ -148,7 +150,6 @@ internal static class MetricsTests
                 ParserLimitRejections: 0,
                 MalformedRequests: 0,
                 UnsupportedRequestFraming: 0),
-            UpstreamBodyRelayFailures: 0,
             UpstreamFailureReasons: new ProxyUpstreamFailureMetricsSnapshot(
                 ConnectFailures: 0,
                 ConnectTimeouts: 0,
@@ -327,7 +328,7 @@ internal static class MetricsTests
         AssertEx.True(result is ProxyMetricsExportInputReadResult.AvailableResult);
         var input = ((ProxyMetricsExportInputReadResult.AvailableResult)result).Input;
         AssertEx.Equal(0L, input.Metrics.Traffic.Requests);
-        AssertEx.Equal(0L, input.Metrics.UpstreamFailures);
+        AssertEx.Equal(0L, input.Metrics.UpstreamForwarding.Failures);
         AssertEx.Equal(0, input.DefaultEnabledHttp3ListenerCount);
         AssertEx.False(input.Http3RequestBodyStreamingEnabled);
         AssertEx.Equal(0, input.CacheStatus.Routes.Count);
