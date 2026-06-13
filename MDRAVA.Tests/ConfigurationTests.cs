@@ -41,14 +41,13 @@ internal static class ConfigurationTests
             "yaml",
             [ProxyConfigurationFileError.Global("parse failed")]);
 
-        AssertEx.True(normalized.Succeeded);
+        AssertEx.True(normalized is ProxyConfigurationNormalizeResult.NormalizedResult);
         AssertEx.Equal("json", normalized.Format);
-        AssertEx.Equal("{}", AssertEx.NotNull(normalized.CanonicalJson));
+        AssertEx.Equal("{}", ((ProxyConfigurationNormalizeResult.NormalizedResult)normalized).CanonicalJson);
         AssertEx.Equal(0, normalized.Errors.Count);
         AssertEx.Equal(0, normalized.FileErrors.Count);
-        AssertEx.False(failed.Succeeded);
+        AssertEx.True(failed is ProxyConfigurationNormalizeResult.FailedResult);
         AssertEx.Equal("yaml", failed.Format);
-        AssertEx.Equal<string?>(null, failed.CanonicalJson);
         AssertEx.Equal("parse failed", failed.Errors[0]);
         AssertEx.Equal("parse failed", failed.FileErrors[0].Message);
     }
@@ -970,7 +969,7 @@ internal static class ConfigurationTests
             YamlSiteText("normalized", port: 18081, upstreamPort: 15001)));
 
         var ok = (OkObjectResult)AssertEx.NotNull(actionResult.Result);
-        var normalize = (ProxyConfigurationNormalizeResult)AssertEx.NotNull(ok.Value);
+        var normalize = (ProxyConfigurationNormalizeResponse)AssertEx.NotNull(ok.Value);
         AssertEx.True(normalize.Succeeded, string.Join("; ", normalize.Errors));
         AssertEx.True(AssertEx.NotNull(normalize.CanonicalJson).Contains("\"Name\": \"normalized\"", StringComparison.Ordinal));
         AssertEx.Equal(1, store.Snapshot.Version);
@@ -995,10 +994,9 @@ internal static class ConfigurationTests
 
         var result = normalizer.Normalize(new ProxyConfigurationNormalizeRequest("yml", "ignored"));
 
-        AssertEx.False(result.Succeeded);
+        AssertEx.True(result is ProxyConfigurationNormalizeResult.FailedResult);
         AssertEx.Equal(ProxyConfigurationNormalizeFormat.Yaml, parser.LastFormat);
         AssertEx.Equal("yaml", result.Format);
-        AssertEx.Equal(null, result.CanonicalJson);
         AssertEx.True(result.Errors.Any(static error => error.Contains("Proxy:Listeners", StringComparison.Ordinal)), string.Join("; ", result.Errors));
         AssertEx.True(result.FileErrors.All(static error => error.Path is null));
     }
@@ -1009,9 +1007,8 @@ internal static class ConfigurationTests
 
         var result = normalizer.Normalize(null);
 
-        AssertEx.False(result.Succeeded);
+        AssertEx.True(result is ProxyConfigurationNormalizeResult.FailedResult);
         AssertEx.Equal("unknown", result.Format);
-        AssertEx.Equal(null, result.CanonicalJson);
         AssertEx.True(result.Errors.Any(static error => error.Contains("request body is required", StringComparison.Ordinal)), string.Join("; ", result.Errors));
         AssertEx.True(result.FileErrors.All(static error => error.Path is null));
     }
@@ -1023,10 +1020,10 @@ internal static class ConfigurationTests
         var missingFormat = normalizer.Normalize(new ProxyConfigurationNormalizeRequest(null, "ignored"));
         var missingText = normalizer.Normalize(new ProxyConfigurationNormalizeRequest("json", null));
 
-        AssertEx.False(missingFormat.Succeeded);
+        AssertEx.True(missingFormat is ProxyConfigurationNormalizeResult.FailedResult);
         AssertEx.Equal("unknown", missingFormat.Format);
         AssertEx.True(missingFormat.Errors.Any(static error => error.Contains("Format must be", StringComparison.Ordinal)), string.Join("; ", missingFormat.Errors));
-        AssertEx.False(missingText.Succeeded);
+        AssertEx.True(missingText is ProxyConfigurationNormalizeResult.FailedResult);
         AssertEx.Equal("json", missingText.Format);
         AssertEx.True(missingText.Errors.Any(static error => error.Contains("config text is required", StringComparison.Ordinal)), string.Join("; ", missingText.Errors));
         AssertEx.True(missingText.FileErrors.All(static error => error.Path is null));
@@ -1049,7 +1046,7 @@ internal static class ConfigurationTests
         var actionResult = controller.Normalize(null);
 
         var badRequest = (BadRequestObjectResult)AssertEx.NotNull(actionResult.Result);
-        var normalize = (ProxyConfigurationNormalizeResult)AssertEx.NotNull(badRequest.Value);
+        var normalize = (ProxyConfigurationNormalizeResponse)AssertEx.NotNull(badRequest.Value);
         AssertEx.False(normalize.Succeeded);
         AssertEx.Equal("unknown", normalize.Format);
         AssertEx.True(normalize.Errors.Any(static error => error.Contains("request body is required", StringComparison.Ordinal)), string.Join("; ", normalize.Errors));

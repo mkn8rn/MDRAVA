@@ -2,27 +2,19 @@ using MDRAVA.BLL.Configuration;
 
 namespace MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 
-public sealed record ProxyConfigurationNormalizeResult
+public abstract record ProxyConfigurationNormalizeResult
 {
     private ProxyConfigurationNormalizeResult(
-        bool succeeded,
         string format,
-        string? canonicalJson,
         IReadOnlyList<string> errors,
         IReadOnlyList<ProxyConfigurationFileError> fileErrors)
     {
-        Succeeded = succeeded;
         Format = format;
-        CanonicalJson = canonicalJson;
         Errors = errors;
         FileErrors = fileErrors;
     }
 
-    public bool Succeeded { get; }
-
     public string Format { get; }
-
-    public string? CanonicalJson { get; }
 
     public IReadOnlyList<string> Errors { get; }
 
@@ -32,23 +24,46 @@ public sealed record ProxyConfigurationNormalizeResult
         string format,
         string canonicalJson)
     {
-        return new ProxyConfigurationNormalizeResult(
-            succeeded: true,
-            format: format,
-            canonicalJson: canonicalJson,
-            errors: [],
-            fileErrors: []);
+        return new NormalizedResult(format, canonicalJson);
     }
 
     public static ProxyConfigurationNormalizeResult Failed(
         string format,
         IReadOnlyList<ProxyConfigurationFileError> fileErrors)
     {
-        return new ProxyConfigurationNormalizeResult(
-            succeeded: false,
-            format: format,
-            canonicalJson: null,
-            errors: fileErrors.Select(static error => error.Path is null ? error.Message : $"{error.Path}: {error.Message}").ToArray(),
-            fileErrors: fileErrors);
+        return new FailedResult(format, fileErrors);
+    }
+
+    public sealed record NormalizedResult : ProxyConfigurationNormalizeResult
+    {
+        internal NormalizedResult(string format, string canonicalJson)
+            : base(format, [], [])
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(canonicalJson);
+            CanonicalJson = canonicalJson;
+        }
+
+        public string CanonicalJson { get; }
+    }
+
+    public sealed record FailedResult : ProxyConfigurationNormalizeResult
+    {
+        internal FailedResult(
+            string format,
+            IReadOnlyList<ProxyConfigurationFileError> fileErrors)
+            : base(
+                format,
+                CreateErrors(fileErrors),
+                fileErrors)
+        {
+        }
+
+        private static IReadOnlyList<string> CreateErrors(IReadOnlyList<ProxyConfigurationFileError> fileErrors)
+        {
+            ArgumentNullException.ThrowIfNull(fileErrors);
+            return fileErrors
+                .Select(static error => error.Path is null ? error.Message : $"{error.Path}: {error.Message}")
+                .ToArray();
+        }
     }
 }
