@@ -33,22 +33,6 @@ public sealed partial class ProxyMetrics
         Interlocked.Increment(ref _upstreamConnectFailures);
     }
 
-    public void AddBytesRead(long bytes)
-    {
-        if (bytes > 0)
-        {
-            Interlocked.Add(ref _bytesRead, bytes);
-        }
-    }
-
-    public void AddBytesWritten(long bytes)
-    {
-        if (bytes > 0)
-        {
-            Interlocked.Add(ref _bytesWritten, bytes);
-        }
-    }
-
     public void UpstreamMalformedResponse()
     {
         Interlocked.Increment(ref _upstreamMalformedResponses);
