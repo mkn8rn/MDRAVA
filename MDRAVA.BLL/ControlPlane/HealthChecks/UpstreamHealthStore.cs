@@ -53,7 +53,7 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
             target.UpstreamEndpoint);
         lock (state.Gate)
         {
-            state.HealthCheckEnabled = true;
+            state.RecordHealthCheckConfiguration(enabled: true);
             state.LastResult = sample.Result;
             state.LastCheckedAtUtc = checkedAtUtc;
             var previous = state.State;
@@ -106,7 +106,7 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
             var state = GetOrCreate(source.HealthState);
             lock (state.Gate)
             {
-                state.HealthCheckEnabled = source.HealthCheckEnabled;
+                state.RecordHealthCheckConfiguration(source.HealthCheckEnabled);
                 records.Add(new ProxyUpstreamStatus(
                     source.HealthState.RouteName,
                     source.HealthState.UpstreamName,
@@ -176,7 +176,7 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
 
         public string Endpoint { get; }
 
-        public bool HealthCheckEnabled { get; set; }
+        public bool HealthCheckEnabled { get; private set; }
 
         public UpstreamHealthState State { get; set; } = UpstreamHealthState.Unknown;
 
@@ -191,5 +191,10 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
         public long SelectedRequests;
 
         public long RequestFailures;
+
+        public void RecordHealthCheckConfiguration(bool enabled)
+        {
+            HealthCheckEnabled = enabled;
+        }
     }
 }
