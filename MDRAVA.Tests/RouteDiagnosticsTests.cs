@@ -28,10 +28,11 @@ internal static class RouteDiagnosticsTests
 
         var direct = matcher.Match(Snapshot(options).Routes, requestHead);
         var dryRun = service.Explain(new RouteMatchDryRunRequest("http", "diag.test", 8080, "GET", "/api/users", "?id=1", NoHeaders(), null, null));
+        var matched = Matched(dryRun);
 
         AssertEx.NotNull(direct);
-        AssertEx.Equal(direct!.Route.Name, AssertEx.NotNull(dryRun.Route).Name);
-        AssertEx.Equal("proxy", dryRun.EffectiveAction!);
+        AssertEx.Equal(direct!.Route.Name, matched.Route.Name);
+        AssertEx.Equal("proxy", matched.EffectiveAction);
     }
 
     public static void DryRunDoesNotPerformUpstreamIoOrMutateRetryCircuitOrCacheState()
@@ -55,7 +56,7 @@ internal static class RouteDiagnosticsTests
 
         var afterMetrics = metrics.Snapshot();
         var afterCache = CacheStatus(cache, store.Snapshot);
-        AssertEx.True(result.WouldProxy);
+        AssertEx.True(Matched(result).WouldProxy);
         AssertEx.Equal(0L, afterMetrics.RetryAttempts - beforeMetrics.RetryAttempts);
         AssertEx.Equal(0L, afterMetrics.CircuitRejections - beforeMetrics.CircuitRejections);
         AssertEx.Equal(beforeCache.HitCount, afterCache.HitCount);
@@ -68,10 +69,9 @@ internal static class RouteDiagnosticsTests
         var service = CreateRouteService(BaseOptions([ProxyRoute("api", "diag.test", "/api")]), out _, out _);
 
         var result = service.Explain(new RouteMatchDryRunRequest("http", "other.test", 8080, "GET", "/api", "", NoHeaders(), null, null));
+        var noRoute = NoMatchingRoute(result);
 
-        AssertEx.True(result.Succeeded);
-        AssertEx.Equal("no_matching_route", result.NoMatchReason);
-        AssertEx.Equal(false, result.WouldProxy);
+        AssertEx.Equal("no_matching_route", noRoute.NoMatchReason);
     }
 
     public static void DryRunReportsPathRewriteResult()
@@ -88,7 +88,7 @@ internal static class RouteDiagnosticsTests
 
         var result = service.Explain(new RouteMatchDryRunRequest("http", "diag.test", 8080, "GET", "/public/api/users", "id=1", NoHeaders(), null, null));
 
-        AssertEx.Equal("/api/users?id=1", result.RewrittenTarget!);
+        AssertEx.Equal("/api/users?id=1", Matched(result).RewrittenTarget);
     }
 
     public static void DryRunCanSelectHttp3ProtocolListener()
@@ -124,9 +124,10 @@ internal static class RouteDiagnosticsTests
             "web",
             "http3"));
 
-        AssertEx.True(result.Succeeded);
-        AssertEx.Equal("api", AssertEx.NotNull(result.Route).Name);
-        var listener = AssertEx.NotNull(result.Listener);
+        var matched = Matched(result);
+
+        AssertEx.Equal("api", matched.Route.Name);
+        var listener = matched.Listener;
         AssertEx.Equal("https", listener.Transport);
         AssertEx.True(listener.Protocols.Contains("Http3", StringComparison.Ordinal));
     }
@@ -197,12 +198,16 @@ internal static class RouteDiagnosticsTests
         var maintenanceResult = service.Explain(new RouteMatchDryRunRequest("http", "diag.test", 8080, "GET", "/disabled", "", NoHeaders(), null, null));
         var staticResult = service.Explain(new RouteMatchDryRunRequest("http", "diag.test", 8080, "GET", "/static", "", NoHeaders(), null, null));
 
-        AssertEx.Equal("redirect", redirectResult.EffectiveAction!);
-        AssertEx.Equal(308, redirectResult.GeneratedStatusCode!.Value);
-        AssertEx.Equal("maintenance", maintenanceResult.EffectiveAction!);
-        AssertEx.Equal(503, maintenanceResult.GeneratedStatusCode!.Value);
-        AssertEx.Equal("staticResponse", staticResult.EffectiveAction!);
-        AssertEx.Equal(410, staticResult.GeneratedStatusCode!.Value);
+        var redirectMatch = Matched(redirectResult);
+        var maintenanceMatch = Matched(maintenanceResult);
+        var staticMatch = Matched(staticResult);
+
+        AssertEx.Equal("redirect", redirectMatch.EffectiveAction);
+        AssertEx.Equal(308, redirectMatch.GeneratedStatusCode!.Value);
+        AssertEx.Equal("maintenance", maintenanceMatch.EffectiveAction);
+        AssertEx.Equal(503, maintenanceMatch.GeneratedStatusCode!.Value);
+        AssertEx.Equal("staticResponse", staticMatch.EffectiveAction);
+        AssertEx.Equal(410, staticMatch.GeneratedStatusCode!.Value);
     }
 
     public static void DryRunPolicyExplainerUsesNamedPolicyOutcomes()
@@ -322,10 +327,10 @@ internal static class RouteDiagnosticsTests
             metricsSink: metrics);
 
         var result = service.Explain(new RouteMatchDryRunRequest("http", "diag.test", 8080, "GET", "/api", "", NoHeaders(), null, null));
+        var noListener = NoMatchingListener(result);
 
-        AssertEx.True(result.Succeeded);
-        AssertEx.Equal("no_matching_listener", result.NoMatchReason);
-        AssertEx.Equal("/api", result.OriginalTarget!);
+        AssertEx.Equal("no_matching_listener", noListener.NoMatchReason);
+        AssertEx.Equal("/api", noListener.OriginalTarget);
         AssertEx.Equal("no_route", result.Cache.Reason);
         AssertEx.True(result.Findings.Any(static finding => finding.Code == "no_matching_listener"));
         AssertEx.Equal("no_matching_listener", metrics.LastFailureReason!);
@@ -357,8 +362,9 @@ internal static class RouteDiagnosticsTests
             "secure",
             "http3"));
 
-        AssertEx.True(result.Succeeded);
-        AssertEx.Equal("secure", AssertEx.NotNull(result.Listener).Name);
+        var matched = Matched(result);
+
+        AssertEx.Equal("secure", matched.Listener.Name);
         AssertEx.Equal("secure", AssertEx.NotNull(actionPolicy.LastListener).Name);
         AssertEx.Equal("/api/users", AssertEx.NotNull(actionPolicy.LastRequestHead).Target);
         AssertEx.Equal(null, metrics.LastFailureReason);
@@ -714,7 +720,7 @@ internal static class RouteDiagnosticsTests
         var actionResult = controller.Match(null);
 
         var badRequest = (BadRequestObjectResult)AssertEx.NotNull(actionResult.Result);
-        var result = (RouteMatchDryRunResult)AssertEx.NotNull(badRequest.Value);
+        var result = (RouteMatchDryRunResponse)AssertEx.NotNull(badRequest.Value);
         AssertEx.False(result.Succeeded);
         AssertEx.True(result.Findings.Any(static finding =>
             finding.Code == "missing_request" && finding.Severity == "error"));
@@ -765,8 +771,7 @@ internal static class RouteDiagnosticsTests
 
         AssertEx.True(decision is ProxyRouteDiagnosticsRequestDecision.RejectedDecision);
         var rejected = (ProxyRouteDiagnosticsRequestDecision.RejectedDecision)decision;
-        AssertEx.Equal("invalid_scheme", rejected.Failure.FailureReason!);
-        AssertEx.False(rejected.Failure.Succeeded);
+        AssertEx.Equal("invalid_scheme", rejected.Failure.FailureReason);
     }
 
     public static void RouteDiagnosticsControllerMapsMissingHeadersToEmptyInput()
@@ -787,7 +792,7 @@ internal static class RouteDiagnosticsTests
             null));
 
         var ok = (OkObjectResult)AssertEx.NotNull(actionResult.Result);
-        var result = (RouteMatchDryRunResult)AssertEx.NotNull(ok.Value);
+        var result = (RouteMatchDryRunResponse)AssertEx.NotNull(ok.Value);
         AssertEx.True(result.Succeeded);
         AssertEx.Equal("active", AssertEx.NotNull(result.Route).Name);
     }
@@ -1360,6 +1365,24 @@ internal static class RouteDiagnosticsTests
         int Weight,
         bool CircuitBreakerEnabled)
         : IProxyRouteDiagnosticsUpstream;
+
+    private static RouteMatchDryRunResult.MatchedRouteResult Matched(RouteMatchDryRunResult result)
+    {
+        AssertEx.True(result is RouteMatchDryRunResult.MatchedRouteResult);
+        return (RouteMatchDryRunResult.MatchedRouteResult)result;
+    }
+
+    private static RouteMatchDryRunResult.NoMatchingRouteResult NoMatchingRoute(RouteMatchDryRunResult result)
+    {
+        AssertEx.True(result is RouteMatchDryRunResult.NoMatchingRouteResult);
+        return (RouteMatchDryRunResult.NoMatchingRouteResult)result;
+    }
+
+    private static RouteMatchDryRunResult.NoMatchingListenerResult NoMatchingListener(RouteMatchDryRunResult result)
+    {
+        AssertEx.True(result is RouteMatchDryRunResult.NoMatchingListenerResult);
+        return (RouteMatchDryRunResult.NoMatchingListenerResult)result;
+    }
 
     private static void AssertFinding(ConfigLintResult result, string code, string severity)
     {

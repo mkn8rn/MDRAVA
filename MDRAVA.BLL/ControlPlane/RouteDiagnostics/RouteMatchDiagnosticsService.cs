@@ -119,8 +119,20 @@ public sealed class RouteMatchDiagnosticsService : IProxyRouteDiagnosticsOperati
 
     private RouteMatchDryRunResult Complete(RouteMatchDryRunResult result)
     {
-        _metricsSink.RouteMatchDryRun(result.FailureReason ?? result.NoMatchReason);
+        _metricsSink.RouteMatchDryRun(MetricReason(result));
         return result;
+    }
+
+    private static string? MetricReason(RouteMatchDryRunResult result)
+    {
+        return result switch
+        {
+            RouteMatchDryRunResult.FailedResult failed => failed.FailureReason,
+            RouteMatchDryRunResult.NoMatchingListenerResult noListener => noListener.NoMatchReason,
+            RouteMatchDryRunResult.NoMatchingRouteResult noRoute => noRoute.NoMatchReason,
+            RouteMatchDryRunResult.MatchedRouteResult matched => matched.NoMatchReason,
+            _ => throw new InvalidOperationException($"Unknown route dry-run result '{result.GetType().Name}'.")
+        };
     }
 
     private static RouteMatchDryRunResult Failure(DateTimeOffset evaluatedAtUtc, string reason, string message)

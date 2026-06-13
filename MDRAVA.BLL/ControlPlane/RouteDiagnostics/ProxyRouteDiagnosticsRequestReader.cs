@@ -127,7 +127,7 @@ public static class ProxyRouteDiagnosticsRequestReader
                 findings));
     }
 
-    private static RouteMatchDryRunResult Failure(DateTimeOffset evaluatedAtUtc, string reason, string message)
+    private static RouteMatchDryRunResult.FailedResult Failure(DateTimeOffset evaluatedAtUtc, string reason, string message)
     {
         return RouteMatchDryRunResult.Failed(evaluatedAtUtc, reason, message);
     }
@@ -243,7 +243,7 @@ public abstract record ProxyRouteDiagnosticsRequestDecision
         return new AcceptedDecision(input);
     }
 
-    public static ProxyRouteDiagnosticsRequestDecision Rejected(RouteMatchDryRunResult failure)
+    public static ProxyRouteDiagnosticsRequestDecision Rejected(RouteMatchDryRunResult.FailedResult failure)
     {
         ArgumentNullException.ThrowIfNull(failure);
         return new RejectedDecision(failure);
@@ -251,5 +251,5 @@ public abstract record ProxyRouteDiagnosticsRequestDecision
 
     public sealed record AcceptedDecision(ProxyRouteDiagnosticsRequestInput Input) : ProxyRouteDiagnosticsRequestDecision;
 
-    public sealed record RejectedDecision(RouteMatchDryRunResult Failure) : ProxyRouteDiagnosticsRequestDecision;
+    public sealed record RejectedDecision(RouteMatchDryRunResult.FailedResult Failure) : ProxyRouteDiagnosticsRequestDecision;
 }
