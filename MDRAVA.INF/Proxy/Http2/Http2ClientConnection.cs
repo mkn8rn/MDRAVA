@@ -785,7 +785,7 @@ public sealed class Http2ClientConnection
                 _metrics.RetrySkipped(skippedAttempt.Reason);
             }
 
-            if (retryAllowed && attempt == maxAttempts && ProxyRetryPolicy.IsRetryableFailure(route.Retry, result))
+            if (retryAllowed && ProxyRetryPolicy.DidExhaustAttempts(route.Retry, result, attempt, maxAttempts))
             {
                 _metrics.RetryExhausted();
             }

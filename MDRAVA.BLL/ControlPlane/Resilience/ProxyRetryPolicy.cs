@@ -57,6 +57,16 @@ public static class ProxyRetryPolicy
             && retry.RetryOnStatusCodes.Any(code => code == statusCode);
     }
 
+    public static bool DidExhaustAttempts(
+        RuntimeRetryPolicy retry,
+        ForwardingResult result,
+        int attempt,
+        int maxAttempts)
+    {
+        return attempt == maxAttempts
+            && IsRetryableFailure(retry, result);
+    }
+
     public static bool IsRetryableFailure(RuntimeRetryPolicy retry, ForwardingResult result)
     {
         if (result.ResponseStatusCode.HasValue
