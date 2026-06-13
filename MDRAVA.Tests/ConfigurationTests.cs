@@ -1,3 +1,4 @@
+using System.Security.Cryptography.X509Certificates;
 using MDRAVA.API.Controllers;
 using MDRAVA.INF.Configuration;
 using MDRAVA.INF.Configuration.Loading;
@@ -226,6 +227,169 @@ internal static class ConfigurationTests
         AssertEx.Equal("sites/home.json", loadValidated.SourceFiles[0]);
         AssertEx.Equal("parse failed", reloadFailed.Errors[0]);
         AssertEx.Equal("sites/home.json", reloadFailed.FileErrors[0].Path);
+    }
+
+    public static void RuntimeConfigurationPolicyRecordsCopyInputCollections()
+    {
+        var acmeDomains = new List<string> { "home.test" };
+        var acmeContacts = new List<string> { "admin@home.test" };
+        var acmeCertificates = new List<RuntimeAcmeCertificateOptions>
+        {
+            new("home-cert", true, acmeDomains, 21)
+        };
+        var adminUrls = new List<string> { "http://127.0.0.1:18081" };
+        var projectionUrls = new List<string> { "http://127.0.0.1:18082" };
+        var trustedProxies = new List<string> { "127.0.0.1" };
+        var cacheVaryHeaders = new List<string> { "X-Tenant" };
+        var cacheStatusCodes = new List<int> { 200 };
+        var cacheMethods = new List<string> { "GET" };
+        var certificateDomains = new List<string> { "home.test" };
+        var projectionDomains = new List<string> { "api.home.test" };
+        var circuitBreakerCodes = new List<int> { 503 };
+        var setRequestHeaders = new List<ProxyHeaderField> { new("X-Trace", "enabled") };
+        var removeRequestHeaders = new List<string> { "X-Remove-Request" };
+        var setResponseHeaders = new List<ProxyHeaderField> { new("X-Frame-Options", "DENY") };
+        var removeResponseHeaders = new List<string> { "Server" };
+        var retryStatusCodes = new List<int> { 502 };
+        var retryMethods = new List<string> { "GET" };
+
+        using var certificate = X509CertificateLoader.LoadPkcs12(
+            TestCertificates.CreateSelfSignedPfxBytes("home.test"),
+            password: null);
+        var acme = new RuntimeAcmeOptions(
+            true,
+            false,
+            "https://acme.test/directory",
+            acmeContacts,
+            true,
+            "acme",
+            21,
+            60,
+            10,
+            acmeCertificates);
+        var admin = new RuntimeAdminSecurityOptions(
+            adminUrls,
+            RequireAuthentication: true,
+            HasConfiguredToken: true,
+            Token: "secret",
+            TokenEnvironmentVariable: "MDRAVA_ADMIN_TOKEN",
+            TokenSource: "environment",
+            RecentAuditCapacity: 128);
+        var adminProjection = new RuntimeAdminSecurityProjection(
+            projectionUrls,
+            RequireAuthentication: true,
+            HasConfiguredToken: true,
+            Token: "***",
+            TokenEnvironmentVariable: "MDRAVA_ADMIN_TOKEN",
+            TokenSource: "environment",
+            RecentAuditCapacity: 128);
+        var forwardedHeaders = new RuntimeForwardedHeadersOptions(
+            Enabled: true,
+            TrustedProxies: trustedProxies);
+        var cache = new RuntimeCachePolicy(
+            Enabled: true,
+            MaxEntryBytes: 1024,
+            MaxTotalBytes: 4096,
+            DefaultTtl: TimeSpan.FromSeconds(60),
+            RespectOriginCacheControl: true,
+            VaryByHeaders: cacheVaryHeaders,
+            CacheableStatusCodes: cacheStatusCodes,
+            Methods: cacheMethods);
+        var runtimeCertificate = new RuntimeCertificate(
+            "home-cert",
+            "certs/home.pfx",
+            "pfx",
+            HasConfiguredPassword: false,
+            certificate,
+            "manual",
+            certificateDomains);
+        var certificateProjection = new RuntimeCertificateProjection(
+            "api-cert",
+            "certs/api.pfx",
+            "pfx",
+            "manual",
+            projectionDomains,
+            HasConfiguredPassword: false,
+            Subject: "CN=api.home.test",
+            Thumbprint: "thumbprint",
+            NotBefore: DateTime.UnixEpoch,
+            NotAfter: DateTime.UnixEpoch.AddDays(30));
+        var circuitBreaker = new RuntimeCircuitBreakerPolicy(
+            Enabled: true,
+            FailureThreshold: 5,
+            SamplingWindow: TimeSpan.FromSeconds(60),
+            OpenDuration: TimeSpan.FromSeconds(30),
+            HalfOpenMaxAttempts: 1,
+            FailureStatusCodes: circuitBreakerCodes);
+        var headerPolicy = new RuntimeHeaderPolicy(
+            setRequestHeaders,
+            removeRequestHeaders,
+            setResponseHeaders,
+            removeResponseHeaders);
+        var retry = new RuntimeRetryPolicy(
+            Enabled: true,
+            MaxAttempts: 2,
+            PerAttemptTimeout: TimeSpan.FromSeconds(1),
+            RetryOnConnectFailure: true,
+            RetryOnUpstreamResponseHeadTimeout: true,
+            RetryOnStatusCodes: retryStatusCodes,
+            RetryMethods: retryMethods,
+            RetryBackoff: TimeSpan.FromMilliseconds(50));
+
+        acmeDomains.Clear();
+        acmeContacts.Clear();
+        acmeCertificates.Clear();
+        adminUrls.Clear();
+        projectionUrls.Clear();
+        trustedProxies.Clear();
+        cacheVaryHeaders.Clear();
+        cacheStatusCodes.Clear();
+        cacheMethods.Clear();
+        certificateDomains.Clear();
+        projectionDomains.Clear();
+        circuitBreakerCodes.Clear();
+        setRequestHeaders.Clear();
+        removeRequestHeaders.Clear();
+        setResponseHeaders.Clear();
+        removeResponseHeaders.Clear();
+        retryStatusCodes.Clear();
+        retryMethods.Clear();
+
+        AssertEx.Equal("home.test", acme.Certificates[0].Domains[0]);
+        AssertEx.Equal("admin@home.test", acme.ContactEmails[0]);
+        AssertEx.Equal("http://127.0.0.1:18081", admin.Urls[0]);
+        AssertEx.Equal("http://127.0.0.1:18082", adminProjection.Urls[0]);
+        AssertEx.Equal("127.0.0.1", forwardedHeaders.TrustedProxies[0]);
+        AssertEx.Equal("X-Tenant", cache.VaryByHeaders[0]);
+        AssertEx.Equal(200, cache.CacheableStatusCodes[0]);
+        AssertEx.Equal("GET", cache.Methods[0]);
+        AssertEx.Equal("home.test", runtimeCertificate.Domains[0]);
+        AssertEx.Equal("api.home.test", certificateProjection.Domains[0]);
+        AssertEx.Equal(503, circuitBreaker.FailureStatusCodes[0]);
+        AssertEx.Equal("X-Trace", headerPolicy.SetRequestHeaders[0].Name);
+        AssertEx.Equal("X-Remove-Request", headerPolicy.RemoveRequestHeaders[0]);
+        AssertEx.Equal("X-Frame-Options", headerPolicy.SetResponseHeaders[0].Name);
+        AssertEx.Equal("Server", headerPolicy.RemoveResponseHeaders[0]);
+        AssertEx.Equal(502, retry.RetryOnStatusCodes[0]);
+        AssertEx.Equal("GET", retry.RetryMethods[0]);
+        AssertEx.False(acme.ContactEmails is string[]);
+        AssertEx.False(acme.Certificates is RuntimeAcmeCertificateOptions[]);
+        AssertEx.False(acme.Certificates[0].Domains is string[]);
+        AssertEx.False(admin.Urls is string[]);
+        AssertEx.False(adminProjection.Urls is string[]);
+        AssertEx.False(forwardedHeaders.TrustedProxies is string[]);
+        AssertEx.False(cache.VaryByHeaders is string[]);
+        AssertEx.False(cache.CacheableStatusCodes is int[]);
+        AssertEx.False(cache.Methods is string[]);
+        AssertEx.False(runtimeCertificate.Domains is string[]);
+        AssertEx.False(certificateProjection.Domains is string[]);
+        AssertEx.False(circuitBreaker.FailureStatusCodes is int[]);
+        AssertEx.False(headerPolicy.SetRequestHeaders is ProxyHeaderField[]);
+        AssertEx.False(headerPolicy.RemoveRequestHeaders is string[]);
+        AssertEx.False(headerPolicy.SetResponseHeaders is ProxyHeaderField[]);
+        AssertEx.False(headerPolicy.RemoveResponseHeaders is string[]);
+        AssertEx.False(retry.RetryOnStatusCodes is int[]);
+        AssertEx.False(retry.RetryMethods is string[]);
     }
 
     public static void ConfigurationValidationResultNamesValidationOutcomes()

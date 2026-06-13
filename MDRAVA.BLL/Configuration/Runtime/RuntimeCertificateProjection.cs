@@ -1,13 +1,48 @@
 namespace MDRAVA.BLL.Configuration;
 
-public sealed record RuntimeCertificateProjection(
-    string Id,
-    string Path,
-    string Format,
-    string Source,
-    IReadOnlyList<string> Domains,
-    bool HasConfiguredPassword,
-    string? Subject,
-    string? Thumbprint,
-    DateTime NotBefore,
-    DateTime NotAfter);
+public sealed record RuntimeCertificateProjection
+{
+    public RuntimeCertificateProjection(
+        string Id,
+        string Path,
+        string Format,
+        string Source,
+        IReadOnlyList<string> Domains,
+        bool HasConfiguredPassword,
+        string? Subject,
+        string? Thumbprint,
+        DateTime NotBefore,
+        DateTime NotAfter)
+    {
+        this.Id = Id;
+        this.Path = Path;
+        this.Format = Format;
+        this.Source = Source;
+        this.Domains = RuntimeList.Copy(Domains);
+        this.HasConfiguredPassword = HasConfiguredPassword;
+        this.Subject = Subject;
+        this.Thumbprint = Thumbprint;
+        this.NotBefore = NotBefore;
+        this.NotAfter = NotAfter;
+    }
+
+    public string Id { get; init; }
+
+    public string Path { get; init; }
+
+    public string Format { get; init; }
+
+    public string Source { get; init; }
+
+    public IReadOnlyList<string> Domains { get; }
+
+    public bool HasConfiguredPassword { get; init; }
+
+    public string? Subject { get; init; }
+
+    public string? Thumbprint { get; init; }
+
+    public DateTime NotBefore { get; init; }
+
+    public DateTime NotAfter { get; init; }
+}
