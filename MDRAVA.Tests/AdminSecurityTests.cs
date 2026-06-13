@@ -313,7 +313,7 @@ internal static class AdminSecurityTests
 
         var actionResult = controller.Effective();
         var ok = (OkObjectResult)AssertEx.NotNull(actionResult.Result);
-        var projection = (ProxyConfigurationProjection)AssertEx.NotNull(ok.Value);
+        var projection = (ProxyConfigurationResponse)AssertEx.NotNull(ok.Value);
 
         AssertEx.Equal(SecretRedactor.RedactedValue, projection.AdminSecurity.Token);
         AssertEx.False(projection.ToString().Contains(AdminToken, StringComparison.Ordinal));

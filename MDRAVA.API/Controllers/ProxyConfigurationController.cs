@@ -1,8 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using BusinessProxyConfigurationAdministrationService =
     MDRAVA.BLL.ControlPlane.ConfigurationManagement.ProxyConfigurationAdministrationService;
-using BusinessProxyConfigurationProjection =
-    MDRAVA.BLL.ControlPlane.ConfigurationManagement.ProxyConfigurationProjection;
 using BusinessProxyConfigurationReadAdministrationService =
     MDRAVA.BLL.ControlPlane.ConfigurationManagement.ProxyConfigurationReadAdministrationService<MDRAVA.BLL.ControlPlane.ConfigurationManagement.ProxyConfigurationProjection>;
 using BusinessProxyConfigurationReadResult =
@@ -39,11 +37,11 @@ public sealed class ProxyConfigurationController : ControllerBase
     }
 
     [HttpPost("reload")]
-    public async ValueTask<ActionResult<ProxyConfigurationReloadResponse<BusinessProxyConfigurationProjection>>> Reload(
+    public async ValueTask<ActionResult<ProxyConfigurationReloadResponse>> Reload(
         CancellationToken cancellationToken)
     {
         var result = await _configurationReloads.ReloadAsync(cancellationToken);
-        var response = ProxyConfigurationReloadResponse<BusinessProxyConfigurationProjection>.FromResult(result);
+        var response = ProxyConfigurationReloadResponse.FromResult(result);
         return ProxyAdminHttpResultMapper.OkOrBadRequest(this, response, response.Succeeded);
     }
 
@@ -56,20 +54,20 @@ public sealed class ProxyConfigurationController : ControllerBase
     }
 
     [HttpGet("active")]
-    public ActionResult<BusinessProxyConfigurationProjection> Active()
+    public ActionResult<ProxyConfigurationResponse> Active()
     {
         var result = _configurationReads.ReadActive();
         return result is BusinessProxyConfigurationReadResult.AvailableResult available
-            ? Ok(available.Configuration)
+            ? Ok(ProxyConfigurationResponse.FromProjection(available.Configuration))
             : NotFound();
     }
 
     [HttpGet("effective")]
-    public ActionResult<BusinessProxyConfigurationProjection> Effective()
+    public ActionResult<ProxyConfigurationResponse> Effective()
     {
         var result = _configurationReads.ReadEffective();
         return result is BusinessProxyConfigurationReadResult.AvailableResult available
-            ? Ok(available.Configuration)
+            ? Ok(ProxyConfigurationResponse.FromProjection(available.Configuration))
             : NotFound();
     }
 }

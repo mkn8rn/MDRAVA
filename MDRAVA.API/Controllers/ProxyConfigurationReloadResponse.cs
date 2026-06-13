@@ -1,8 +1,11 @@
-using ConfigurationManagement = MDRAVA.BLL.ControlPlane.ConfigurationManagement;
+using BusinessProxyConfigurationProjection =
+    MDRAVA.BLL.ControlPlane.ConfigurationManagement.ProxyConfigurationProjection;
+using BusinessProxyConfigurationReloadResult =
+    MDRAVA.BLL.ControlPlane.ConfigurationManagement.ProxyConfigurationReloadResult<MDRAVA.BLL.ControlPlane.ConfigurationManagement.ProxyConfigurationProjection>;
 
 namespace MDRAVA.API.Controllers;
 
-public sealed record ProxyConfigurationReloadResponse<TProjection>(
+public sealed record ProxyConfigurationReloadResponse(
     bool Succeeded,
     string SourceDirectory,
     DateTimeOffset AttemptedAtUtc,
@@ -12,30 +15,28 @@ public sealed record ProxyConfigurationReloadResponse<TProjection>(
     ProxyConfigurationDiscoveryResponse Discovery,
     IReadOnlyList<string> Errors,
     IReadOnlyList<ProxyConfigurationFileErrorResponse> FileErrors,
-    TProjection? ActiveConfiguration,
+    ProxyConfigurationResponse? ActiveConfiguration,
     ProxyListenerReloadResponse? ListenerReload)
-    where TProjection : class
 {
-    public static ProxyConfigurationReloadResponse<TProjection> FromResult(
-        ConfigurationManagement.ProxyConfigurationReloadResult<TProjection> result)
+    public static ProxyConfigurationReloadResponse FromResult(BusinessProxyConfigurationReloadResult result)
     {
         ArgumentNullException.ThrowIfNull(result);
 
         return result switch
         {
-            ConfigurationManagement.ProxyConfigurationReloadResult<TProjection>.LoadFailedResult loadFailed =>
+            BusinessProxyConfigurationReloadResult.LoadFailedResult loadFailed =>
                 FromResult(
                     loadFailed,
                     succeeded: false,
                     activeConfiguration: loadFailed.ActiveConfiguration,
                     listenerReload: null),
-            ConfigurationManagement.ProxyConfigurationReloadResult<TProjection>.ListenerReloadFailedResult listenerReloadFailed =>
+            BusinessProxyConfigurationReloadResult.ListenerReloadFailedResult listenerReloadFailed =>
                 FromResult(
                     listenerReloadFailed,
                     succeeded: false,
                     activeConfiguration: listenerReloadFailed.ActiveConfiguration,
                     listenerReload: ProxyListenerReloadResponse.FromResult(listenerReloadFailed.ListenerReload)),
-            ConfigurationManagement.ProxyConfigurationReloadResult<TProjection>.ReloadedResult reloaded =>
+            BusinessProxyConfigurationReloadResult.ReloadedResult reloaded =>
                 FromResult(
                     reloaded,
                     succeeded: true,
@@ -45,15 +46,15 @@ public sealed record ProxyConfigurationReloadResponse<TProjection>(
         };
     }
 
-    private static ProxyConfigurationReloadResponse<TProjection> FromResult(
-        ConfigurationManagement.ProxyConfigurationReloadResult<TProjection> result,
+    private static ProxyConfigurationReloadResponse FromResult(
+        BusinessProxyConfigurationReloadResult result,
         bool succeeded,
-        TProjection? activeConfiguration,
+        BusinessProxyConfigurationProjection? activeConfiguration,
         ProxyListenerReloadResponse? listenerReload)
     {
         ArgumentNullException.ThrowIfNull(result);
 
-        return new ProxyConfigurationReloadResponse<TProjection>(
+        return new ProxyConfigurationReloadResponse(
             Succeeded: succeeded,
             SourceDirectory: result.SourceDirectory,
             AttemptedAtUtc: result.AttemptedAtUtc,
@@ -63,7 +64,9 @@ public sealed record ProxyConfigurationReloadResponse<TProjection>(
             Discovery: ProxyConfigurationDiscoveryResponse.FromDiscovery(result.Discovery),
             Errors: result.Errors.ToArray(),
             FileErrors: ProxyConfigurationFileErrorResponse.FromErrors(result.FileErrors),
-            ActiveConfiguration: activeConfiguration,
+            ActiveConfiguration: activeConfiguration is null
+                ? null
+                : ProxyConfigurationResponse.FromProjection(activeConfiguration),
             ListenerReload: listenerReload);
     }
 }

@@ -125,17 +125,6 @@ internal static class ConfigurationTests
         AssertEx.Equal(listenerReload, reloadedResult.ListenerReload);
         AssertEx.Equal(active, reloadedResult.ActiveConfiguration);
 
-        var loadFailedResponse = ProxyConfigurationReloadResponse<TestConfigurationProjection>.FromResult(loadFailed);
-        var listenerFailedResponse = ProxyConfigurationReloadResponse<TestConfigurationProjection>.FromResult(listenerFailed);
-        var reloadedResponse = ProxyConfigurationReloadResponse<TestConfigurationProjection>.FromResult(reloaded);
-
-        AssertEx.False(loadFailedResponse.Succeeded);
-        AssertEx.Equal<ProxyListenerReloadResponse?>(null, loadFailedResponse.ListenerReload);
-        AssertEx.False(listenerFailedResponse.Succeeded);
-        AssertEx.False(AssertEx.NotNull(listenerFailedResponse.ListenerReload).Succeeded);
-        AssertEx.True(reloadedResponse.Succeeded);
-        AssertEx.True(AssertEx.NotNull(reloadedResponse.ListenerReload).Succeeded);
-        AssertEx.Equal(active, AssertEx.NotNull(reloadedResponse.ActiveConfiguration));
     }
 
     public static void ConfigurationValidationResultNamesValidationOutcomes()
@@ -765,6 +754,30 @@ internal static class ConfigurationTests
         AssertEx.Equal(1, projection.SourceFiles.Count);
     }
 
+    public static async Task ConfigReloadControllerReturnsConfigurationResponse()
+    {
+        using var temp = TemporaryDirectory.Create();
+        WriteSite(temp.Path, "home.json", port: 18080, upstreamPort: 15000);
+
+        var store = new ProxyConfigurationStore();
+        var service = CreateReloadService(temp.Path, store);
+        var controller = new ProxyConfigurationController(
+            new ProxyConfigurationAdministrationService(CreateNormalizer(), service),
+            CreateReadAdministration(store),
+            new ProxyConfigurationReloadAdministrationService<ProxyConfigurationProjection>(service));
+
+        var actionResult = await controller.Reload(CancellationToken.None);
+
+        var ok = (OkObjectResult)AssertEx.NotNull(actionResult.Result);
+        var response = (ProxyConfigurationReloadResponse)AssertEx.NotNull(ok.Value);
+        var activeConfiguration = AssertEx.NotNull(response.ActiveConfiguration);
+        AssertEx.True(response.Succeeded, string.Join("; ", response.Errors));
+        AssertEx.Equal(1, activeConfiguration.Version);
+        AssertEx.Equal("home", activeConfiguration.Routes[0].Name);
+        AssertEx.Equal("home", activeConfiguration.Routes[0].Upstreams[0].RouteName);
+        AssertEx.True(AssertEx.NotNull(response.ListenerReload).Succeeded);
+    }
+
     public static void ConfigReadOperationsProjectActiveAndEffectiveFromCurrentSource()
     {
         var projection = new TestConfigurationProjection("current");
@@ -1106,7 +1119,7 @@ internal static class ConfigurationTests
             reloadAdministration);
         var actionResult = controller.Effective();
         var ok = (OkObjectResult)AssertEx.NotNull(actionResult.Result);
-        var projection = (ProxyConfigurationProjection)AssertEx.NotNull(ok.Value);
+        var projection = (ProxyConfigurationResponse)AssertEx.NotNull(ok.Value);
 
         AssertEx.Equal(true, projection.Certificates[0].HasConfiguredPassword);
         AssertEx.False(projection.ToString().Contains("secret", StringComparison.OrdinalIgnoreCase));
