@@ -52,7 +52,7 @@ public abstract partial record ProxyConfigurationLoadResult
 
             SourceDirectory = sourceDirectory;
             AttemptedAtUtc = attemptedAtUtc;
-            SourceFiles = sourceFiles;
+            SourceFiles = sourceFiles.ToArray();
             Discovery = discovery;
             WouldBeVersion = wouldBeVersion;
         }

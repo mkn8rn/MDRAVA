@@ -9,9 +9,12 @@ public abstract record ProxyConfigurationNormalizeResult
         IReadOnlyList<string> errors,
         IReadOnlyList<ProxyConfigurationFileError> fileErrors)
     {
+        ArgumentNullException.ThrowIfNull(errors);
+        ArgumentNullException.ThrowIfNull(fileErrors);
+
         Format = format;
-        Errors = errors;
-        FileErrors = fileErrors;
+        Errors = errors.ToArray();
+        FileErrors = fileErrors.ToArray();
     }
 
     public string Format { get; }

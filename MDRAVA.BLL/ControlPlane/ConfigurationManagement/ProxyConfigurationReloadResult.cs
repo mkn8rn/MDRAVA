@@ -16,14 +16,17 @@ public abstract partial record ProxyConfigurationReloadResult<TProjection>
         IReadOnlyList<string> errors,
         IReadOnlyList<ProxyConfigurationFileError> fileErrors)
     {
+        ArgumentNullException.ThrowIfNull(errors);
+        ArgumentNullException.ThrowIfNull(fileErrors);
+
         SourceDirectory = sourceDirectory;
         AttemptedAtUtc = attemptedAtUtc;
         ActiveVersion = activeVersion;
         LoadedAtUtc = loadedAtUtc;
         LastSuccessfulLoadAtUtc = lastSuccessfulLoadAtUtc;
         Discovery = discovery;
-        Errors = errors;
-        FileErrors = fileErrors;
+        Errors = errors.ToArray();
+        FileErrors = fileErrors.ToArray();
     }
 
     public string SourceDirectory { get; }

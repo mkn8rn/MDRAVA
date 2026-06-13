@@ -154,6 +154,80 @@ internal static class ConfigurationTests
         AssertEx.Equal("bind failed", result.Errors[0]);
     }
 
+    public static void ConfigurationManagementResultsCopyInputCollections()
+    {
+        var discovery = new ProxyConfigurationDiscovery(
+            new ProxyFilesystemLayout("tests", "tests/config", "tests/config/sites", "tests/logs", "tests/certs", "tests/state", "tests/config/proxy.json"),
+            [],
+            [],
+            []);
+        var sourceFiles = new List<string> { "sites/home.json" };
+        var errors = new List<string> { "parse failed" };
+        var fileErrors = new List<ProxyConfigurationFileError>
+        {
+            ProxyConfigurationFileError.ForPath("sites/home.json", "parse failed")
+        };
+
+        var normalize = ProxyConfigurationNormalizeResult.Failed("json", fileErrors);
+        var valid = ProxyConfigurationValidationResult.Valid(
+            sourceDirectory: "data",
+            attemptedAtUtc: DateTimeOffset.UnixEpoch,
+            activeVersion: 1,
+            lastSuccessfulLoadAtUtc: DateTimeOffset.UnixEpoch,
+            wouldBeVersion: 2,
+            sourceFiles,
+            discovery);
+        var invalid = ProxyConfigurationValidationResult.Invalid(
+            sourceDirectory: "data",
+            attemptedAtUtc: DateTimeOffset.UnixEpoch,
+            activeVersion: 1,
+            lastSuccessfulLoadAtUtc: DateTimeOffset.UnixEpoch,
+            wouldBeVersion: null,
+            sourceFiles,
+            discovery,
+            errors,
+            fileErrors);
+        var loadFailed = new ProxyConfigurationLoadResult.FailedResult(
+            sourceDirectory: "data",
+            attemptedAtUtc: DateTimeOffset.UnixEpoch,
+            sourceFiles,
+            discovery,
+            fileErrors,
+            wouldBeVersion: null);
+        var loadValidated = new ProxyConfigurationLoadResult.ValidatedResult(
+            sourceDirectory: "data",
+            attemptedAtUtc: DateTimeOffset.UnixEpoch,
+            sourceFiles,
+            discovery,
+            wouldBeVersion: 2);
+        var reloadFailed = ProxyConfigurationReloadResult<TestConfigurationProjection>.LoadFailed(
+            sourceDirectory: "data",
+            attemptedAtUtc: DateTimeOffset.UnixEpoch,
+            activeVersion: 1,
+            loadedAtUtc: DateTimeOffset.UnixEpoch,
+            discovery,
+            errors,
+            fileErrors,
+            activeConfiguration: null);
+
+        sourceFiles.Clear();
+        errors.Clear();
+        fileErrors.Clear();
+
+        AssertEx.Equal("sites/home.json", valid.SourceFiles[0]);
+        AssertEx.Equal("sites/home.json", invalid.SourceFiles[0]);
+        AssertEx.Equal("parse failed", invalid.Errors[0]);
+        AssertEx.Equal("sites/home.json", invalid.FileErrors[0].Path);
+        AssertEx.Equal("sites/home.json: parse failed", normalize.Errors[0]);
+        AssertEx.Equal("sites/home.json", normalize.FileErrors[0].Path);
+        AssertEx.Equal("sites/home.json", loadFailed.SourceFiles[0]);
+        AssertEx.Equal("sites/home.json", loadFailed.FileErrors[0].Path);
+        AssertEx.Equal("sites/home.json: parse failed", loadFailed.Errors[0]);
+        AssertEx.Equal("sites/home.json", loadValidated.SourceFiles[0]);
+        AssertEx.Equal("parse failed", reloadFailed.Errors[0]);
+        AssertEx.Equal("sites/home.json", reloadFailed.FileErrors[0].Path);
+    }
+
     public static void ConfigurationValidationResultNamesValidationOutcomes()
     {
         var attemptedAtUtc = DateTimeOffset.UnixEpoch.AddMinutes(3);

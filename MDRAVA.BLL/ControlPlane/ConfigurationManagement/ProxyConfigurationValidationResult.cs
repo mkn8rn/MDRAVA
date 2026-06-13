@@ -15,15 +15,19 @@ public abstract partial record ProxyConfigurationValidationResult
         IReadOnlyList<string> errors,
         IReadOnlyList<ProxyConfigurationFileError> fileErrors)
     {
+        ArgumentNullException.ThrowIfNull(sourceFiles);
+        ArgumentNullException.ThrowIfNull(errors);
+        ArgumentNullException.ThrowIfNull(fileErrors);
+
         SourceDirectory = sourceDirectory;
         AttemptedAtUtc = attemptedAtUtc;
         ActiveVersion = activeVersion;
         LastSuccessfulLoadAtUtc = lastSuccessfulLoadAtUtc;
         WouldBeVersion = wouldBeVersion;
-        SourceFiles = sourceFiles;
+        SourceFiles = sourceFiles.ToArray();
         Discovery = discovery;
-        Errors = errors;
-        FileErrors = fileErrors;
+        Errors = errors.ToArray();
+        FileErrors = fileErrors.ToArray();
     }
 
     public string SourceDirectory { get; }
