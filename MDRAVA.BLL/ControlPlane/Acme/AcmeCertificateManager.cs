@@ -111,15 +111,15 @@ public sealed class AcmeCertificateManager
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            result = AcmeCertificateIssueResult.Failure(exception.Message);
+            result = AcmeCertificateIssueResult.Failed(exception.Message);
         }
 
-        if (!result.Succeeded || result.PfxBytes is null)
+        if (result is AcmeCertificateIssueResult.FailedResult failed)
         {
             _metrics.AcmeRenewalFailed();
             var nextAttempt = attemptStartedAtUtc.AddMinutes(input.RetryAfterMinutes);
-            _events.RenewalFailed(certificate.Id, result.ErrorSummary);
-            _statusStore.Upsert(CreateStatus(certificate, activeCertificate, nowUtc, "failed", SafeError(result.ErrorSummary), nextAttempt) with
+            _events.RenewalFailed(certificate.Id, failed.ErrorSummary);
+            _statusStore.Upsert(CreateStatus(certificate, activeCertificate, nowUtc, "failed", SafeError(failed.ErrorSummary), nextAttempt) with
             {
                 LastAttemptAtUtc = attemptStartedAtUtc,
                 LastFailedAtUtc = attemptStartedAtUtc
@@ -127,6 +127,7 @@ public sealed class AcmeCertificateManager
             return;
         }
 
+        var issued = (AcmeCertificateIssueResult.IssuedResult)result;
         RuntimeCertificate renewedCertificate;
         try
         {
@@ -136,7 +137,7 @@ public sealed class AcmeCertificateManager
                 certificate.Domains,
                 _dataDirectoryProvider.GetDataDirectory(),
                 attemptStartedAtUtc,
-                result.PfxBytes));
+                issued.PfxBytes));
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {

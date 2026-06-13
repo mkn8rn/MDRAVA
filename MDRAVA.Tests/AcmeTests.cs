@@ -140,15 +140,17 @@ internal static class AcmeTests
     public static void AcmeCertificateIssueResultNamesSuccessAndFailure()
     {
         var pfxBytes = new byte[] { 1, 2, 3 };
-        var success = AcmeCertificateIssueResult.Success(pfxBytes);
-        var failure = AcmeCertificateIssueResult.Failure("issuer failed");
+        var issued = AcmeCertificateIssueResult.Issued(pfxBytes);
+        var failed = AcmeCertificateIssueResult.Failed("issuer failed");
 
-        AssertEx.True(success.Succeeded);
-        AssertEx.True(ReferenceEquals(pfxBytes, success.PfxBytes));
-        AssertEx.Equal<string?>(null, success.ErrorSummary);
-        AssertEx.False(failure.Succeeded);
-        AssertEx.Equal<byte[]?>(null, failure.PfxBytes);
-        AssertEx.Equal("issuer failed", failure.ErrorSummary);
+        AssertEx.True(issued is AcmeCertificateIssueResult.IssuedResult);
+        AssertEx.True(ReferenceEquals(
+            pfxBytes,
+            ((AcmeCertificateIssueResult.IssuedResult)issued).PfxBytes));
+        AssertEx.True(failed is AcmeCertificateIssueResult.FailedResult);
+        AssertEx.Equal(
+            "issuer failed",
+            ((AcmeCertificateIssueResult.FailedResult)failed).ErrorSummary);
     }
 
     public static async Task AcmeRenewalStoresMaterialUnderCertsDirectory()
@@ -688,8 +690,8 @@ internal static class AcmeTests
             _ = cancellationToken;
             Calls++;
             return ValueTask.FromResult(_pfxBytes is not null
-                ? AcmeCertificateIssueResult.Success(_pfxBytes)
-                : AcmeCertificateIssueResult.Failure(_error ?? "failed"));
+                ? AcmeCertificateIssueResult.Issued(_pfxBytes)
+                : AcmeCertificateIssueResult.Failed(_error ?? "failed"));
         }
     }
 

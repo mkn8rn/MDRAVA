@@ -1,33 +1,46 @@
 namespace MDRAVA.BLL.ControlPlane.Acme;
 
-public sealed record AcmeCertificateIssueResult
+public abstract record AcmeCertificateIssueResult
 {
-    private AcmeCertificateIssueResult(bool succeeded, byte[]? pfxBytes, string? errorSummary)
+    private AcmeCertificateIssueResult()
     {
-        Succeeded = succeeded;
-        PfxBytes = pfxBytes;
-        ErrorSummary = errorSummary;
     }
 
-    public bool Succeeded { get; }
-
-    public byte[]? PfxBytes { get; }
-
-    public string? ErrorSummary { get; }
-
-    public static AcmeCertificateIssueResult Success(byte[] pfxBytes)
+    public static AcmeCertificateIssueResult Issued(byte[] pfxBytes)
     {
-        return new AcmeCertificateIssueResult(
-            succeeded: true,
-            pfxBytes: pfxBytes,
-            errorSummary: null);
+        ArgumentNullException.ThrowIfNull(pfxBytes);
+
+        return new IssuedResult(pfxBytes);
     }
 
-    public static AcmeCertificateIssueResult Failure(string errorSummary)
+    public static AcmeCertificateIssueResult Failed(string errorSummary)
     {
-        return new AcmeCertificateIssueResult(
-            succeeded: false,
-            pfxBytes: null,
-            errorSummary: errorSummary);
+        ArgumentException.ThrowIfNullOrWhiteSpace(errorSummary);
+
+        return new FailedResult(errorSummary);
+    }
+
+    public sealed record IssuedResult : AcmeCertificateIssueResult
+    {
+        public IssuedResult(byte[] pfxBytes)
+        {
+            ArgumentNullException.ThrowIfNull(pfxBytes);
+
+            PfxBytes = pfxBytes;
+        }
+
+        public byte[] PfxBytes { get; }
+    }
+
+    public sealed record FailedResult : AcmeCertificateIssueResult
+    {
+        public FailedResult(string errorSummary)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(errorSummary);
+
+            ErrorSummary = errorSummary;
+        }
+
+        public string ErrorSummary { get; }
     }
 }

@@ -12,7 +12,7 @@ public sealed class DisabledAcmeCertificateIssuer : IAcmeCertificateIssuer
         _ = request;
         _ = challengeStore;
         _ = cancellationToken;
-        return ValueTask.FromResult(AcmeCertificateIssueResult.Failure(
+        return ValueTask.FromResult(AcmeCertificateIssueResult.Failed(
             "No live ACME issuer is configured in this build; the lifecycle manager is ready for an ACME issuer adapter."));
     }
 }
