@@ -44,11 +44,11 @@ public sealed class ProxyConfigurationReloadService
             _metrics.ConfigReloadFailed();
             _events.LoadFailed(loadResult.SourceDirectory, loadResult.Errors);
 
-            var hasExisting = _store.TryGetSnapshot(out var existing);
+            var existing = ReadExistingSnapshot();
             return ProxyConfigurationReloadResult<ProxyConfigurationProjection>.LoadFailed(
                 sourceDirectory: loadResult.SourceDirectory,
                 attemptedAtUtc: loadResult.AttemptedAtUtc,
-                activeVersion: hasExisting && existing is not null ? existing.Version : null,
+                activeVersion: existing?.Version,
                 loadedAtUtc: existing?.LoadedAtUtc,
                 discovery: loadResult.Discovery,
                 errors: loadResult.Errors,
@@ -63,11 +63,11 @@ public sealed class ProxyConfigurationReloadService
         if (!listenerReload.Succeeded)
         {
             _metrics.ConfigReloadFailed();
-            var hasExisting = _store.TryGetSnapshot(out var existing);
+            var existing = ReadExistingSnapshot();
             return ProxyConfigurationReloadResult<ProxyConfigurationProjection>.ListenerReloadFailed(
                 sourceDirectory: loadResult.SourceDirectory,
                 attemptedAtUtc: loadResult.AttemptedAtUtc,
-                activeVersion: hasExisting && existing is not null ? existing.Version : null,
+                activeVersion: existing?.Version,
                 loadedAtUtc: existing?.LoadedAtUtc,
                 discovery: loadResult.Discovery,
                 listenerReload: listenerReload,
@@ -92,8 +92,8 @@ public sealed class ProxyConfigurationReloadService
     public async ValueTask<ProxyConfigurationValidationResult> ValidateAsync(CancellationToken cancellationToken)
     {
         var loadResult = await _loader.ValidateAsync(cancellationToken);
-        var hasExisting = _store.TryGetSnapshot(out var existing);
-        int? activeVersion = hasExisting && existing is not null ? existing.Version : null;
+        var existing = ReadExistingSnapshot();
+        int? activeVersion = existing?.Version;
         var lastSuccessfulLoadAtUtc = existing?.LoadedAtUtc;
         if (loadResult.Succeeded)
         {
@@ -117,6 +117,13 @@ public sealed class ProxyConfigurationReloadService
             discovery: loadResult.Discovery,
             errors: loadResult.Errors,
             fileErrors: loadResult.FileErrors);
+    }
+
+    private ProxyConfigurationSnapshot? ReadExistingSnapshot()
+    {
+        return _store.ReadSnapshot() is ProxyConfigurationSnapshotReadResult.AvailableResult available
+            ? available.Snapshot
+            : null;
     }
 
     private ProxyConfigurationProjection ToProjection(ProxyConfigurationSnapshot snapshot)

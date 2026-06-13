@@ -113,11 +113,13 @@ public sealed class ProxyConfigurationAcmeRenewalConfigurationSource : IAcmeRene
 
     public AcmeRenewalConfigurationInput? ReadInput()
     {
-        if (!_configurationStore.TryGetSnapshot(out var snapshot) || snapshot is null)
+        var snapshotResult = _configurationStore.ReadSnapshot();
+        if (snapshotResult is not ProxyConfigurationSnapshotReadResult.AvailableResult available)
         {
             return null;
         }
 
+        var snapshot = available.Snapshot;
         return AcmeRenewalConfigurationInputMapper.FromSources(
             AcmeRenewalConfigurationSourceMapper.FromRuntimeConfiguration(
                 snapshot.Acme,

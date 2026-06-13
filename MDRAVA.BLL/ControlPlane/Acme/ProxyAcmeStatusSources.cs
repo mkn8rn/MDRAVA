@@ -30,11 +30,13 @@ public sealed class ProxyAcmeStatusConfigurationSource : IProxyAcmeStatusConfigu
 
     public ProxyAcmeStatusConfigurationSourceReadResult Read()
     {
-        if (!_configurationStore.TryGetSnapshot(out var runtimeSnapshot) || runtimeSnapshot is null)
+        var snapshotResult = _configurationStore.ReadSnapshot();
+        if (snapshotResult is not ProxyConfigurationSnapshotReadResult.AvailableResult available)
         {
             return ProxyAcmeStatusConfigurationSourceReadResult.MissingConfiguration;
         }
 
+        var runtimeSnapshot = available.Snapshot;
         return ProxyAcmeStatusConfigurationSourceReadResult.Available(new ProxyAcmeStatusConfigurationSourceSnapshot(
             runtimeSnapshot.Acme.Enabled,
             runtimeSnapshot.Acme.DirectoryUrl,

@@ -15,8 +15,9 @@ public sealed class ProxyAdminSecurityOptionsReader : IProxyAdminSecurityOptions
 
     public ProxyAdminSecurityOptionsReadResult Read()
     {
-        if (_configurationStore.TryGetSnapshot(out var snapshot) && snapshot is not null)
+        if (_configurationStore.ReadSnapshot() is ProxyConfigurationSnapshotReadResult.AvailableResult available)
         {
+            var snapshot = available.Snapshot;
             return ProxyAdminSecurityOptionsReadResult.FromActiveConfiguration(
                 snapshot.AdminSecurity.RequireAuthentication,
                 snapshot.AdminSecurity.Token,

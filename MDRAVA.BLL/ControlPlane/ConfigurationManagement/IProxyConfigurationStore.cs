@@ -8,7 +8,37 @@ public interface IProxyConfigurationStore
 
     ProxyConfigurationSnapshot Snapshot { get; }
 
-    bool TryGetSnapshot(out ProxyConfigurationSnapshot? snapshot);
+    ProxyConfigurationSnapshotReadResult ReadSnapshot();
 
     ProxyConfigurationSnapshot Replace(ProxyConfigurationSnapshot snapshot);
+}
+
+public abstract record ProxyConfigurationSnapshotReadResult
+{
+    private ProxyConfigurationSnapshotReadResult()
+    {
+    }
+
+    public static ProxyConfigurationSnapshotReadResult MissingSnapshot { get; } = new MissingSnapshotResult();
+
+    public static ProxyConfigurationSnapshotReadResult Available(ProxyConfigurationSnapshot snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+
+        return new AvailableResult(snapshot);
+    }
+
+    public sealed record AvailableResult : ProxyConfigurationSnapshotReadResult
+    {
+        public AvailableResult(ProxyConfigurationSnapshot snapshot)
+        {
+            ArgumentNullException.ThrowIfNull(snapshot);
+
+            Snapshot = snapshot;
+        }
+
+        public ProxyConfigurationSnapshot Snapshot { get; }
+    }
+
+    public sealed record MissingSnapshotResult : ProxyConfigurationSnapshotReadResult;
 }

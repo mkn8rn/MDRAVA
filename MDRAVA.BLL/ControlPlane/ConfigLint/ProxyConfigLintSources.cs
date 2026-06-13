@@ -20,11 +20,13 @@ public sealed class ProxyConfigLintActiveConfigurationSource
 
     public ProxyConfigLintActiveConfigurationReadResult Read()
     {
-        if (!_configurationStore.TryGetSnapshot(out var runtimeSnapshot) || runtimeSnapshot is null)
+        var snapshotResult = _configurationStore.ReadSnapshot();
+        if (snapshotResult is not ProxyConfigurationSnapshotReadResult.AvailableResult available)
         {
             return ProxyConfigLintActiveConfigurationReadResult.MissingConfiguration;
         }
 
+        var runtimeSnapshot = available.Snapshot;
         return ProxyConfigLintActiveConfigurationReadResult.Available(
             ProxyConfigLintConfigurationSnapshotMapper.ToLintSnapshot(
                 ProxyConfigLintRuntimeConfigurationSourceMapper.FromConfiguration(runtimeSnapshot),

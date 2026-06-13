@@ -47,9 +47,9 @@ public sealed class ProxyConfigurationAcmeRenewalScheduleInputSource : IAcmeRene
 
     public AcmeRenewalScheduleInput? ReadInput()
     {
-        return _configurationStore.TryGetSnapshot(out var snapshot) && snapshot is not null
+        return _configurationStore.ReadSnapshot() is ProxyConfigurationSnapshotReadResult.AvailableResult available
             ? AcmeRenewalScheduleInputMapper.FromSource(
-                AcmeRenewalScheduleSourceMapper.FromRuntimeConfiguration(snapshot.Acme))
+                AcmeRenewalScheduleSourceMapper.FromRuntimeConfiguration(available.Snapshot.Acme))
             : null;
     }
 }

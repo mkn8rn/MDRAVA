@@ -18,8 +18,8 @@ public sealed class ProxyConfigurationReadProjectionSource
 
     public ProxyConfigurationProjection? ReadCurrent()
     {
-        return _configurationStore.TryGetSnapshot(out var snapshot) && snapshot is not null
-            ? ProxyConfigurationProjectionMapper.ToProjection(snapshot, _http3PlatformSupportSource.Read())
+        return _configurationStore.ReadSnapshot() is ProxyConfigurationSnapshotReadResult.AvailableResult available
+            ? ProxyConfigurationProjectionMapper.ToProjection(available.Snapshot, _http3PlatformSupportSource.Read())
             : null;
     }
 }

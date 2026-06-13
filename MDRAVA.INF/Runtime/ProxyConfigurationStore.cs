@@ -19,21 +19,24 @@ public sealed class ProxyConfigurationStore
         Volatile.Read(ref _snapshot)
         ?? throw new InvalidOperationException("No active proxy configuration has been loaded.");
 
-    public bool TryGetSnapshot(out ProxyConfigurationSnapshot? snapshot)
+    public ProxyConfigurationSnapshotReadResult ReadSnapshot()
     {
-        snapshot = Volatile.Read(ref _snapshot);
-        return snapshot is not null;
+        var snapshot = Volatile.Read(ref _snapshot);
+        return snapshot is null
+            ? ProxyConfigurationSnapshotReadResult.MissingSnapshot
+            : ProxyConfigurationSnapshotReadResult.Available(snapshot);
     }
 
     public ProxyStatusConfigurationReadResult ReadConfiguration()
     {
-        if (!TryGetSnapshot(out var snapshot) || snapshot is null)
+        var snapshotResult = ReadSnapshot();
+        if (snapshotResult is not ProxyConfigurationSnapshotReadResult.AvailableResult available)
         {
             return ProxyStatusConfigurationReadResult.MissingConfiguration;
         }
 
         return ProxyStatusConfigurationReadResult.Available(
-            ProxyStatusConfigurationSourceMapper.FromConfiguration(snapshot));
+            ProxyStatusConfigurationSourceMapper.FromConfiguration(available.Snapshot));
     }
 
     public ProxyConfigurationSnapshot Replace(ProxyConfigurationSnapshot snapshot)

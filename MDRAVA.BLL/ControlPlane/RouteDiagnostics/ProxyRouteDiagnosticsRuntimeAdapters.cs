@@ -15,11 +15,13 @@ public sealed class ProxyRouteDiagnosticsConfigurationSource
 
     public ProxyRouteDiagnosticsConfigurationReadResult Read()
     {
-        if (!_configurationStore.TryGetSnapshot(out var runtimeSnapshot) || runtimeSnapshot is null)
+        var snapshotResult = _configurationStore.ReadSnapshot();
+        if (snapshotResult is not ProxyConfigurationSnapshotReadResult.AvailableResult available)
         {
             return ProxyRouteDiagnosticsConfigurationReadResult.MissingConfiguration;
         }
 
+        var runtimeSnapshot = available.Snapshot;
         return ProxyRouteDiagnosticsConfigurationReadResult.Available(
             new ProxyRouteDiagnosticsRuntimeConfigurationSnapshot(runtimeSnapshot.Listeners, runtimeSnapshot.Routes));
     }

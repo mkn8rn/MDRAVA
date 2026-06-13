@@ -14,8 +14,8 @@ public sealed class ProxyCacheStatusConfigurationSource
 
     public IReadOnlyList<ProxyCacheStatusRouteSource> ReadRoutes()
     {
-        return _configurationStore.TryGetSnapshot(out var snapshot) && snapshot is not null
-            ? ProxyCacheStatusRouteSourceMapper.ToRouteSources(snapshot.Routes)
+        return _configurationStore.ReadSnapshot() is ProxyConfigurationSnapshotReadResult.AvailableResult available
+            ? ProxyCacheStatusRouteSourceMapper.ToRouteSources(available.Snapshot.Routes)
             : [];
     }
 }

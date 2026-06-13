@@ -117,11 +117,13 @@ public sealed class ProxyConfigurationMetricsExportConfigurationSource
 
     public ProxyMetricsExportConfiguration? ReadConfiguration()
     {
-        if (!_configurationStore.TryGetSnapshot(out var snapshot) || snapshot is null)
+        var snapshotResult = _configurationStore.ReadSnapshot();
+        if (snapshotResult is not ProxyConfigurationSnapshotReadResult.AvailableResult available)
         {
             return null;
         }
 
+        var snapshot = available.Snapshot;
         return ProxyMetricsExportConfigurationMapper.FromSources(
             snapshot.Metrics.Enabled,
             ProxyMetricsExportLabelOptionsMapper.FromMetrics(snapshot.Metrics),

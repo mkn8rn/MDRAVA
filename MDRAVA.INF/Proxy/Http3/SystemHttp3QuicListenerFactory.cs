@@ -50,8 +50,8 @@ public sealed class SystemHttp3QuicListenerFactory : IHttp3QuicListenerFactory
             ApplicationProtocols = ListenerProtocolAdvertisement.BuildHttp3Alpn(listener),
             ConnectionOptionsCallback = (_, clientHello, _) =>
             {
-                var activeSnapshot = _configurationStore.TryGetSnapshot(out var currentSnapshot) && currentSnapshot is not null
-                    ? currentSnapshot
+                var activeSnapshot = _configurationStore.ReadSnapshot() is ProxyConfigurationSnapshotReadResult.AvailableResult available
+                    ? available.Snapshot
                     : snapshot;
                 var activeListener = ResolveListener(activeSnapshot, listener);
                 var certificate = SelectCertificate(activeSnapshot, activeListener, clientHello.ServerName);
