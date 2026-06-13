@@ -571,28 +571,44 @@ internal static class AcmeTests
 
     public static void AcmeRenewalConfigurationInputMapperConsumesSourceSetWithoutRuntimeConfiguration()
     {
+        var contactEmails = new List<string> { "ops@example.test" };
+        var certificateDomains = new List<string> { "home.example.test" };
+        var certificateSource = new AcmeRenewalCertificateSource(
+            "home-acme",
+            Enabled: true,
+            Domains: certificateDomains,
+            RenewBeforeDays: 20,
+            ActiveCertificate: null);
+        var certificates = new List<AcmeRenewalCertificateSource> { certificateSource };
         var source = new AcmeRenewalConfigurationSourceSet(
             Enabled: true,
             StoragePath: "acme",
             DirectoryUrl: "https://acme.example.test/directory",
-            ContactEmails: ["ops@example.test"],
+            ContactEmails: contactEmails,
             TermsAccepted: true,
             RetryAfterMinutes: 15,
-            Certificates:
-            [
-                new AcmeRenewalCertificateSource(
-                    "home-acme",
-                    Enabled: true,
-                    Domains: ["home.example.test"],
-                    RenewBeforeDays: 20,
-                    ActiveCertificate: null)
-            ]);
+            Certificates: certificates);
 
         var input = AcmeRenewalConfigurationInputMapper.FromSources(source);
+
+        contactEmails[0] = "security@example.test";
+        certificateDomains[0] = "replacement.example.test";
+        certificates[0] = new AcmeRenewalCertificateSource(
+            "replacement",
+            Enabled: false,
+            Domains: ["replacement.example.test"],
+            RenewBeforeDays: 10,
+            ActiveCertificate: null);
+        contactEmails.Clear();
+        certificateDomains.Clear();
+        certificates.Clear();
 
         AssertEx.True(input.Enabled);
         AssertEx.Equal("acme", input.StoragePath);
         AssertEx.Equal("https://acme.example.test/directory", input.DirectoryUrl);
+        AssertEx.Equal("ops@example.test", source.ContactEmails[0]);
+        AssertEx.Equal("home-acme", source.Certificates[0].Id);
+        AssertEx.Equal("home.example.test", source.Certificates[0].Domains[0]);
         AssertEx.Equal("ops@example.test", input.ContactEmails[0]);
         AssertEx.True(input.TermsAccepted);
         AssertEx.Equal(15, input.RetryAfterMinutes);
@@ -601,6 +617,11 @@ internal static class AcmeTests
         AssertEx.Equal("home.example.test", input.Certificates[0].Domains[0]);
         AssertEx.Equal(20, input.Certificates[0].RenewBeforeDays);
         AssertEx.Equal(null, input.Certificates[0].ActiveCertificate);
+        AssertEx.False(source.ContactEmails is string[], "ACME renewal source contacts should not expose a mutable array.");
+        AssertEx.False(source.Certificates is AcmeRenewalCertificateSource[], "ACME renewal source certificates should not expose a mutable array.");
+        AssertEx.False(input.ContactEmails is string[], "ACME renewal input contacts should not expose a mutable array.");
+        AssertEx.False(input.Certificates is AcmeRenewalCertificateInput[], "ACME renewal input certificates should not expose a mutable array.");
+        AssertEx.False(input.Certificates[0].Domains is string[], "ACME renewal input domains should not expose a mutable array.");
     }
 
     private static Http1RequestHead Request(string method, string path)

@@ -3,37 +3,139 @@ using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 
 namespace MDRAVA.BLL.ControlPlane.Acme;
 
-public sealed record AcmeRenewalConfigurationInput(
-    bool Enabled,
-    string StoragePath,
-    string DirectoryUrl,
-    IReadOnlyList<string> ContactEmails,
-    bool TermsAccepted,
-    int RetryAfterMinutes,
-    IReadOnlyList<AcmeRenewalCertificateInput> Certificates);
+public sealed record AcmeRenewalConfigurationInput
+{
+    public AcmeRenewalConfigurationInput(
+        bool Enabled,
+        string StoragePath,
+        string DirectoryUrl,
+        IReadOnlyList<string> ContactEmails,
+        bool TermsAccepted,
+        int RetryAfterMinutes,
+        IReadOnlyList<AcmeRenewalCertificateInput> Certificates)
+    {
+        ArgumentNullException.ThrowIfNull(ContactEmails);
+        ArgumentNullException.ThrowIfNull(Certificates);
 
-public sealed record AcmeRenewalCertificateInput(
-    string Id,
-    bool Enabled,
-    IReadOnlyList<string> Domains,
-    int RenewBeforeDays,
-    RuntimeCertificate? ActiveCertificate);
+        this.Enabled = Enabled;
+        this.StoragePath = StoragePath;
+        this.DirectoryUrl = DirectoryUrl;
+        this.ContactEmails = AcmeList.Copy(ContactEmails);
+        this.TermsAccepted = TermsAccepted;
+        this.RetryAfterMinutes = RetryAfterMinutes;
+        this.Certificates = AcmeList.Copy(Certificates);
+    }
 
-public sealed record AcmeRenewalConfigurationSourceSet(
-    bool Enabled,
-    string StoragePath,
-    string DirectoryUrl,
-    IReadOnlyList<string> ContactEmails,
-    bool TermsAccepted,
-    int RetryAfterMinutes,
-    IReadOnlyList<AcmeRenewalCertificateSource> Certificates);
+    public bool Enabled { get; }
 
-public sealed record AcmeRenewalCertificateSource(
-    string Id,
-    bool Enabled,
-    IReadOnlyList<string> Domains,
-    int RenewBeforeDays,
-    RuntimeCertificate? ActiveCertificate);
+    public string StoragePath { get; }
+
+    public string DirectoryUrl { get; }
+
+    public IReadOnlyList<string> ContactEmails { get; }
+
+    public bool TermsAccepted { get; }
+
+    public int RetryAfterMinutes { get; }
+
+    public IReadOnlyList<AcmeRenewalCertificateInput> Certificates { get; }
+}
+
+public sealed record AcmeRenewalCertificateInput
+{
+    public AcmeRenewalCertificateInput(
+        string Id,
+        bool Enabled,
+        IReadOnlyList<string> Domains,
+        int RenewBeforeDays,
+        RuntimeCertificate? ActiveCertificate)
+    {
+        ArgumentNullException.ThrowIfNull(Domains);
+
+        this.Id = Id;
+        this.Enabled = Enabled;
+        this.Domains = AcmeList.Copy(Domains);
+        this.RenewBeforeDays = RenewBeforeDays;
+        this.ActiveCertificate = ActiveCertificate;
+    }
+
+    public string Id { get; }
+
+    public bool Enabled { get; }
+
+    public IReadOnlyList<string> Domains { get; }
+
+    public int RenewBeforeDays { get; }
+
+    public RuntimeCertificate? ActiveCertificate { get; }
+}
+
+public sealed record AcmeRenewalConfigurationSourceSet
+{
+    public AcmeRenewalConfigurationSourceSet(
+        bool Enabled,
+        string StoragePath,
+        string DirectoryUrl,
+        IReadOnlyList<string> ContactEmails,
+        bool TermsAccepted,
+        int RetryAfterMinutes,
+        IReadOnlyList<AcmeRenewalCertificateSource> Certificates)
+    {
+        ArgumentNullException.ThrowIfNull(ContactEmails);
+        ArgumentNullException.ThrowIfNull(Certificates);
+
+        this.Enabled = Enabled;
+        this.StoragePath = StoragePath;
+        this.DirectoryUrl = DirectoryUrl;
+        this.ContactEmails = AcmeList.Copy(ContactEmails);
+        this.TermsAccepted = TermsAccepted;
+        this.RetryAfterMinutes = RetryAfterMinutes;
+        this.Certificates = AcmeList.Copy(Certificates);
+    }
+
+    public bool Enabled { get; }
+
+    public string StoragePath { get; }
+
+    public string DirectoryUrl { get; }
+
+    public IReadOnlyList<string> ContactEmails { get; }
+
+    public bool TermsAccepted { get; }
+
+    public int RetryAfterMinutes { get; }
+
+    public IReadOnlyList<AcmeRenewalCertificateSource> Certificates { get; }
+}
+
+public sealed record AcmeRenewalCertificateSource
+{
+    public AcmeRenewalCertificateSource(
+        string Id,
+        bool Enabled,
+        IReadOnlyList<string> Domains,
+        int RenewBeforeDays,
+        RuntimeCertificate? ActiveCertificate)
+    {
+        ArgumentNullException.ThrowIfNull(Domains);
+
+        this.Id = Id;
+        this.Enabled = Enabled;
+        this.Domains = AcmeList.Copy(Domains);
+        this.RenewBeforeDays = RenewBeforeDays;
+        this.ActiveCertificate = ActiveCertificate;
+    }
+
+    public string Id { get; }
+
+    public bool Enabled { get; }
+
+    public IReadOnlyList<string> Domains { get; }
+
+    public int RenewBeforeDays { get; }
+
+    public RuntimeCertificate? ActiveCertificate { get; }
+}
 
 public interface IAcmeRenewalConfigurationSource
 {
