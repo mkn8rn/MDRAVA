@@ -76,14 +76,7 @@ public sealed record ProxyMetricsSnapshot(
     long AcmeRenewalAttempts,
     long AcmeRenewalSuccesses,
     long AcmeRenewalFailures,
-    long RetryAttempts,
-    long RetryExhausted,
-    IReadOnlyList<ProxyRetrySkippedSnapshot> RetrySkipped,
-    long CircuitOpened,
-    long CircuitHalfOpened,
-    long CircuitClosed,
-    long CircuitRejections,
-    long NoAvailableUpstreamFailures,
+    ProxyResilienceMetricsSnapshot Resilience,
     IReadOnlyList<ProxyUpstreamSelectionSnapshot> UpstreamSelectionsByUpstream,
     ProxyListenerMetricsSnapshot Listeners,
     long Http2AcceptedConnections,
@@ -109,14 +102,14 @@ public sealed record ProxyMetricsSnapshot(
     public ProxyListenerMetricsSnapshot Listeners { get; } =
         Listeners ?? throw new ArgumentNullException(nameof(Listeners));
 
+    public ProxyResilienceMetricsSnapshot Resilience { get; } =
+        Resilience ?? throw new ArgumentNullException(nameof(Resilience));
+
     public IReadOnlyDictionary<string, long> RequestFailuresByKind { get; } =
         MetricsList.CopyDictionary(RequestFailuresByKind, StringComparer.Ordinal);
 
     public IReadOnlyList<ProxyRequestSeriesSnapshot> RequestsByRoute { get; } =
         MetricsList.Copy(RequestsByRoute);
-
-    public IReadOnlyList<ProxyRetrySkippedSnapshot> RetrySkipped { get; } =
-        MetricsList.Copy(RetrySkipped);
 
     public IReadOnlyList<ProxyUpstreamSelectionSnapshot> UpstreamSelectionsByUpstream { get; } =
         MetricsList.Copy(UpstreamSelectionsByUpstream);

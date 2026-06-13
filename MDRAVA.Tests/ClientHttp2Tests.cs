@@ -491,7 +491,7 @@ internal static class ClientHttp2Tests
                 AssertEx.Equal(200, response.StatusCode);
                 AssertEx.Equal("retried", response.BodyText);
                 AssertEx.True(upstreamRequest.StartsWith("GET /retry HTTP/1.1", StringComparison.Ordinal), upstreamRequest);
-                AssertEx.True(metrics.RetryAttempts >= 1, metrics.RetryAttempts.ToString());
+                AssertEx.True(metrics.Resilience.RetryAttempts >= 1, metrics.Resilience.RetryAttempts.ToString());
             }
             finally
             {

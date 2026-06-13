@@ -323,7 +323,7 @@ internal static class UpstreamHttp2Tests
 
         AssertEx.True(result.ClientResponse.Contains("200 OK", StringComparison.Ordinal), result.ClientResponse);
         AssertEx.Equal("GET", result.Upstream.RequestHeaders[":method"]);
-        AssertEx.Equal(0L, result.Metrics.RetryAttempts);
+        AssertEx.Equal(0L, result.Metrics.Resilience.RetryAttempts);
     }
 
     public static async Task Http2StreamingPostBodyIsNotRetriedAfterUpstreamFailure()
@@ -344,8 +344,8 @@ internal static class UpstreamHttp2Tests
             result.ClientResponse);
         AssertEx.Equal("POST", result.Upstream.RequestHeaders[":method"]);
         AssertEx.Equal("streamed-h2", Encoding.ASCII.GetString(result.Upstream.RequestBody));
-        AssertEx.Equal(0L, result.Metrics.RetryAttempts);
-        AssertEx.True(result.Metrics.RetrySkipped.Any(static skipped => skipped.Reason is "method" or "request_body"));
+        AssertEx.Equal(0L, result.Metrics.Resilience.RetryAttempts);
+        AssertEx.True(result.Metrics.Resilience.RetrySkipped.Any(static skipped => skipped.Reason is "method" or "request_body"));
     }
 
     private static async Task<ProxyScenarioResult> RunProxyScenarioAsync(

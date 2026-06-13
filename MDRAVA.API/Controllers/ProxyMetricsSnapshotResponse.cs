@@ -142,6 +142,7 @@ public sealed record ProxyMetricsSnapshotResponse(
         ArgumentNullException.ThrowIfNull(snapshot);
         var http3 = snapshot.Http3;
         var listeners = snapshot.Listeners;
+        var resilience = snapshot.Resilience;
         var upstreamHttp3 = snapshot.UpstreamHttp3;
 
         return new ProxyMetricsSnapshotResponse(
@@ -217,14 +218,14 @@ public sealed record ProxyMetricsSnapshotResponse(
             snapshot.AcmeRenewalAttempts,
             snapshot.AcmeRenewalSuccesses,
             snapshot.AcmeRenewalFailures,
-            snapshot.RetryAttempts,
-            snapshot.RetryExhausted,
-            ProxyRetrySkippedSnapshotResponse.FromSnapshots(snapshot.RetrySkipped),
-            snapshot.CircuitOpened,
-            snapshot.CircuitHalfOpened,
-            snapshot.CircuitClosed,
-            snapshot.CircuitRejections,
-            snapshot.NoAvailableUpstreamFailures,
+            resilience.RetryAttempts,
+            resilience.RetryExhausted,
+            ProxyRetrySkippedSnapshotResponse.FromSnapshots(resilience.RetrySkipped),
+            resilience.CircuitOpened,
+            resilience.CircuitHalfOpened,
+            resilience.CircuitClosed,
+            resilience.CircuitRejections,
+            resilience.NoAvailableUpstreamFailures,
             ProxyUpstreamSelectionSnapshotResponse.FromSnapshots(snapshot.UpstreamSelectionsByUpstream),
             listeners.ReloadAttempts,
             listeners.ReloadSuccesses,

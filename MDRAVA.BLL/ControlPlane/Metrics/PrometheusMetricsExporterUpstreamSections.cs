@@ -12,6 +12,7 @@ public sealed partial class PrometheusMetricsExporter
         IReadOnlyList<ProxyUpstreamStatus> health)
     {
         var upstreamHttp3 = proxy.UpstreamHttp3;
+        var resilience = proxy.Resilience;
         AppendCounter(builder, "mdrava_upstream_request_attempts_total", "Selected upstream request attempts.", proxy.UpstreamSelections);
         AppendCounter(builder, "mdrava_upstream_http2_requests_total", "Upstream HTTP/2 request attempts.", proxy.UpstreamHttp2Requests);
         AppendCounter(builder, "mdrava_upstream_http3_requests_total", "Upstream HTTP/3 request attempts.", upstreamHttp3.Requests);
@@ -33,7 +34,7 @@ public sealed partial class PrometheusMetricsExporter
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.UpstreamMalformedResponses, new Label("reason", "malformed_response"));
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.UpstreamPrematureDisconnects, new Label("reason", "premature_disconnect"));
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.NoHealthyUpstreamFailures, new Label("reason", "no_healthy_upstream"));
-        AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.NoAvailableUpstreamFailures, new Label("reason", "no_available_upstream"));
+        AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, resilience.NoAvailableUpstreamFailures, new Label("reason", "no_available_upstream"));
         AppendLabeledCounter(builder, "mdrava_upstream_failures_total", null, proxy.UpstreamRequestFailures, new Label("reason", "request_failure"));
         AppendLabeledCounter(builder, "mdrava_upstream_http2_failures_total", "Upstream HTTP/2 failures by bounded reason.", proxy.UpstreamHttp2AlpnFailures, new Label("reason", "alpn_failure"));
         AppendLabeledCounter(builder, "mdrava_upstream_http2_failures_total", null, proxy.UpstreamHttp2ProtocolErrors, new Label("reason", "protocol_error"));
@@ -46,22 +47,22 @@ public sealed partial class PrometheusMetricsExporter
             }
         }
 
-        AppendCounter(builder, "mdrava_retry_attempts_total", "Retry attempts after an initial failed upstream attempt.", proxy.RetryAttempts);
-        AppendCounter(builder, "mdrava_retry_exhausted_total", "Requests that exhausted their configured retry attempts.", proxy.RetryExhausted);
-        if (proxy.RetrySkipped.Count > 0)
+        AppendCounter(builder, "mdrava_retry_attempts_total", "Retry attempts after an initial failed upstream attempt.", resilience.RetryAttempts);
+        AppendCounter(builder, "mdrava_retry_exhausted_total", "Requests that exhausted their configured retry attempts.", resilience.RetryExhausted);
+        if (resilience.RetrySkipped.Count > 0)
         {
             AppendHelpAndType(builder, "mdrava_retry_skipped_total", "Retries skipped by bounded reason.", "counter");
         }
 
-        foreach (var skipped in proxy.RetrySkipped)
+        foreach (var skipped in resilience.RetrySkipped)
         {
             AppendSample(builder, "mdrava_retry_skipped_total", skipped.Count, new Label("reason", skipped.Reason));
         }
 
-        AppendLabeledCounter(builder, "mdrava_circuit_transitions_total", "Circuit breaker transitions by state.", proxy.CircuitOpened, new Label("state", "open"));
-        AppendLabeledCounter(builder, "mdrava_circuit_transitions_total", null, proxy.CircuitHalfOpened, new Label("state", "half_open"));
-        AppendLabeledCounter(builder, "mdrava_circuit_transitions_total", null, proxy.CircuitClosed, new Label("state", "closed"));
-        AppendCounter(builder, "mdrava_circuit_rejections_total", "Requests rejected by open or saturated half-open circuits.", proxy.CircuitRejections);
+        AppendLabeledCounter(builder, "mdrava_circuit_transitions_total", "Circuit breaker transitions by state.", resilience.CircuitOpened, new Label("state", "open"));
+        AppendLabeledCounter(builder, "mdrava_circuit_transitions_total", null, resilience.CircuitHalfOpened, new Label("state", "half_open"));
+        AppendLabeledCounter(builder, "mdrava_circuit_transitions_total", null, resilience.CircuitClosed, new Label("state", "closed"));
+        AppendCounter(builder, "mdrava_circuit_rejections_total", "Requests rejected by open or saturated half-open circuits.", resilience.CircuitRejections);
 
         AppendGauge(builder, "mdrava_upstream_connections_active", "Active borrowed upstream connections.", proxy.UpstreamPoolActiveConnections);
         AppendGauge(builder, "mdrava_upstream_connections_idle", "Idle reusable upstream connections.", proxy.UpstreamPoolIdleConnections);

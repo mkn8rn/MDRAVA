@@ -57,8 +57,8 @@ internal static class RouteDiagnosticsTests
         var afterMetrics = metrics.Snapshot();
         var afterCache = CacheStatus(cache, store.Snapshot);
         AssertEx.True(Matched(result).WouldProxy);
-        AssertEx.Equal(0L, afterMetrics.RetryAttempts - beforeMetrics.RetryAttempts);
-        AssertEx.Equal(0L, afterMetrics.CircuitRejections - beforeMetrics.CircuitRejections);
+        AssertEx.Equal(0L, afterMetrics.Resilience.RetryAttempts - beforeMetrics.Resilience.RetryAttempts);
+        AssertEx.Equal(0L, afterMetrics.Resilience.CircuitRejections - beforeMetrics.Resilience.CircuitRejections);
         AssertEx.Equal(beforeCache.HitCount, afterCache.HitCount);
         AssertEx.Equal(beforeCache.MissCount, afterCache.MissCount);
         AssertEx.Equal(1L, afterMetrics.RouteMatchDryRuns - beforeMetrics.RouteMatchDryRuns);

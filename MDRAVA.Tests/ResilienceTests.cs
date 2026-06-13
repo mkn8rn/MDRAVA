@@ -46,8 +46,8 @@ internal static class ResilienceTests
 
             AssertEx.True(response.Contains("200 OK", StringComparison.Ordinal), response);
             AssertEx.Equal(1, requests.Count);
-            AssertEx.Equal(0L, metrics.RetryAttempts);
-            AssertEx.Equal(0L, metrics.CircuitOpened);
+            AssertEx.Equal(0L, metrics.Resilience.RetryAttempts);
+            AssertEx.Equal(0L, metrics.Resilience.CircuitOpened);
         }
         finally
         {
@@ -87,7 +87,7 @@ internal static class ResilienceTests
 
             AssertEx.True(response.Contains("200 OK", StringComparison.Ordinal), response);
             AssertEx.Equal(1, requests.Count);
-            AssertEx.Equal(1L, metrics.RetryAttempts);
+            AssertEx.Equal(1L, metrics.Resilience.RetryAttempts);
         }
         finally
         {
@@ -135,7 +135,7 @@ internal static class ResilienceTests
             AssertEx.True(response.EndsWith("success", StringComparison.Ordinal), response);
             AssertEx.Equal(1, firstRequests.Count);
             AssertEx.Equal(1, secondRequests.Count);
-            AssertEx.Equal(1L, metrics.RetryAttempts);
+            AssertEx.Equal(1L, metrics.Resilience.RetryAttempts);
         }
         finally
         {
@@ -150,8 +150,8 @@ internal static class ResilienceTests
             RetryJson(maxAttempts: 2, retryOnConnectFailure: true));
 
         AssertEx.True(result.Response.Contains("502 Bad Gateway", StringComparison.Ordinal), result.Response);
-        AssertEx.Equal(0L, result.Metrics.RetryAttempts);
-        AssertEx.True(result.Metrics.RetrySkipped.Any(static item => item.Reason == "method"));
+        AssertEx.Equal(0L, result.Metrics.Resilience.RetryAttempts);
+        AssertEx.True(result.Metrics.Resilience.RetrySkipped.Any(static item => item.Reason == "method"));
     }
 
     public static async Task UpgradeIsNotRetried()
@@ -161,7 +161,7 @@ internal static class ResilienceTests
             RetryJson(maxAttempts: 2, retryOnConnectFailure: true));
 
         AssertEx.True(result.Response.Contains("502 Bad Gateway", StringComparison.Ordinal), result.Response);
-        AssertEx.Equal(0L, result.Metrics.RetryAttempts);
+        AssertEx.Equal(0L, result.Metrics.Resilience.RetryAttempts);
     }
 
     public static async Task RequestIsNotRetriedAfterResponseStreamingStarts()
@@ -196,7 +196,7 @@ internal static class ResilienceTests
             AssertEx.True(response.Contains("200 OK", StringComparison.Ordinal), response);
             AssertEx.True(response.EndsWith("part", StringComparison.Ordinal), response);
             AssertEx.Equal(1, requests.Count);
-            AssertEx.Equal(0L, metrics.RetryAttempts);
+            AssertEx.Equal(0L, metrics.Resilience.RetryAttempts);
         }
         finally
         {
@@ -237,7 +237,7 @@ internal static class ResilienceTests
             AssertEx.True(response.Contains("200 OK", StringComparison.Ordinal), response);
             AssertEx.True(response.EndsWith("partial", StringComparison.Ordinal), response);
             AssertEx.Equal(1, firstRequests.Count);
-            AssertEx.Equal(0L, metrics.RetryAttempts);
+            AssertEx.Equal(0L, metrics.Resilience.RetryAttempts);
             AssertEx.Equal(1L, metrics.UpstreamBodyRelayFailures);
         }
         finally
@@ -278,8 +278,8 @@ internal static class ResilienceTests
 
             AssertEx.True(response.Contains("503 Service Unavailable", StringComparison.Ordinal), response);
             AssertEx.Equal(1, firstRequests.Count);
-            AssertEx.Equal(0L, metrics.RetryAttempts);
-            AssertEx.True(metrics.RetrySkipped.Any(static item => item.Reason == "method"));
+            AssertEx.Equal(0L, metrics.Resilience.RetryAttempts);
+            AssertEx.True(metrics.Resilience.RetrySkipped.Any(static item => item.Reason == "method"));
         }
         finally
         {
@@ -294,8 +294,8 @@ internal static class ResilienceTests
             RetryJson(maxAttempts: 3, retryOnConnectFailure: true));
 
         AssertEx.True(result.Response.Contains("502 Bad Gateway", StringComparison.Ordinal), result.Response);
-        AssertEx.Equal(2L, result.Metrics.RetryAttempts);
-        AssertEx.Equal(1L, result.Metrics.RetryExhausted);
+        AssertEx.Equal(2L, result.Metrics.Resilience.RetryAttempts);
+        AssertEx.Equal(1L, result.Metrics.Resilience.RetryExhausted);
     }
 
     public static async Task RetryExhaustedReturnsClearFailure()
@@ -306,7 +306,7 @@ internal static class ResilienceTests
 
         AssertEx.True(result.Response.Contains("HTTP/1.1 502 Bad Gateway", StringComparison.Ordinal), result.Response);
         AssertEx.True(result.Response.EndsWith("Bad Gateway", StringComparison.Ordinal), result.Response);
-        AssertEx.Equal(1L, result.Metrics.RetryExhausted);
+        AssertEx.Equal(1L, result.Metrics.Resilience.RetryExhausted);
     }
 
     public static void CircuitOpensAfterThresholdFailures()
@@ -338,7 +338,7 @@ internal static class ResilienceTests
             fixture.Circuit);
 
         AssertEx.Equal(CircuitBreakerRuntimeState.Open, fixture.Circuit.Snapshot(StatusSource(route.Upstreams[0])).State);
-        AssertEx.Equal(1L, fixture.Metrics.Snapshot().CircuitOpened);
+        AssertEx.Equal(1L, fixture.Metrics.Snapshot().Resilience.CircuitOpened);
         AssertEx.Equal(0L, fixture.Metrics.Snapshot().UpstreamRequestFailures);
     }
 
@@ -358,7 +358,7 @@ internal static class ResilienceTests
             fixture.Circuit);
 
         AssertEx.Equal(CircuitBreakerRuntimeState.Closed, fixture.Circuit.Snapshot(StatusSource(route.Upstreams[0])).State);
-        AssertEx.Equal(0L, fixture.Metrics.Snapshot().CircuitOpened);
+        AssertEx.Equal(0L, fixture.Metrics.Snapshot().Resilience.CircuitOpened);
         AssertEx.Equal(1L, fixture.Metrics.Snapshot().UpstreamRequestFailures);
     }
 
@@ -372,7 +372,7 @@ internal static class ResilienceTests
         var second = fixture.Selector.Select(SelectionRoute(route));
 
         AssertEx.Equal(null, second);
-        AssertEx.Equal(1L, fixture.Metrics.Snapshot().CircuitRejections);
+        AssertEx.Equal(1L, fixture.Metrics.Snapshot().Resilience.CircuitRejections);
     }
 
     public static void CircuitTransitionsToHalfOpenAfterOpenDuration()
@@ -402,7 +402,7 @@ internal static class ResilienceTests
 
         AssertEx.True(AssertEx.NotNull(probe.CircuitBreakerLease).HalfOpenProbe);
         AssertEx.Equal(null, rejected);
-        AssertEx.Equal(1L, fixture.Metrics.Snapshot().CircuitRejections);
+        AssertEx.Equal(1L, fixture.Metrics.Snapshot().Resilience.CircuitRejections);
     }
 
     public static void HalfOpenSuccessClosesCircuit()
@@ -512,7 +512,7 @@ internal static class ResilienceTests
         fixture.Circuit.RecordFailure(first.CircuitBreakerLease, "connect_failure");
 
         AssertEx.True(fixture.Selector.Select(SelectionRoute(route)) is null);
-        AssertEx.Equal(1L, fixture.Metrics.Snapshot().NoAvailableUpstreamFailures);
+        AssertEx.Equal(1L, fixture.Metrics.Snapshot().Resilience.NoAvailableUpstreamFailures);
     }
 
     public static async Task AllUnavailableUpstreamsReturnSafeFailure()

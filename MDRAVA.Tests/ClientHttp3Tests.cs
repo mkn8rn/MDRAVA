@@ -1107,7 +1107,7 @@ internal static class ClientHttp3Tests
             AssertEx.Equal("200", HeaderValue(response.Headers, ":status"));
             AssertEx.Equal("retry", response.Body);
             AssertEx.True(upstreamRequest.StartsWith("GET /retry HTTP/1.1", StringComparison.Ordinal), upstreamRequest);
-            AssertEx.True(metrics.RetryAttempts >= 1);
+            AssertEx.True(metrics.Resilience.RetryAttempts >= 1);
         }
         finally
         {
@@ -1355,8 +1355,8 @@ internal static class ClientHttp3Tests
 
             var status = HeaderValue(response.Headers, ":status");
             AssertEx.True(status is "502" or "504", status);
-            AssertEx.True(metrics.RetrySkipped.Any(static skipped => skipped.Reason == "request_body"));
-            AssertEx.Equal(0L, metrics.RetryAttempts);
+            AssertEx.True(metrics.Resilience.RetrySkipped.Any(static skipped => skipped.Reason == "request_body"));
+            AssertEx.Equal(0L, metrics.Resilience.RetryAttempts);
         }
         finally
         {

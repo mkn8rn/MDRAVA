@@ -77,14 +77,7 @@ public sealed partial class ProxyMetrics
             Interlocked.Read(ref _acmeRenewalAttempts),
             Interlocked.Read(ref _acmeRenewalSuccesses),
             Interlocked.Read(ref _acmeRenewalFailures),
-            Interlocked.Read(ref _retryAttempts),
-            Interlocked.Read(ref _retryExhausted),
-            ReadRetrySkipped(),
-            Interlocked.Read(ref _circuitOpened),
-            Interlocked.Read(ref _circuitHalfOpened),
-            Interlocked.Read(ref _circuitClosed),
-            Interlocked.Read(ref _circuitRejections),
-            Interlocked.Read(ref _noAvailableUpstreamFailures),
+            ReadResilienceMetricsSnapshot(),
             ReadUpstreamSelectionsByUpstream(),
             ReadListenerMetricsSnapshot(),
             Interlocked.Read(ref _http2AcceptedConnections),
@@ -140,6 +133,19 @@ public sealed partial class ProxyMetrics
             Interlocked.Read(ref _listenerStartFailures),
             Interlocked.Read(ref _listenerDrainCount),
             Interlocked.Read(ref _activeListeners));
+    }
+
+    private ProxyResilienceMetricsSnapshot ReadResilienceMetricsSnapshot()
+    {
+        return new ProxyResilienceMetricsSnapshot(
+            Interlocked.Read(ref _retryAttempts),
+            Interlocked.Read(ref _retryExhausted),
+            ReadRetrySkipped(),
+            Interlocked.Read(ref _circuitOpened),
+            Interlocked.Read(ref _circuitHalfOpened),
+            Interlocked.Read(ref _circuitClosed),
+            Interlocked.Read(ref _circuitRejections),
+            Interlocked.Read(ref _noAvailableUpstreamFailures));
     }
 
     private ProxyUpstreamHttp3MetricsSnapshot ReadUpstreamHttp3MetricsSnapshot()
