@@ -97,9 +97,14 @@ public sealed partial class ResponseCacheStore
 
         public DateTimeOffset ExpiresAtUtc { get; }
 
-        public DateTimeOffset LastAccessedAtUtc { get; set; }
+        public DateTimeOffset LastAccessedAtUtc { get; private set; }
 
         public long SizeBytes { get; }
+
+        public void RecordAccess(DateTimeOffset accessedAtUtc)
+        {
+            LastAccessedAtUtc = accessedAtUtc;
+        }
 
         public CachedProxyResponse ToResponse()
         {

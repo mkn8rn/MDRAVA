@@ -50,7 +50,7 @@ public sealed partial class ResponseCacheStore : IProxyCacheControl
                 return ProxyCacheLookupResult.Miss;
             }
 
-            entry.LastAccessedAtUtc = now;
+            entry.RecordAccess(now);
             _hits++;
             return ProxyCacheLookupResult.Hit(entry.ToResponse());
         }
