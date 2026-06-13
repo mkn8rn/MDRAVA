@@ -143,6 +143,7 @@ public sealed record ProxyMetricsSnapshotResponse(
         var adminAuth = snapshot.AdminAuth;
         var acmeRenewals = snapshot.AcmeRenewals;
         var clientConnections = snapshot.ClientConnections;
+        var clientFailures = snapshot.ClientFailures;
         var configReloads = snapshot.ConfigReloads;
         var diagnostics = snapshot.Diagnostics;
         var generatedResponses = snapshot.GeneratedResponses;
@@ -169,23 +170,23 @@ public sealed record ProxyMetricsSnapshotResponse(
             snapshot.UpstreamFailures,
             traffic.BytesRead,
             traffic.BytesWritten,
-            snapshot.ParseErrors,
+            clientFailures.ParseErrors,
             rejections.MalformedRequests,
             rejections.UnsupportedRequestFraming,
             upstreamFailureReasons.MalformedResponses,
-            snapshot.ClientBodyRelayFailures,
+            clientFailures.BodyRelayFailures,
             snapshot.UpstreamBodyRelayFailures,
-            snapshot.ClientRequestHeadTimeouts,
-            snapshot.ClientRequestBodyTimeouts,
+            clientFailures.RequestHeadTimeouts,
+            clientFailures.RequestBodyTimeouts,
             upstreamFailureReasons.ConnectFailures,
             upstreamFailureReasons.ConnectTimeouts,
             upstreamFailureReasons.ResponseHeadTimeouts,
             upstreamFailureReasons.ResponseBodyTimeouts,
             upstreamFailureReasons.PrematureDisconnects,
-            snapshot.ClientPrematureDisconnects,
+            clientFailures.PrematureDisconnects,
             generatedResponses.BadGatewayResponses,
             generatedResponses.GatewayTimeoutResponses,
-            snapshot.DownstreamWriteTimeouts,
+            clientFailures.DownstreamWriteTimeouts,
             tls.HandshakeAttempts,
             tls.HandshakeSuccesses,
             tls.HandshakeFailures,

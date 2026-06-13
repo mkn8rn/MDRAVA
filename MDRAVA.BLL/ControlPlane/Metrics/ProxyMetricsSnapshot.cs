@@ -8,16 +8,11 @@ public sealed record ProxyMetricsSnapshot(
     ProxyTrafficMetricsSnapshot Traffic,
     long UpstreamSuccesses,
     long UpstreamFailures,
-    long ParseErrors,
+    ProxyClientFailureMetricsSnapshot ClientFailures,
     ProxyRejectionMetricsSnapshot Rejections,
-    long ClientBodyRelayFailures,
     long UpstreamBodyRelayFailures,
-    long ClientRequestHeadTimeouts,
-    long ClientRequestBodyTimeouts,
     ProxyUpstreamFailureMetricsSnapshot UpstreamFailureReasons,
-    long ClientPrematureDisconnects,
     ProxyGeneratedResponseMetricsSnapshot GeneratedResponses,
-    long DownstreamWriteTimeouts,
     ProxyTlsMetricsSnapshot Tls,
     ProxyUpstreamPoolMetricsSnapshot UpstreamPool,
     ProxyUpgradeMetricsSnapshot Upgrades,
@@ -47,6 +42,9 @@ public sealed record ProxyMetricsSnapshot(
 
     public ProxyTrafficMetricsSnapshot Traffic { get; } =
         Traffic ?? throw new ArgumentNullException(nameof(Traffic));
+
+    public ProxyClientFailureMetricsSnapshot ClientFailures { get; } =
+        ClientFailures ?? throw new ArgumentNullException(nameof(ClientFailures));
 
     public ProxyHttp3MetricsSnapshot Http3 { get; } =
         Http3 ?? throw new ArgumentNullException(nameof(Http3));

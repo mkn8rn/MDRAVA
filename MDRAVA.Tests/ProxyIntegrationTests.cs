@@ -971,7 +971,7 @@ internal static class ProxyIntegrationTests
             timeoutMs: 150);
 
         AssertEx.True(result.ClientResponse.Contains("408 Request Timeout", StringComparison.Ordinal), result.ClientResponse);
-        AssertEx.Equal(1L, result.Metrics.ClientRequestHeadTimeouts);
+        AssertEx.Equal(1L, result.Metrics.ClientFailures.RequestHeadTimeouts);
     }
 
     public static async Task TimesOutIncompleteContentLengthRequestBody()
@@ -983,7 +983,7 @@ internal static class ProxyIntegrationTests
             timeoutMs: 150);
 
         AssertEx.True(result.ClientResponse.Contains("408 Request Timeout", StringComparison.Ordinal), result.ClientResponse);
-        AssertEx.Equal(1L, result.Metrics.ClientRequestBodyTimeouts);
+        AssertEx.Equal(1L, result.Metrics.ClientFailures.RequestBodyTimeouts);
     }
 
     public static async Task TimesOutIncompleteChunkedRequestBody()
@@ -995,7 +995,7 @@ internal static class ProxyIntegrationTests
             timeoutMs: 150);
 
         AssertEx.True(result.ClientResponse.Contains("408 Request Timeout", StringComparison.Ordinal), result.ClientResponse);
-        AssertEx.Equal(1L, result.Metrics.ClientRequestBodyTimeouts);
+        AssertEx.Equal(1L, result.Metrics.ClientFailures.RequestBodyTimeouts);
     }
 
     public static async Task TimesOutMissingTerminatingChunkAfterCompleteChunk()
@@ -1007,7 +1007,7 @@ internal static class ProxyIntegrationTests
             timeoutMs: 150);
 
         AssertEx.True(result.ClientResponse.Contains("408 Request Timeout", StringComparison.Ordinal), result.ClientResponse);
-        AssertEx.Equal(1L, result.Metrics.ClientRequestBodyTimeouts);
+        AssertEx.Equal(1L, result.Metrics.ClientFailures.RequestBodyTimeouts);
     }
 
     public static async Task UnavailableUpstreamProducesBadGateway()

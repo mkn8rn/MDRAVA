@@ -133,7 +133,13 @@ internal static class MetricsTests
                 BytesWritten: 0),
             UpstreamSuccesses: 0,
             UpstreamFailures: 0,
-            ParseErrors: 0,
+            ClientFailures: new ProxyClientFailureMetricsSnapshot(
+                ParseErrors: 0,
+                BodyRelayFailures: 0,
+                RequestHeadTimeouts: 0,
+                RequestBodyTimeouts: 0,
+                PrematureDisconnects: 0,
+                DownstreamWriteTimeouts: 0),
             Rejections: new ProxyRejectionMetricsSnapshot(
                 ClientConnectionAdmissionRejections: 0,
                 RateLimitedRequests: 0,
@@ -142,10 +148,7 @@ internal static class MetricsTests
                 ParserLimitRejections: 0,
                 MalformedRequests: 0,
                 UnsupportedRequestFraming: 0),
-            ClientBodyRelayFailures: 0,
             UpstreamBodyRelayFailures: 0,
-            ClientRequestHeadTimeouts: 0,
-            ClientRequestBodyTimeouts: 0,
             UpstreamFailureReasons: new ProxyUpstreamFailureMetricsSnapshot(
                 ConnectFailures: 0,
                 ConnectTimeouts: 0,
@@ -154,11 +157,9 @@ internal static class MetricsTests
                 MalformedResponses: 0,
                 PrematureDisconnects: 0,
                 RequestFailures: 0),
-            ClientPrematureDisconnects: 0,
             GeneratedResponses: new ProxyGeneratedResponseMetricsSnapshot(
                 BadGatewayResponses: 0,
                 GatewayTimeoutResponses: 0),
-            DownstreamWriteTimeouts: 0,
             Tls: new ProxyTlsMetricsSnapshot(
                 HandshakeAttempts: 0,
                 HandshakeSuccesses: 0,
