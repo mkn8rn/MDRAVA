@@ -621,10 +621,8 @@ public sealed class Http3Connection
 
                 await WriteGeneratedResponseAsync(
                     stream,
-                    503,
-                    "Service Unavailable",
+                    ProxyGeneratedFailurePolicy.BuildFailureResponse(ProxyFailureKind.NoHealthyUpstream),
                     context,
-                    ProxyFailureKind.NoHealthyUpstream,
                     requestHead.Method,
                     cancellationToken);
                 return ForwardingResult.Failure(

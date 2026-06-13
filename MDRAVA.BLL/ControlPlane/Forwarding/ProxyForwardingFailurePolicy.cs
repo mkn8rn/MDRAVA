@@ -26,6 +26,7 @@ public static class ProxyForwardingFailurePolicy
         {
             ProxyFailureKind.UpstreamConnectTimeout => 504,
             ProxyFailureKind.UpstreamResponseHeadTimeout => 504,
+            ProxyFailureKind.NoHealthyUpstream => 503,
             ProxyFailureKind.RequestPayloadTooLarge => 413,
             ProxyFailureKind.ClientMalformedRequest => 400,
             _ => 502

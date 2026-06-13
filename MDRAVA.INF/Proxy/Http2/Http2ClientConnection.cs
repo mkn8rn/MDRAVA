@@ -727,10 +727,8 @@ public sealed class Http2ClientConnection
 
                 await WriteGeneratedResponseAsync(
                     streamId,
-                    503,
-                    "Service Unavailable",
+                    ProxyGeneratedFailurePolicy.BuildFailureResponse(ProxyFailureKind.NoHealthyUpstream),
                     context,
-                    ProxyFailureKind.NoHealthyUpstream,
                     requestHead.Method,
                     cancellationToken);
                 return ForwardingResult.Failure(

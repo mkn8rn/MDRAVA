@@ -630,11 +630,8 @@ public sealed class ClientConnection
 
                 await WriteGeneratedResponseAsync(
                     clientStream,
-                    503,
-                    "Service Unavailable",
-                    "Service Unavailable",
+                    ProxyGeneratedFailurePolicy.BuildFailureResponse(ProxyFailureKind.NoHealthyUpstream),
                     context,
-                    ProxyFailureKind.NoHealthyUpstream,
                     cancellationToken);
                 return ForwardingResult.Failure(
                     responseStarted: true,
@@ -795,11 +792,8 @@ public sealed class ClientConnection
             _metrics.UpgradeRequestRejected();
             await WriteGeneratedResponseAsync(
                 clientStream,
-                503,
-                "Service Unavailable",
-                "Service Unavailable",
+                ProxyGeneratedFailurePolicy.BuildFailureResponse(ProxyFailureKind.NoHealthyUpstream),
                 context,
-                ProxyFailureKind.NoHealthyUpstream,
                 cancellationToken);
             return false;
         }

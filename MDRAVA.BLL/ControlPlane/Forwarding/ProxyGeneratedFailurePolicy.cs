@@ -42,10 +42,24 @@ public static class ProxyGeneratedFailurePolicy
         ArgumentNullException.ThrowIfNull(failure);
 
         var statusCode = failure.ResponseStatusCode ?? ProxyForwardingFailurePolicy.StatusCodeForFailure(failure.FailureKind);
+        return BuildFailureResponse(statusCode, failure.FailureKind);
+    }
+
+    public static ProxyGeneratedFailureResponse BuildFailureResponse(ProxyFailureKind failureKind)
+    {
+        return BuildFailureResponse(
+            ProxyForwardingFailurePolicy.StatusCodeForFailure(failureKind),
+            failureKind);
+    }
+
+    private static ProxyGeneratedFailureResponse BuildFailureResponse(
+        int statusCode,
+        ProxyFailureKind failureKind)
+    {
         return new ProxyGeneratedFailureResponse(
             statusCode,
             ProxyRouteActionPolicy.ReasonPhrase(statusCode),
-            failure.FailureKind);
+            failureKind);
     }
 
     public static ProxyGeneratedFailureResponse BuildFailureResponse(
