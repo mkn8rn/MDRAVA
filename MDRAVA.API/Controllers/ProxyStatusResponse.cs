@@ -30,7 +30,7 @@ public sealed record ProxyStatusResponse(
 
     public ProxyListenerReloadResponse? LastListenerReload { get; init; }
 
-    public RuntimeHttp3SupportProjection Http3 { get; init; } = null!;
+    public RuntimeHttp3SupportResponse Http3 { get; init; } = null!;
 
     public RouteDiagnosticsStatusResponse RouteDiagnostics { get; init; } = null!;
 
@@ -69,7 +69,7 @@ public sealed record ProxyStatusResponse(
             LastListenerReload = response.LastListenerReload is null
                 ? null
                 : ProxyListenerReloadResponse.FromResult(response.LastListenerReload),
-            Http3 = response.Http3,
+            Http3 = RuntimeHttp3SupportResponse.FromProjection(response.Http3),
             RouteDiagnostics = RouteDiagnosticsStatusResponse.FromStatus(response.RouteDiagnostics),
             ConfigLint = ConfigLintStatusResponse.FromStatus(response.ConfigLint),
             LogPersistence = ProxyLogPersistenceStatusResponse.FromStatus(response.LogPersistence),
