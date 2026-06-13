@@ -34,15 +34,31 @@ internal static class ProxyGeneratedFailurePolicyTests
 
         AssertEx.Equal(502, defaultResponse.StatusCode);
         AssertEx.Equal("Bad Gateway", defaultResponse.ReasonPhrase);
+        AssertEx.Equal("Bad Gateway", defaultResponse.Body);
         AssertEx.Equal(ProxyFailureKind.UpstreamConnectFailed, defaultResponse.FailureKind);
         AssertEx.Equal(504, timeoutResponse.StatusCode);
         AssertEx.Equal("Gateway Timeout", timeoutResponse.ReasonPhrase);
+        AssertEx.Equal("Gateway Timeout", timeoutResponse.Body);
         AssertEx.Equal(ProxyFailureKind.UpstreamResponseHeadTimeout, timeoutResponse.FailureKind);
 
         var forwardingResult = (ForwardingResult.FailureResult)timeoutResponse.ToForwardingResult();
         AssertEx.True(forwardingResult.ResponseStarted);
         AssertEx.Equal(504, forwardingResult.ResponseStatusCode);
         AssertEx.Equal(ProxyFailureKind.UpstreamResponseHeadTimeout, forwardingResult.FailureKind);
+    }
+
+    public static void BuildsGeneratedFailureResponseWithExplicitBody()
+    {
+        var response = ProxyGeneratedFailurePolicy.BuildFailureResponse(
+            431,
+            "Request Header Fields Too Large",
+            "Request Head Too Large",
+            ProxyFailureKind.ParserLimitExceeded);
+
+        AssertEx.Equal(431, response.StatusCode);
+        AssertEx.Equal("Request Header Fields Too Large", response.ReasonPhrase);
+        AssertEx.Equal("Request Head Too Large", response.Body);
+        AssertEx.Equal(ProxyFailureKind.ParserLimitExceeded, response.FailureKind);
     }
 
     public static void BuildsGeneratedFailureFramedHeaders()

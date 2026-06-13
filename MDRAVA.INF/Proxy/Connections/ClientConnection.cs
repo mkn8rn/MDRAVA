@@ -841,11 +841,8 @@ public sealed class ClientConnection
 
         await WriteGeneratedResponseAsync(
             clientStream,
-            response.StatusCode,
-            response.ReasonPhrase,
-            response.ReasonPhrase,
+            response,
             context,
-            response.FailureKind,
             cancellationToken);
         return response.ToForwardingResult();
     }
@@ -897,11 +894,24 @@ public sealed class ClientConnection
         ProxyFailureKind failureKind,
         CancellationToken cancellationToken)
     {
+        await WriteGeneratedResponseAsync(
+            clientStream,
+            ProxyGeneratedFailurePolicy.BuildFailureResponse(statusCode, reasonPhrase, body, failureKind),
+            context,
+            cancellationToken);
+    }
+
+    private async ValueTask WriteGeneratedResponseAsync(
+        Stream clientStream,
+        ProxyGeneratedFailureResponse response,
+        ProxyRequestContext context,
+        CancellationToken cancellationToken)
+    {
         await ProxyErrorResponses.WriteGeneratedAsync(
             clientStream,
-            statusCode,
-            reasonPhrase,
-            body,
+            response.StatusCode,
+            response.ReasonPhrase,
+            response.Body,
             context.RequestId,
             _configurationSnapshot.Timeouts.DownstreamWriteTimeout,
             _metrics,
@@ -910,8 +920,8 @@ public sealed class ClientConnection
             headers: ApplyAltSvc([]));
 
         context.ResponseStarted = true;
-        context.ResponseStatusCode = statusCode;
-        context.FailureKind = failureKind;
+        context.ResponseStatusCode = response.StatusCode;
+        context.FailureKind = response.FailureKind;
         context.KeepClientConnectionOpen = false;
     }
 

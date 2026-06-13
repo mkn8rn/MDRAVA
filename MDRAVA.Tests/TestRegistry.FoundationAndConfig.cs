@@ -45,6 +45,7 @@ internal static partial class TestRegistry
     Test("Http1 client connection policy closes HTTP/1.0 by default", Sync(Http1ClientConnectionPolicyTests.ClosesHttp10ByDefault), TestTaxonomy.Http1),
     Test("Generated failure policy allows responses only before downstream start and without suppression", Sync(ProxyGeneratedFailurePolicyTests.AllowsGeneratedFailureOnlyBeforeResponseAndWithoutSuppression), TestTaxonomy.Http1, TestTaxonomy.RetryCircuit, TestTaxonomy.SecurityNegativePaths),
     Test("Generated failure policy builds response descriptors", Sync(ProxyGeneratedFailurePolicyTests.BuildsGeneratedFailureResponseFromFailureResult), TestTaxonomy.Http1, TestTaxonomy.RetryCircuit),
+    Test("Generated failure policy keeps explicit response bodies", Sync(ProxyGeneratedFailurePolicyTests.BuildsGeneratedFailureResponseWithExplicitBody), TestTaxonomy.Http1, TestTaxonomy.Headers),
     Test("Generated failure policy builds framed headers", Sync(ProxyGeneratedFailurePolicyTests.BuildsGeneratedFailureFramedHeaders), TestTaxonomy.Headers, TestTaxonomy.RetryCircuit),
     Test("Http1 request framing policy classifies framed request bodies", Sync(Http1RequestFramingPolicyTests.ClassifiesFramedRequestBodies), TestTaxonomy.Http1, TestTaxonomy.Http2, TestTaxonomy.Http3),
     Test("Timeout failure policy classifies forwarding failures", Sync(ProxyTimeoutFailurePolicyTests.ClassifiesForwardingTimeoutFailures), TestTaxonomy.Limits, TestTaxonomy.SecurityNegativePaths),
