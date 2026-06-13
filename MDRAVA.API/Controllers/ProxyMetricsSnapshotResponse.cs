@@ -144,6 +144,7 @@ public sealed record ProxyMetricsSnapshotResponse(
         var http2 = snapshot.Http2;
         var http3 = snapshot.Http3;
         var listeners = snapshot.Listeners;
+        var rejections = snapshot.Rejections;
         var resilience = snapshot.Resilience;
         var tls = snapshot.Tls;
         var tunnels = snapshot.Tunnels;
@@ -161,8 +162,8 @@ public sealed record ProxyMetricsSnapshotResponse(
             snapshot.BytesRead,
             snapshot.BytesWritten,
             snapshot.ParseErrors,
-            snapshot.RejectedMalformedRequests,
-            snapshot.RejectedUnsupportedRequestFraming,
+            rejections.MalformedRequests,
+            rejections.UnsupportedRequestFraming,
             snapshot.UpstreamMalformedResponses,
             snapshot.ClientBodyRelayFailures,
             snapshot.UpstreamBodyRelayFailures,
@@ -209,13 +210,13 @@ public sealed record ProxyMetricsSnapshotResponse(
             snapshot.RequestIdsGenerated,
             snapshot.AccessLogsEmitted,
             snapshot.RecentDiagnosticsOverwritten,
-            snapshot.ConnectionAdmissionRejections,
+            rejections.ClientConnectionAdmissionRejections,
             tls.ActiveHandshakes,
             tls.HandshakeAdmissionRejections,
-            snapshot.RateLimitedRequests,
-            snapshot.RateLimitedUpgrades,
-            snapshot.RequestBodySizeRejections,
-            snapshot.ParserLimitRejections,
+            rejections.RateLimitedRequests,
+            rejections.RateLimitedUpgrades,
+            rejections.RequestBodySizeRejections,
+            rejections.ParserLimitRejections,
             new Dictionary<string, long>(snapshot.RequestFailuresByKind),
             ProxyRequestSeriesSnapshotResponse.FromSnapshots(snapshot.RequestsByRoute),
             snapshot.ConfigReloadSuccesses,

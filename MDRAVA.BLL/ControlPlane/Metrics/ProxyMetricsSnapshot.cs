@@ -12,8 +12,7 @@ public sealed record ProxyMetricsSnapshot(
     long BytesRead,
     long BytesWritten,
     long ParseErrors,
-    long RejectedMalformedRequests,
-    long RejectedUnsupportedRequestFraming,
+    ProxyRejectionMetricsSnapshot Rejections,
     long UpstreamMalformedResponses,
     long ClientBodyRelayFailures,
     long UpstreamBodyRelayFailures,
@@ -40,11 +39,6 @@ public sealed record ProxyMetricsSnapshot(
     long RequestIdsGenerated,
     long AccessLogsEmitted,
     long RecentDiagnosticsOverwritten,
-    long ConnectionAdmissionRejections,
-    long RateLimitedRequests,
-    long RateLimitedUpgrades,
-    long RequestBodySizeRejections,
-    long ParserLimitRejections,
     IReadOnlyDictionary<string, long> RequestFailuresByKind,
     IReadOnlyList<ProxyRequestSeriesSnapshot> RequestsByRoute,
     long ConfigReloadSuccesses,
@@ -89,6 +83,9 @@ public sealed record ProxyMetricsSnapshot(
 
     public ProxyHealthMetricsSnapshot Health { get; } =
         Health ?? throw new ArgumentNullException(nameof(Health));
+
+    public ProxyRejectionMetricsSnapshot Rejections { get; } =
+        Rejections ?? throw new ArgumentNullException(nameof(Rejections));
 
     public ProxyResilienceMetricsSnapshot Resilience { get; } =
         Resilience ?? throw new ArgumentNullException(nameof(Resilience));

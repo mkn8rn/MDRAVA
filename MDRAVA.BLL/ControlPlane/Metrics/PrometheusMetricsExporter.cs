@@ -12,11 +12,12 @@ public sealed partial class PrometheusMetricsExporter
         var cache = input.CacheStatus;
         var health = input.UpstreamHealth;
         var acme = input.AcmeCertificates;
+        var rejections = proxy.Rejections;
         var builder = new StringBuilder();
 
         AppendCounter(builder, "mdrava_client_connections_accepted_total", "Accepted downstream client connections.", proxy.AcceptedConnections);
         AppendGauge(builder, "mdrava_client_connections_active", "Currently active downstream client connections.", proxy.ActiveConnections);
-        AppendLabeledCounter(builder, "mdrava_client_connections_rejected_total", "Rejected downstream client connections by bounded reason.", proxy.ConnectionAdmissionRejections, new Label("reason", "admission_limit"));
+        AppendLabeledCounter(builder, "mdrava_client_connections_rejected_total", "Rejected downstream client connections by bounded reason.", rejections.ClientConnectionAdmissionRejections, new Label("reason", "admission_limit"));
 
         AppendCounter(builder, "mdrava_requests_total", "HTTP requests received by the dataplane.", proxy.TotalRequests);
         AppendClientProtocolMetrics(builder, input, proxy);

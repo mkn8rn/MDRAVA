@@ -719,7 +719,7 @@ internal static class ProxyIntegrationTests
             maxRequestHeadBytes: 1024);
 
         AssertEx.True(result.ClientResponse.Contains("431 Request Header Fields Too Large", StringComparison.Ordinal), result.ClientResponse);
-        AssertEx.Equal(1L, result.Metrics.ParserLimitRejections);
+        AssertEx.Equal(1L, result.Metrics.Rejections.ParserLimitRejections);
     }
 
     public static async Task ExcessiveHeaderCountIsRejected()
@@ -832,7 +832,7 @@ internal static class ProxyIntegrationTests
             var diagnostic = host.Services.GetRequiredService<RecentRequestDiagnosticsStore>().Recent(10)[0];
             AssertEx.True(first.Contains("200 OK", StringComparison.Ordinal), first);
             AssertEx.True(second.Contains("429 Too Many Requests", StringComparison.Ordinal), second);
-            AssertEx.Equal(1L, metrics.RateLimitedRequests);
+            AssertEx.Equal(1L, metrics.Rejections.RateLimitedRequests);
             AssertEx.Equal("RateLimited", diagnostic.FailureKind);
         }
         finally
@@ -869,7 +869,7 @@ internal static class ProxyIntegrationTests
 
             using var rejectedClient = new TcpClient();
             await rejectedClient.ConnectAsync(IPAddress.Loopback, proxyPort, timeout.Token);
-            await WaitForMetricsAsync(metrics, static snapshot => snapshot.ConnectionAdmissionRejections == 1, timeout.Token);
+            await WaitForMetricsAsync(metrics, static snapshot => snapshot.Rejections.ClientConnectionAdmissionRejections == 1, timeout.Token);
 
             heldClient.Dispose();
             await WaitForMetricsAsync(metrics, static snapshot => snapshot.ActiveConnections == 0, timeout.Token);
@@ -886,7 +886,7 @@ internal static class ProxyIntegrationTests
 
             AssertEx.True(response.Contains("200 OK", StringComparison.Ordinal), response);
             AssertEx.True(response.EndsWith("ok", StringComparison.Ordinal), response);
-            AssertEx.Equal(1L, snapshot.ConnectionAdmissionRejections);
+            AssertEx.Equal(1L, snapshot.Rejections.ClientConnectionAdmissionRejections);
             AssertEx.Equal(0L, snapshot.ActiveConnections);
             AssertEx.Equal(1, upstreamRequests);
         }
@@ -946,14 +946,14 @@ internal static class ProxyIntegrationTests
 
             await WaitForMetricsAsync(
                 host.Services.GetRequiredService<ProxyMetrics>(),
-                static snapshot => snapshot.RateLimitedRequests == 2,
+                static snapshot => snapshot.Rejections.RateLimitedRequests == 2,
                 timeout.Token);
             await host.StopAsync(CancellationToken.None);
             var metrics = host.Services.GetRequiredService<ProxyMetrics>().Snapshot();
 
             AssertEx.Equal(2, responses.Count(static response => response.Contains("200 OK", StringComparison.Ordinal)));
             AssertEx.Equal(2, responses.Count(static response => response.Contains("429 Too Many Requests", StringComparison.Ordinal)));
-            AssertEx.Equal(2L, metrics.RateLimitedRequests);
+            AssertEx.Equal(2L, metrics.Rejections.RateLimitedRequests);
             AssertEx.Equal(0L, metrics.ActiveConnections);
         }
         finally

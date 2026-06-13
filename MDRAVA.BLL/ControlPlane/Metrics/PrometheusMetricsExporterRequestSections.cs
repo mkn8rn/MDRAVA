@@ -38,11 +38,12 @@ public sealed partial class PrometheusMetricsExporter
 
     private static void AppendRequestRejectionCounters(StringBuilder builder, ProxyMetricsSnapshot proxy)
     {
-        AppendLabeledCounter(builder, "mdrava_request_rejections_total", "Request rejections by bounded reason.", proxy.RateLimitedRequests, new Label("reason", "rate_limited"));
-        AppendLabeledCounter(builder, "mdrava_request_rejections_total", null, proxy.RateLimitedUpgrades, new Label("reason", "upgrade_rate_limited"));
-        AppendLabeledCounter(builder, "mdrava_request_rejections_total", null, proxy.RequestBodySizeRejections, new Label("reason", "body_too_large"));
-        AppendLabeledCounter(builder, "mdrava_request_rejections_total", null, proxy.ParserLimitRejections, new Label("reason", "parser_limit"));
-        AppendLabeledCounter(builder, "mdrava_request_rejections_total", null, proxy.RejectedMalformedRequests, new Label("reason", "malformed"));
-        AppendLabeledCounter(builder, "mdrava_request_rejections_total", null, proxy.RejectedUnsupportedRequestFraming, new Label("reason", "unsupported_framing"));
+        var rejections = proxy.Rejections;
+        AppendLabeledCounter(builder, "mdrava_request_rejections_total", "Request rejections by bounded reason.", rejections.RateLimitedRequests, new Label("reason", "rate_limited"));
+        AppendLabeledCounter(builder, "mdrava_request_rejections_total", null, rejections.RateLimitedUpgrades, new Label("reason", "upgrade_rate_limited"));
+        AppendLabeledCounter(builder, "mdrava_request_rejections_total", null, rejections.RequestBodySizeRejections, new Label("reason", "body_too_large"));
+        AppendLabeledCounter(builder, "mdrava_request_rejections_total", null, rejections.ParserLimitRejections, new Label("reason", "parser_limit"));
+        AppendLabeledCounter(builder, "mdrava_request_rejections_total", null, rejections.MalformedRequests, new Label("reason", "malformed"));
+        AppendLabeledCounter(builder, "mdrava_request_rejections_total", null, rejections.UnsupportedRequestFraming, new Label("reason", "unsupported_framing"));
     }
 }

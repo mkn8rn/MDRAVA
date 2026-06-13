@@ -13,7 +13,7 @@ internal static class HardeningTests
         var second = admission.AcquireClientConnection(1);
 
         AssertRejected(second);
-        AssertEx.Equal(1L, metrics.Snapshot().ConnectionAdmissionRejections);
+        AssertEx.Equal(1L, metrics.Snapshot().Rejections.ClientConnectionAdmissionRejections);
     }
 
     public static void AdmissionLeaseDisposalReleasesClientSlot()
@@ -72,7 +72,7 @@ internal static class HardeningTests
         AssertRejected(limiter.AcquireRequest(ip, 1));
         clock.Advance(TimeSpan.FromSeconds(61));
         AssertAccepted(limiter.AcquireRequest(ip, 1));
-        AssertEx.Equal(1L, metrics.Snapshot().RateLimitedRequests);
+        AssertEx.Equal(1L, metrics.Snapshot().Rejections.RateLimitedRequests);
     }
 
     public static void ConcurrentRateLimiterBoundaryAllowsOnlyConfiguredLimit()
@@ -95,7 +95,7 @@ internal static class HardeningTests
             });
 
         AssertEx.Equal(5, allowed);
-        AssertEx.Equal(27L, metrics.Snapshot().RateLimitedRequests);
+        AssertEx.Equal(27L, metrics.Snapshot().Rejections.RateLimitedRequests);
     }
 
     public static void RateLimiterEnforcesUpgradeLimit()
@@ -107,7 +107,7 @@ internal static class HardeningTests
 
         AssertAccepted(limiter.AcquireUpgrade(ip, 1));
         AssertRejected(limiter.AcquireUpgrade(ip, 1));
-        AssertEx.Equal(1L, metrics.Snapshot().RateLimitedUpgrades);
+        AssertEx.Equal(1L, metrics.Snapshot().Rejections.RateLimitedUpgrades);
     }
 
     public static void RateLimiterUsesNormalizedClientAddressKeys()
@@ -122,7 +122,7 @@ internal static class HardeningTests
         AssertAccepted(limiter.AcquireRequest(firstKey, 1));
         AssertRejected(limiter.AcquireRequest(secondKey, 1));
         AssertEx.Equal(1, limiter.EntryCount);
-        AssertEx.Equal(1L, metrics.Snapshot().RateLimitedRequests);
+        AssertEx.Equal(1L, metrics.Snapshot().Rejections.RateLimitedRequests);
     }
 
     public static void RateLimiterCleansStaleEntries()

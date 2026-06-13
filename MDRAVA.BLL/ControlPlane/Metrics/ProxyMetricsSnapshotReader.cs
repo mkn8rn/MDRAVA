@@ -13,8 +13,7 @@ public sealed partial class ProxyMetrics
             Interlocked.Read(ref _bytesRead),
             Interlocked.Read(ref _bytesWritten),
             Interlocked.Read(ref _parseErrors),
-            Interlocked.Read(ref _rejectedMalformedRequests),
-            Interlocked.Read(ref _rejectedUnsupportedRequestFraming),
+            ReadRejectionMetricsSnapshot(),
             Interlocked.Read(ref _upstreamMalformedResponses),
             Interlocked.Read(ref _clientBodyRelayFailures),
             Interlocked.Read(ref _upstreamBodyRelayFailures),
@@ -41,11 +40,6 @@ public sealed partial class ProxyMetrics
             Interlocked.Read(ref _requestIdsGenerated),
             Interlocked.Read(ref _accessLogsEmitted),
             Interlocked.Read(ref _recentDiagnosticsOverwritten),
-            Interlocked.Read(ref _connectionAdmissionRejections),
-            Interlocked.Read(ref _rateLimitedRequests),
-            Interlocked.Read(ref _rateLimitedUpgrades),
-            Interlocked.Read(ref _requestBodySizeRejections),
-            Interlocked.Read(ref _parserLimitRejections),
             ReadRequestFailuresByKind(),
             ReadRequestsByRoute(),
             Interlocked.Read(ref _configReloadSuccesses),
@@ -158,6 +152,18 @@ public sealed partial class ProxyMetrics
             Interlocked.Read(ref _healthChecksSucceeded),
             Interlocked.Read(ref _healthChecksFailed),
             Interlocked.Read(ref _upstreamHealthTransitions));
+    }
+
+    private ProxyRejectionMetricsSnapshot ReadRejectionMetricsSnapshot()
+    {
+        return new ProxyRejectionMetricsSnapshot(
+            Interlocked.Read(ref _connectionAdmissionRejections),
+            Interlocked.Read(ref _rateLimitedRequests),
+            Interlocked.Read(ref _rateLimitedUpgrades),
+            Interlocked.Read(ref _requestBodySizeRejections),
+            Interlocked.Read(ref _parserLimitRejections),
+            Interlocked.Read(ref _rejectedMalformedRequests),
+            Interlocked.Read(ref _rejectedUnsupportedRequestFraming));
     }
 
     private ProxyResilienceMetricsSnapshot ReadResilienceMetricsSnapshot()
