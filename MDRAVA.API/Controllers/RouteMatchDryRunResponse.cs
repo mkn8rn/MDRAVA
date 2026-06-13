@@ -1,4 +1,9 @@
-using MDRAVA.BLL.ControlPlane.RouteDiagnostics;
+using BusinessRouteMatchDryRunFinding = MDRAVA.BLL.ControlPlane.RouteDiagnostics.RouteMatchDryRunFinding;
+using BusinessRouteMatchDryRunListener = MDRAVA.BLL.ControlPlane.RouteDiagnostics.RouteMatchDryRunListener;
+using BusinessRouteMatchDryRunPolicy = MDRAVA.BLL.ControlPlane.RouteDiagnostics.RouteMatchDryRunPolicy;
+using BusinessRouteMatchDryRunResult = MDRAVA.BLL.ControlPlane.RouteDiagnostics.RouteMatchDryRunResult;
+using BusinessRouteMatchDryRunRoute = MDRAVA.BLL.ControlPlane.RouteDiagnostics.RouteMatchDryRunRoute;
+using BusinessRouteMatchDryRunUpstream = MDRAVA.BLL.ControlPlane.RouteDiagnostics.RouteMatchDryRunUpstream;
 
 namespace MDRAVA.API.Controllers;
 
@@ -7,25 +12,27 @@ public sealed record RouteMatchDryRunResponse(
     DateTimeOffset EvaluatedAtUtc,
     string? FailureReason,
     string? NoMatchReason,
-    RouteMatchDryRunListener? Listener,
-    RouteMatchDryRunRoute? Route,
+    RouteMatchDryRunListenerResponse? Listener,
+    RouteMatchDryRunRouteResponse? Route,
     string? ConfiguredAction,
     string? EffectiveAction,
     bool WouldProxy,
     int? GeneratedStatusCode,
     string? OriginalTarget,
     string? RewrittenTarget,
-    RouteMatchDryRunUpstream? Upstream,
-    RouteMatchDryRunPolicy Cache,
-    RouteMatchDryRunPolicy Retry,
-    RouteMatchDryRunPolicy CircuitBreaker,
-    IReadOnlyList<RouteMatchDryRunFinding> Findings)
+    RouteMatchDryRunUpstreamResponse? Upstream,
+    RouteMatchDryRunPolicyResponse Cache,
+    RouteMatchDryRunPolicyResponse Retry,
+    RouteMatchDryRunPolicyResponse CircuitBreaker,
+    IReadOnlyList<RouteMatchDryRunFindingResponse> Findings)
 {
-    public static RouteMatchDryRunResponse FromResult(RouteMatchDryRunResult result)
+    public static RouteMatchDryRunResponse FromResult(BusinessRouteMatchDryRunResult result)
     {
+        ArgumentNullException.ThrowIfNull(result);
+
         return result switch
         {
-            RouteMatchDryRunResult.FailedResult failed => FromResult(
+            BusinessRouteMatchDryRunResult.FailedResult failed => FromResult(
                 failed,
                 succeeded: false,
                 failureReason: failed.FailureReason,
@@ -39,7 +46,7 @@ public sealed record RouteMatchDryRunResponse(
                 originalTarget: null,
                 rewrittenTarget: null,
                 upstream: null),
-            RouteMatchDryRunResult.NoMatchingListenerResult noListener => FromResult(
+            BusinessRouteMatchDryRunResult.NoMatchingListenerResult noListener => FromResult(
                 noListener,
                 succeeded: true,
                 failureReason: null,
@@ -53,7 +60,7 @@ public sealed record RouteMatchDryRunResponse(
                 originalTarget: noListener.OriginalTarget,
                 rewrittenTarget: null,
                 upstream: null),
-            RouteMatchDryRunResult.NoMatchingRouteResult noRoute => FromResult(
+            BusinessRouteMatchDryRunResult.NoMatchingRouteResult noRoute => FromResult(
                 noRoute,
                 succeeded: true,
                 failureReason: null,
@@ -67,7 +74,7 @@ public sealed record RouteMatchDryRunResponse(
                 originalTarget: noRoute.OriginalTarget,
                 rewrittenTarget: null,
                 upstream: null),
-            RouteMatchDryRunResult.MatchedRouteResult matched => FromResult(
+            BusinessRouteMatchDryRunResult.MatchedRouteResult matched => FromResult(
                 matched,
                 succeeded: true,
                 failureReason: null,
@@ -86,37 +93,139 @@ public sealed record RouteMatchDryRunResponse(
     }
 
     private static RouteMatchDryRunResponse FromResult(
-        RouteMatchDryRunResult result,
+        BusinessRouteMatchDryRunResult result,
         bool succeeded,
         string? failureReason,
         string? noMatchReason,
-        RouteMatchDryRunListener? listener,
-        RouteMatchDryRunRoute? route,
+        BusinessRouteMatchDryRunListener? listener,
+        BusinessRouteMatchDryRunRoute? route,
         string? configuredAction,
         string? effectiveAction,
         bool wouldProxy,
         int? generatedStatusCode,
         string? originalTarget,
         string? rewrittenTarget,
-        RouteMatchDryRunUpstream? upstream)
+        BusinessRouteMatchDryRunUpstream? upstream)
     {
+        ArgumentNullException.ThrowIfNull(result);
+
         return new RouteMatchDryRunResponse(
             Succeeded: succeeded,
             EvaluatedAtUtc: result.EvaluatedAtUtc,
             FailureReason: failureReason,
             NoMatchReason: noMatchReason,
-            Listener: listener,
-            Route: route,
+            Listener: listener is null ? null : RouteMatchDryRunListenerResponse.FromListener(listener),
+            Route: route is null ? null : RouteMatchDryRunRouteResponse.FromRoute(route),
             ConfiguredAction: configuredAction,
             EffectiveAction: effectiveAction,
             WouldProxy: wouldProxy,
             GeneratedStatusCode: generatedStatusCode,
             OriginalTarget: originalTarget,
             RewrittenTarget: rewrittenTarget,
-            Upstream: upstream,
-            Cache: result.Cache,
-            Retry: result.Retry,
-            CircuitBreaker: result.CircuitBreaker,
-            Findings: result.Findings);
+            Upstream: upstream is null ? null : RouteMatchDryRunUpstreamResponse.FromUpstream(upstream),
+            Cache: RouteMatchDryRunPolicyResponse.FromPolicy(result.Cache),
+            Retry: RouteMatchDryRunPolicyResponse.FromPolicy(result.Retry),
+            CircuitBreaker: RouteMatchDryRunPolicyResponse.FromPolicy(result.CircuitBreaker),
+            Findings: RouteMatchDryRunFindingResponse.FromFindings(result.Findings));
+    }
+}
+
+public sealed record RouteMatchDryRunListenerResponse(
+    string Name,
+    string Transport,
+    string Address,
+    int Port,
+    string Protocols)
+{
+    public static RouteMatchDryRunListenerResponse FromListener(BusinessRouteMatchDryRunListener listener)
+    {
+        ArgumentNullException.ThrowIfNull(listener);
+
+        return new RouteMatchDryRunListenerResponse(
+            listener.Name,
+            listener.Transport,
+            listener.Address,
+            listener.Port,
+            listener.Protocols);
+    }
+}
+
+public sealed record RouteMatchDryRunRouteResponse(
+    string SiteName,
+    string Name,
+    string Host,
+    string PathPrefix)
+{
+    public static RouteMatchDryRunRouteResponse FromRoute(BusinessRouteMatchDryRunRoute route)
+    {
+        ArgumentNullException.ThrowIfNull(route);
+
+        return new RouteMatchDryRunRouteResponse(
+            route.SiteName,
+            route.Name,
+            route.Host,
+            route.PathPrefix);
+    }
+}
+
+public sealed record RouteMatchDryRunUpstreamResponse(
+    string Name,
+    string Scheme,
+    string Protocol,
+    string Endpoint,
+    int Weight,
+    string SelectionReason)
+{
+    public static RouteMatchDryRunUpstreamResponse FromUpstream(BusinessRouteMatchDryRunUpstream upstream)
+    {
+        ArgumentNullException.ThrowIfNull(upstream);
+
+        return new RouteMatchDryRunUpstreamResponse(
+            upstream.Name,
+            upstream.Scheme,
+            upstream.Protocol,
+            upstream.Endpoint,
+            upstream.Weight,
+            upstream.SelectionReason);
+    }
+}
+
+public sealed record RouteMatchDryRunPolicyResponse(
+    bool Enabled,
+    bool WouldApply,
+    string Reason)
+{
+    public static RouteMatchDryRunPolicyResponse FromPolicy(BusinessRouteMatchDryRunPolicy policy)
+    {
+        ArgumentNullException.ThrowIfNull(policy);
+
+        return new RouteMatchDryRunPolicyResponse(
+            policy.Enabled,
+            policy.WouldApply,
+            policy.Reason);
+    }
+}
+
+public sealed record RouteMatchDryRunFindingResponse(
+    string Severity,
+    string Code,
+    string Message)
+{
+    public static IReadOnlyList<RouteMatchDryRunFindingResponse> FromFindings(
+        IReadOnlyList<BusinessRouteMatchDryRunFinding> findings)
+    {
+        ArgumentNullException.ThrowIfNull(findings);
+
+        return findings.Select(FromFinding).ToArray();
+    }
+
+    private static RouteMatchDryRunFindingResponse FromFinding(BusinessRouteMatchDryRunFinding finding)
+    {
+        ArgumentNullException.ThrowIfNull(finding);
+
+        return new RouteMatchDryRunFindingResponse(
+            finding.Severity,
+            finding.Code,
+            finding.Message);
     }
 }

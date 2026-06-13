@@ -1,5 +1,3 @@
-using MDRAVA.BLL.ControlPlane.RouteDiagnostics;
-
 using BusinessRouteDiagnosticsStatus = MDRAVA.BLL.ControlPlane.RouteDiagnostics.RouteDiagnosticsStatus;
 
 namespace MDRAVA.API.Controllers;
