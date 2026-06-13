@@ -114,6 +114,16 @@ public sealed partial class ProxyMetrics
             Interlocked.Read(ref _activeUpstreamHttp3Connections),
             Interlocked.Read(ref _activeUpstreamHttp3Streams),
             ReadUpstreamHttp3ProtocolErrors(),
+            ReadHttp3MetricsSnapshot(),
+            Interlocked.Read(ref _configLintRuns),
+            ReadConfigLintFindings(),
+            Interlocked.Read(ref _routeMatchDryRuns),
+            ReadRouteMatchDryRunFailures());
+    }
+
+    private ProxyHttp3MetricsSnapshot ReadHttp3MetricsSnapshot()
+    {
+        return new ProxyHttp3MetricsSnapshot(
             Interlocked.Read(ref _http3AcceptedConnections),
             Interlocked.Read(ref _activeHttp3Connections),
             Interlocked.Read(ref _http3Requests),
@@ -133,11 +143,7 @@ public sealed partial class ProxyMetrics
             ReadHttp3ProtocolErrors(),
             Interlocked.Read(ref _quicListenerStartSuccesses),
             Interlocked.Read(ref _quicListenerStartFailures),
-            Interlocked.Read(ref _activeQuicListeners),
-            Interlocked.Read(ref _configLintRuns),
-            ReadConfigLintFindings(),
-            Interlocked.Read(ref _routeMatchDryRuns),
-            ReadRouteMatchDryRunFailures());
+            Interlocked.Read(ref _activeQuicListeners));
     }
 
     public ProxyMetricsSnapshot ReadMetrics()

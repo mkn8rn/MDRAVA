@@ -492,8 +492,8 @@ internal static class ClientHttp3Tests
         AssertEx.Equal("Alt-Svc", header.Name);
         AssertEx.Equal("h3=\":8443\"; ma=60", header.Value);
         AssertEx.Equal(1, source.ReadCount);
-        AssertEx.Equal(1L, snapshot.Http3AltSvcEmitted);
-        AssertEx.Equal(0L, snapshot.Http3AltSvcSuppressed);
+        AssertEx.Equal(1L, snapshot.Http3.AltSvcEmitted);
+        AssertEx.Equal(0L, snapshot.Http3.AltSvcSuppressed);
     }
 
     public static void AltSvcPolicyAppliesHeaderWithoutKeepingStaleValues()
@@ -647,8 +647,8 @@ internal static class ClientHttp3Tests
 
         AssertEx.Equal("200", HeaderValue(result.Headers, ":status"));
         AssertEx.Equal("hello-h3", result.Body);
-        AssertEx.True(result.Metrics.Http3AcceptedConnections >= 1);
-        AssertEx.True(result.Metrics.Http3Requests >= 1);
+        AssertEx.True(result.Metrics.Http3.AcceptedConnections >= 1);
+        AssertEx.True(result.Metrics.Http3.Requests >= 1);
     }
 
     public static async Task HeadReturnsHeadersWithoutBody()
@@ -825,7 +825,7 @@ internal static class ClientHttp3Tests
         AssertEx.Equal("200", HeaderValue(result.Headers, ":status"));
         AssertEx.Equal("h3-proxy", result.Body);
         AssertEx.True(result.UpstreamRequest.StartsWith("GET /proxy HTTP/1.1", StringComparison.Ordinal), result.UpstreamRequest);
-        AssertEx.True(result.Metrics.Http3ProxiedRequests >= 1);
+        AssertEx.True(result.Metrics.Http3.ProxiedRequests >= 1);
     }
 
     public static async Task Http3HeadProxyRouteWorks()
@@ -915,8 +915,8 @@ internal static class ClientHttp3Tests
         AssertEx.Equal("chunked", HeaderValue(result.Headers, "x-mode"));
         AssertEx.Equal("wikipedia", result.Body);
         AssertEx.False(HeaderExists(result.Headers, "transfer-encoding"));
-        AssertEx.True(result.Metrics.Http3StreamedResponses >= 1);
-        AssertEx.True(result.Metrics.Http3ResponseBytesSent >= "wikipedia".Length);
+        AssertEx.True(result.Metrics.Http3.StreamedResponses >= 1);
+        AssertEx.True(result.Metrics.Http3.ResponseBytesSent >= "wikipedia".Length);
     }
 
     public static async Task Http3ResponseStreamsBeforeUpstreamCompletes()
@@ -955,7 +955,7 @@ internal static class ClientHttp3Tests
 
             AssertEx.Equal("stream-", firstData);
             AssertEx.True(upstreamRequest.StartsWith("GET /stream HTTP/1.1", StringComparison.Ordinal), upstreamRequest);
-            AssertEx.Equal(0L, metrics.ActiveHttp3ResponseStreams);
+            AssertEx.Equal(0L, metrics.Http3.ActiveResponseStreams);
         }
         finally
         {
@@ -1010,7 +1010,7 @@ internal static class ClientHttp3Tests
             AssertEx.Equal("cached", first.Body);
             AssertEx.Equal("cached", second.Body);
             AssertEx.True(upstreamRequest.StartsWith("GET /cache?x=1 HTTP/1.1", StringComparison.Ordinal), upstreamRequest);
-            AssertEx.True(metrics.Http3ProxiedRequests >= 1);
+            AssertEx.True(metrics.Http3.ProxiedRequests >= 1);
         }
         finally
         {
@@ -1131,7 +1131,7 @@ internal static class ClientHttp3Tests
             ]);
 
         AssertEx.Equal("501", HeaderValue(result.Headers, ":status"));
-        AssertEx.True(result.Metrics.Http3RejectedRequests.ContainsKey("connect_unsupported"));
+        AssertEx.True(result.Metrics.Http3.RejectedRequests.ContainsKey("connect_unsupported"));
         AssertEx.Equal("", result.UpstreamRequest);
     }
 
@@ -1149,7 +1149,7 @@ internal static class ClientHttp3Tests
             ]);
 
         AssertEx.Equal("400", HeaderValue(result.Headers, ":status"));
-        AssertEx.True(result.Metrics.Http3ProtocolErrors.ContainsKey("invalid_connect_target"));
+        AssertEx.True(result.Metrics.Http3.ProtocolErrors.ContainsKey("invalid_connect_target"));
     }
 
     public static async Task ExtendedHttp3ConnectWebSocketIsRejected()
@@ -1171,7 +1171,7 @@ internal static class ClientHttp3Tests
                 ]);
 
             AssertEx.Equal("400", HeaderValue(result.Headers, ":status"));
-            AssertEx.True(result.Metrics.Http3ProtocolErrors.ContainsKey("extended_connect_unsupported"));
+            AssertEx.True(result.Metrics.Http3.ProtocolErrors.ContainsKey("extended_connect_unsupported"));
             AssertEx.Equal("", result.UpstreamRequest);
         }
     }
@@ -1292,7 +1292,7 @@ internal static class ClientHttp3Tests
         AssertEx.Equal("413", HeaderValue(result.Headers, ":status"));
         AssertEx.Equal("Payload Too Large", result.Body);
         AssertEx.Equal("", result.UpstreamRequest);
-        AssertEx.True(result.Metrics.Http3RejectedRequests.ContainsKey("request_body_too_large"));
+        AssertEx.True(result.Metrics.Http3.RejectedRequests.ContainsKey("request_body_too_large"));
     }
 
     public static void RemovedHttp3BufferedRequestBodyLimitIsRejectedByParser()
@@ -1376,7 +1376,7 @@ internal static class ClientHttp3Tests
         using var result = await RunHttp3GeneratedRouteScenarioAsync("GET", "/sequence", "unused", dataBeforeHeaders: true);
 
         AssertEx.Equal("400", HeaderValue(result.Headers, ":status"));
-        AssertEx.True(result.Metrics.Http3ProtocolErrors.ContainsKey("unexpected_data"));
+        AssertEx.True(result.Metrics.Http3.ProtocolErrors.ContainsKey("unexpected_data"));
     }
 
     public static async Task UnexpectedControlFrameOnRequestStreamIsRejected()
@@ -1393,7 +1393,7 @@ internal static class ClientHttp3Tests
             settingsAfterHeaders: true);
 
         AssertEx.Equal("400", HeaderValue(result.Headers, ":status"));
-        AssertEx.True(result.Metrics.Http3ProtocolErrors.ContainsKey("unexpected_control_frame"));
+        AssertEx.True(result.Metrics.Http3.ProtocolErrors.ContainsKey("unexpected_control_frame"));
     }
 
     public static async Task GoAwayFrameOnRequestStreamIsRejected()
@@ -1410,7 +1410,7 @@ internal static class ClientHttp3Tests
             goAwayAfterHeaders: true);
 
         AssertEx.Equal("400", HeaderValue(result.Headers, ":status"));
-        AssertEx.True(result.Metrics.Http3ProtocolErrors.ContainsKey("unexpected_control_frame"));
+        AssertEx.True(result.Metrics.Http3.ProtocolErrors.ContainsKey("unexpected_control_frame"));
     }
 
     public static async Task DuplicateHeadersAfterHeadersIsRejected()
@@ -1427,8 +1427,8 @@ internal static class ClientHttp3Tests
             duplicateHeadersAfterHeaders: true);
 
         AssertEx.Equal("400", HeaderValue(result.Headers, ":status"));
-        AssertEx.True(result.Metrics.Http3ProtocolErrors.ContainsKey("duplicate_headers"));
-        AssertEx.Equal(0L, result.Metrics.ActiveHttp3Streams);
+        AssertEx.True(result.Metrics.Http3.ProtocolErrors.ContainsKey("duplicate_headers"));
+        AssertEx.Equal(0L, result.Metrics.Http3.ActiveStreams);
     }
 
     public static async Task UnknownFrameBeforeHeadersIsRejected()
@@ -1445,8 +1445,8 @@ internal static class ClientHttp3Tests
             unknownFrameBeforeHeaders: true);
 
         AssertEx.Equal("400", HeaderValue(result.Headers, ":status"));
-        AssertEx.True(result.Metrics.Http3ProtocolErrors.ContainsKey("unsupported_frame"));
-        AssertEx.Equal(0L, result.Metrics.ActiveHttp3Streams);
+        AssertEx.True(result.Metrics.Http3.ProtocolErrors.ContainsKey("unsupported_frame"));
+        AssertEx.Equal(0L, result.Metrics.Http3.ActiveStreams);
     }
 
     public static async Task MaxPushFrameOnRequestStreamIsRejected()
@@ -1463,8 +1463,8 @@ internal static class ClientHttp3Tests
             maxPushAfterHeaders: true);
 
         AssertEx.Equal("400", HeaderValue(result.Headers, ":status"));
-        AssertEx.True(result.Metrics.Http3ProtocolErrors.ContainsKey("unexpected_control_frame"));
-        AssertEx.Equal(0L, result.Metrics.ActiveHttp3Streams);
+        AssertEx.True(result.Metrics.Http3.ProtocolErrors.ContainsKey("unexpected_control_frame"));
+        AssertEx.Equal(0L, result.Metrics.Http3.ActiveStreams);
     }
 
     public static async Task StreamLevelProtocolErrorDoesNotPoisonConnection()
@@ -1542,7 +1542,7 @@ internal static class ClientHttp3Tests
             AssertEx.Equal("400", HeaderValue(badResponse.Headers, ":status"));
             AssertEx.Equal("200", HeaderValue(goodResponse.Headers, ":status"));
             AssertEx.Equal("good", goodResponse.Body);
-            AssertEx.Equal(0L, metrics.ActiveHttp3Streams);
+            AssertEx.Equal(0L, metrics.Http3.ActiveStreams);
             await connection.CloseAsync(0, CancellationToken.None);
         }
         finally
@@ -1562,9 +1562,9 @@ internal static class ClientHttp3Tests
 
         AssertEx.Equal("400", HeaderValue(result.Headers, ":status"));
         AssertEx.Equal("Bad Request", result.Body);
-        AssertEx.Equal(0L, result.Metrics.Http3Requests);
-        AssertEx.False(result.Metrics.Http3GeneratedResponses > 0);
-        AssertEx.True(result.Metrics.Http3ProtocolErrors.ContainsKey("unsupported_qpack_index"));
+        AssertEx.Equal(0L, result.Metrics.Http3.Requests);
+        AssertEx.False(result.Metrics.Http3.GeneratedResponses > 0);
+        AssertEx.True(result.Metrics.Http3.ProtocolErrors.ContainsKey("unsupported_qpack_index"));
     }
 
     public static async Task ProtocolErrorBudgetClosesAbusiveConnection()
@@ -1600,9 +1600,9 @@ internal static class ClientHttp3Tests
             await WaitForHttp3StreamsToDrainAsync(metricsStore, timeout.Token);
             var metrics = metricsStore.Snapshot();
 
-            AssertEx.True(metrics.Http3ProtocolErrors.TryGetValue("unexpected_data", out var errors), "missing unexpected_data metric");
+            AssertEx.True(metrics.Http3.ProtocolErrors.TryGetValue("unexpected_data", out var errors), "missing unexpected_data metric");
             AssertEx.True(errors >= 8);
-            AssertEx.Equal(0L, metrics.ActiveHttp3Streams);
+            AssertEx.Equal(0L, metrics.Http3.ActiveStreams);
         }
         finally
         {
@@ -1902,25 +1902,25 @@ internal static class ClientHttp3Tests
         metrics.SetActiveQuicListeners(1);
         var snapshot = metrics.Snapshot();
 
-        AssertEx.Equal(1L, snapshot.QuicListenerStartSuccesses);
-        AssertEx.Equal(1L, snapshot.Http3AcceptedConnections);
-        AssertEx.Equal(0L, snapshot.ActiveHttp3Connections);
-        AssertEx.Equal(1L, snapshot.Http3Requests);
-        AssertEx.Equal(1L, snapshot.Http3RequestsByOutcome.Single(static item => item.Method == "GET" && item.Outcome == "success" && item.StatusClass == "2xx").Count);
-        AssertEx.Equal(1L, snapshot.Http3ProxiedRequests);
-        AssertEx.Equal(1L, snapshot.Http3GeneratedResponses);
-        AssertEx.Equal(0L, snapshot.ActiveHttp3Streams);
-        AssertEx.Equal(1L, snapshot.Http3StreamResets);
-        AssertEx.Equal(1L, snapshot.Http3StreamedResponses);
-        AssertEx.Equal(0L, snapshot.ActiveHttp3ResponseStreams);
-        AssertEx.Equal(12L, snapshot.Http3ResponseBytesSent);
-        AssertEx.Equal(5L, snapshot.Http3RequestBodyBytesReceived);
-        AssertEx.Equal(1L, snapshot.Http3ResponseStreamResets);
-        AssertEx.Equal(1L, snapshot.Http3AltSvcEmitted);
-        AssertEx.Equal(1L, snapshot.Http3AltSvcSuppressed);
-        AssertEx.Equal(1L, snapshot.Http3RejectedRequests["method_unsupported"]);
-        AssertEx.Equal(1L, snapshot.Http3ProtocolErrors["invalid_frame"]);
-        AssertEx.Equal(1L, snapshot.ActiveQuicListeners);
+        AssertEx.Equal(1L, snapshot.Http3.QuicListenerStartSuccesses);
+        AssertEx.Equal(1L, snapshot.Http3.AcceptedConnections);
+        AssertEx.Equal(0L, snapshot.Http3.ActiveConnections);
+        AssertEx.Equal(1L, snapshot.Http3.Requests);
+        AssertEx.Equal(1L, snapshot.Http3.RequestsByOutcome.Single(static item => item.Method == "GET" && item.Outcome == "success" && item.StatusClass == "2xx").Count);
+        AssertEx.Equal(1L, snapshot.Http3.ProxiedRequests);
+        AssertEx.Equal(1L, snapshot.Http3.GeneratedResponses);
+        AssertEx.Equal(0L, snapshot.Http3.ActiveStreams);
+        AssertEx.Equal(1L, snapshot.Http3.StreamResets);
+        AssertEx.Equal(1L, snapshot.Http3.StreamedResponses);
+        AssertEx.Equal(0L, snapshot.Http3.ActiveResponseStreams);
+        AssertEx.Equal(12L, snapshot.Http3.ResponseBytesSent);
+        AssertEx.Equal(5L, snapshot.Http3.RequestBodyBytesReceived);
+        AssertEx.Equal(1L, snapshot.Http3.ResponseStreamResets);
+        AssertEx.Equal(1L, snapshot.Http3.AltSvcEmitted);
+        AssertEx.Equal(1L, snapshot.Http3.AltSvcSuppressed);
+        AssertEx.Equal(1L, snapshot.Http3.RejectedRequests["method_unsupported"]);
+        AssertEx.Equal(1L, snapshot.Http3.ProtocolErrors["invalid_frame"]);
+        AssertEx.Equal(1L, snapshot.Http3.ActiveQuicListeners);
     }
 
     public static void ConfigLintReportsHttp3DefaultReadinessIssues()

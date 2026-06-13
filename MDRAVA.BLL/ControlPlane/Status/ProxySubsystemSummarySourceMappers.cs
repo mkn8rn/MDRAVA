@@ -120,7 +120,7 @@ public static class ProxyLimitSummarySourceMapper
             metrics.ActiveConnections,
             metrics.ActiveTlsHandshakes,
             metrics.ActiveHttp2Streams,
-            metrics.ActiveHttp3Streams,
+            metrics.Http3.ActiveStreams,
             metrics.ActiveUpstreamHttp3Streams);
     }
 }

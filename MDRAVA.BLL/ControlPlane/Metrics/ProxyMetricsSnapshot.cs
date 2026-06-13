@@ -113,31 +113,15 @@ public sealed record ProxyMetricsSnapshot(
     long ActiveUpstreamHttp3Connections,
     long ActiveUpstreamHttp3Streams,
     IReadOnlyDictionary<string, long> UpstreamHttp3ProtocolErrors,
-    long Http3AcceptedConnections,
-    long ActiveHttp3Connections,
-    long Http3Requests,
-    long Http3ProxiedRequests,
-    long Http3GeneratedResponses,
-    long ActiveHttp3Streams,
-    long Http3StreamResets,
-    long Http3StreamedResponses,
-    long ActiveHttp3ResponseStreams,
-    long Http3ResponseBytesSent,
-    long Http3RequestBodyBytesReceived,
-    long Http3ResponseStreamResets,
-    long Http3AltSvcEmitted,
-    long Http3AltSvcSuppressed,
-    IReadOnlyList<ProxyHttp3RequestOutcomeSnapshot> Http3RequestsByOutcome,
-    IReadOnlyDictionary<string, long> Http3RejectedRequests,
-    IReadOnlyDictionary<string, long> Http3ProtocolErrors,
-    long QuicListenerStartSuccesses,
-    long QuicListenerStartFailures,
-    long ActiveQuicListeners,
+    ProxyHttp3MetricsSnapshot Http3,
     long ConfigLintRuns,
     IReadOnlyList<ProxyConfigLintFindingMetricSnapshot> ConfigLintFindings,
     long RouteMatchDryRuns,
     IReadOnlyList<ProxyRouteDryRunFailureSnapshot> RouteMatchDryRunFailures)
 {
+    public ProxyHttp3MetricsSnapshot Http3 { get; } =
+        Http3 ?? throw new ArgumentNullException(nameof(Http3));
+
     public IReadOnlyDictionary<string, long> RequestFailuresByKind { get; } =
         MetricsList.CopyDictionary(RequestFailuresByKind, StringComparer.Ordinal);
 
@@ -155,15 +139,6 @@ public sealed record ProxyMetricsSnapshot(
 
     public IReadOnlyDictionary<string, long> UpstreamHttp3ProtocolErrors { get; } =
         MetricsList.CopyDictionary(UpstreamHttp3ProtocolErrors, StringComparer.Ordinal);
-
-    public IReadOnlyList<ProxyHttp3RequestOutcomeSnapshot> Http3RequestsByOutcome { get; } =
-        MetricsList.Copy(Http3RequestsByOutcome);
-
-    public IReadOnlyDictionary<string, long> Http3RejectedRequests { get; } =
-        MetricsList.CopyDictionary(Http3RejectedRequests, StringComparer.Ordinal);
-
-    public IReadOnlyDictionary<string, long> Http3ProtocolErrors { get; } =
-        MetricsList.CopyDictionary(Http3ProtocolErrors, StringComparer.Ordinal);
 
     public IReadOnlyList<ProxyConfigLintFindingMetricSnapshot> ConfigLintFindings { get; } =
         MetricsList.Copy(ConfigLintFindings);

@@ -231,26 +231,27 @@ internal static class MetricsTests
             ActiveUpstreamHttp3Connections: 0,
             ActiveUpstreamHttp3Streams: 0,
             UpstreamHttp3ProtocolErrors: upstreamHttp3ProtocolErrors,
-            Http3AcceptedConnections: 0,
-            ActiveHttp3Connections: 0,
-            Http3Requests: 0,
-            Http3ProxiedRequests: 0,
-            Http3GeneratedResponses: 0,
-            ActiveHttp3Streams: 0,
-            Http3StreamResets: 0,
-            Http3StreamedResponses: 0,
-            ActiveHttp3ResponseStreams: 0,
-            Http3ResponseBytesSent: 0,
-            Http3RequestBodyBytesReceived: 0,
-            Http3ResponseStreamResets: 0,
-            Http3AltSvcEmitted: 0,
-            Http3AltSvcSuppressed: 0,
-            Http3RequestsByOutcome: http3RequestsByOutcome,
-            Http3RejectedRequests: http3RejectedRequests,
-            Http3ProtocolErrors: http3ProtocolErrors,
-            QuicListenerStartSuccesses: 0,
-            QuicListenerStartFailures: 0,
-            ActiveQuicListeners: 0,
+            Http3: new ProxyHttp3MetricsSnapshot(
+                AcceptedConnections: 0,
+                ActiveConnections: 0,
+                Requests: 0,
+                ProxiedRequests: 0,
+                GeneratedResponses: 0,
+                ActiveStreams: 0,
+                StreamResets: 0,
+                StreamedResponses: 0,
+                ActiveResponseStreams: 0,
+                ResponseBytesSent: 0,
+                RequestBodyBytesReceived: 0,
+                ResponseStreamResets: 0,
+                AltSvcEmitted: 0,
+                AltSvcSuppressed: 0,
+                RequestsByOutcome: http3RequestsByOutcome,
+                RejectedRequests: http3RejectedRequests,
+                ProtocolErrors: http3ProtocolErrors,
+                QuicListenerStartSuccesses: 0,
+                QuicListenerStartFailures: 0,
+                ActiveQuicListeners: 0),
             ConfigLintRuns: 0,
             ConfigLintFindings: configLintFindings,
             RouteMatchDryRuns: 0,
@@ -274,9 +275,9 @@ internal static class MetricsTests
         AssertEx.Equal("upstream-a", snapshot.UpstreamSelectionsByUpstream[0].Upstream);
         AssertEx.Equal(6L, snapshot.Http2ProtocolErrors["stream_error"]);
         AssertEx.Equal(7L, snapshot.UpstreamHttp3ProtocolErrors["goaway"]);
-        AssertEx.Equal("proxied", snapshot.Http3RequestsByOutcome[0].Outcome);
-        AssertEx.Equal(9L, snapshot.Http3RejectedRequests["malformed"]);
-        AssertEx.Equal(10L, snapshot.Http3ProtocolErrors["qpack"]);
+        AssertEx.Equal("proxied", snapshot.Http3.RequestsByOutcome[0].Outcome);
+        AssertEx.Equal(9L, snapshot.Http3.RejectedRequests["malformed"]);
+        AssertEx.Equal(10L, snapshot.Http3.ProtocolErrors["qpack"]);
         AssertEx.Equal("route_shadowed", snapshot.ConfigLintFindings[0].Code);
         AssertEx.Equal("no_route", snapshot.RouteMatchDryRunFailures[0].Reason);
         AssertEx.False(snapshot.RequestFailuresByKind is Dictionary<string, long>);
@@ -285,9 +286,9 @@ internal static class MetricsTests
         AssertEx.False(snapshot.UpstreamSelectionsByUpstream is ProxyUpstreamSelectionSnapshot[]);
         AssertEx.False(snapshot.Http2ProtocolErrors is Dictionary<string, long>);
         AssertEx.False(snapshot.UpstreamHttp3ProtocolErrors is Dictionary<string, long>);
-        AssertEx.False(snapshot.Http3RequestsByOutcome is ProxyHttp3RequestOutcomeSnapshot[]);
-        AssertEx.False(snapshot.Http3RejectedRequests is Dictionary<string, long>);
-        AssertEx.False(snapshot.Http3ProtocolErrors is Dictionary<string, long>);
+        AssertEx.False(snapshot.Http3.RequestsByOutcome is ProxyHttp3RequestOutcomeSnapshot[]);
+        AssertEx.False(snapshot.Http3.RejectedRequests is Dictionary<string, long>);
+        AssertEx.False(snapshot.Http3.ProtocolErrors is Dictionary<string, long>);
         AssertEx.False(snapshot.ConfigLintFindings is ProxyConfigLintFindingMetricSnapshot[]);
         AssertEx.False(snapshot.RouteMatchDryRunFailures is ProxyRouteDryRunFailureSnapshot[]);
     }
