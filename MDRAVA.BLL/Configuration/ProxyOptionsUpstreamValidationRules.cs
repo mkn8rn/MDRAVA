@@ -58,4 +58,39 @@ public static partial class ProxyOptionsValidationRules
             failures.Add($"{prefix}:UnhealthyThreshold must be between 1 and 100.");
         }
     }
+
+    private static void ValidateCircuitBreaker(
+        List<string> failures,
+        string upstreamPrefix,
+        ProxyCircuitBreakerOptions circuitBreaker)
+    {
+        if (circuitBreaker.FailureThreshold is < 1 or > 1000)
+        {
+            failures.Add($"{upstreamPrefix}:CircuitBreaker:FailureThreshold must be between 1 and 1000.");
+        }
+
+        if (circuitBreaker.SamplingWindowSeconds is < 1 or > 3600)
+        {
+            failures.Add($"{upstreamPrefix}:CircuitBreaker:SamplingWindowSeconds must be between 1 and 3600.");
+        }
+
+        if (circuitBreaker.OpenDurationSeconds is < 1 or > 3600)
+        {
+            failures.Add($"{upstreamPrefix}:CircuitBreaker:OpenDurationSeconds must be between 1 and 3600.");
+        }
+
+        if (circuitBreaker.HalfOpenMaxAttempts is < 1 or > 100)
+        {
+            failures.Add($"{upstreamPrefix}:CircuitBreaker:HalfOpenMaxAttempts must be between 1 and 100.");
+        }
+
+        for (var index = 0; index < circuitBreaker.FailureStatusCodes.Count; index++)
+        {
+            var statusCode = circuitBreaker.FailureStatusCodes[index];
+            if (statusCode is < 500 or > 599)
+            {
+                failures.Add($"{upstreamPrefix}:CircuitBreaker:FailureStatusCodes:{index} must be a 5xx HTTP response status code.");
+            }
+        }
+    }
 }
