@@ -726,6 +726,7 @@ public sealed class Http2ClientConnection
                 }
 
                 var failureResponse = ProxyGeneratedFailurePolicy.BuildFailureResponse(ProxyFailureKind.NoHealthyUpstream);
+                ProxyGeneratedFailureMetrics.Record(_metrics, failureResponse);
                 await WriteGeneratedResponseAsync(
                     streamId,
                     failureResponse,

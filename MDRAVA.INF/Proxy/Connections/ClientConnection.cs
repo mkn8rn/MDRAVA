@@ -629,6 +629,7 @@ public sealed class ClientConnection
                 }
 
                 var failureResponse = ProxyGeneratedFailurePolicy.BuildFailureResponse(ProxyFailureKind.NoHealthyUpstream);
+                ProxyGeneratedFailureMetrics.Record(_metrics, failureResponse);
                 await WriteGeneratedResponseAsync(
                     clientStream,
                     failureResponse,
@@ -785,9 +786,11 @@ public sealed class ClientConnection
         if (upgradeSelection is null)
         {
             _metrics.UpgradeRequestRejected();
+            var failureResponse = ProxyGeneratedFailurePolicy.BuildFailureResponse(ProxyFailureKind.NoHealthyUpstream);
+            ProxyGeneratedFailureMetrics.Record(_metrics, failureResponse);
             await WriteGeneratedResponseAsync(
                 clientStream,
-                ProxyGeneratedFailurePolicy.BuildFailureResponse(ProxyFailureKind.NoHealthyUpstream),
+                failureResponse,
                 context,
                 cancellationToken);
             return false;

@@ -620,6 +620,7 @@ public sealed class Http3Connection
                 }
 
                 var failureResponse = ProxyGeneratedFailurePolicy.BuildFailureResponse(ProxyFailureKind.NoHealthyUpstream);
+                ProxyGeneratedFailureMetrics.Record(_metrics, failureResponse);
                 await WriteGeneratedResponseAsync(
                     stream,
                     failureResponse,
