@@ -25,9 +25,12 @@ public sealed class ProxyConfigurationNormalizeSiteParser
         try
         {
             var site = _siteParser.ReadSiteText(text, siteFormat);
-            var canonicalJson = site is null
-                ? null
-                : JsonSerializer.Serialize(site, SiteConfigurationParser.WriteJsonOptions);
+            if (site is null)
+            {
+                return ProxyConfigurationNormalizeSiteParseResult.Failed("Site configuration did not contain an object.");
+            }
+
+            var canonicalJson = JsonSerializer.Serialize(site, SiteConfigurationParser.WriteJsonOptions);
             return ProxyConfigurationNormalizeSiteParseResult.Parsed(site, canonicalJson);
         }
         catch (JsonException exception)

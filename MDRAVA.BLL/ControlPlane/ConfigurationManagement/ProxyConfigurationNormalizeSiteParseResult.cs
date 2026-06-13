@@ -2,41 +2,49 @@ using MDRAVA.BLL.Configuration;
 
 namespace MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 
-public sealed record ProxyConfigurationNormalizeSiteParseResult
+public abstract record ProxyConfigurationNormalizeSiteParseResult
 {
-    private ProxyConfigurationNormalizeSiteParseResult(
-        SiteOptions? site,
-        string? canonicalJson,
-        string? error)
+    private ProxyConfigurationNormalizeSiteParseResult()
     {
-        Site = site;
-        CanonicalJson = canonicalJson;
-        Error = error;
     }
 
-    public SiteOptions? Site { get; }
-
-    public string? CanonicalJson { get; }
-
-    public string? Error { get; }
-
-    public bool Succeeded => Error is null;
-
     public static ProxyConfigurationNormalizeSiteParseResult Parsed(
-        SiteOptions? site,
-        string? canonicalJson)
+        SiteOptions site,
+        string canonicalJson)
     {
-        return new ProxyConfigurationNormalizeSiteParseResult(
-            site: site,
-            canonicalJson: canonicalJson,
-            error: null);
+        return new ParsedResult(site, canonicalJson);
     }
 
     public static ProxyConfigurationNormalizeSiteParseResult Failed(string error)
     {
-        return new ProxyConfigurationNormalizeSiteParseResult(
-            site: null,
-            canonicalJson: null,
-            error: error);
+        return new FailedResult(error);
+    }
+
+    public sealed record ParsedResult : ProxyConfigurationNormalizeSiteParseResult
+    {
+        public ParsedResult(SiteOptions site, string canonicalJson)
+        {
+            ArgumentNullException.ThrowIfNull(site);
+            ArgumentException.ThrowIfNullOrWhiteSpace(canonicalJson);
+
+            Site = site;
+            CanonicalJson = canonicalJson;
+        }
+
+        public SiteOptions Site { get; }
+
+        public string CanonicalJson { get; }
+    }
+
+    public sealed record FailedResult : ProxyConfigurationNormalizeSiteParseResult
+    {
+        public FailedResult(string error)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(error);
+
+            Error = error;
+        }
+
+        public string Error { get; }
     }
 }

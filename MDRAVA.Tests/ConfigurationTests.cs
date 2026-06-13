@@ -26,14 +26,12 @@ internal static class ConfigurationTests
         var parsed = ProxyConfigurationNormalizeSiteParseResult.Parsed(site, "{}");
         var failed = ProxyConfigurationNormalizeSiteParseResult.Failed("parse failed");
 
-        AssertEx.True(parsed.Succeeded);
-        AssertEx.Equal(site, parsed.Site);
-        AssertEx.Equal("{}", parsed.CanonicalJson);
-        AssertEx.Equal<string?>(null, parsed.Error);
-        AssertEx.False(failed.Succeeded);
-        AssertEx.Equal<SiteOptions?>(null, failed.Site);
-        AssertEx.Equal<string?>(null, failed.CanonicalJson);
-        AssertEx.Equal("parse failed", failed.Error);
+        AssertEx.True(parsed is ProxyConfigurationNormalizeSiteParseResult.ParsedResult);
+        var parsedResult = (ProxyConfigurationNormalizeSiteParseResult.ParsedResult)parsed;
+        AssertEx.Equal(site, parsedResult.Site);
+        AssertEx.Equal("{}", parsedResult.CanonicalJson);
+        AssertEx.True(failed is ProxyConfigurationNormalizeSiteParseResult.FailedResult);
+        AssertEx.Equal("parse failed", ((ProxyConfigurationNormalizeSiteParseResult.FailedResult)failed).Error);
     }
 
     public static void ConfigurationNormalizeResultNamesNormalizedAndFailedOutcomes()
@@ -1011,38 +1009,6 @@ internal static class ConfigurationTests
         AssertEx.Equal(null, result.CanonicalJson);
         AssertEx.True(result.Errors.Any(static error => error.Contains("Proxy:Listeners", StringComparison.Ordinal)), string.Join("; ", result.Errors));
         AssertEx.True(result.FileErrors.All(static error => error.Path is null));
-    }
-
-    public static void ConfigNormalizerRejectsMissingCanonicalJson()
-    {
-        var parser = new FixedNormalizeSiteParser(
-            ProxyConfigurationNormalizeSiteParseResult.Parsed(
-                new SiteOptions
-                {
-                    Name = "broken",
-                    Listeners =
-                    [
-                        new ListenerOptions
-                        {
-                            Name = "main",
-                            Address = "127.0.0.1",
-                            Port = 18080
-                        }
-                    ],
-                    Routes = []
-                },
-                null));
-        var normalizer = new ProxyConfigurationNormalizer(
-            parser,
-            new ProxyEndpointAddressPolicy(),
-            new ProxyUrlSyntaxPolicy());
-
-        var result = normalizer.Normalize(new ProxyConfigurationNormalizeRequest("json", "ignored"));
-
-        AssertEx.False(result.Succeeded);
-        AssertEx.Equal(ProxyConfigurationNormalizeFormat.Json, parser.LastFormat);
-        AssertEx.Equal<string?>(null, result.CanonicalJson);
-        AssertEx.True(result.Errors.Any(static error => error.Contains("canonical JSON", StringComparison.Ordinal)), string.Join("; ", result.Errors));
     }
 
     public static void ConfigNormalizerRejectsMissingRequestBody()

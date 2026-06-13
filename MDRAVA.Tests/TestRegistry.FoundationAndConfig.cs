@@ -108,7 +108,6 @@ internal static partial class TestRegistry
     Test("Config validate reports invalid config without replacing active config", ConfigurationTests.ConfigValidateReportsInvalidWithoutReplacingActiveConfig, TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
     Test("Config normalize converts YAML to JSON without applying", ConfigurationTests.ConfigNormalizeConvertsYamlToJsonWithoutApplying, TestTaxonomy.Config),
     Test("Config normalizer shapes validation failures from parsed site", Sync(ConfigurationTests.ConfigNormalizerShapesValidationFailuresFromParsedSite), TestTaxonomy.Config),
-    Test("Config normalizer rejects missing canonical JSON", Sync(ConfigurationTests.ConfigNormalizerRejectsMissingCanonicalJson), TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
     Test("Config normalizer rejects missing request body", Sync(ConfigurationTests.ConfigNormalizerRejectsMissingRequestBody), TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
     Test("Config normalizer rejects incomplete request fields", Sync(ConfigurationTests.ConfigNormalizerRejectsIncompleteRequestFields), TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
     Test("Config normalize controller rejects missing request body", Sync(ConfigurationTests.ConfigNormalizeControllerRejectsMissingRequestBody), TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),

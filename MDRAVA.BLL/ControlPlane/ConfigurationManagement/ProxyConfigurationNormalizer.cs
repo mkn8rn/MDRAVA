@@ -43,23 +43,14 @@ public sealed class ProxyConfigurationNormalizer
         }
 
         var parsed = _siteParser.Parse(request.Text, format);
-        if (!parsed.Succeeded)
+        if (parsed is ProxyConfigurationNormalizeSiteParseResult.FailedResult failed)
         {
-            return ProxyConfigurationNormalizeResult.Failed(formatName, [ProxyConfigurationFileError.Global(parsed.Error ?? "Site configuration is invalid.")]);
+            return ProxyConfigurationNormalizeResult.Failed(formatName, [ProxyConfigurationFileError.Global(failed.Error)]);
         }
 
-        if (parsed.Site is null)
-        {
-            return ProxyConfigurationNormalizeResult.Failed(formatName, [ProxyConfigurationFileError.Global("Site configuration did not contain an object.")]);
-        }
-
-        if (parsed.CanonicalJson is null)
-        {
-            return ProxyConfigurationNormalizeResult.Failed(formatName, [ProxyConfigurationFileError.Global("Site configuration did not produce canonical JSON.")]);
-        }
-
+        var parsedSite = (ProxyConfigurationNormalizeSiteParseResult.ParsedResult)parsed;
         var options = SiteOptionsAggregator.ToProxyOptions(
-            [new SiteConfigurationSource("normalize-input", parsed.Site)]);
+            [new SiteConfigurationSource("normalize-input", parsedSite.Site)]);
         var validationFailures = ProxyOptionsValidationRules.Validate(options, _endpointAddressPolicy, _urlSyntaxPolicy);
         if (validationFailures.Count > 0)
         {
@@ -72,7 +63,7 @@ public sealed class ProxyConfigurationNormalizer
 
         return ProxyConfigurationNormalizeResult.Normalized(
             formatName,
-            parsed.CanonicalJson);
+            parsedSite.CanonicalJson);
     }
 
     private static ProxyConfigurationNormalizeFormatDecision ParseFormat(string? format)
