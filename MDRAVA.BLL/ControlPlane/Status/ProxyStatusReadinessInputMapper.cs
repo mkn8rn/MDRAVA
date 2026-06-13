@@ -77,7 +77,7 @@ public static class ProxyStatusReadinessSourceMapper
         ProxyStatusReadinessConfigurationSourceSet configuration,
         ProxyStatusRuntimeSummary runtime,
         ProxyMetricsSnapshot metrics,
-        IReadOnlyList<ProxyUpstreamStatusResponse> upstreams,
+        IReadOnlyList<ProxyUpstreamStatus> upstreams,
         RuntimeHttp3SupportProjection http3,
         ProxyLogPersistenceStatus logPersistence)
     {

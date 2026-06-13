@@ -1373,12 +1373,12 @@ internal static class OperatorStatusTests
     {
         public IReadOnlyList<ProxyUpstreamHealthSource> LastUpstreams { get; private set; } = [];
 
-        public IReadOnlyList<ProxyUpstreamStatusResponse> ReadUpstreams(
+        public IReadOnlyList<ProxyUpstreamStatus> ReadUpstreams(
             IReadOnlyList<ProxyUpstreamHealthSource> upstreams)
         {
             LastUpstreams = upstreams;
             return upstreams
-                .Select(static upstream => new ProxyUpstreamStatusResponse(
+                .Select(static upstream => new ProxyUpstreamStatus(
                     upstream.HealthState.RouteName,
                     upstream.HealthState.UpstreamName,
                     upstream.HealthState.UpstreamEndpoint,

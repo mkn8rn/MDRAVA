@@ -21,7 +21,7 @@ public sealed record ProxyStatus(
     int ConfiguredListeners,
     int ConfiguredRoutes,
     ProxyMetricsSnapshot Metrics,
-    IReadOnlyList<ProxyUpstreamStatusResponse> Upstreams)
+    IReadOnlyList<ProxyUpstreamStatus> Upstreams)
 {
     public IReadOnlyList<ProxyListenerStatus> Listeners { get; init; } = [];
 

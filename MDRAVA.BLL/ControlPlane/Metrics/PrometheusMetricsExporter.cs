@@ -296,7 +296,7 @@ public sealed class PrometheusMetricsExporter
     private static void AppendUpstreamHealth(
         StringBuilder builder,
         bool includePerUpstreamLabels,
-        IReadOnlyList<ProxyUpstreamStatusResponse> health)
+        IReadOnlyList<ProxyUpstreamStatus> health)
     {
         if (!includePerUpstreamLabels)
         {

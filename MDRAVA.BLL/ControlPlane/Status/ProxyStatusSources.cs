@@ -76,13 +76,13 @@ public interface IProxyStatusMetricsSource
 
 public interface IProxyStatusUpstreamHealthSource
 {
-    IReadOnlyList<ProxyUpstreamStatusResponse> ReadUpstreams(
+    IReadOnlyList<ProxyUpstreamStatus> ReadUpstreams(
         IReadOnlyList<ProxyUpstreamHealthSource> upstreams);
 }
 
 public interface IProxyStatusUpstreamHealthReader
 {
-    IReadOnlyList<ProxyUpstreamStatusResponse> ReadUpstreams();
+    IReadOnlyList<ProxyUpstreamStatus> ReadUpstreams();
 }
 
 public interface IProxyStatusRuntimePreflightSource

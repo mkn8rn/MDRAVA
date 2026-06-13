@@ -63,7 +63,7 @@ public sealed record ProxyStatusResponse(
             ConfiguredListeners: response.ConfiguredListeners,
             ConfiguredRoutes: response.ConfiguredRoutes,
             Metrics: response.Metrics,
-            Upstreams: response.Upstreams)
+            Upstreams: ProxyUpstreamStatusResponse.FromStatuses(response.Upstreams))
         {
             Listeners = response.Listeners,
             LastListenerReload = response.LastListenerReload is null

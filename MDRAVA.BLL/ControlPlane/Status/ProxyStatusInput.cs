@@ -12,7 +12,7 @@ public sealed record ProxyStatusInput(
     ProxyStatusRuntimeSummary Runtime,
     ProxyStatusConfigurationSummary? Configuration,
     ProxyMetricsSnapshot Metrics,
-    IReadOnlyList<ProxyUpstreamStatusResponse> Upstreams,
+    IReadOnlyList<ProxyUpstreamStatus> Upstreams,
     RuntimeHttp3SupportProjection Http3,
     ProxyLogPersistenceStatus LogPersistence,
     ProxyCacheStatus? CacheStatus,

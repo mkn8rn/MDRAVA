@@ -15,7 +15,7 @@ public sealed class ProxyStatusUpstreamHealthReader : IProxyStatusUpstreamHealth
         _upstreamHealthSource = upstreamHealthSource;
     }
 
-    public IReadOnlyList<ProxyUpstreamStatusResponse> ReadUpstreams()
+    public IReadOnlyList<ProxyUpstreamStatus> ReadUpstreams()
     {
         var configurationResult = _configurationSource.ReadConfiguration();
         var configuration = configurationResult is ProxyStatusConfigurationReadResult.AvailableResult available

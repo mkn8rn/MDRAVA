@@ -92,7 +92,7 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
         }
     }
 
-    public IReadOnlyList<ProxyUpstreamStatusResponse> Snapshot(
+    public IReadOnlyList<ProxyUpstreamStatus> Snapshot(
         IReadOnlyList<ProxyUpstreamHealthSource> upstreams)
     {
         if (upstreams.Count == 0)
@@ -100,14 +100,14 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
             return [];
         }
 
-        List<ProxyUpstreamStatusResponse> records = [];
+        List<ProxyUpstreamStatus> records = [];
         foreach (var source in upstreams)
         {
             var state = GetOrCreate(source.HealthState);
             lock (state.Gate)
             {
                 state.HealthCheckEnabled = source.HealthCheckEnabled;
-                records.Add(new ProxyUpstreamStatusResponse(
+                records.Add(new ProxyUpstreamStatus(
                     source.HealthState.RouteName,
                     source.HealthState.UpstreamName,
                     source.HealthState.UpstreamEndpoint,
@@ -133,7 +133,7 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
         return records;
     }
 
-    public IReadOnlyList<ProxyUpstreamStatusResponse> ReadUpstreams(
+    public IReadOnlyList<ProxyUpstreamStatus> ReadUpstreams(
         IReadOnlyList<ProxyUpstreamHealthSource> upstreams)
     {
         return Snapshot(upstreams);

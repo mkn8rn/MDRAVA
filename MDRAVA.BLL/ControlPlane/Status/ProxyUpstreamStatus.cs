@@ -4,7 +4,7 @@ using MDRAVA.BLL.ControlPlane.HealthChecks;
 
 namespace MDRAVA.BLL.ControlPlane.Status;
 
-public sealed record ProxyUpstreamStatusResponse(
+public sealed record ProxyUpstreamStatus(
     string RouteName,
     string UpstreamName,
     string Endpoint,

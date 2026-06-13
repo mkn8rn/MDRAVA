@@ -92,7 +92,7 @@ public static class ProxyAcmeSummaryConfigurationSourceMapper
 public static class ProxyUpstreamSummarySourceMapper
 {
     public static IReadOnlyList<ProxyUpstreamSummarySource> FromStatusResponses(
-        IReadOnlyList<ProxyUpstreamStatusResponse> upstreams)
+        IReadOnlyList<ProxyUpstreamStatus> upstreams)
     {
         return upstreams
             .Select(static upstream => new ProxyUpstreamSummarySource(

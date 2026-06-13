@@ -1132,7 +1132,7 @@ internal static class ResilienceTests
             ProxyConfigurationSnapshot snapshot,
             ProxyMetricsSnapshot metrics,
             ProxyCacheRuntimeStatusSnapshot cacheRuntime,
-            IReadOnlyList<ProxyUpstreamStatusResponse> upstreamHealth,
+            IReadOnlyList<ProxyUpstreamStatus> upstreamHealth,
             IReadOnlyList<AcmeCertificateLifecycleStatus> acmeCertificates)
         {
             return ProxyMetricsExportInputMapper.FromSources(

@@ -2259,9 +2259,9 @@ internal static class ProxyIntegrationTests
         return requestCount;
     }
 
-    private static async Task<IReadOnlyList<ProxyUpstreamStatusResponse>> WaitForUpstreamStatusAsync(
+    private static async Task<IReadOnlyList<ProxyUpstreamStatus>> WaitForUpstreamStatusAsync(
         IHost host,
-        Func<IReadOnlyList<ProxyUpstreamStatusResponse>, bool> predicate,
+        Func<IReadOnlyList<ProxyUpstreamStatus>, bool> predicate,
         CancellationToken cancellationToken)
     {
         var healthStore = host.Services.GetRequiredService<UpstreamHealthStore>();
@@ -2992,6 +2992,6 @@ internal static class ProxyIntegrationTests
         int FirstRequests,
         int SecondRequests,
         ProxyMetricsSnapshot Metrics,
-        IReadOnlyList<ProxyUpstreamStatusResponse> Upstreams,
+        IReadOnlyList<ProxyUpstreamStatus> Upstreams,
         IReadOnlyList<ProxyRecentRequestDiagnosticEvent> Diagnostics);
 }
