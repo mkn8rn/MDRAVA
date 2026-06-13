@@ -1,0 +1,435 @@
+using BusinessProxyConfigLintFindingMetricSnapshot = MDRAVA.BLL.ControlPlane.ConfigLint.ProxyConfigLintFindingMetricSnapshot;
+using BusinessProxyHttp3RequestOutcomeSnapshot = MDRAVA.BLL.ControlPlane.Metrics.ProxyHttp3RequestOutcomeSnapshot;
+using BusinessProxyMetricsSnapshot = MDRAVA.BLL.ControlPlane.Metrics.ProxyMetricsSnapshot;
+using BusinessProxyRequestSeriesSnapshot = MDRAVA.BLL.ControlPlane.Metrics.ProxyRequestSeriesSnapshot;
+using BusinessProxyRetrySkippedSnapshot = MDRAVA.BLL.ControlPlane.Metrics.ProxyRetrySkippedSnapshot;
+using BusinessProxyRouteDryRunFailureSnapshot = MDRAVA.BLL.ControlPlane.RouteDiagnostics.ProxyRouteDryRunFailureSnapshot;
+using BusinessProxyUpstreamSelectionSnapshot = MDRAVA.BLL.ControlPlane.Metrics.ProxyUpstreamSelectionSnapshot;
+
+namespace MDRAVA.API.Controllers;
+
+public sealed record ProxyMetricsSnapshotResponse(
+    long AcceptedConnections,
+    long ActiveConnections,
+    long TotalRequests,
+    long UpstreamSuccesses,
+    long UpstreamFailures,
+    long BytesRead,
+    long BytesWritten,
+    long ParseErrors,
+    long RejectedMalformedRequests,
+    long RejectedUnsupportedRequestFraming,
+    long UpstreamMalformedResponses,
+    long ClientBodyRelayFailures,
+    long UpstreamBodyRelayFailures,
+    long ClientRequestHeadTimeouts,
+    long ClientRequestBodyTimeouts,
+    long UpstreamConnectFailures,
+    long UpstreamConnectTimeouts,
+    long UpstreamResponseHeadTimeouts,
+    long UpstreamResponseBodyTimeouts,
+    long UpstreamPrematureDisconnects,
+    long ClientPrematureDisconnects,
+    long ProxyGenerated502Responses,
+    long ProxyGenerated504Responses,
+    long DownstreamWriteTimeouts,
+    long TlsHandshakeAttempts,
+    long TlsHandshakeSuccesses,
+    long TlsHandshakeFailures,
+    long TlsHandshakeTimeouts,
+    long TlsNoCertificateForSniFailures,
+    long ClientConnectionsClosedByIdleTimeout,
+    long ClientConnectionsClosedByMaxRequests,
+    long UpstreamConnectionsOpened,
+    long UpstreamConnectionsReused,
+    long UpstreamConnectionsDiscarded,
+    long UpstreamPoolIdleConnections,
+    long UpstreamPoolActiveConnections,
+    long UpgradeRequestsReceived,
+    long UpgradeRequestsSucceeded,
+    long UpgradeRequestsRejected,
+    long UpgradeUpstreamFailures,
+    long ActiveTunnels,
+    long TotalTunnels,
+    long TunnelIdleTimeouts,
+    long TunnelBytesClientToUpstream,
+    long TunnelBytesUpstreamToClient,
+    long TunnelRelayFailures,
+    long UpstreamSelections,
+    long NoHealthyUpstreamFailures,
+    long HealthChecksAttempted,
+    long HealthChecksSucceeded,
+    long HealthChecksFailed,
+    long UpstreamHealthTransitions,
+    long UpstreamRequestFailures,
+    long RequestIdsGenerated,
+    long AccessLogsEmitted,
+    long RecentDiagnosticsOverwritten,
+    long ConnectionAdmissionRejections,
+    long ActiveTlsHandshakes,
+    long TlsHandshakeAdmissionRejections,
+    long RateLimitedRequests,
+    long RateLimitedUpgrades,
+    long RequestBodySizeRejections,
+    long ParserLimitRejections,
+    IReadOnlyDictionary<string, long> RequestFailuresByKind,
+    IReadOnlyList<ProxyRequestSeriesSnapshotResponse> RequestsByRoute,
+    long ConfigReloadSuccesses,
+    long ConfigReloadFailures,
+    long AdminAuthSuccesses,
+    long AdminAuthFailures,
+    long AcmeRenewalAttempts,
+    long AcmeRenewalSuccesses,
+    long AcmeRenewalFailures,
+    long RetryAttempts,
+    long RetryExhausted,
+    IReadOnlyList<ProxyRetrySkippedSnapshotResponse> RetrySkipped,
+    long CircuitOpened,
+    long CircuitHalfOpened,
+    long CircuitClosed,
+    long CircuitRejections,
+    long NoAvailableUpstreamFailures,
+    IReadOnlyList<ProxyUpstreamSelectionSnapshotResponse> UpstreamSelectionsByUpstream,
+    long ListenerReloadAttempts,
+    long ListenerReloadSuccesses,
+    long ListenerReloadFailures,
+    long ListenerReloadAdded,
+    long ListenerReloadRemoved,
+    long ListenerReloadChanged,
+    long ListenerReloadUnchanged,
+    long ListenerStartFailures,
+    long ListenerDrainCount,
+    long ActiveListeners,
+    long Http2AcceptedConnections,
+    long Http2Requests,
+    long ActiveHttp2Streams,
+    IReadOnlyDictionary<string, long> Http2ProtocolErrors,
+    long UpstreamHttp2Requests,
+    long UpstreamHttp2AlpnFailures,
+    long UpstreamHttp2ProtocolErrors,
+    long UpstreamHttp3Requests,
+    long UpstreamHttp3ConnectionAttempts,
+    long UpstreamHttp3ConnectionSuccesses,
+    long UpstreamHttp3ConnectionFailures,
+    long UpstreamHttp3PoolConnectionsOpened,
+    long UpstreamHttp3PoolConnectionsReused,
+    long UpstreamHttp3PoolConnectionsClosed,
+    long UpstreamHttp3StreamLimitRejections,
+    long ActiveUpstreamHttp3Connections,
+    long ActiveUpstreamHttp3Streams,
+    IReadOnlyDictionary<string, long> UpstreamHttp3ProtocolErrors,
+    long Http3AcceptedConnections,
+    long ActiveHttp3Connections,
+    long Http3Requests,
+    long Http3ProxiedRequests,
+    long Http3GeneratedResponses,
+    long ActiveHttp3Streams,
+    long Http3StreamResets,
+    long Http3StreamedResponses,
+    long ActiveHttp3ResponseStreams,
+    long Http3ResponseBytesSent,
+    long Http3RequestBodyBytesReceived,
+    long Http3ResponseStreamResets,
+    long Http3AltSvcEmitted,
+    long Http3AltSvcSuppressed,
+    IReadOnlyList<ProxyHttp3RequestOutcomeSnapshotResponse> Http3RequestsByOutcome,
+    IReadOnlyDictionary<string, long> Http3RejectedRequests,
+    IReadOnlyDictionary<string, long> Http3ProtocolErrors,
+    long QuicListenerStartSuccesses,
+    long QuicListenerStartFailures,
+    long ActiveQuicListeners,
+    long ConfigLintRuns,
+    IReadOnlyList<ProxyConfigLintFindingMetricSnapshotResponse> ConfigLintFindings,
+    long RouteMatchDryRuns,
+    IReadOnlyList<ProxyRouteDryRunFailureSnapshotResponse> RouteMatchDryRunFailures)
+{
+    public static ProxyMetricsSnapshotResponse FromSnapshot(BusinessProxyMetricsSnapshot snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+
+        return new ProxyMetricsSnapshotResponse(
+            snapshot.AcceptedConnections,
+            snapshot.ActiveConnections,
+            snapshot.TotalRequests,
+            snapshot.UpstreamSuccesses,
+            snapshot.UpstreamFailures,
+            snapshot.BytesRead,
+            snapshot.BytesWritten,
+            snapshot.ParseErrors,
+            snapshot.RejectedMalformedRequests,
+            snapshot.RejectedUnsupportedRequestFraming,
+            snapshot.UpstreamMalformedResponses,
+            snapshot.ClientBodyRelayFailures,
+            snapshot.UpstreamBodyRelayFailures,
+            snapshot.ClientRequestHeadTimeouts,
+            snapshot.ClientRequestBodyTimeouts,
+            snapshot.UpstreamConnectFailures,
+            snapshot.UpstreamConnectTimeouts,
+            snapshot.UpstreamResponseHeadTimeouts,
+            snapshot.UpstreamResponseBodyTimeouts,
+            snapshot.UpstreamPrematureDisconnects,
+            snapshot.ClientPrematureDisconnects,
+            snapshot.ProxyGenerated502Responses,
+            snapshot.ProxyGenerated504Responses,
+            snapshot.DownstreamWriteTimeouts,
+            snapshot.TlsHandshakeAttempts,
+            snapshot.TlsHandshakeSuccesses,
+            snapshot.TlsHandshakeFailures,
+            snapshot.TlsHandshakeTimeouts,
+            snapshot.TlsNoCertificateForSniFailures,
+            snapshot.ClientConnectionsClosedByIdleTimeout,
+            snapshot.ClientConnectionsClosedByMaxRequests,
+            snapshot.UpstreamConnectionsOpened,
+            snapshot.UpstreamConnectionsReused,
+            snapshot.UpstreamConnectionsDiscarded,
+            snapshot.UpstreamPoolIdleConnections,
+            snapshot.UpstreamPoolActiveConnections,
+            snapshot.UpgradeRequestsReceived,
+            snapshot.UpgradeRequestsSucceeded,
+            snapshot.UpgradeRequestsRejected,
+            snapshot.UpgradeUpstreamFailures,
+            snapshot.ActiveTunnels,
+            snapshot.TotalTunnels,
+            snapshot.TunnelIdleTimeouts,
+            snapshot.TunnelBytesClientToUpstream,
+            snapshot.TunnelBytesUpstreamToClient,
+            snapshot.TunnelRelayFailures,
+            snapshot.UpstreamSelections,
+            snapshot.NoHealthyUpstreamFailures,
+            snapshot.HealthChecksAttempted,
+            snapshot.HealthChecksSucceeded,
+            snapshot.HealthChecksFailed,
+            snapshot.UpstreamHealthTransitions,
+            snapshot.UpstreamRequestFailures,
+            snapshot.RequestIdsGenerated,
+            snapshot.AccessLogsEmitted,
+            snapshot.RecentDiagnosticsOverwritten,
+            snapshot.ConnectionAdmissionRejections,
+            snapshot.ActiveTlsHandshakes,
+            snapshot.TlsHandshakeAdmissionRejections,
+            snapshot.RateLimitedRequests,
+            snapshot.RateLimitedUpgrades,
+            snapshot.RequestBodySizeRejections,
+            snapshot.ParserLimitRejections,
+            new Dictionary<string, long>(snapshot.RequestFailuresByKind),
+            ProxyRequestSeriesSnapshotResponse.FromSnapshots(snapshot.RequestsByRoute),
+            snapshot.ConfigReloadSuccesses,
+            snapshot.ConfigReloadFailures,
+            snapshot.AdminAuthSuccesses,
+            snapshot.AdminAuthFailures,
+            snapshot.AcmeRenewalAttempts,
+            snapshot.AcmeRenewalSuccesses,
+            snapshot.AcmeRenewalFailures,
+            snapshot.RetryAttempts,
+            snapshot.RetryExhausted,
+            ProxyRetrySkippedSnapshotResponse.FromSnapshots(snapshot.RetrySkipped),
+            snapshot.CircuitOpened,
+            snapshot.CircuitHalfOpened,
+            snapshot.CircuitClosed,
+            snapshot.CircuitRejections,
+            snapshot.NoAvailableUpstreamFailures,
+            ProxyUpstreamSelectionSnapshotResponse.FromSnapshots(snapshot.UpstreamSelectionsByUpstream),
+            snapshot.ListenerReloadAttempts,
+            snapshot.ListenerReloadSuccesses,
+            snapshot.ListenerReloadFailures,
+            snapshot.ListenerReloadAdded,
+            snapshot.ListenerReloadRemoved,
+            snapshot.ListenerReloadChanged,
+            snapshot.ListenerReloadUnchanged,
+            snapshot.ListenerStartFailures,
+            snapshot.ListenerDrainCount,
+            snapshot.ActiveListeners,
+            snapshot.Http2AcceptedConnections,
+            snapshot.Http2Requests,
+            snapshot.ActiveHttp2Streams,
+            new Dictionary<string, long>(snapshot.Http2ProtocolErrors),
+            snapshot.UpstreamHttp2Requests,
+            snapshot.UpstreamHttp2AlpnFailures,
+            snapshot.UpstreamHttp2ProtocolErrors,
+            snapshot.UpstreamHttp3Requests,
+            snapshot.UpstreamHttp3ConnectionAttempts,
+            snapshot.UpstreamHttp3ConnectionSuccesses,
+            snapshot.UpstreamHttp3ConnectionFailures,
+            snapshot.UpstreamHttp3PoolConnectionsOpened,
+            snapshot.UpstreamHttp3PoolConnectionsReused,
+            snapshot.UpstreamHttp3PoolConnectionsClosed,
+            snapshot.UpstreamHttp3StreamLimitRejections,
+            snapshot.ActiveUpstreamHttp3Connections,
+            snapshot.ActiveUpstreamHttp3Streams,
+            new Dictionary<string, long>(snapshot.UpstreamHttp3ProtocolErrors),
+            snapshot.Http3AcceptedConnections,
+            snapshot.ActiveHttp3Connections,
+            snapshot.Http3Requests,
+            snapshot.Http3ProxiedRequests,
+            snapshot.Http3GeneratedResponses,
+            snapshot.ActiveHttp3Streams,
+            snapshot.Http3StreamResets,
+            snapshot.Http3StreamedResponses,
+            snapshot.ActiveHttp3ResponseStreams,
+            snapshot.Http3ResponseBytesSent,
+            snapshot.Http3RequestBodyBytesReceived,
+            snapshot.Http3ResponseStreamResets,
+            snapshot.Http3AltSvcEmitted,
+            snapshot.Http3AltSvcSuppressed,
+            ProxyHttp3RequestOutcomeSnapshotResponse.FromSnapshots(snapshot.Http3RequestsByOutcome),
+            new Dictionary<string, long>(snapshot.Http3RejectedRequests),
+            new Dictionary<string, long>(snapshot.Http3ProtocolErrors),
+            snapshot.QuicListenerStartSuccesses,
+            snapshot.QuicListenerStartFailures,
+            snapshot.ActiveQuicListeners,
+            snapshot.ConfigLintRuns,
+            ProxyConfigLintFindingMetricSnapshotResponse.FromSnapshots(snapshot.ConfigLintFindings),
+            snapshot.RouteMatchDryRuns,
+            ProxyRouteDryRunFailureSnapshotResponse.FromSnapshots(snapshot.RouteMatchDryRunFailures));
+    }
+}
+
+public sealed record ProxyRequestSeriesSnapshotResponse(
+    string Site,
+    string Route,
+    string Action,
+    string StatusClass,
+    long Count)
+{
+    public static IReadOnlyList<ProxyRequestSeriesSnapshotResponse> FromSnapshots(
+        IReadOnlyList<BusinessProxyRequestSeriesSnapshot> snapshots)
+    {
+        ArgumentNullException.ThrowIfNull(snapshots);
+
+        return snapshots.Select(FromSnapshot).ToArray();
+    }
+
+    private static ProxyRequestSeriesSnapshotResponse FromSnapshot(BusinessProxyRequestSeriesSnapshot snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+
+        return new ProxyRequestSeriesSnapshotResponse(
+            snapshot.Site,
+            snapshot.Route,
+            snapshot.Action,
+            snapshot.StatusClass,
+            snapshot.Count);
+    }
+}
+
+public sealed record ProxyRetrySkippedSnapshotResponse(
+    string Reason,
+    long Count)
+{
+    public static IReadOnlyList<ProxyRetrySkippedSnapshotResponse> FromSnapshots(
+        IReadOnlyList<BusinessProxyRetrySkippedSnapshot> snapshots)
+    {
+        ArgumentNullException.ThrowIfNull(snapshots);
+
+        return snapshots.Select(FromSnapshot).ToArray();
+    }
+
+    private static ProxyRetrySkippedSnapshotResponse FromSnapshot(BusinessProxyRetrySkippedSnapshot snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+
+        return new ProxyRetrySkippedSnapshotResponse(snapshot.Reason, snapshot.Count);
+    }
+}
+
+public sealed record ProxyUpstreamSelectionSnapshotResponse(
+    string Route,
+    string Upstream,
+    string Scheme,
+    string Protocol,
+    long Count)
+{
+    public static IReadOnlyList<ProxyUpstreamSelectionSnapshotResponse> FromSnapshots(
+        IReadOnlyList<BusinessProxyUpstreamSelectionSnapshot> snapshots)
+    {
+        ArgumentNullException.ThrowIfNull(snapshots);
+
+        return snapshots.Select(FromSnapshot).ToArray();
+    }
+
+    private static ProxyUpstreamSelectionSnapshotResponse FromSnapshot(
+        BusinessProxyUpstreamSelectionSnapshot snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+
+        return new ProxyUpstreamSelectionSnapshotResponse(
+            snapshot.Route,
+            snapshot.Upstream,
+            snapshot.Scheme,
+            snapshot.Protocol,
+            snapshot.Count);
+    }
+}
+
+public sealed record ProxyHttp3RequestOutcomeSnapshotResponse(
+    string Method,
+    string Outcome,
+    string StatusClass,
+    long Count)
+{
+    public static IReadOnlyList<ProxyHttp3RequestOutcomeSnapshotResponse> FromSnapshots(
+        IReadOnlyList<BusinessProxyHttp3RequestOutcomeSnapshot> snapshots)
+    {
+        ArgumentNullException.ThrowIfNull(snapshots);
+
+        return snapshots.Select(FromSnapshot).ToArray();
+    }
+
+    private static ProxyHttp3RequestOutcomeSnapshotResponse FromSnapshot(
+        BusinessProxyHttp3RequestOutcomeSnapshot snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+
+        return new ProxyHttp3RequestOutcomeSnapshotResponse(
+            snapshot.Method,
+            snapshot.Outcome,
+            snapshot.StatusClass,
+            snapshot.Count);
+    }
+}
+
+public sealed record ProxyConfigLintFindingMetricSnapshotResponse(
+    string Severity,
+    string Code,
+    long Count)
+{
+    public static IReadOnlyList<ProxyConfigLintFindingMetricSnapshotResponse> FromSnapshots(
+        IReadOnlyList<BusinessProxyConfigLintFindingMetricSnapshot> snapshots)
+    {
+        ArgumentNullException.ThrowIfNull(snapshots);
+
+        return snapshots.Select(FromSnapshot).ToArray();
+    }
+
+    private static ProxyConfigLintFindingMetricSnapshotResponse FromSnapshot(
+        BusinessProxyConfigLintFindingMetricSnapshot snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+
+        return new ProxyConfigLintFindingMetricSnapshotResponse(
+            snapshot.Severity,
+            snapshot.Code,
+            snapshot.Count);
+    }
+}
+
+public sealed record ProxyRouteDryRunFailureSnapshotResponse(
+    string Reason,
+    long Count)
+{
+    public static IReadOnlyList<ProxyRouteDryRunFailureSnapshotResponse> FromSnapshots(
+        IReadOnlyList<BusinessProxyRouteDryRunFailureSnapshot> snapshots)
+    {
+        ArgumentNullException.ThrowIfNull(snapshots);
+
+        return snapshots.Select(FromSnapshot).ToArray();
+    }
+
+    private static ProxyRouteDryRunFailureSnapshotResponse FromSnapshot(
+        BusinessProxyRouteDryRunFailureSnapshot snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+
+        return new ProxyRouteDryRunFailureSnapshotResponse(snapshot.Reason, snapshot.Count);
+    }
+}

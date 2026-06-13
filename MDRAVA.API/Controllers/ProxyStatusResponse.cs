@@ -1,6 +1,5 @@
 using MDRAVA.BLL.ControlPlane.ConfigLint;
 using MDRAVA.BLL.ControlPlane.Http3;
-using MDRAVA.BLL.ControlPlane.Metrics;
 using MDRAVA.BLL.ControlPlane.RouteDiagnostics;
 
 using BusinessProxyStatus = MDRAVA.BLL.ControlPlane.Status.ProxyStatus;
@@ -21,7 +20,7 @@ public sealed record ProxyStatusResponse(
     DateTimeOffset? ConfigLoadedAtUtc,
     int ConfiguredListeners,
     int ConfiguredRoutes,
-    ProxyMetricsSnapshot Metrics,
+    ProxyMetricsSnapshotResponse Metrics,
     IReadOnlyList<ProxyUpstreamStatusResponse> Upstreams)
 {
     public IReadOnlyList<ProxyListenerStatusResponse> Listeners { get; init; } = [];
@@ -60,7 +59,7 @@ public sealed record ProxyStatusResponse(
             ConfigLoadedAtUtc: response.ConfigLoadedAtUtc,
             ConfiguredListeners: response.ConfiguredListeners,
             ConfiguredRoutes: response.ConfiguredRoutes,
-            Metrics: response.Metrics,
+            Metrics: ProxyMetricsSnapshotResponse.FromSnapshot(response.Metrics),
             Upstreams: ProxyUpstreamStatusResponse.FromStatuses(response.Upstreams))
         {
             Listeners = ProxyListenerStatusResponse.FromStatuses(response.Listeners),
