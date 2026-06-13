@@ -306,13 +306,14 @@ internal static class LogPersistenceTests
             timeProvider ?? TimeProvider.System,
             "http1");
         context.SetRequest("GET", "logs.test", target, externalRequestId);
-        context.SiteName = "logs";
-        context.RouteName = "logs";
-        context.RouteAction = "proxy";
-        context.UpstreamName = "local";
-        context.UpstreamEndpoint = "127.0.0.1:5000";
-        context.ResponseStatusCode = 200;
-        context.ResponseStarted = true;
+        context.SetRoute(new ProxyRequestRoute("logs", "logs", "proxy", true));
+        context.SetUpstream(new ProxyRequestUpstream("local", "127.0.0.1:5000"));
+        context.RecordForwardingResult(
+            ForwardingResult.Success(
+                responseStarted: true,
+                keepClientConnectionOpen: true,
+                responseStatusCode: 200),
+            keepClientConnectionOpen: true);
         return context;
     }
 

@@ -31,7 +31,7 @@ public sealed class ProxyRequestContext
 
     public string RequestId { get; }
 
-    public string? ExternalRequestId { get; set; }
+    public string? ExternalRequestId { get; private set; }
 
     public string ListenerName { get; }
 
@@ -45,41 +45,41 @@ public sealed class ProxyRequestContext
 
     public DateTimeOffset StartedAtUtc { get; }
 
-    public string? Method { get; set; }
+    public string? Method { get; private set; }
 
-    public string? Host { get; set; }
+    public string? Host { get; private set; }
 
-    public string? Target { get; set; }
+    public string? Target { get; private set; }
 
-    public string? RouteName { get; set; }
+    public string? RouteName { get; private set; }
 
-    public string? SiteName { get; set; }
+    public string? SiteName { get; private set; }
 
-    public string? RouteAction { get; set; }
+    public string? RouteAction { get; private set; }
 
-    public string? UpstreamName { get; set; }
+    public string? UpstreamName { get; private set; }
 
-    public string? UpstreamEndpoint { get; set; }
+    public string? UpstreamEndpoint { get; private set; }
 
-    public int? ResponseStatusCode { get; set; }
+    public int? ResponseStatusCode { get; private set; }
 
-    public bool ResponseStarted { get; set; }
+    public bool ResponseStarted { get; private set; }
 
     public bool KeepClientConnectionOpen { get; private set; }
 
     public bool IsUpgrade { get; private set; }
 
-    public bool TunnelEstablished { get; set; }
+    public bool TunnelEstablished { get; private set; }
 
-    public string? TunnelCloseReason { get; set; }
+    public string? TunnelCloseReason { get; private set; }
 
-    public long TunnelBytesClientToUpstream { get; set; }
+    public long TunnelBytesClientToUpstream { get; private set; }
 
-    public long TunnelBytesUpstreamToClient { get; set; }
+    public long TunnelBytesUpstreamToClient { get; private set; }
 
-    public ProxyFailureKind FailureKind { get; set; } = ProxyFailureKind.None;
+    public ProxyFailureKind FailureKind { get; private set; } = ProxyFailureKind.None;
 
-    public bool? AccessLogEnabled { get; set; }
+    public bool? AccessLogEnabled { get; private set; }
 
     public TimeSpan Elapsed => _timeProvider.GetElapsedTime(_startedTimestamp);
 
