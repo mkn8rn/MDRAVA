@@ -162,10 +162,18 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
         RuntimeTimeouts timeouts,
         CancellationToken cancellationToken)
     {
-        var block = Http3Codec.EncodeHeaderBlock(headers);
-        using var memory = new MemoryStream();
-        Http3Codec.WriteFrame(memory, Http3Codec.HeadersFrame, block);
-        await WriteWithTimeoutAsync(memory.ToArray(), endStream, timeouts.DownstreamWriteTimeout, cancellationToken);
+        try
+        {
+            var block = Http3Codec.EncodeHeaderBlock(headers);
+            using var memory = new MemoryStream();
+            Http3Codec.WriteFrame(memory, Http3Codec.HeadersFrame, block);
+            await WriteWithTimeoutAsync(memory.ToArray(), endStream, timeouts.DownstreamWriteTimeout, cancellationToken);
+        }
+        catch
+        {
+            MarkConnectionUnusable();
+            throw;
+        }
     }
 
     public async ValueTask SendDataAsync(
@@ -174,22 +182,30 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
         RuntimeTimeouts timeouts,
         CancellationToken cancellationToken)
     {
-        var remaining = body;
-        while (remaining.Length > 0)
+        try
         {
-            var chunkLength = Math.Min(_maxFramePayloadBytes, remaining.Length);
-            var final = chunkLength == remaining.Length && endStream;
-            using var memory = new MemoryStream();
-            Http3Codec.WriteFrame(memory, Http3Codec.DataFrame, remaining[..chunkLength].Span);
-            await WriteWithTimeoutAsync(memory.ToArray(), final, timeouts.DownstreamWriteTimeout, cancellationToken);
-            remaining = remaining[chunkLength..];
-        }
+            var remaining = body;
+            while (remaining.Length > 0)
+            {
+                var chunkLength = Math.Min(_maxFramePayloadBytes, remaining.Length);
+                var final = chunkLength == remaining.Length && endStream;
+                using var memory = new MemoryStream();
+                Http3Codec.WriteFrame(memory, Http3Codec.DataFrame, remaining[..chunkLength].Span);
+                await WriteWithTimeoutAsync(memory.ToArray(), final, timeouts.DownstreamWriteTimeout, cancellationToken);
+                remaining = remaining[chunkLength..];
+            }
 
-        if (body.Length == 0 && endStream)
+            if (body.Length == 0 && endStream)
+            {
+                using var memory = new MemoryStream();
+                Http3Codec.WriteFrame(memory, Http3Codec.DataFrame, ReadOnlySpan<byte>.Empty);
+                await WriteWithTimeoutAsync(memory.ToArray(), completeWrites: true, timeouts.DownstreamWriteTimeout, cancellationToken);
+            }
+        }
+        catch
         {
-            using var memory = new MemoryStream();
-            Http3Codec.WriteFrame(memory, Http3Codec.DataFrame, ReadOnlySpan<byte>.Empty);
-            await WriteWithTimeoutAsync(memory.ToArray(), completeWrites: true, timeouts.DownstreamWriteTimeout, cancellationToken);
+            MarkConnectionUnusable();
+            throw;
         }
     }
 
@@ -198,28 +214,36 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
         RuntimeTimeouts timeouts,
         CancellationToken cancellationToken)
     {
-        while (true)
+        try
         {
-            var frame = await ReadFrameAsync(
-                timeouts.UpstreamResponseHeadTimeout,
-                ProxyTimeoutKind.UpstreamResponseHead,
-                cancellationToken);
-            if (frame.EndStream)
+            while (true)
             {
-                throw new Http3UpstreamProtocolException("Upstream closed before HTTP/3 response headers were received.");
-            }
+                var frame = await ReadFrameAsync(
+                    timeouts.UpstreamResponseHeadTimeout,
+                    ProxyTimeoutKind.UpstreamResponseHead,
+                    cancellationToken);
+                if (frame.EndStream)
+                {
+                    throw new Http3UpstreamProtocolException("Upstream closed before HTTP/3 response headers were received.");
+                }
 
-            if (frame.Type == Http3Codec.DataFrame)
-            {
-                throw new Http3UpstreamProtocolException("Upstream sent HTTP/3 response DATA before response headers.");
-            }
+                if (frame.Type == Http3Codec.DataFrame)
+                {
+                    throw new Http3UpstreamProtocolException("Upstream sent HTTP/3 response DATA before response headers.");
+                }
 
-            if (frame.Type != Http3Codec.HeadersFrame)
-            {
-                throw new Http3UpstreamProtocolException("Upstream sent an unsupported HTTP/3 response frame before headers.");
-            }
+                if (frame.Type != Http3Codec.HeadersFrame)
+                {
+                    throw new Http3UpstreamProtocolException("Upstream sent an unsupported HTTP/3 response frame before headers.");
+                }
 
-            return DecodeResponseHeaders(frame.Payload.Span, maxHeaderListBytes);
+                return DecodeResponseHeaders(frame.Payload.Span, maxHeaderListBytes);
+            }
+        }
+        catch
+        {
+            MarkConnectionUnusable();
+            throw;
         }
     }
 
@@ -227,28 +251,36 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
         RuntimeTimeouts timeouts,
         CancellationToken cancellationToken)
     {
-        while (true)
+        try
         {
-            var frame = await ReadFrameAsync(
-                timeouts.UpstreamResponseBodyIdleTimeout,
-                ProxyTimeoutKind.UpstreamResponseBodyIdle,
-                cancellationToken);
-            if (frame.EndStream)
+            while (true)
             {
-                return new Http3UpstreamDataChunk([], EndStream: true);
-            }
+                var frame = await ReadFrameAsync(
+                    timeouts.UpstreamResponseBodyIdleTimeout,
+                    ProxyTimeoutKind.UpstreamResponseBodyIdle,
+                    cancellationToken);
+                if (frame.EndStream)
+                {
+                    return new Http3UpstreamDataChunk([], EndStream: true);
+                }
 
-            if (frame.Type == Http3Codec.DataFrame)
-            {
-                return new Http3UpstreamDataChunk(frame.Payload.ToArray(), EndStream: false);
-            }
+                if (frame.Type == Http3Codec.DataFrame)
+                {
+                    return new Http3UpstreamDataChunk(frame.Payload.ToArray(), EndStream: false);
+                }
 
-            if (frame.Type == Http3Codec.HeadersFrame)
-            {
-                continue;
-            }
+                if (frame.Type == Http3Codec.HeadersFrame)
+                {
+                    continue;
+                }
 
-            throw new Http3UpstreamProtocolException("Upstream sent an unsupported HTTP/3 response frame.");
+                throw new Http3UpstreamProtocolException("Upstream sent an unsupported HTTP/3 response frame.");
+            }
+        }
+        catch
+        {
+            MarkConnectionUnusable();
+            throw;
         }
     }
 
@@ -391,6 +423,12 @@ internal sealed class Http3UpstreamConnection : IAsyncDisposable
             ? []
             : await ReadExactAsync((int)length.Value, timeout, timeoutKind, cancellationToken);
         return new Http3FrameReadResult(false, type.Value, payload);
+    }
+
+    private void MarkConnectionUnusable()
+    {
+        _connectionUsable = false;
+        _pooledConnection?.MarkUnusable();
     }
 
     private async ValueTask<Http3VarIntReadResult> ReadVarIntAsync(
