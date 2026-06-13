@@ -49,6 +49,7 @@ internal static partial class TestRegistry
     Test("Generated failure policy builds response descriptors", Sync(ProxyGeneratedFailurePolicyTests.BuildsGeneratedFailureResponseFromFailureResult), TestTaxonomy.Http1, TestTaxonomy.RetryCircuit),
     Test("Generated failure policy keeps explicit response bodies", Sync(ProxyGeneratedFailurePolicyTests.BuildsGeneratedFailureResponseWithExplicitBody), TestTaxonomy.Http1, TestTaxonomy.Headers),
     Test("Generated failure policy builds framed headers", Sync(ProxyGeneratedFailurePolicyTests.BuildsGeneratedFailureFramedHeaders), TestTaxonomy.Headers, TestTaxonomy.RetryCircuit),
+    Test("Generated failure writer serializes descriptor body", ProxyGeneratedFailurePolicyTests.GeneratedFailureWriterSerializesDescriptorBody, TestTaxonomy.Http1, TestTaxonomy.Headers),
     Test("Http1 request framing policy classifies framed request bodies", Sync(Http1RequestFramingPolicyTests.ClassifiesFramedRequestBodies), TestTaxonomy.Http1, TestTaxonomy.Http2, TestTaxonomy.Http3),
     Test("Timeout failure policy classifies forwarding failures", Sync(ProxyTimeoutFailurePolicyTests.ClassifiesForwardingTimeoutFailures), TestTaxonomy.Limits, TestTaxonomy.SecurityNegativePaths),
     Test("Request method policy validates HTTP method tokens", Sync(ProxyRequestMethodPolicyTests.ValidatesHttpMethodTokens), TestTaxonomy.Http1, TestTaxonomy.Http2, TestTaxonomy.Http3, TestTaxonomy.SecurityNegativePaths),

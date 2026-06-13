@@ -1,5 +1,6 @@
 using MDRAVA.BLL.Http;
 using MDRAVA.BLL.ControlPlane.Headers;
+using MDRAVA.BLL.ControlPlane.Forwarding;
 using MDRAVA.BLL.ControlPlane.Timeouts;
 using System.Text;
 using MDRAVA.BLL.ControlPlane.Metrics;
@@ -8,65 +9,27 @@ namespace MDRAVA.INF.Proxy.Forwarding;
 
 public static class ProxyErrorResponses
 {
-    private static readonly byte[] BadRequestResponse =
-        "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 11\r\nContent-Type: text/plain\r\n\r\nBad Request"u8.ToArray();
-
-    private static readonly byte[] RequestTimeoutResponse =
-        "HTTP/1.1 408 Request Timeout\r\nConnection: close\r\nContent-Length: 15\r\nContent-Type: text/plain\r\n\r\nRequest Timeout"u8.ToArray();
-
-    private static readonly byte[] BadGatewayResponse =
-        "HTTP/1.1 502 Bad Gateway\r\nConnection: close\r\nContent-Length: 11\r\nContent-Type: text/plain\r\n\r\nBad Gateway"u8.ToArray();
-
-    private static readonly byte[] GatewayTimeoutResponse =
-        "HTTP/1.1 504 Gateway Timeout\r\nConnection: close\r\nContent-Length: 15\r\nContent-Type: text/plain\r\n\r\nGateway Timeout"u8.ToArray();
-
-    private static readonly byte[] ServiceUnavailableResponse =
-        "HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\nContent-Length: 19\r\nContent-Type: text/plain\r\n\r\nService Unavailable"u8.ToArray();
-
-    public static ReadOnlyMemory<byte> BadRequest => BadRequestResponse;
-
-    public static ReadOnlyMemory<byte> RequestTimeout => RequestTimeoutResponse;
-
-    public static ReadOnlyMemory<byte> BadGateway => BadGatewayResponse;
-
-    public static ReadOnlyMemory<byte> GatewayTimeout => GatewayTimeoutResponse;
-
-    public static ReadOnlyMemory<byte> ServiceUnavailable => ServiceUnavailableResponse;
-
-    public static ReadOnlyMemory<byte> BadRequestWithRequestId(string requestId)
+    public static ValueTask WriteGeneratedFailureAsync(
+        Stream stream,
+        ProxyGeneratedFailureResponse response,
+        string? requestId,
+        TimeSpan timeout,
+        ProxyMetrics metrics,
+        CancellationToken cancellationToken)
     {
-        return Encoding.ASCII.GetBytes(
-            $"HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 11\r\nContent-Type: text/plain\r\nX-Request-Id: {requestId}\r\n\r\nBad Request");
-    }
+        ArgumentNullException.ThrowIfNull(response);
 
-    public static ReadOnlyMemory<byte> RequestTimeoutWithRequestId(string requestId)
-    {
-        return Encoding.ASCII.GetBytes(
-            $"HTTP/1.1 408 Request Timeout\r\nConnection: close\r\nContent-Length: 15\r\nContent-Type: text/plain\r\nX-Request-Id: {requestId}\r\n\r\nRequest Timeout");
-    }
-
-    public static ReadOnlyMemory<byte> BadGatewayWithRequestId(string requestId)
-    {
-        return Encoding.ASCII.GetBytes(
-            $"HTTP/1.1 502 Bad Gateway\r\nConnection: close\r\nContent-Length: 11\r\nContent-Type: text/plain\r\nX-Request-Id: {requestId}\r\n\r\nBad Gateway");
-    }
-
-    public static ReadOnlyMemory<byte> GatewayTimeoutWithRequestId(string requestId)
-    {
-        return Encoding.ASCII.GetBytes(
-            $"HTTP/1.1 504 Gateway Timeout\r\nConnection: close\r\nContent-Length: 15\r\nContent-Type: text/plain\r\nX-Request-Id: {requestId}\r\n\r\nGateway Timeout");
-    }
-
-    public static ReadOnlyMemory<byte> PayloadTooLargeWithRequestId(string requestId)
-    {
-        return Encoding.ASCII.GetBytes(
-            $"HTTP/1.1 413 Payload Too Large\r\nConnection: close\r\nContent-Length: 17\r\nContent-Type: text/plain\r\nX-Request-Id: {requestId}\r\n\r\nPayload Too Large");
-    }
-
-    public static ReadOnlyMemory<byte> ServiceUnavailableWithRequestId(string requestId)
-    {
-        return Encoding.ASCII.GetBytes(
-            $"HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\nContent-Length: 19\r\nContent-Type: text/plain\r\nX-Request-Id: {requestId}\r\n\r\nService Unavailable");
+        return WriteGeneratedAsync(
+            stream,
+            response.StatusCode,
+            response.ReasonPhrase,
+            response.Body,
+            requestId,
+            timeout,
+            metrics,
+            cancellationToken,
+            ProxyGeneratedFailurePolicy.PlainTextContentType,
+            []);
     }
 
     public static ValueTask WriteGeneratedAsync(

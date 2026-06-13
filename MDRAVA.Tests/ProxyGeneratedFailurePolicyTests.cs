@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace MDRAVA.Tests;
 
 internal static class ProxyGeneratedFailurePolicyTests
@@ -76,5 +78,33 @@ internal static class ProxyGeneratedFailurePolicyTests
         AssertEx.Equal("text/plain", headers.Single(static header => header.Name == "content-type").Value);
         AssertEx.Equal("req-789", headers.Single(static header => header.Name == "x-request-id").Value);
         AssertEx.Equal("11", headers.Single(static header => header.Name == "content-length").Value);
+    }
+
+    public static async Task GeneratedFailureWriterSerializesDescriptorBody()
+    {
+        await using var stream = new MemoryStream();
+        var metrics = new ProxyMetrics();
+        var response = ProxyGeneratedFailurePolicy.BuildFailureResponse(
+            431,
+            "Request Header Fields Too Large",
+            "Request Head Too Large",
+            ProxyFailureKind.ParserLimitExceeded);
+
+        await ProxyErrorResponses.WriteGeneratedFailureAsync(
+            stream,
+            response,
+            "req-431",
+            TimeSpan.FromSeconds(1),
+            metrics,
+            CancellationToken.None);
+
+        var text = Encoding.ASCII.GetString(stream.ToArray());
+        AssertEx.True(text.StartsWith("HTTP/1.1 431 Request Header Fields Too Large\r\n", StringComparison.Ordinal), text);
+        AssertEx.True(text.Contains("Connection: close\r\n", StringComparison.Ordinal), text);
+        AssertEx.True(text.Contains("Content-Length: 22\r\n", StringComparison.Ordinal), text);
+        AssertEx.True(text.Contains("Content-Type: text/plain\r\n", StringComparison.Ordinal), text);
+        AssertEx.True(text.Contains("X-Request-Id: req-431\r\n", StringComparison.Ordinal), text);
+        AssertEx.True(text.EndsWith("\r\n\r\nRequest Head Too Large", StringComparison.Ordinal), text);
+        AssertEx.Equal(stream.Length, metrics.Snapshot().BytesWritten);
     }
 }

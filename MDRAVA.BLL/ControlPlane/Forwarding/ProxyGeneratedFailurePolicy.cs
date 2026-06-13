@@ -28,7 +28,7 @@ public sealed record ProxyGeneratedFailureResponse(
 
 public static class ProxyGeneratedFailurePolicy
 {
-    private const string ContentType = "text/plain";
+    public const string PlainTextContentType = "text/plain";
 
     public static bool CanWriteFailureResponse(
         bool responseStarted,
@@ -75,7 +75,7 @@ public static class ProxyGeneratedFailurePolicy
 
         return
         [
-            new ProxyHeaderField("content-type", ContentType),
+            new ProxyHeaderField("content-type", PlainTextContentType),
             new ProxyHeaderField("x-request-id", requestId),
             new ProxyHeaderField("content-length", bodyByteLength.ToString(System.Globalization.CultureInfo.InvariantCulture))
         ];
