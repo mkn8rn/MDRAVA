@@ -165,6 +165,43 @@ internal static class OperatorStatusTests
         AssertEx.Equal(ProxyListenerState.Active, summary.Listeners[0].State);
     }
 
+    public static void RuntimeStateCopiesListenerListsOnWriteAndRead()
+    {
+        var listener = Listener();
+        var active = ListenerStatus(listener, ProxyListenerState.Active);
+        var failed = ListenerStatus(listener, ProxyListenerState.Failed);
+        var listeners = new List<ProxyListenerStatus> { active };
+        var runtime = new ProxyRuntimeState(TimeProvider.System);
+
+        runtime.ReplaceListeners(listeners, null);
+        listeners.Clear();
+
+        var afterInputMutation = runtime.Snapshot();
+        AssertEx.Equal(1, afterInputMutation.Listeners.Count);
+        AssertEx.Equal(ProxyListenerState.Active, afterInputMutation.Listeners[0].State);
+
+        var readListeners = runtime.ReadRuntimeListeners();
+        AssertEx.Equal(1, readListeners.Count);
+        if (readListeners is ProxyListenerStatus[] readArray)
+        {
+            readArray[0] = failed;
+        }
+
+        var afterReadMutation = runtime.Snapshot();
+        AssertEx.Equal(1, afterReadMutation.Listeners.Count);
+        AssertEx.Equal(ProxyListenerState.Active, afterReadMutation.Listeners[0].State);
+
+        var snapshotListeners = afterReadMutation.Listeners;
+        if (snapshotListeners is ProxyListenerStatus[] snapshotArray)
+        {
+            snapshotArray[0] = failed;
+        }
+
+        var afterSnapshotMutation = runtime.Snapshot();
+        AssertEx.Equal(1, afterSnapshotMutation.Listeners.Count);
+        AssertEx.Equal(ProxyListenerState.Active, afterSnapshotMutation.Listeners[0].State);
+    }
+
     public static void StatusConfigurationSummaryMapperReadsRuntimeConfigurationFactsWithoutSnapshot()
     {
         var loadedAtUtc = new DateTimeOffset(2026, 6, 12, 8, 0, 0, TimeSpan.Zero);

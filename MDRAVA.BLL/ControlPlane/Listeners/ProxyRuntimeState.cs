@@ -16,7 +16,7 @@ public sealed class ProxyRuntimeState : IProxyStatusRuntimeStateSource, IHttp3Al
     private int _isShuttingDown;
     private DateTimeOffset? _shutdownStartedAtUtc;
     private DateTimeOffset? _shutdownDeadlineUtc;
-    private IReadOnlyList<ProxyListenerStatus> _listeners = [];
+    private ProxyListenerStatus[] _listeners = [];
     private ProxyListenerReloadResult? _lastListenerReload;
 
     public ProxyRuntimeState(TimeProvider timeProvider)
@@ -39,7 +39,7 @@ public sealed class ProxyRuntimeState : IProxyStatusRuntimeStateSource, IHttp3Al
                 _shutdownStartedAtUtc,
                 _shutdownDeadlineUtc)
             {
-                Listeners = _listeners,
+                Listeners = _listeners.ToArray(),
                 LastListenerReload = _lastListenerReload
             };
         }
@@ -54,7 +54,7 @@ public sealed class ProxyRuntimeState : IProxyStatusRuntimeStateSource, IHttp3Al
     {
         lock (_gate)
         {
-            return _listeners;
+            return _listeners.ToArray();
         }
     }
 
@@ -72,12 +72,13 @@ public sealed class ProxyRuntimeState : IProxyStatusRuntimeStateSource, IHttp3Al
         IReadOnlyList<ProxyListenerStatus> listeners,
         ProxyListenerReloadResult? lastReload)
     {
+        var listenerSnapshot = listeners.ToArray();
         lock (_gate)
         {
-            _listeners = listeners;
+            _listeners = listenerSnapshot;
             _lastListenerReload = lastReload ?? _lastListenerReload;
 
-            var active = listeners.FirstOrDefault(static listener => listener.State == ProxyListenerState.Active);
+            var active = listenerSnapshot.FirstOrDefault(static listener => listener.State == ProxyListenerState.Active);
             if (active is not null)
             {
                 _listenerName = active.Name;
@@ -96,9 +97,9 @@ public sealed class ProxyRuntimeState : IProxyStatusRuntimeStateSource, IHttp3Al
             _endpoint = null;
             _startedAt = null;
             _stoppedAt = _timeProvider.GetUtcNow();
-            _lastError = listeners.Count == 0
+            _lastError = listenerSnapshot.Length == 0
                 ? "No configured proxy listener."
-                : listeners.FirstOrDefault(static listener => listener.State == ProxyListenerState.Failed)?.LastError;
+                : listenerSnapshot.FirstOrDefault(static listener => listener.State == ProxyListenerState.Failed)?.LastError;
             Volatile.Write(ref _isRunning, 0);
         }
     }

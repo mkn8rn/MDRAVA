@@ -27,6 +27,7 @@ internal static partial class TestRegistry
     Test("Status upstream health reader consumes configured health sources without runtime routes", Sync(OperatorStatusTests.StatusUpstreamHealthReaderConsumesConfiguredHealthSourcesWithoutRuntimeRoutes), TestTaxonomy.Admin, TestTaxonomy.Config),
     Test("Status runtime summary mapper projects response runtime facts", Sync(OperatorStatusTests.StatusRuntimeSummaryMapperProjectsOnlyResponseRuntimeFacts), TestTaxonomy.Admin, TestTaxonomy.Config),
     Test("Status runtime source reads runtime summary without runtime snapshot", Sync(OperatorStatusTests.StatusRuntimeSourceReadsRuntimeSummaryWithoutRuntimeSnapshot), TestTaxonomy.Admin, TestTaxonomy.Config),
+    Test("Runtime state copies listener lists on write and read", Sync(OperatorStatusTests.RuntimeStateCopiesListenerListsOnWriteAndRead), TestTaxonomy.Admin, TestTaxonomy.Config),
     Test("Status configuration summary mapper reads runtime configuration facts without snapshot", Sync(OperatorStatusTests.StatusConfigurationSummaryMapperReadsRuntimeConfigurationFactsWithoutSnapshot), TestTaxonomy.Admin, TestTaxonomy.Config),
     Test("Status configuration source mapper shapes status facts from active configuration", Sync(OperatorStatusTests.StatusConfigurationSourceMapperShapesStatusFactsFromActiveConfiguration), TestTaxonomy.Admin, TestTaxonomy.Config),
     Test("Status response builder builds response from named input", Sync(OperatorStatusTests.StatusResponseBuilderBuildsResponseFromNamedInput), TestTaxonomy.Admin, TestTaxonomy.Config, TestTaxonomy.Metrics),
