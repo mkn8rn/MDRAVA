@@ -313,6 +313,27 @@ internal static class RouteDiagnosticsTests
         AssertEx.False(headers.Any(static header => string.Equals(header.Name, "Keep-Alive", StringComparison.OrdinalIgnoreCase)));
     }
 
+    public static void RequestContextRecordsGeneratedFailureResponse()
+    {
+        var context = new ProxyRequestContext(
+            "req-generated",
+            "listener",
+            "tcp",
+            "127.0.0.1:50000",
+            7,
+            TimeProvider.System);
+        var response = ProxyGeneratedFailurePolicy.BuildFailureResponse(ProxyFailureKind.RequestPayloadTooLarge);
+
+        context.RecordGeneratedFailureResponse(
+            response,
+            keepClientConnectionOpen: false);
+
+        AssertEx.True(context.ResponseStarted);
+        AssertEx.Equal(413, context.ResponseStatusCode);
+        AssertEx.Equal(ProxyFailureKind.RequestPayloadTooLarge, context.FailureKind);
+        AssertEx.False(context.KeepClientConnectionOpen);
+    }
+
     public static void RouteDiagnosticsStatusNamesEnabledAvailability()
     {
         var status = RouteDiagnosticsStatus.Enabled;

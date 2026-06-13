@@ -868,10 +868,9 @@ public sealed class ClientConnection
             contentType: ProxyGeneratedFailurePolicy.PlainTextContentType,
             headers: ApplyAltSvc([]));
 
-        context.ResponseStarted = true;
-        context.ResponseStatusCode = response.StatusCode;
-        context.FailureKind = response.FailureKind;
-        context.KeepClientConnectionOpen = false;
+        context.RecordGeneratedFailureResponse(
+            response,
+            keepClientConnectionOpen: false);
     }
 
     private async ValueTask WriteCachedResponseAsync(

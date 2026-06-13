@@ -800,10 +800,9 @@ public sealed class Http3Connection
             headers,
             string.Equals(method, "HEAD", StringComparison.OrdinalIgnoreCase) ? [] : bodyBytes,
             cancellationToken);
-        context.ResponseStarted = true;
-        context.ResponseStatusCode = response.StatusCode;
-        context.FailureKind = response.FailureKind;
-        context.KeepClientConnectionOpen = true;
+        context.RecordGeneratedFailureResponse(
+            response,
+            keepClientConnectionOpen: true);
     }
 
     private async ValueTask WriteHeadersAndBodyAsync(

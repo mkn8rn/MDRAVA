@@ -113,6 +113,18 @@ public sealed class ProxyRequestContext
         ClientEndpoint = clientEndpoint;
     }
 
+    public void RecordGeneratedFailureResponse(
+        ProxyGeneratedFailureResponse response,
+        bool keepClientConnectionOpen)
+    {
+        ArgumentNullException.ThrowIfNull(response);
+
+        ResponseStarted = true;
+        ResponseStatusCode = response.StatusCode;
+        FailureKind = response.FailureKind;
+        KeepClientConnectionOpen = keepClientConnectionOpen;
+    }
+
 }
 
 public sealed record ProxyRequestRoute(
