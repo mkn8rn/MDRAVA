@@ -17,6 +17,8 @@ public sealed class ProxyStatusController : ControllerBase
     [HttpGet("status")]
     public ProxyStatusResponse Get()
     {
-        return _statusAdministration.GetStatus();
+        var status = _statusAdministration.GetStatus();
+
+        return ProxyStatusResponse.FromBusinessResponse(status);
     }
 }
