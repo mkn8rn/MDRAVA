@@ -29,11 +29,7 @@ public sealed partial class ProxyMetrics
             Interlocked.Read(ref _proxyGenerated502Responses),
             Interlocked.Read(ref _proxyGenerated504Responses),
             Interlocked.Read(ref _downstreamWriteTimeouts),
-            Interlocked.Read(ref _tlsHandshakeAttempts),
-            Interlocked.Read(ref _tlsHandshakeSuccesses),
-            Interlocked.Read(ref _tlsHandshakeFailures),
-            Interlocked.Read(ref _tlsHandshakeTimeouts),
-            Interlocked.Read(ref _tlsNoCertificateForSniFailures),
+            ReadTlsMetricsSnapshot(),
             Interlocked.Read(ref _clientConnectionsClosedByIdleTimeout),
             Interlocked.Read(ref _clientConnectionsClosedByMaxRequests),
             Interlocked.Read(ref _upstreamConnectionsOpened),
@@ -57,8 +53,6 @@ public sealed partial class ProxyMetrics
             Interlocked.Read(ref _accessLogsEmitted),
             Interlocked.Read(ref _recentDiagnosticsOverwritten),
             Interlocked.Read(ref _connectionAdmissionRejections),
-            Interlocked.Read(ref _activeTlsHandshakes),
-            Interlocked.Read(ref _tlsHandshakeAdmissionRejections),
             Interlocked.Read(ref _rateLimitedRequests),
             Interlocked.Read(ref _rateLimitedUpgrades),
             Interlocked.Read(ref _requestBodySizeRejections),
@@ -139,6 +133,18 @@ public sealed partial class ProxyMetrics
             Interlocked.Read(ref _tunnelBytesClientToUpstream),
             Interlocked.Read(ref _tunnelBytesUpstreamToClient),
             Interlocked.Read(ref _tunnelRelayFailures));
+    }
+
+    private ProxyTlsMetricsSnapshot ReadTlsMetricsSnapshot()
+    {
+        return new ProxyTlsMetricsSnapshot(
+            Interlocked.Read(ref _tlsHandshakeAttempts),
+            Interlocked.Read(ref _tlsHandshakeSuccesses),
+            Interlocked.Read(ref _tlsHandshakeFailures),
+            Interlocked.Read(ref _tlsHandshakeTimeouts),
+            Interlocked.Read(ref _tlsNoCertificateForSniFailures),
+            Interlocked.Read(ref _activeTlsHandshakes),
+            Interlocked.Read(ref _tlsHandshakeAdmissionRejections));
     }
 
     private ProxyResilienceMetricsSnapshot ReadResilienceMetricsSnapshot()

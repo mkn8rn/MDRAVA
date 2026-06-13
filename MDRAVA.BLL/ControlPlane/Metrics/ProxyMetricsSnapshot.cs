@@ -28,11 +28,7 @@ public sealed record ProxyMetricsSnapshot(
     long ProxyGenerated502Responses,
     long ProxyGenerated504Responses,
     long DownstreamWriteTimeouts,
-    long TlsHandshakeAttempts,
-    long TlsHandshakeSuccesses,
-    long TlsHandshakeFailures,
-    long TlsHandshakeTimeouts,
-    long TlsNoCertificateForSniFailures,
+    ProxyTlsMetricsSnapshot Tls,
     long ClientConnectionsClosedByIdleTimeout,
     long ClientConnectionsClosedByMaxRequests,
     long UpstreamConnectionsOpened,
@@ -56,8 +52,6 @@ public sealed record ProxyMetricsSnapshot(
     long AccessLogsEmitted,
     long RecentDiagnosticsOverwritten,
     long ConnectionAdmissionRejections,
-    long ActiveTlsHandshakes,
-    long TlsHandshakeAdmissionRejections,
     long RateLimitedRequests,
     long RateLimitedUpgrades,
     long RequestBodySizeRejections,
@@ -102,6 +96,9 @@ public sealed record ProxyMetricsSnapshot(
 
     public ProxyTunnelMetricsSnapshot Tunnels { get; } =
         Tunnels ?? throw new ArgumentNullException(nameof(Tunnels));
+
+    public ProxyTlsMetricsSnapshot Tls { get; } =
+        Tls ?? throw new ArgumentNullException(nameof(Tls));
 
     public IReadOnlyDictionary<string, long> RequestFailuresByKind { get; } =
         MetricsList.CopyDictionary(RequestFailuresByKind, StringComparer.Ordinal);

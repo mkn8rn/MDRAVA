@@ -1070,8 +1070,8 @@ internal static class ProxyIntegrationTests
         AssertEx.True(result.ClientResponse.Contains("200 OK", StringComparison.Ordinal), result.ClientResponse);
         AssertEx.True(result.ClientResponse.EndsWith("proxied", StringComparison.Ordinal), result.ClientResponse);
         AssertEx.True(result.UpstreamRequest.StartsWith("GET /secure HTTP/1.1", StringComparison.Ordinal), result.UpstreamRequest);
-        AssertEx.Equal(1L, result.Metrics.TlsHandshakeAttempts);
-        AssertEx.Equal(1L, result.Metrics.TlsHandshakeSuccesses);
+        AssertEx.Equal(1L, result.Metrics.Tls.HandshakeAttempts);
+        AssertEx.Equal(1L, result.Metrics.Tls.HandshakeSuccesses);
     }
 
     public static async Task HttpsListenerSelectsCertificateBySni()
@@ -1079,7 +1079,7 @@ internal static class ProxyIntegrationTests
         var result = await RunTlsProxyScenarioAsync("alt.test", configureAltSni: true);
 
         AssertEx.True(result.RemoteCertificateSubject.Contains("CN=alt.test", StringComparison.Ordinal), result.RemoteCertificateSubject);
-        AssertEx.Equal(1L, result.Metrics.TlsHandshakeSuccesses);
+        AssertEx.Equal(1L, result.Metrics.Tls.HandshakeSuccesses);
     }
 
     public static async Task HttpsListenerSelectsCertificateByCaseInsensitiveSni()
@@ -1087,7 +1087,7 @@ internal static class ProxyIntegrationTests
         var result = await RunTlsProxyScenarioAsync("ALT.TEST", configureAltSni: true);
 
         AssertEx.True(result.RemoteCertificateSubject.Contains("CN=alt.test", StringComparison.Ordinal), result.RemoteCertificateSubject);
-        AssertEx.Equal(1L, result.Metrics.TlsHandshakeSuccesses);
+        AssertEx.Equal(1L, result.Metrics.Tls.HandshakeSuccesses);
     }
 
     public static async Task HttpsListenerUsesDefaultCertificateForUnmatchedSni()
@@ -1095,7 +1095,7 @@ internal static class ProxyIntegrationTests
         var result = await RunTlsProxyScenarioAsync("unmatched.test", configureAltSni: true);
 
         AssertEx.True(result.RemoteCertificateSubject.Contains("CN=home.test", StringComparison.Ordinal), result.RemoteCertificateSubject);
-        AssertEx.Equal(1L, result.Metrics.TlsHandshakeSuccesses);
+        AssertEx.Equal(1L, result.Metrics.Tls.HandshakeSuccesses);
     }
 
     public static async Task HttpsListenerUsesDefaultCertificateWithoutSni()
@@ -1103,7 +1103,7 @@ internal static class ProxyIntegrationTests
         var result = await RunTlsProxyScenarioAsync("", configureAltSni: true);
 
         AssertEx.True(result.RemoteCertificateSubject.Contains("CN=home.test", StringComparison.Ordinal), result.RemoteCertificateSubject);
-        AssertEx.Equal(1L, result.Metrics.TlsHandshakeSuccesses);
+        AssertEx.Equal(1L, result.Metrics.Tls.HandshakeSuccesses);
     }
 
     public static async Task HttpsListenerFailsHandshakeWhenNoCertificateMatches()
@@ -1149,12 +1149,12 @@ internal static class ProxyIntegrationTests
 
             var metrics = await WaitForMetricsAsync(
                 host.Services.GetRequiredService<ProxyMetrics>(),
-                snapshot => snapshot.TlsNoCertificateForSniFailures == 1,
+                snapshot => snapshot.Tls.NoCertificateForSniFailures == 1,
                 timeout.Token);
 
-            AssertEx.Equal(1L, metrics.TlsHandshakeAttempts);
-            AssertEx.Equal(1L, metrics.TlsNoCertificateForSniFailures);
-            AssertEx.Equal(1L, metrics.TlsHandshakeFailures);
+            AssertEx.Equal(1L, metrics.Tls.HandshakeAttempts);
+            AssertEx.Equal(1L, metrics.Tls.NoCertificateForSniFailures);
+            AssertEx.Equal(1L, metrics.Tls.HandshakeFailures);
             await host.StopAsync(CancellationToken.None);
         }
         finally
@@ -1188,11 +1188,11 @@ internal static class ProxyIntegrationTests
 
             var metrics = await WaitForMetricsAsync(
                 host.Services.GetRequiredService<ProxyMetrics>(),
-                snapshot => snapshot.TlsHandshakeTimeouts == 1,
+                snapshot => snapshot.Tls.HandshakeTimeouts == 1,
                 timeout.Token);
 
-            AssertEx.Equal(1L, metrics.TlsHandshakeAttempts);
-            AssertEx.Equal(1L, metrics.TlsHandshakeTimeouts);
+            AssertEx.Equal(1L, metrics.Tls.HandshakeAttempts);
+            AssertEx.Equal(1L, metrics.Tls.HandshakeTimeouts);
             await host.StopAsync(CancellationToken.None);
         }
         finally
@@ -1540,7 +1540,7 @@ internal static class ProxyIntegrationTests
             https: true);
 
         AssertEx.True(result.ClientObservation.Contains("101 Switching Protocols", StringComparison.Ordinal), result.ClientObservation);
-        AssertEx.Equal(1L, result.Metrics.TlsHandshakeSuccesses);
+        AssertEx.Equal(1L, result.Metrics.Tls.HandshakeSuccesses);
         AssertEx.Equal(1L, result.Metrics.UpgradeRequestsSucceeded);
     }
 

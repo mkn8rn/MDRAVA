@@ -118,7 +118,7 @@ public static class ProxyLimitSummarySourceMapper
     {
         return new ProxyLimitRuntimeSummarySource(
             metrics.ActiveConnections,
-            metrics.ActiveTlsHandshakes,
+            metrics.Tls.ActiveHandshakes,
             metrics.ActiveHttp2Streams,
             metrics.Http3.ActiveStreams,
             metrics.UpstreamHttp3.ActiveStreams);

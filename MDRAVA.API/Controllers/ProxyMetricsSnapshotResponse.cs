@@ -143,6 +143,7 @@ public sealed record ProxyMetricsSnapshotResponse(
         var http3 = snapshot.Http3;
         var listeners = snapshot.Listeners;
         var resilience = snapshot.Resilience;
+        var tls = snapshot.Tls;
         var tunnels = snapshot.Tunnels;
         var upstreamHttp3 = snapshot.UpstreamHttp3;
 
@@ -171,11 +172,11 @@ public sealed record ProxyMetricsSnapshotResponse(
             snapshot.ProxyGenerated502Responses,
             snapshot.ProxyGenerated504Responses,
             snapshot.DownstreamWriteTimeouts,
-            snapshot.TlsHandshakeAttempts,
-            snapshot.TlsHandshakeSuccesses,
-            snapshot.TlsHandshakeFailures,
-            snapshot.TlsHandshakeTimeouts,
-            snapshot.TlsNoCertificateForSniFailures,
+            tls.HandshakeAttempts,
+            tls.HandshakeSuccesses,
+            tls.HandshakeFailures,
+            tls.HandshakeTimeouts,
+            tls.NoCertificateForSniFailures,
             snapshot.ClientConnectionsClosedByIdleTimeout,
             snapshot.ClientConnectionsClosedByMaxRequests,
             snapshot.UpstreamConnectionsOpened,
@@ -204,8 +205,8 @@ public sealed record ProxyMetricsSnapshotResponse(
             snapshot.AccessLogsEmitted,
             snapshot.RecentDiagnosticsOverwritten,
             snapshot.ConnectionAdmissionRejections,
-            snapshot.ActiveTlsHandshakes,
-            snapshot.TlsHandshakeAdmissionRejections,
+            tls.ActiveHandshakes,
+            tls.HandshakeAdmissionRejections,
             snapshot.RateLimitedRequests,
             snapshot.RateLimitedUpgrades,
             snapshot.RequestBodySizeRejections,

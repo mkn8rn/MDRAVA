@@ -40,8 +40,8 @@ internal static class HardeningTests
         var second = admission.AcquireTlsHandshake(1);
 
         AssertRejected(second);
-        AssertEx.Equal(1L, metrics.Snapshot().TlsHandshakeAdmissionRejections);
-        AssertEx.Equal(1L, metrics.Snapshot().ActiveTlsHandshakes);
+        AssertEx.Equal(1L, metrics.Snapshot().Tls.HandshakeAdmissionRejections);
+        AssertEx.Equal(1L, metrics.Snapshot().Tls.ActiveHandshakes);
     }
 
     public static void AdmissionLeaseDisposalReleasesTlsHandshakeSlot()
@@ -52,13 +52,13 @@ internal static class HardeningTests
         using (var lease = AcceptedLease(admission.AcquireTlsHandshake(1)))
         {
             AssertEx.Equal(1, admission.ActiveTlsHandshakes);
-            AssertEx.Equal(1L, metrics.Snapshot().ActiveTlsHandshakes);
+            AssertEx.Equal(1L, metrics.Snapshot().Tls.ActiveHandshakes);
             AssertRejected(admission.AcquireTlsHandshake(1));
         }
 
         using var reacquired = AcceptedLease(admission.AcquireTlsHandshake(1));
         AssertEx.Equal(1, admission.ActiveTlsHandshakes);
-        AssertEx.Equal(1L, metrics.Snapshot().ActiveTlsHandshakes);
+        AssertEx.Equal(1L, metrics.Snapshot().Tls.ActiveHandshakes);
     }
 
     public static void RateLimiterEnforcesRequestLimitAndRefills()
