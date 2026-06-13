@@ -4,9 +4,6 @@ namespace MDRAVA.BLL.Configuration;
 
 public static partial class ProxyOptionsValidationRules
 {
-    private const int MaxGeneratedBodyBytes = 64 * 1024;
-    private static readonly HashSet<int> RedirectStatusCodes = [301, 302, 303, 307, 308];
-
     private static bool IsRouteAction(string action)
     {
         return IsProxyAction(action) || IsRedirectAction(action) || IsStaticResponseAction(action);
