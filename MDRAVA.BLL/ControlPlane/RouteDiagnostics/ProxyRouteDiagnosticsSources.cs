@@ -1,5 +1,4 @@
 using MDRAVA.BLL.Configuration;
-using MDRAVA.BLL.Http;
 
 namespace MDRAVA.BLL.ControlPlane.RouteDiagnostics;
 
@@ -142,65 +141,6 @@ public interface IProxyRouteDiagnosticsUpstream
     int Weight { get; }
 
     bool CircuitBreakerEnabled { get; }
-}
-
-public sealed class ProxyRouteDiagnosticsRequestHead
-{
-    public ProxyRouteDiagnosticsRequestHead(
-        string method,
-        string target,
-        string path,
-        string version,
-        string host,
-        ProxyRouteDiagnosticsRequestFraming framing,
-        IReadOnlyList<ProxyHeaderField> headers)
-    {
-        Method = method;
-        Target = target;
-        Path = path;
-        Version = version;
-        Host = host;
-        Framing = framing;
-        Headers = headers;
-    }
-
-    public string Method { get; }
-
-    public string Target { get; }
-
-    public string Path { get; }
-
-    public string Version { get; }
-
-    public string Host { get; }
-
-    public ProxyRouteDiagnosticsRequestFraming Framing { get; }
-
-    public IReadOnlyList<ProxyHeaderField> Headers { get; }
-}
-
-public sealed record ProxyRouteDiagnosticsRequestFraming(
-    ProxyRouteDiagnosticsBodyKind Kind,
-    long? ContentLength)
-{
-    public static ProxyRouteDiagnosticsRequestFraming None { get; } = new(ProxyRouteDiagnosticsBodyKind.None, null);
-
-    public static ProxyRouteDiagnosticsRequestFraming Chunked { get; } = new(ProxyRouteDiagnosticsBodyKind.Chunked, null);
-
-    public static ProxyRouteDiagnosticsRequestFraming FromContentLength(long contentLength)
-    {
-        return contentLength == 0
-            ? None
-            : new ProxyRouteDiagnosticsRequestFraming(ProxyRouteDiagnosticsBodyKind.ContentLength, contentLength);
-    }
-}
-
-public enum ProxyRouteDiagnosticsBodyKind
-{
-    None,
-    ContentLength,
-    Chunked,
-    CloseDelimited
 }
 
 public sealed record ProxyRouteDiagnosticsActionDecision(
