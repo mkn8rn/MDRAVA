@@ -87,7 +87,7 @@ public sealed record ProxyConfigurationReloadResult<TProjection>
         ProxyListenerReloadResult listenerReload,
         TProjection? activeConfiguration)
     {
-        if (listenerReload.Succeeded)
+        if (listenerReload is not ProxyListenerReloadResult.FailedResult)
         {
             throw new ArgumentException("A listener reload failure result requires a failed listener reload.", nameof(listenerReload));
         }
@@ -115,7 +115,7 @@ public sealed record ProxyConfigurationReloadResult<TProjection>
         ProxyListenerReloadResult listenerReload,
         TProjection activeConfiguration)
     {
-        if (!listenerReload.Succeeded)
+        if (listenerReload is not ProxyListenerReloadResult.AppliedResult)
         {
             throw new ArgumentException("A successful reload result requires a successful listener reload.", nameof(listenerReload));
         }

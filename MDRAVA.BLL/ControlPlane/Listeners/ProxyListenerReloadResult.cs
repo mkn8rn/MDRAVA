@@ -1,9 +1,8 @@
 namespace MDRAVA.BLL.ControlPlane.Listeners;
 
-public sealed record ProxyListenerReloadResult
+public abstract record ProxyListenerReloadResult
 {
     private ProxyListenerReloadResult(
-        bool succeeded,
         DateTimeOffset attemptedAtUtc,
         int added,
         int removed,
@@ -12,7 +11,6 @@ public sealed record ProxyListenerReloadResult
         IReadOnlyList<ProxyListenerReloadChange> changes,
         IReadOnlyList<string> errors)
     {
-        Succeeded = succeeded;
         AttemptedAtUtc = attemptedAtUtc;
         Added = added;
         Removed = removed;
@@ -21,8 +19,6 @@ public sealed record ProxyListenerReloadResult
         Changes = changes;
         Errors = errors;
     }
-
-    public bool Succeeded { get; }
 
     public DateTimeOffset AttemptedAtUtc { get; }
 
@@ -47,8 +43,15 @@ public sealed record ProxyListenerReloadResult
         IReadOnlyList<ProxyListenerReloadChange> changes,
         IReadOnlyList<string> errors)
     {
-        return Create(
-            succeeded: true,
+        ValidateCountsAndCollections(
+            added,
+            removed,
+            changed,
+            unchanged,
+            changes,
+            errors);
+
+        return new AppliedResult(
             attemptedAtUtc,
             added,
             removed,
@@ -73,8 +76,15 @@ public sealed record ProxyListenerReloadResult
             throw new ArgumentException("A failed listener reload requires at least one error.", nameof(errors));
         }
 
-        return Create(
-            succeeded: false,
+        ValidateCountsAndCollections(
+            added,
+            removed,
+            changed,
+            unchanged,
+            changes,
+            errors);
+
+        return new FailedResult(
             attemptedAtUtc,
             added,
             removed,
@@ -84,9 +94,7 @@ public sealed record ProxyListenerReloadResult
             errors);
     }
 
-    private static ProxyListenerReloadResult Create(
-        bool succeeded,
-        DateTimeOffset attemptedAtUtc,
+    private static void ValidateCountsAndCollections(
         int added,
         int removed,
         int changed,
@@ -100,15 +108,49 @@ public sealed record ProxyListenerReloadResult
         ArgumentOutOfRangeException.ThrowIfNegative(unchanged);
         ArgumentNullException.ThrowIfNull(changes);
         ArgumentNullException.ThrowIfNull(errors);
+    }
 
-        return new ProxyListenerReloadResult(
-            succeeded,
-            attemptedAtUtc,
-            added,
-            removed,
-            changed,
-            unchanged,
-            changes,
-            errors);
+    public sealed record AppliedResult : ProxyListenerReloadResult
+    {
+        internal AppliedResult(
+            DateTimeOffset attemptedAtUtc,
+            int added,
+            int removed,
+            int changed,
+            int unchanged,
+            IReadOnlyList<ProxyListenerReloadChange> changes,
+            IReadOnlyList<string> errors)
+            : base(
+                attemptedAtUtc,
+                added,
+                removed,
+                changed,
+                unchanged,
+                changes,
+                errors)
+        {
+        }
+    }
+
+    public sealed record FailedResult : ProxyListenerReloadResult
+    {
+        internal FailedResult(
+            DateTimeOffset attemptedAtUtc,
+            int added,
+            int removed,
+            int changed,
+            int unchanged,
+            IReadOnlyList<ProxyListenerReloadChange> changes,
+            IReadOnlyList<string> errors)
+            : base(
+                attemptedAtUtc,
+                added,
+                removed,
+                changed,
+                unchanged,
+                changes,
+                errors)
+        {
+        }
     }
 }

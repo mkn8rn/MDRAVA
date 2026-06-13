@@ -80,6 +80,9 @@ internal static class ConfigurationTests
             changes: [],
             errors: ["listener failed"]);
 
+        AssertEx.True(listenerReload is ProxyListenerReloadResult.AppliedResult);
+        AssertEx.True(failedListenerReload is ProxyListenerReloadResult.FailedResult);
+
         var loadFailed = ProxyConfigurationReloadResult<TestConfigurationProjection>.LoadFailed(
             sourceDirectory: "data",
             attemptedAtUtc: attemptedAtUtc,

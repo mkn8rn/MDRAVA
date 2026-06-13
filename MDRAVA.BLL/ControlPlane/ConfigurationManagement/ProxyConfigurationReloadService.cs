@@ -61,7 +61,7 @@ public sealed class ProxyConfigurationReloadService
             loaded.Snapshot,
             candidate => _store.Replace(candidate),
             cancellationToken);
-        if (!listenerReload.Succeeded)
+        if (listenerReload is ProxyListenerReloadResult.FailedResult)
         {
             _metrics.ConfigReloadFailed();
             var existing = ReadExistingSnapshot();
