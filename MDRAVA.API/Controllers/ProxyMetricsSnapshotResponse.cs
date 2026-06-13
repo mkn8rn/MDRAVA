@@ -142,6 +142,7 @@ public sealed record ProxyMetricsSnapshotResponse(
         ArgumentNullException.ThrowIfNull(snapshot);
         var adminAuth = snapshot.AdminAuth;
         var acmeRenewals = snapshot.AcmeRenewals;
+        var clientConnections = snapshot.ClientConnections;
         var configReloads = snapshot.ConfigReloads;
         var diagnostics = snapshot.Diagnostics;
         var health = snapshot.Health;
@@ -158,8 +159,8 @@ public sealed record ProxyMetricsSnapshotResponse(
         var upgrades = snapshot.Upgrades;
 
         return new ProxyMetricsSnapshotResponse(
-            snapshot.AcceptedConnections,
-            snapshot.ActiveConnections,
+            clientConnections.Accepted,
+            clientConnections.Active,
             snapshot.TotalRequests,
             snapshot.UpstreamSuccesses,
             snapshot.UpstreamFailures,
@@ -187,8 +188,8 @@ public sealed record ProxyMetricsSnapshotResponse(
             tls.HandshakeFailures,
             tls.HandshakeTimeouts,
             tls.NoCertificateForSniFailures,
-            snapshot.ClientConnectionsClosedByIdleTimeout,
-            snapshot.ClientConnectionsClosedByMaxRequests,
+            clientConnections.ClosedByIdleTimeout,
+            clientConnections.ClosedByMaxRequests,
             upstreamPool.ConnectionsOpened,
             upstreamPool.ConnectionsReused,
             upstreamPool.ConnectionsDiscarded,

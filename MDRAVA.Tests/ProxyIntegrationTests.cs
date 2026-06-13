@@ -865,14 +865,14 @@ internal static class ProxyIntegrationTests
 
             using var heldClient = new TcpClient();
             await heldClient.ConnectAsync(IPAddress.Loopback, proxyPort, timeout.Token);
-            await WaitForMetricsAsync(metrics, static snapshot => snapshot.ActiveConnections == 1, timeout.Token);
+            await WaitForMetricsAsync(metrics, static snapshot => snapshot.ClientConnections.Active == 1, timeout.Token);
 
             using var rejectedClient = new TcpClient();
             await rejectedClient.ConnectAsync(IPAddress.Loopback, proxyPort, timeout.Token);
             await WaitForMetricsAsync(metrics, static snapshot => snapshot.Rejections.ClientConnectionAdmissionRejections == 1, timeout.Token);
 
             heldClient.Dispose();
-            await WaitForMetricsAsync(metrics, static snapshot => snapshot.ActiveConnections == 0, timeout.Token);
+            await WaitForMetricsAsync(metrics, static snapshot => snapshot.ClientConnections.Active == 0, timeout.Token);
 
             var response = await SendSingleRequestAsync(
                 proxyPort,
@@ -887,7 +887,7 @@ internal static class ProxyIntegrationTests
             AssertEx.True(response.Contains("200 OK", StringComparison.Ordinal), response);
             AssertEx.True(response.EndsWith("ok", StringComparison.Ordinal), response);
             AssertEx.Equal(1L, snapshot.Rejections.ClientConnectionAdmissionRejections);
-            AssertEx.Equal(0L, snapshot.ActiveConnections);
+            AssertEx.Equal(0L, snapshot.ClientConnections.Active);
             AssertEx.Equal(1, upstreamRequests);
         }
         finally
@@ -954,7 +954,7 @@ internal static class ProxyIntegrationTests
             AssertEx.Equal(2, responses.Count(static response => response.Contains("200 OK", StringComparison.Ordinal)));
             AssertEx.Equal(2, responses.Count(static response => response.Contains("429 Too Many Requests", StringComparison.Ordinal)));
             AssertEx.Equal(2L, metrics.Rejections.RateLimitedRequests);
-            AssertEx.Equal(0L, metrics.ActiveConnections);
+            AssertEx.Equal(0L, metrics.ClientConnections.Active);
         }
         finally
         {
@@ -1249,7 +1249,7 @@ internal static class ProxyIntegrationTests
             expectClientCloseAfterLastResponse: true);
 
         AssertEx.True(result.ClientClosedAfterLastResponse);
-        AssertEx.Equal(1L, result.Metrics.ClientConnectionsClosedByMaxRequests);
+        AssertEx.Equal(1L, result.Metrics.ClientConnections.ClosedByMaxRequests);
     }
 
     public static async Task ClientKeepAliveIdleTimeoutClosesConnection()
@@ -1261,7 +1261,7 @@ internal static class ProxyIntegrationTests
             expectClientCloseAfterLastResponse: true);
 
         AssertEx.True(result.ClientClosedAfterLastResponse);
-        AssertEx.Equal(1L, result.Metrics.ClientConnectionsClosedByIdleTimeout);
+        AssertEx.Equal(1L, result.Metrics.ClientConnections.ClosedByIdleTimeout);
     }
 
     public static async Task MalformedSecondRequestClosesConnection()

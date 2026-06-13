@@ -4,8 +4,7 @@ using MDRAVA.BLL.ControlPlane.RouteDiagnostics;
 namespace MDRAVA.BLL.ControlPlane.Metrics;
 
 public sealed record ProxyMetricsSnapshot(
-    long AcceptedConnections,
-    long ActiveConnections,
+    ProxyClientConnectionMetricsSnapshot ClientConnections,
     long TotalRequests,
     long UpstreamSuccesses,
     long UpstreamFailures,
@@ -28,8 +27,6 @@ public sealed record ProxyMetricsSnapshot(
     long ProxyGenerated504Responses,
     long DownstreamWriteTimeouts,
     ProxyTlsMetricsSnapshot Tls,
-    long ClientConnectionsClosedByIdleTimeout,
-    long ClientConnectionsClosedByMaxRequests,
     ProxyUpstreamPoolMetricsSnapshot UpstreamPool,
     ProxyUpgradeMetricsSnapshot Upgrades,
     ProxyTunnelMetricsSnapshot Tunnels,
@@ -54,6 +51,9 @@ public sealed record ProxyMetricsSnapshot(
     long RouteMatchDryRuns,
     IReadOnlyList<ProxyRouteDryRunFailureSnapshot> RouteMatchDryRunFailures)
 {
+    public ProxyClientConnectionMetricsSnapshot ClientConnections { get; } =
+        ClientConnections ?? throw new ArgumentNullException(nameof(ClientConnections));
+
     public ProxyHttp3MetricsSnapshot Http3 { get; } =
         Http3 ?? throw new ArgumentNullException(nameof(Http3));
 

@@ -122,8 +122,11 @@ internal static class MetricsTests
         };
 
         var snapshot = new ProxyMetricsSnapshot(
-            AcceptedConnections: 0,
-            ActiveConnections: 0,
+            ClientConnections: new ProxyClientConnectionMetricsSnapshot(
+                Accepted: 0,
+                Active: 0,
+                ClosedByIdleTimeout: 0,
+                ClosedByMaxRequests: 0),
             TotalRequests: 0,
             UpstreamSuccesses: 0,
             UpstreamFailures: 0,
@@ -160,8 +163,6 @@ internal static class MetricsTests
                 NoCertificateForSniFailures: 0,
                 ActiveHandshakes: 0,
                 HandshakeAdmissionRejections: 0),
-            ClientConnectionsClosedByIdleTimeout: 0,
-            ClientConnectionsClosedByMaxRequests: 0,
             UpstreamPool: new ProxyUpstreamPoolMetricsSnapshot(
                 ConnectionsOpened: 0,
                 ConnectionsReused: 0,

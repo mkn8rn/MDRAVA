@@ -117,7 +117,7 @@ public static class ProxyLimitSummarySourceMapper
     public static ProxyLimitRuntimeSummarySource FromMetrics(ProxyMetricsSnapshot metrics)
     {
         return new ProxyLimitRuntimeSummarySource(
-            metrics.ActiveConnections,
+            metrics.ClientConnections.Active,
             metrics.Tls.ActiveHandshakes,
             metrics.Http2.ActiveStreams,
             metrics.Http3.ActiveStreams,
