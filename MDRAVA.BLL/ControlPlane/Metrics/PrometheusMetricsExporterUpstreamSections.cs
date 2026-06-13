@@ -13,6 +13,7 @@ public sealed partial class PrometheusMetricsExporter
     {
         var upstreamHttp3 = proxy.UpstreamHttp3;
         var upstreamHttp2 = proxy.UpstreamHttp2;
+        var upstreamPool = proxy.UpstreamPool;
         var resilience = proxy.Resilience;
         AppendCounter(builder, "mdrava_upstream_request_attempts_total", "Selected upstream request attempts.", proxy.UpstreamSelections);
         AppendCounter(builder, "mdrava_upstream_http2_requests_total", "Upstream HTTP/2 request attempts.", upstreamHttp2.Requests);
@@ -65,11 +66,11 @@ public sealed partial class PrometheusMetricsExporter
         AppendLabeledCounter(builder, "mdrava_circuit_transitions_total", null, resilience.CircuitClosed, new Label("state", "closed"));
         AppendCounter(builder, "mdrava_circuit_rejections_total", "Requests rejected by open or saturated half-open circuits.", resilience.CircuitRejections);
 
-        AppendGauge(builder, "mdrava_upstream_connections_active", "Active borrowed upstream connections.", proxy.UpstreamPoolActiveConnections);
-        AppendGauge(builder, "mdrava_upstream_connections_idle", "Idle reusable upstream connections.", proxy.UpstreamPoolIdleConnections);
-        AppendCounter(builder, "mdrava_upstream_connections_opened_total", "Opened upstream connections.", proxy.UpstreamConnectionsOpened);
-        AppendCounter(builder, "mdrava_upstream_connections_reused_total", "Reused upstream connections.", proxy.UpstreamConnectionsReused);
-        AppendCounter(builder, "mdrava_upstream_connections_discarded_total", "Discarded upstream connections.", proxy.UpstreamConnectionsDiscarded);
+        AppendGauge(builder, "mdrava_upstream_connections_active", "Active borrowed upstream connections.", upstreamPool.ActiveConnections);
+        AppendGauge(builder, "mdrava_upstream_connections_idle", "Idle reusable upstream connections.", upstreamPool.IdleConnections);
+        AppendCounter(builder, "mdrava_upstream_connections_opened_total", "Opened upstream connections.", upstreamPool.ConnectionsOpened);
+        AppendCounter(builder, "mdrava_upstream_connections_reused_total", "Reused upstream connections.", upstreamPool.ConnectionsReused);
+        AppendCounter(builder, "mdrava_upstream_connections_discarded_total", "Discarded upstream connections.", upstreamPool.ConnectionsDiscarded);
 
         AppendLabeledCounter(builder, "mdrava_health_checks_total", "Health checks by result.", proxy.HealthChecksAttempted, new Label("result", "attempted"));
         AppendLabeledCounter(builder, "mdrava_health_checks_total", null, proxy.HealthChecksSucceeded, new Label("result", "success"));

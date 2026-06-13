@@ -32,11 +32,7 @@ public sealed partial class ProxyMetrics
             ReadTlsMetricsSnapshot(),
             Interlocked.Read(ref _clientConnectionsClosedByIdleTimeout),
             Interlocked.Read(ref _clientConnectionsClosedByMaxRequests),
-            Interlocked.Read(ref _upstreamConnectionsOpened),
-            Interlocked.Read(ref _upstreamConnectionsReused),
-            Interlocked.Read(ref _upstreamConnectionsDiscarded),
-            Interlocked.Read(ref _upstreamPoolIdleConnections),
-            Interlocked.Read(ref _upstreamPoolActiveConnections),
+            ReadUpstreamPoolMetricsSnapshot(),
             Interlocked.Read(ref _upgradeRequestsReceived),
             Interlocked.Read(ref _upgradeRequestsSucceeded),
             Interlocked.Read(ref _upgradeRequestsRejected),
@@ -140,6 +136,16 @@ public sealed partial class ProxyMetrics
             Interlocked.Read(ref _tlsNoCertificateForSniFailures),
             Interlocked.Read(ref _activeTlsHandshakes),
             Interlocked.Read(ref _tlsHandshakeAdmissionRejections));
+    }
+
+    private ProxyUpstreamPoolMetricsSnapshot ReadUpstreamPoolMetricsSnapshot()
+    {
+        return new ProxyUpstreamPoolMetricsSnapshot(
+            Interlocked.Read(ref _upstreamConnectionsOpened),
+            Interlocked.Read(ref _upstreamConnectionsReused),
+            Interlocked.Read(ref _upstreamConnectionsDiscarded),
+            Interlocked.Read(ref _upstreamPoolIdleConnections),
+            Interlocked.Read(ref _upstreamPoolActiveConnections));
     }
 
     private ProxyResilienceMetricsSnapshot ReadResilienceMetricsSnapshot()

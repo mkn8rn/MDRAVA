@@ -1216,8 +1216,8 @@ internal static class ProxyIntegrationTests
         AssertEx.True(result.ClientResponses[0].EndsWith("one", StringComparison.Ordinal), result.ClientResponses[0]);
         AssertEx.True(result.ClientResponses[1].EndsWith("two", StringComparison.Ordinal), result.ClientResponses[1]);
         AssertEx.Equal(1, result.UpstreamAcceptedConnections);
-        AssertEx.Equal(1L, result.Metrics.UpstreamConnectionsOpened);
-        AssertEx.Equal(1L, result.Metrics.UpstreamConnectionsReused);
+        AssertEx.Equal(1L, result.Metrics.UpstreamPool.ConnectionsOpened);
+        AssertEx.Equal(1L, result.Metrics.UpstreamPool.ConnectionsReused);
     }
 
     public static async Task ClientConnectionCloseHeaderClosesAfterResponse()
@@ -1340,7 +1340,7 @@ internal static class ProxyIntegrationTests
             ]);
 
         AssertEx.Equal(2, result.UpstreamAcceptedConnections);
-        AssertEx.Equal(2L, result.Metrics.UpstreamConnectionsOpened);
+        AssertEx.Equal(2L, result.Metrics.UpstreamPool.ConnectionsOpened);
     }
 
     public static async Task UpstreamConnectionIsNotReusedAfterPrematureDisconnect()
@@ -1358,7 +1358,7 @@ internal static class ProxyIntegrationTests
             useSeparateClients: true);
 
         AssertEx.Equal(2, result.UpstreamAcceptedConnections);
-        AssertEx.True(result.Metrics.UpstreamConnectionsDiscarded >= 1);
+        AssertEx.True(result.Metrics.UpstreamPool.ConnectionsDiscarded >= 1);
     }
 
     public static async Task UpstreamConnectionIsNotReusedAfterFramingError()
@@ -1376,7 +1376,7 @@ internal static class ProxyIntegrationTests
             useSeparateClients: true);
 
         AssertEx.Equal(2, result.UpstreamAcceptedConnections);
-        AssertEx.True(result.Metrics.UpstreamConnectionsDiscarded >= 1);
+        AssertEx.True(result.Metrics.UpstreamPool.ConnectionsDiscarded >= 1);
     }
 
     public static async Task WebSocketUpgradeOverPlaintextReturnsSwitchingProtocols()
@@ -1558,9 +1558,9 @@ internal static class ProxyIntegrationTests
                 return await ReadResponseHeadAsync(stream, cancellationToken);
             });
 
-        AssertEx.Equal(0L, result.Metrics.UpstreamConnectionsOpened);
-        AssertEx.Equal(0L, result.Metrics.UpstreamConnectionsReused);
-        AssertEx.Equal(0L, result.Metrics.UpstreamPoolIdleConnections);
+        AssertEx.Equal(0L, result.Metrics.UpstreamPool.ConnectionsOpened);
+        AssertEx.Equal(0L, result.Metrics.UpstreamPool.ConnectionsReused);
+        AssertEx.Equal(0L, result.Metrics.UpstreamPool.IdleConnections);
     }
 
     public static async Task MissingWebSocketHeadersAreRejected()
@@ -1715,8 +1715,8 @@ internal static class ProxyIntegrationTests
 
         AssertEx.Equal(1, result.FirstRequests);
         AssertEx.Equal(1, result.SecondRequests);
-        AssertEx.Equal(2L, result.Metrics.UpstreamConnectionsOpened);
-        AssertEx.Equal(0L, result.Metrics.UpstreamConnectionsReused);
+        AssertEx.Equal(2L, result.Metrics.UpstreamPool.ConnectionsOpened);
+        AssertEx.Equal(0L, result.Metrics.UpstreamPool.ConnectionsReused);
     }
 
     private static async Task<string> RunSingleResponseUpstreamAsync(
