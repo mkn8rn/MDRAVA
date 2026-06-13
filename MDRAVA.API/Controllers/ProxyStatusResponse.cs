@@ -34,7 +34,7 @@ public sealed record ProxyStatusResponse(
 
     public RouteDiagnosticsStatusResponse RouteDiagnostics { get; init; } = null!;
 
-    public ConfigLintStatus ConfigLint { get; init; } = null!;
+    public ConfigLintStatusResponse ConfigLint { get; init; } = null!;
 
     public ProxyLogPersistenceStatusResponse LogPersistence { get; init; } = null!;
 
@@ -71,7 +71,7 @@ public sealed record ProxyStatusResponse(
                 : ProxyListenerReloadResponse.FromResult(response.LastListenerReload),
             Http3 = response.Http3,
             RouteDiagnostics = RouteDiagnosticsStatusResponse.FromStatus(response.RouteDiagnostics),
-            ConfigLint = response.ConfigLint,
+            ConfigLint = ConfigLintStatusResponse.FromStatus(response.ConfigLint),
             LogPersistence = ProxyLogPersistenceStatusResponse.FromStatus(response.LogPersistence),
             Readiness = ProxyReadinessStatusResponse.FromStatus(response.Readiness),
             Subsystems = response.Subsystems,
