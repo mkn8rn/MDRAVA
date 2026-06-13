@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using MDRAVA.BLL.ControlPlane.ConfigLint;
 using MDRAVA.BLL.ControlPlane.Http3;
 using MDRAVA.BLL.ControlPlane.Listeners;
@@ -6,24 +7,85 @@ using MDRAVA.BLL.ControlPlane.Metrics;
 
 namespace MDRAVA.BLL.ControlPlane.Status;
 
-public sealed record ProxyStatus(
-    bool ListenerLive,
-    string? ListenerName,
-    string? Endpoint,
-    DateTimeOffset? StartedAt,
-    DateTimeOffset? StoppedAt,
-    string? LastError,
-    bool IsShuttingDown,
-    DateTimeOffset? ShutdownStartedAtUtc,
-    DateTimeOffset? ShutdownDeadlineUtc,
-    int? ConfigVersion,
-    DateTimeOffset? ConfigLoadedAtUtc,
-    int ConfiguredListeners,
-    int ConfiguredRoutes,
-    ProxyMetricsSnapshot Metrics,
-    IReadOnlyList<ProxyUpstreamStatus> Upstreams)
+public sealed record ProxyStatus
 {
-    public IReadOnlyList<ProxyListenerStatus> Listeners { get; init; } = [];
+    private IReadOnlyList<ProxyListenerStatus> _listeners = [];
+
+    public ProxyStatus(
+        bool listenerLive,
+        string? listenerName,
+        string? endpoint,
+        DateTimeOffset? startedAt,
+        DateTimeOffset? stoppedAt,
+        string? lastError,
+        bool isShuttingDown,
+        DateTimeOffset? shutdownStartedAtUtc,
+        DateTimeOffset? shutdownDeadlineUtc,
+        int? configVersion,
+        DateTimeOffset? configLoadedAtUtc,
+        int configuredListeners,
+        int configuredRoutes,
+        ProxyMetricsSnapshot metrics,
+        IReadOnlyList<ProxyUpstreamStatus> upstreams)
+    {
+        ArgumentNullException.ThrowIfNull(upstreams);
+
+        ListenerLive = listenerLive;
+        ListenerName = listenerName;
+        Endpoint = endpoint;
+        StartedAt = startedAt;
+        StoppedAt = stoppedAt;
+        LastError = lastError;
+        IsShuttingDown = isShuttingDown;
+        ShutdownStartedAtUtc = shutdownStartedAtUtc;
+        ShutdownDeadlineUtc = shutdownDeadlineUtc;
+        ConfigVersion = configVersion;
+        ConfigLoadedAtUtc = configLoadedAtUtc;
+        ConfiguredListeners = configuredListeners;
+        ConfiguredRoutes = configuredRoutes;
+        Metrics = metrics;
+        Upstreams = Copy(upstreams);
+    }
+
+    public bool ListenerLive { get; }
+
+    public string? ListenerName { get; }
+
+    public string? Endpoint { get; }
+
+    public DateTimeOffset? StartedAt { get; }
+
+    public DateTimeOffset? StoppedAt { get; }
+
+    public string? LastError { get; }
+
+    public bool IsShuttingDown { get; }
+
+    public DateTimeOffset? ShutdownStartedAtUtc { get; }
+
+    public DateTimeOffset? ShutdownDeadlineUtc { get; }
+
+    public int? ConfigVersion { get; }
+
+    public DateTimeOffset? ConfigLoadedAtUtc { get; }
+
+    public int ConfiguredListeners { get; }
+
+    public int ConfiguredRoutes { get; }
+
+    public ProxyMetricsSnapshot Metrics { get; }
+
+    public IReadOnlyList<ProxyUpstreamStatus> Upstreams { get; }
+
+    public IReadOnlyList<ProxyListenerStatus> Listeners
+    {
+        get => _listeners;
+        init
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            _listeners = Copy(value);
+        }
+    }
 
     public ProxyListenerReloadResult? LastListenerReload { get; init; }
 
@@ -53,4 +115,9 @@ public sealed record ProxyStatus(
     public ProxySubsystemSummaries Subsystems { get; init; } = ProxySubsystemSummaries.Unknown;
 
     public ProxyRuntimePreflightStatus RuntimePreflight { get; init; } = ProxyRuntimePreflightStatus.Unknown;
+
+    private static ReadOnlyCollection<T> Copy<T>(IReadOnlyList<T> values)
+    {
+        return new ReadOnlyCollection<T>(values.ToArray());
+    }
 }

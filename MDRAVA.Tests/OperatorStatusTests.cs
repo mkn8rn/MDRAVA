@@ -331,6 +331,63 @@ internal static class OperatorStatusTests
         AssertEx.Equal(ConfigLintStatus.Empty, status.ConfigLint);
     }
 
+    public static void StatusResponseCopiesUpstreamAndListenerLists()
+    {
+        var listener = Listener();
+        var active = ListenerStatus(listener, ProxyListenerState.Active);
+        var failed = ListenerStatus(listener, ProxyListenerState.Failed);
+        var upstream = new ProxyUpstreamStatus(
+            RouteName: "main",
+            UpstreamName: "primary",
+            Endpoint: "https://primary.internal",
+            Scheme: "https",
+            TlsCertificateValidationEnabled: true,
+            SniHost: "primary.internal",
+            HealthCheckEnabled: true,
+            HealthState: UpstreamHealthState.Healthy,
+            LastHealthCheckResult: "status_200",
+            LastHealthCheckAtUtc: DateTimeOffset.UnixEpoch,
+            ConsecutiveSuccesses: 2,
+            ConsecutiveFailures: 0,
+            SelectedRequests: 11,
+            RequestFailures: 0);
+        var replacement = upstream with { UpstreamName = "replacement" };
+        var upstreams = new List<ProxyUpstreamStatus> { upstream };
+        var listeners = new List<ProxyListenerStatus> { active };
+
+        var status = new ProxyStatus(
+            listenerLive: true,
+            listenerName: "main",
+            endpoint: "127.0.0.1:18080",
+            startedAt: DateTimeOffset.UnixEpoch,
+            stoppedAt: null,
+            lastError: null,
+            isShuttingDown: false,
+            shutdownStartedAtUtc: null,
+            shutdownDeadlineUtc: null,
+            configVersion: 7,
+            configLoadedAtUtc: DateTimeOffset.UnixEpoch,
+            configuredListeners: 1,
+            configuredRoutes: 1,
+            metrics: new ProxyMetrics().Snapshot(),
+            upstreams: upstreams)
+        {
+            Listeners = listeners
+        };
+
+        upstreams[0] = replacement;
+        listeners[0] = failed;
+        upstreams.Clear();
+        listeners.Clear();
+
+        AssertEx.Equal(1, status.Upstreams.Count);
+        AssertEx.Equal("primary", status.Upstreams[0].UpstreamName);
+        AssertEx.Equal(1, status.Listeners.Count);
+        AssertEx.Equal(ProxyListenerState.Active, status.Listeners[0].State);
+        AssertEx.False(status.Upstreams is ProxyUpstreamStatus[], "Status upstreams should not expose a mutable array.");
+        AssertEx.False(status.Listeners is ProxyListenerStatus[], "Status listeners should not expose a mutable array.");
+    }
+
     public static void StatusReadinessSourceMapperConsumesRuntimeSummaryWithoutRuntimeSnapshot()
     {
         var listener = Listener();
