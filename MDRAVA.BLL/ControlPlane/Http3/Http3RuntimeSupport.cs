@@ -3,9 +3,22 @@ using MDRAVA.BLL.Configuration;
 
 namespace MDRAVA.BLL.ControlPlane.Http3;
 
-public sealed record Http3SupportConfigurationSource(
-    IReadOnlyList<Http3SupportListenerSource> Listeners,
-    bool UpstreamHttp3Configured);
+public sealed record Http3SupportConfigurationSource
+{
+    public Http3SupportConfigurationSource(
+        IReadOnlyList<Http3SupportListenerSource> Listeners,
+        bool UpstreamHttp3Configured)
+    {
+        ArgumentNullException.ThrowIfNull(Listeners);
+
+        this.Listeners = Http3List.Copy(Listeners);
+        this.UpstreamHttp3Configured = UpstreamHttp3Configured;
+    }
+
+    public IReadOnlyList<Http3SupportListenerSource> Listeners { get; }
+
+    public bool UpstreamHttp3Configured { get; }
+}
 
 public sealed record Http3SupportListenerSource(
     bool Configured,

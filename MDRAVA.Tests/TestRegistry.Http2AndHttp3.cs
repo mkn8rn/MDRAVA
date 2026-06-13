@@ -85,6 +85,7 @@ internal static partial class TestRegistry
     Test("TCP ALPN does not advertise HTTP/3", Sync(Http3InfrastructureTests.TcpAlpnDoesNotAdvertiseHttp3), TestTaxonomy.Http3, TestTaxonomy.Config, TestTaxonomy.Tls),
     Test("Status and effective projection report HTTP/3 enabled", Sync(Http3InfrastructureTests.StatusAndEffectiveProjectionReportHttp3Enabled), TestTaxonomy.Http3, TestTaxonomy.Config),
     Test("Final HTTP/3 support projection reports matrix and final naming", Sync(Http3InfrastructureTests.FinalSupportProjectionReportsHttp3MatrixAndFinalNaming), TestTaxonomy.Http3, TestTaxonomy.Config),
+    Test("HTTP/3 support sources and projection copy input lists", Sync(Http3InfrastructureTests.Http3SupportSourcesAndProjectionCopyInputLists), TestTaxonomy.Http3, TestTaxonomy.Config),
     Test("HTTP/3 upstream protocol accepts explicit config", Sync(Http3InfrastructureTests.UpstreamProtocolAcceptsExplicitHttp3), TestTaxonomy.Http3, TestTaxonomy.UpstreamHttp3, TestTaxonomy.Config),
     Test("HTTP/3 defaults on for eligible TLS runtime listener", Sync(ClientHttp3Tests.Http3DefaultEnabledForEligibleTlsListener), TestTaxonomy.Http3, TestTaxonomy.Tls),
     Test("Explicit HTTP/3 disable prevents traffic", Sync(ClientHttp3Tests.ExplicitHttp3DisablePreventsTraffic), TestTaxonomy.Http3),

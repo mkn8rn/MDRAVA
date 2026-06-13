@@ -15,9 +15,31 @@ public sealed record RuntimeHttp3SupportProjection(
     bool UdpQuicListenerIdentityModeled,
     string ReadinessConclusion)
 {
+    private IReadOnlyList<string> _defaultReadinessBlockers = Http3List.Copy<string>([]);
+    private IReadOnlyList<string> _clientProtocols = Http3List.Copy(["http1", "http2", "http3"]);
+    private IReadOnlyList<string> _upstreamProtocols = Http3List.Copy(["http1", "http2", "http3"]);
+    private IReadOnlyList<string> _supportedRouteActions = Http3List.Copy(["proxy", "redirect", "staticResponse", "maintenance"]);
+    private IReadOnlyList<string> _supportedPolicyFeatures = Http3List.Copy(
+    [
+        "cache_get_head",
+        "retry_circuit_safe_methods",
+        "weighted_balancing",
+        "health_checks",
+        "path_rewrites",
+        "canonical_redirects",
+        "http_to_https_redirects",
+        "forwarded_headers",
+        "request_response_header_policies"
+    ]);
+    private IReadOnlyList<string> _unsupportedFeatures = Http3List.Copy(RuntimeHttp3UnsupportedFeatureCodes.EffectiveConfig);
+
     public string DefaultEnablementState { get; init; } = "disabled";
 
-    public IReadOnlyList<string> DefaultReadinessBlockers { get; init; } = [];
+    public IReadOnlyList<string> DefaultReadinessBlockers
+    {
+        get => _defaultReadinessBlockers;
+        init => _defaultReadinessBlockers = Http3List.Copy(value);
+    }
 
     public string AltSvcStateReason { get; init; } = "not_configured";
 
@@ -33,26 +55,35 @@ public sealed record RuntimeHttp3SupportProjection(
 
     public string UpstreamHttp3SupportLevel { get; init; } = "opt_in_https_quic";
 
-    public IReadOnlyList<string> ClientProtocols { get; init; } = ["http1", "http2", "http3"];
+    public IReadOnlyList<string> ClientProtocols
+    {
+        get => _clientProtocols;
+        init => _clientProtocols = Http3List.Copy(value);
+    }
 
-    public IReadOnlyList<string> UpstreamProtocols { get; init; } = ["http1", "http2", "http3"];
+    public IReadOnlyList<string> UpstreamProtocols
+    {
+        get => _upstreamProtocols;
+        init => _upstreamProtocols = Http3List.Copy(value);
+    }
 
-    public IReadOnlyList<string> SupportedRouteActions { get; init; } = ["proxy", "redirect", "staticResponse", "maintenance"];
+    public IReadOnlyList<string> SupportedRouteActions
+    {
+        get => _supportedRouteActions;
+        init => _supportedRouteActions = Http3List.Copy(value);
+    }
 
-    public IReadOnlyList<string> SupportedPolicyFeatures { get; init; } =
-    [
-        "cache_get_head",
-        "retry_circuit_safe_methods",
-        "weighted_balancing",
-        "health_checks",
-        "path_rewrites",
-        "canonical_redirects",
-        "http_to_https_redirects",
-        "forwarded_headers",
-        "request_response_header_policies"
-    ];
+    public IReadOnlyList<string> SupportedPolicyFeatures
+    {
+        get => _supportedPolicyFeatures;
+        init => _supportedPolicyFeatures = Http3List.Copy(value);
+    }
 
-    public IReadOnlyList<string> UnsupportedFeatures { get; init; } = RuntimeHttp3UnsupportedFeatureCodes.EffectiveConfig;
+    public IReadOnlyList<string> UnsupportedFeatures
+    {
+        get => _unsupportedFeatures;
+        init => _unsupportedFeatures = Http3List.Copy(value);
+    }
 
     public bool UpstreamHttp3Configured { get; init; }
 

@@ -482,6 +482,76 @@ internal static class Http3InfrastructureTests
         }
     }
 
+    public static void Http3SupportSourcesAndProjectionCopyInputLists()
+    {
+        var listener = new Http3SupportListenerSource(
+            Configured: true,
+            EnabledForTraffic: true,
+            EnablementLevel: "default",
+            AltSvcEnabled: true,
+            AltSvcMaxAgeSeconds: 3600,
+            QuicListenerIdentity: "main|quic");
+        var listeners = new List<Http3SupportListenerSource> { listener };
+        var source = new Http3SupportConfigurationSource(
+            Listeners: listeners,
+            UpstreamHttp3Configured: true);
+        var blockers = new List<string> { "runtime_quic_unsupported" };
+        var clientProtocols = new List<string> { "http1", "http2", "http3" };
+        var upstreamProtocols = new List<string> { "http1", "http3" };
+        var routeActions = new List<string> { "proxy" };
+        var policyFeatures = new List<string> { "cache_get_head" };
+        var unsupported = new List<string> { "webtransport_over_http3" };
+        var projection = new RuntimeHttp3SupportProjection(
+            RuntimeSupport: "supported",
+            QuicListenerSupported: true,
+            QuicConnectionSupported: true,
+            Configured: "default",
+            EnablementLevel: "default",
+            EnabledForTraffic: true,
+            QuicListenerReady: true,
+            AltSvcConfigured: true,
+            AltSvcActive: true,
+            AltSvcMaxAgeSeconds: 3600,
+            DisabledReason: "quic_listener_ready",
+            UdpQuicListenerIdentityModeled: true,
+            ReadinessConclusion: "default_enabled_for_eligible_tls_proxy_listeners")
+        {
+            DefaultReadinessBlockers = blockers,
+            ClientProtocols = clientProtocols,
+            UpstreamProtocols = upstreamProtocols,
+            SupportedRouteActions = routeActions,
+            SupportedPolicyFeatures = policyFeatures,
+            UnsupportedFeatures = unsupported
+        };
+
+        listeners[0] = listener with { QuicListenerIdentity = "replacement|quic" };
+        blockers[0] = "replacement_blocker";
+        clientProtocols[0] = "replacement_client";
+        upstreamProtocols[0] = "replacement_upstream";
+        routeActions[0] = "replacement_action";
+        policyFeatures[0] = "replacement_policy";
+        unsupported[0] = "replacement_unsupported";
+        listeners.Clear();
+        blockers.Clear();
+        clientProtocols.Clear();
+        upstreamProtocols.Clear();
+        routeActions.Clear();
+        policyFeatures.Clear();
+        unsupported.Clear();
+
+        AssertEx.Equal(1, source.Listeners.Count);
+        AssertEx.Equal("main|quic", source.Listeners[0].QuicListenerIdentity);
+        AssertEx.Equal("runtime_quic_unsupported", projection.DefaultReadinessBlockers[0]);
+        AssertEx.Equal("http1", projection.ClientProtocols[0]);
+        AssertEx.Equal("http1", projection.UpstreamProtocols[0]);
+        AssertEx.Equal("proxy", projection.SupportedRouteActions[0]);
+        AssertEx.Equal("cache_get_head", projection.SupportedPolicyFeatures[0]);
+        AssertEx.Equal("webtransport_over_http3", projection.UnsupportedFeatures[0]);
+        AssertEx.False(source.Listeners is Http3SupportListenerSource[], "HTTP/3 configuration source listeners should not expose a mutable array.");
+        AssertEx.False(projection.ClientProtocols is string[], "HTTP/3 projection protocol lists should not expose mutable arrays.");
+        AssertEx.False(projection.UnsupportedFeatures is string[], "HTTP/3 projection unsupported-feature lists should not expose mutable arrays.");
+    }
+
     public static void UpstreamProtocolAcceptsExplicitHttp3()
     {
         var options = ValidProxyOptions(
