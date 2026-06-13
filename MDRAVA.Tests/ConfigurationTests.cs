@@ -127,6 +127,33 @@ internal static class ConfigurationTests
 
     }
 
+    public static void ListenerReloadResultCopiesChangesAndErrors()
+    {
+        var changes = new List<ProxyListenerReloadChange>
+        {
+            new("changed", "main", "main|tcp", "127.0.0.1|18080|tcp", "active")
+        };
+        var errors = new List<string> { "bind failed" };
+
+        var result = ProxyListenerReloadResult.Failed(
+            DateTimeOffset.UnixEpoch,
+            added: 0,
+            removed: 0,
+            changed: 1,
+            unchanged: 0,
+            changes,
+            errors);
+
+        changes.Clear();
+        errors.Clear();
+
+        AssertEx.Equal(1, result.Changes.Count);
+        AssertEx.Equal("changed", result.Changes[0].Action);
+        AssertEx.Equal("main", result.Changes[0].Name);
+        AssertEx.Equal(1, result.Errors.Count);
+        AssertEx.Equal("bind failed", result.Errors[0]);
+    }
+
     public static void ConfigurationValidationResultNamesValidationOutcomes()
     {
         var attemptedAtUtc = DateTimeOffset.UnixEpoch.AddMinutes(3);
