@@ -167,14 +167,6 @@ public sealed partial class ProxyMetrics
 
     public void UpgradeUpstreamFailed() => Interlocked.Increment(ref _upgradeUpstreamFailures);
 
-    public void HealthCheckAttempted() => Interlocked.Increment(ref _healthChecksAttempted);
-
-    public void HealthCheckSucceeded() => Interlocked.Increment(ref _healthChecksSucceeded);
-
-    public void HealthCheckFailed() => Interlocked.Increment(ref _healthChecksFailed);
-
-    public void UpstreamHealthTransition() => Interlocked.Increment(ref _upstreamHealthTransitions);
-
     public void UpstreamRequestFailed() => Interlocked.Increment(ref _upstreamRequestFailures);
 
     public void RequestIdGenerated() => Interlocked.Increment(ref _requestIdsGenerated);
