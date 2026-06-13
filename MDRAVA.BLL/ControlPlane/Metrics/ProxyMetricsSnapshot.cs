@@ -41,9 +41,7 @@ public sealed record ProxyMetricsSnapshot(
     IReadOnlyList<ProxyRequestSeriesSnapshot> RequestsByRoute,
     ProxyConfigReloadMetricsSnapshot ConfigReloads,
     ProxyAdminAuthMetricsSnapshot AdminAuth,
-    long AcmeRenewalAttempts,
-    long AcmeRenewalSuccesses,
-    long AcmeRenewalFailures,
+    ProxyAcmeRenewalMetricsSnapshot AcmeRenewals,
     ProxyResilienceMetricsSnapshot Resilience,
     IReadOnlyList<ProxyUpstreamSelectionSnapshot> UpstreamSelectionsByUpstream,
     ProxyListenerMetricsSnapshot Listeners,
@@ -91,6 +89,9 @@ public sealed record ProxyMetricsSnapshot(
 
     public ProxyAdminAuthMetricsSnapshot AdminAuth { get; } =
         AdminAuth ?? throw new ArgumentNullException(nameof(AdminAuth));
+
+    public ProxyAcmeRenewalMetricsSnapshot AcmeRenewals { get; } =
+        AcmeRenewals ?? throw new ArgumentNullException(nameof(AcmeRenewals));
 
     public ProxyResilienceMetricsSnapshot Resilience { get; } =
         Resilience ?? throw new ArgumentNullException(nameof(Resilience));

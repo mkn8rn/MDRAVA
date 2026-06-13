@@ -200,9 +200,10 @@ internal static class MetricsTests
             AdminAuth: new ProxyAdminAuthMetricsSnapshot(
                 Successes: 0,
                 Failures: 0),
-            AcmeRenewalAttempts: 0,
-            AcmeRenewalSuccesses: 0,
-            AcmeRenewalFailures: 0,
+            AcmeRenewals: new ProxyAcmeRenewalMetricsSnapshot(
+                Attempts: 0,
+                Successes: 0,
+                Failures: 0),
             Resilience: new ProxyResilienceMetricsSnapshot(
                 RetryAttempts: 0,
                 RetryExhausted: 0,

@@ -14,6 +14,7 @@ public sealed partial class PrometheusMetricsExporter
         var acme = input.AcmeCertificates;
         var configReloads = proxy.ConfigReloads;
         var adminAuth = proxy.AdminAuth;
+        var acmeRenewals = proxy.AcmeRenewals;
         var rejections = proxy.Rejections;
         var builder = new StringBuilder();
 
@@ -91,9 +92,9 @@ public sealed partial class PrometheusMetricsExporter
         AppendGauge(builder, "mdrava_listeners_active", "Currently active proxy listeners.", listeners.ActiveListeners);
         AppendLabeledCounter(builder, "mdrava_admin_auth_total", "Admin authentication attempts by result.", adminAuth.Successes, new Label("result", "success"));
         AppendLabeledCounter(builder, "mdrava_admin_auth_total", null, adminAuth.Failures, new Label("result", "failure"));
-        AppendLabeledCounter(builder, "mdrava_acme_renewals_total", "ACME renewal attempts by result.", proxy.AcmeRenewalAttempts, new Label("result", "attempt"));
-        AppendLabeledCounter(builder, "mdrava_acme_renewals_total", null, proxy.AcmeRenewalSuccesses, new Label("result", "success"));
-        AppendLabeledCounter(builder, "mdrava_acme_renewals_total", null, proxy.AcmeRenewalFailures, new Label("result", "failure"));
+        AppendLabeledCounter(builder, "mdrava_acme_renewals_total", "ACME renewal attempts by result.", acmeRenewals.Attempts, new Label("result", "attempt"));
+        AppendLabeledCounter(builder, "mdrava_acme_renewals_total", null, acmeRenewals.Successes, new Label("result", "success"));
+        AppendLabeledCounter(builder, "mdrava_acme_renewals_total", null, acmeRenewals.Failures, new Label("result", "failure"));
         AppendAcmeCertificateStatus(builder, acme);
 
         return builder.ToString();

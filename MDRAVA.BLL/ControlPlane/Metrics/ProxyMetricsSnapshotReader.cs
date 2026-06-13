@@ -42,9 +42,7 @@ public sealed partial class ProxyMetrics
             ReadRequestsByRoute(),
             ReadConfigReloadMetricsSnapshot(),
             ReadAdminAuthMetricsSnapshot(),
-            Interlocked.Read(ref _acmeRenewalAttempts),
-            Interlocked.Read(ref _acmeRenewalSuccesses),
-            Interlocked.Read(ref _acmeRenewalFailures),
+            ReadAcmeRenewalMetricsSnapshot(),
             ReadResilienceMetricsSnapshot(),
             ReadUpstreamSelectionsByUpstream(),
             ReadListenerMetricsSnapshot(),
@@ -182,6 +180,14 @@ public sealed partial class ProxyMetrics
         return new ProxyAdminAuthMetricsSnapshot(
             Interlocked.Read(ref _adminAuthSuccesses),
             Interlocked.Read(ref _adminAuthFailures));
+    }
+
+    private ProxyAcmeRenewalMetricsSnapshot ReadAcmeRenewalMetricsSnapshot()
+    {
+        return new ProxyAcmeRenewalMetricsSnapshot(
+            Interlocked.Read(ref _acmeRenewalAttempts),
+            Interlocked.Read(ref _acmeRenewalSuccesses),
+            Interlocked.Read(ref _acmeRenewalFailures));
     }
 
     private ProxyResilienceMetricsSnapshot ReadResilienceMetricsSnapshot()
