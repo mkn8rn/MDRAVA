@@ -286,6 +286,36 @@ internal static class CacheTests
             storedAtUtc.AddSeconds(-1)));
     }
 
+    public static void CachedResponseHeaderPolicyBuildsFramedHeaders()
+    {
+        var storedAtUtc = DateTimeOffset.UnixEpoch.AddMinutes(1);
+        var response = new CachedProxyResponse(
+            200,
+            "OK",
+            [
+                new ProxyHeaderField("Content-Type", "text/plain"),
+                new ProxyHeaderField("Connection", "close"),
+                new ProxyHeaderField("Keep-Alive", "timeout=5"),
+                new ProxyHeaderField("X-Origin", "stored")
+            ],
+            Encoding.ASCII.GetBytes("cached-body"),
+            storedAtUtc,
+            storedAtUtc.AddMinutes(1));
+
+        var headers = ProxyCachedResponseHeaderPolicy.BuildFramedResponseHeaders(
+            response,
+            "req-123",
+            storedAtUtc.AddSeconds(3.9));
+
+        AssertEx.True(headers.Any(static header => header.Name == "Content-Type" && header.Value == "text/plain"));
+        AssertEx.True(headers.Any(static header => header.Name == "X-Origin" && header.Value == "stored"));
+        AssertEx.False(headers.Any(static header => string.Equals(header.Name, "Connection", StringComparison.OrdinalIgnoreCase)));
+        AssertEx.False(headers.Any(static header => string.Equals(header.Name, "Keep-Alive", StringComparison.OrdinalIgnoreCase)));
+        AssertEx.Equal("3", headers.Single(static header => header.Name == "age").Value);
+        AssertEx.Equal("req-123", headers.Single(static header => header.Name == "x-request-id").Value);
+        AssertEx.Equal("11", headers.Single(static header => header.Name == "content-length").Value);
+    }
+
     public static async Task OversizedResponseIsStreamedButNotCached()
     {
         var body = "0123456789";

@@ -730,15 +730,10 @@ public sealed class Http3Connection
         ProxyRequestContext context,
         CancellationToken cancellationToken)
     {
-        var ageSeconds = ProxyCacheAgePolicy.CalculateAgeSeconds(
-            response.StoredAtUtc,
+        var headers = ProxyCachedResponseHeaderPolicy.BuildFramedResponseHeaders(
+            response,
+            context.RequestId,
             _timeProvider.GetUtcNow());
-        var headers = response.Headers
-            .Where(static header => !HopByHopHeaderPolicy.IsHopByHopHeader(header.Name))
-            .Append(new ProxyHeaderField("age", ageSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture)))
-            .Append(new ProxyHeaderField("x-request-id", context.RequestId))
-            .Append(new ProxyHeaderField("content-length", response.Body.Length.ToString(System.Globalization.CultureInfo.InvariantCulture)))
-            .ToArray();
         var includeBody = !string.Equals(requestHead.Method, "HEAD", StringComparison.OrdinalIgnoreCase);
         await WriteHeadersAndBodyAsync(stream, response.StatusCode, headers, includeBody ? response.Body : [], cancellationToken);
         context.ResponseStarted = true;
