@@ -36,7 +36,8 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
     public ConfigLintResult LintActive()
     {
         var now = _timeProvider.GetUtcNow();
-        if (!_activeConfigurationSource.TryRead(out var snapshot) || snapshot is null)
+        var activeConfiguration = _activeConfigurationSource.Read();
+        if (activeConfiguration is not ProxyConfigLintActiveConfigurationReadResult.AvailableResult available)
         {
             var result = BuildResult(
                 now,
@@ -46,6 +47,7 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
             return result;
         }
 
+        var snapshot = available.Snapshot;
         var findings = Analyze(
             snapshot,
             activeRuntime: true,

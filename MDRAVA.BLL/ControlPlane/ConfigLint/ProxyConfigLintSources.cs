@@ -18,18 +18,17 @@ public sealed class ProxyConfigLintActiveConfigurationSource
         _http3PlatformSupportSource = http3PlatformSupportSource;
     }
 
-    public bool TryRead(out ProxyConfigLintConfigurationSnapshot? snapshot)
+    public ProxyConfigLintActiveConfigurationReadResult Read()
     {
         if (!_configurationStore.TryGetSnapshot(out var runtimeSnapshot) || runtimeSnapshot is null)
         {
-            snapshot = null;
-            return false;
+            return ProxyConfigLintActiveConfigurationReadResult.MissingConfiguration;
         }
 
-        snapshot = ProxyConfigLintConfigurationSnapshotMapper.ToLintSnapshot(
-            ProxyConfigLintRuntimeConfigurationSourceMapper.FromConfiguration(runtimeSnapshot),
-            _http3PlatformSupportSource.Read());
-        return true;
+        return ProxyConfigLintActiveConfigurationReadResult.Available(
+            ProxyConfigLintConfigurationSnapshotMapper.ToLintSnapshot(
+                ProxyConfigLintRuntimeConfigurationSourceMapper.FromConfiguration(runtimeSnapshot),
+                _http3PlatformSupportSource.Read()));
     }
 }
 

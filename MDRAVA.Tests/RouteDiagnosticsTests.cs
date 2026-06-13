@@ -1132,10 +1132,11 @@ internal static class RouteDiagnosticsTests
             _snapshot = snapshot;
         }
 
-        public bool TryRead(out ProxyConfigLintConfigurationSnapshot? snapshot)
+        public ProxyConfigLintActiveConfigurationReadResult Read()
         {
-            snapshot = _snapshot;
-            return snapshot is not null;
+            return _snapshot is null
+                ? ProxyConfigLintActiveConfigurationReadResult.MissingConfiguration
+                : ProxyConfigLintActiveConfigurationReadResult.Available(_snapshot);
         }
     }
 
