@@ -619,16 +619,14 @@ public sealed class Http3Connection
                     _metrics.RetryExhausted();
                 }
 
+                var failureResponse = ProxyGeneratedFailurePolicy.BuildFailureResponse(ProxyFailureKind.NoHealthyUpstream);
                 await WriteGeneratedResponseAsync(
                     stream,
-                    ProxyGeneratedFailurePolicy.BuildFailureResponse(ProxyFailureKind.NoHealthyUpstream),
+                    failureResponse,
                     context,
                     requestHead.Method,
                     cancellationToken);
-                return ForwardingResult.Failure(
-                    responseStarted: true,
-                    responseStatusCode: 503,
-                    failureKind: ProxyFailureKind.NoHealthyUpstream);
+                return failureResponse.ToForwardingResult();
             }
 
             context.SetUpstream(ProxyRequestContextRuntimeMapper.ToRequestUpstream(selection.Upstream));

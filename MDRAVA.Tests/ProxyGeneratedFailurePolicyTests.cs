@@ -66,6 +66,11 @@ internal static class ProxyGeneratedFailurePolicyTests
         AssertEx.True(forwardingResult.ResponseStarted);
         AssertEx.Equal(504, forwardingResult.ResponseStatusCode);
         AssertEx.Equal(ProxyFailureKind.UpstreamResponseHeadTimeout, forwardingResult.FailureKind);
+
+        var noHealthyForwardingResult = (ForwardingResult.FailureResult)noHealthyResponse.ToForwardingResult();
+        AssertEx.True(noHealthyForwardingResult.ResponseStarted);
+        AssertEx.Equal(503, noHealthyForwardingResult.ResponseStatusCode);
+        AssertEx.Equal(ProxyFailureKind.NoHealthyUpstream, noHealthyForwardingResult.FailureKind);
     }
 
     public static void ForwardingFailurePolicyHidesStatusAfterResponseStarts()
