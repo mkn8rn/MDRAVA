@@ -180,10 +180,13 @@ public sealed class ClientConnection
                 var timeout = requestsProcessed == 0
                     ? _configurationSnapshot.Timeouts.ClientRequestHeadTimeout
                     : _configurationSnapshot.Timeouts.ClientKeepAliveIdleTimeout;
-                var requestHeadRead = await ProxyTimeoutPolicy.RunAsync(
-                    timeoutToken => ReadRequestHeadAsync(clientStream, requestHeadBuffer, maxRequestHeadBytes, timeoutToken),
+                var requestHeadRead = await Http1ClientRequestHeadReader.ReadAsync(
+                    clientStream,
+                    requestHeadBuffer,
+                    maxRequestHeadBytes,
                     timeout,
                     timeoutKind,
+                    _metrics,
                     cancellationToken);
                 if (requestHeadRead.IsEmptyRequest)
                 {
@@ -847,44 +850,6 @@ public sealed class ClientConnection
         return response.ToForwardingResult();
     }
 
-    private async ValueTask<Http1HeadReadResult> ReadRequestHeadAsync(
-        Stream clientStream,
-        byte[] requestHeadBuffer,
-        int maxRequestHeadBytes,
-        CancellationToken cancellationToken)
-    {
-        var totalBytesRead = 0;
-
-        while (totalBytesRead < maxRequestHeadBytes)
-        {
-            var bytesRead = await clientStream.ReadAsync(
-                requestHeadBuffer.AsMemory(totalBytesRead, 1),
-                cancellationToken);
-
-            if (bytesRead == 0)
-            {
-                return totalBytesRead == 0
-                    ? Http1HeadReadResult.RequestEmpty()
-                    : Http1HeadReadResult.RequestIncomplete(totalBytesRead);
-            }
-
-            totalBytesRead += bytesRead;
-            _metrics.AddBytesRead(bytesRead);
-
-            var requestHeadLength = FindRequestHeadLength(requestHeadBuffer.AsSpan(0, totalBytesRead));
-            if (requestHeadLength > 0)
-            {
-                return Http1HeadReadResult.Read(
-                    requestHeadLength,
-                    totalBytesRead,
-                    requestHeadBuffer.AsMemory(0, requestHeadLength),
-                    ReadOnlyMemory<byte>.Empty);
-            }
-        }
-
-        return Http1HeadReadResult.RequestTooLarge(totalBytesRead);
-    }
-
     private async ValueTask WriteGeneratedResponseAsync(
         Stream clientStream,
         int statusCode,
@@ -1055,22 +1020,6 @@ public sealed class ClientConnection
             context.TunnelBytesClientToUpstream = tunnelCompleted.Tunnel.BytesClientToUpstream;
             context.TunnelBytesUpstreamToClient = tunnelCompleted.Tunnel.BytesUpstreamToClient;
         }
-    }
-
-    private static int FindRequestHeadLength(ReadOnlySpan<byte> bytes)
-    {
-        for (var index = 3; index < bytes.Length; index++)
-        {
-            if (bytes[index - 3] == (byte)'\r'
-                && bytes[index - 2] == (byte)'\n'
-                && bytes[index - 1] == (byte)'\r'
-                && bytes[index] == (byte)'\n')
-            {
-                return index + 1;
-            }
-        }
-
-        return -1;
     }
 
     private static bool IsClientDisconnect(IOException exception)
