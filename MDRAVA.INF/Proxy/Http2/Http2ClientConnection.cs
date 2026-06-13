@@ -866,9 +866,9 @@ public sealed class Http2ClientConnection
             headers,
             string.Equals(method, "HEAD", StringComparison.OrdinalIgnoreCase) ? [] : body,
             cancellationToken);
-        context.ResponseStarted = true;
-        context.ResponseStatusCode = response.StatusCode;
-        context.KeepClientConnectionOpen = true;
+        context.RecordGeneratedRouteResponse(
+            response,
+            keepClientConnectionOpen: true);
     }
 
     private async ValueTask WriteGeneratedResponseAsync(

@@ -334,6 +334,32 @@ internal static class RouteDiagnosticsTests
         AssertEx.False(context.KeepClientConnectionOpen);
     }
 
+    public static void RequestContextRecordsGeneratedRouteResponse()
+    {
+        var context = new ProxyRequestContext(
+            "req-route",
+            "listener",
+            "tcp",
+            "127.0.0.1:50000",
+            7,
+            TimeProvider.System);
+        var response = new GeneratedRouteResponse(
+            307,
+            "Temporary Redirect",
+            "text/plain",
+            "redirect",
+            [new ProxyHeaderField("Location", "/next")]);
+
+        context.RecordGeneratedRouteResponse(
+            response,
+            keepClientConnectionOpen: true);
+
+        AssertEx.True(context.ResponseStarted);
+        AssertEx.Equal(307, context.ResponseStatusCode);
+        AssertEx.Equal(ProxyFailureKind.None, context.FailureKind);
+        AssertEx.True(context.KeepClientConnectionOpen);
+    }
+
     public static void RouteDiagnosticsStatusNamesEnabledAvailability()
     {
         var status = RouteDiagnosticsStatus.Enabled;

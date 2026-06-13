@@ -759,9 +759,9 @@ public sealed class Http3Connection
             headers,
             string.Equals(method, "HEAD", StringComparison.OrdinalIgnoreCase) ? [] : bodyBytes,
             cancellationToken);
-        context.ResponseStarted = true;
-        context.ResponseStatusCode = response.StatusCode;
-        context.KeepClientConnectionOpen = true;
+        context.RecordGeneratedRouteResponse(
+            response,
+            keepClientConnectionOpen: true);
     }
 
     private ValueTask WriteGeneratedResponseAsync(

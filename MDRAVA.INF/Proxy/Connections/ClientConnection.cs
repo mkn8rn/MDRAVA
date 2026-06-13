@@ -950,9 +950,9 @@ public sealed class ClientConnection
             contentType: response.ContentType,
             headers: ApplyAltSvc(response.Headers));
 
-        context.ResponseStarted = true;
-        context.ResponseStatusCode = response.StatusCode;
-        context.KeepClientConnectionOpen = false;
+        context.RecordGeneratedRouteResponse(
+            response,
+            keepClientConnectionOpen: false);
     }
 
     private IReadOnlyList<ProxyHeaderField> ApplyAltSvc(IReadOnlyList<ProxyHeaderField> headers)
