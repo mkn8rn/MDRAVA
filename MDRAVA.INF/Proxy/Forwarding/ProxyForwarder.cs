@@ -208,7 +208,7 @@ public sealed class ProxyForwarder
             {
                 await ProxyErrorResponses.WriteAsync(
                     clientStream,
-                    BuildGeneratedPayloadTooLarge(requestId),
+                    ProxyErrorResponses.PayloadTooLargeWithRequestId(requestId),
                     timeouts.DownstreamWriteTimeout,
                     _metrics,
                     cancellationToken);
@@ -232,7 +232,7 @@ public sealed class ProxyForwarder
             {
                 await ProxyErrorResponses.WriteAsync(
                     clientStream,
-                    BuildGeneratedBadRequest(requestId),
+                    ProxyErrorResponses.BadRequestWithRequestId(requestId),
                     timeouts.DownstreamWriteTimeout,
                     _metrics,
                     cancellationToken);
@@ -722,7 +722,7 @@ public sealed class ProxyForwarder
                 _logger.LogDebug(exception, "Client request body timed out for {Method} {Target}", requestHead.Method, requestHead.Target);
                 if (ProxyGeneratedFailurePolicy.CanWriteFailureResponse(responseStarted, suppressGeneratedFailureResponse))
                 {
-                    await ProxyErrorResponses.WriteAsync(clientStream, BuildGeneratedRequestTimeout(requestId), timeouts.DownstreamWriteTimeout, _metrics, cancellationToken);
+                    await ProxyErrorResponses.WriteAsync(clientStream, ProxyErrorResponses.RequestTimeoutWithRequestId(requestId), timeouts.DownstreamWriteTimeout, _metrics, cancellationToken);
                 }
                 break;
             case ProxyTimeoutKind.UpstreamConnect:
@@ -1704,24 +1704,6 @@ public sealed class ProxyForwarder
             timeout,
             ProxyTimeoutKind.DownstreamWrite,
             cancellationToken);
-    }
-
-    private static ReadOnlyMemory<byte> BuildGeneratedBadRequest(string requestId)
-    {
-        return Encoding.ASCII.GetBytes(
-            $"HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 11\r\nContent-Type: text/plain\r\nX-Request-Id: {requestId}\r\n\r\nBad Request");
-    }
-
-    private static ReadOnlyMemory<byte> BuildGeneratedRequestTimeout(string requestId)
-    {
-        return Encoding.ASCII.GetBytes(
-            $"HTTP/1.1 408 Request Timeout\r\nConnection: close\r\nContent-Length: 15\r\nContent-Type: text/plain\r\nX-Request-Id: {requestId}\r\n\r\nRequest Timeout");
-    }
-
-    private static ReadOnlyMemory<byte> BuildGeneratedPayloadTooLarge(string requestId)
-    {
-        return Encoding.ASCII.GetBytes(
-            $"HTTP/1.1 413 Payload Too Large\r\nConnection: close\r\nContent-Length: 17\r\nContent-Type: text/plain\r\nX-Request-Id: {requestId}\r\n\r\nPayload Too Large");
     }
 
     private static int FindHeadLength(ReadOnlySpan<byte> bytes)

@@ -33,6 +33,18 @@ public static class ProxyErrorResponses
 
     public static ReadOnlyMemory<byte> ServiceUnavailable => ServiceUnavailableResponse;
 
+    public static ReadOnlyMemory<byte> BadRequestWithRequestId(string requestId)
+    {
+        return Encoding.ASCII.GetBytes(
+            $"HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 11\r\nContent-Type: text/plain\r\nX-Request-Id: {requestId}\r\n\r\nBad Request");
+    }
+
+    public static ReadOnlyMemory<byte> RequestTimeoutWithRequestId(string requestId)
+    {
+        return Encoding.ASCII.GetBytes(
+            $"HTTP/1.1 408 Request Timeout\r\nConnection: close\r\nContent-Length: 15\r\nContent-Type: text/plain\r\nX-Request-Id: {requestId}\r\n\r\nRequest Timeout");
+    }
+
     public static ReadOnlyMemory<byte> BadGatewayWithRequestId(string requestId)
     {
         return Encoding.ASCII.GetBytes(
@@ -43,6 +55,18 @@ public static class ProxyErrorResponses
     {
         return Encoding.ASCII.GetBytes(
             $"HTTP/1.1 504 Gateway Timeout\r\nConnection: close\r\nContent-Length: 15\r\nContent-Type: text/plain\r\nX-Request-Id: {requestId}\r\n\r\nGateway Timeout");
+    }
+
+    public static ReadOnlyMemory<byte> PayloadTooLargeWithRequestId(string requestId)
+    {
+        return Encoding.ASCII.GetBytes(
+            $"HTTP/1.1 413 Payload Too Large\r\nConnection: close\r\nContent-Length: 17\r\nContent-Type: text/plain\r\nX-Request-Id: {requestId}\r\n\r\nPayload Too Large");
+    }
+
+    public static ReadOnlyMemory<byte> ServiceUnavailableWithRequestId(string requestId)
+    {
+        return Encoding.ASCII.GetBytes(
+            $"HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\nContent-Length: 19\r\nContent-Type: text/plain\r\nX-Request-Id: {requestId}\r\n\r\nService Unavailable");
     }
 
     public static ValueTask WriteGeneratedAsync(

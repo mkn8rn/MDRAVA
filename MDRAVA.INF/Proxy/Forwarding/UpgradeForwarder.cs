@@ -66,7 +66,7 @@ public sealed class UpgradeForwarder
                 _metrics.UpgradeRequestRejected();
                 await ProxyErrorResponses.WriteAsync(
                     clientStream,
-                    BuildGeneratedServiceUnavailable(requestId),
+                    ProxyErrorResponses.ServiceUnavailableWithRequestId(requestId),
                     timeouts.DownstreamWriteTimeout,
                     _metrics,
                     cancellationToken);
@@ -633,12 +633,6 @@ public sealed class UpgradeForwarder
             timeout,
             ProxyTimeoutKind.DownstreamWrite,
             cancellationToken);
-    }
-
-    private static ReadOnlyMemory<byte> BuildGeneratedServiceUnavailable(string requestId)
-    {
-        return Encoding.ASCII.GetBytes(
-            $"HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\nContent-Length: 19\r\nContent-Type: text/plain\r\nX-Request-Id: {requestId}\r\n\r\nService Unavailable");
     }
 
     private static int FindHeadLength(ReadOnlySpan<byte> bytes)
