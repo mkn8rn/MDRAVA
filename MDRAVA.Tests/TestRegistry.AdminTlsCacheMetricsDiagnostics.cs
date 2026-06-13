@@ -125,6 +125,7 @@ internal static partial class TestRegistry
     Test("Route dry-run policy explainer uses named policy outcomes", Sync(RouteDiagnosticsTests.DryRunPolicyExplainerUsesNamedPolicyOutcomes), TestTaxonomy.Routing, TestTaxonomy.Caching, TestTaxonomy.RetryCircuit),
     Test("Route diagnostics action decision names proxy and generated responses", Sync(RouteDiagnosticsTests.RouteDiagnosticsActionDecisionNamesProxyAndGeneratedResponses), TestTaxonomy.Routing),
     Test("Route diagnostics action policy uses shared policy redirects", Sync(RouteDiagnosticsTests.RouteDiagnosticsActionPolicyUsesSharedPolicyRedirects), TestTaxonomy.Routing),
+    Test("Generated route response header policy builds framed headers", Sync(RouteDiagnosticsTests.GeneratedRouteResponseHeaderPolicyBuildsFramedHeaders), TestTaxonomy.Routing, TestTaxonomy.Headers),
     Test("Route diagnostics status names enabled availability", Sync(RouteDiagnosticsTests.RouteDiagnosticsStatusNamesEnabledAvailability), TestTaxonomy.Routing),
     Test("Route dry-run redacts sensitive headers", Sync(RouteDiagnosticsTests.DryRunRedactsSensitiveHeaders), TestTaxonomy.Routing, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
     Test("Route diagnostics service shapes no-listener result", Sync(RouteDiagnosticsTests.RouteDiagnosticsServiceShapesNoListenerResult), TestTaxonomy.Routing),

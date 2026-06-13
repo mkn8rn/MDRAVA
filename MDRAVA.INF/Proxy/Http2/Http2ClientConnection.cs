@@ -859,16 +859,11 @@ public sealed class Http2ClientConnection
         string method,
         CancellationToken cancellationToken)
     {
-        List<ProxyHeaderField> headers = [];
-        if (!string.IsNullOrWhiteSpace(response.ContentType))
-        {
-            headers.Add(new ProxyHeaderField("content-type", response.ContentType));
-        }
-
-        headers.Add(new ProxyHeaderField("x-request-id", context.RequestId));
-        headers.AddRange(response.Headers.Where(static header => !HopByHopHeaderPolicy.IsHopByHopHeader(header.Name)));
         var body = Encoding.UTF8.GetBytes(response.Body);
-        headers.Add(new ProxyHeaderField("content-length", body.Length.ToString(CultureInfo.InvariantCulture)));
+        var headers = GeneratedRouteResponseHeaderPolicy.BuildFramedResponseHeaders(
+            response,
+            context.RequestId,
+            body.Length).ToList();
         AddAltSvcHeader(headers);
         await WriteHeadersAndBodyAsync(
             streamId,

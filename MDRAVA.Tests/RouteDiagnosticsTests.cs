@@ -287,6 +287,32 @@ internal static class RouteDiagnosticsTests
         AssertEx.Equal(308, decision.GeneratedStatusCode!.Value);
     }
 
+    public static void GeneratedRouteResponseHeaderPolicyBuildsFramedHeaders()
+    {
+        var response = new GeneratedRouteResponse(
+            302,
+            "Found",
+            "text/plain",
+            "go",
+            [
+                new ProxyHeaderField("Location", "/next"),
+                new ProxyHeaderField("Connection", "close"),
+                new ProxyHeaderField("Keep-Alive", "timeout=5")
+            ]);
+
+        var headers = GeneratedRouteResponseHeaderPolicy.BuildFramedResponseHeaders(
+            response,
+            "req-456",
+            2);
+
+        AssertEx.Equal("text/plain", headers.Single(static header => header.Name == "content-type").Value);
+        AssertEx.Equal("req-456", headers.Single(static header => header.Name == "x-request-id").Value);
+        AssertEx.Equal("2", headers.Single(static header => header.Name == "content-length").Value);
+        AssertEx.True(headers.Any(static header => header.Name == "Location" && header.Value == "/next"));
+        AssertEx.False(headers.Any(static header => string.Equals(header.Name, "Connection", StringComparison.OrdinalIgnoreCase)));
+        AssertEx.False(headers.Any(static header => string.Equals(header.Name, "Keep-Alive", StringComparison.OrdinalIgnoreCase)));
+    }
+
     public static void RouteDiagnosticsStatusNamesEnabledAvailability()
     {
         var status = RouteDiagnosticsStatus.Enabled;

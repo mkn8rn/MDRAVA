@@ -749,15 +749,21 @@ public sealed class Http3Connection
         string method,
         CancellationToken cancellationToken)
     {
-        await WriteGeneratedResponseAsync(
+        var bodyBytes = Encoding.UTF8.GetBytes(response.Body);
+        var headers = GeneratedRouteResponseHeaderPolicy.BuildFramedResponseHeaders(
+            response,
+            context.RequestId,
+            bodyBytes.Length);
+
+        await WriteHeadersAndBodyAsync(
             stream,
             response.StatusCode,
-            response.Body,
-            context,
-            method,
-            cancellationToken,
-            response.ContentType,
-            response.Headers);
+            headers,
+            string.Equals(method, "HEAD", StringComparison.OrdinalIgnoreCase) ? [] : bodyBytes,
+            cancellationToken);
+        context.ResponseStarted = true;
+        context.ResponseStatusCode = response.StatusCode;
+        context.KeepClientConnectionOpen = true;
     }
 
     private ValueTask WriteGeneratedResponseAsync(
