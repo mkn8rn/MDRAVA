@@ -77,13 +77,25 @@ internal static class OperatorStatusTests
             ValidateCertificate: false,
             EffectiveSniHost: "sni.internal",
             HealthCheckEnabled: true);
+        var replacementHealthSource = healthSource with
+        {
+            HealthState = healthSource.HealthState with
+            {
+                UpstreamIdentity = "site-b/upstream-b",
+                RouteName = "site-b",
+                UpstreamName = "upstream-b"
+            },
+            Protocol = RuntimeUpstreamProtocol.Http3,
+            Weight = 99
+        };
+        var healthSources = new List<ProxyUpstreamHealthSource> { healthSource };
         var configuration = new ProxyStatusConfigurationSourceSet(
             ConfigurationSummary: new ProxyStatusConfigurationSummary(
                 9,
                 DateTimeOffset.UnixEpoch,
                 ListenerCount: 0,
                 RouteCount: 0),
-            UpstreamHealthSources: [healthSource],
+            UpstreamHealthSources: healthSources,
             Http3Configuration: Http3SupportSourceMapper.FromConfiguration([], []),
             ReadinessConfiguration: ProxyStatusReadinessConfigurationSourceSet.Missing);
         var upstreamHealthSource = new CapturingStatusUpstreamHealthSource();
@@ -91,8 +103,11 @@ internal static class OperatorStatusTests
             new FixedStatusConfigurationSource(configuration),
             upstreamHealthSource);
 
+        healthSources[0] = replacementHealthSource;
+        healthSources.Clear();
         var upstreams = reader.ReadUpstreams();
 
+        AssertEx.False(configuration.UpstreamHealthSources is ProxyUpstreamHealthSource[], "Status configuration upstream sources should not expose a mutable array.");
         AssertEx.Equal(1, upstreamHealthSource.LastUpstreams.Count);
         AssertEx.Equal("site-a/upstream-a", upstreamHealthSource.LastUpstreams[0].HealthState.UpstreamIdentity);
         AssertEx.Equal(RuntimeUpstreamProtocol.Http2, upstreamHealthSource.LastUpstreams[0].Protocol);
