@@ -1,30 +1,36 @@
 namespace MDRAVA.BLL.ControlPlane.Metrics;
 
-public sealed record ProxyMetricsExportResult
+public abstract record ProxyMetricsExportResult
 {
-    public static ProxyMetricsExportResult NotAvailable { get; } = new(
-        available: false,
-        content: string.Empty,
-        contentType: string.Empty);
-
-    private ProxyMetricsExportResult(bool available, string content, string contentType)
+    private ProxyMetricsExportResult()
     {
-        Available = available;
-        Content = content;
-        ContentType = contentType;
     }
 
-    public bool Available { get; }
+    public static ProxyMetricsExportResult Unavailable { get; } = new UnavailableResult();
 
-    public string Content { get; }
-
-    public string ContentType { get; }
-
-    public static ProxyMetricsExportResult Create(string content, string contentType)
+    public static ProxyMetricsExportResult Exported(string content, string contentType)
     {
-        return new ProxyMetricsExportResult(
-            available: true,
-            content: content,
-            contentType: contentType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(content);
+        ArgumentException.ThrowIfNullOrWhiteSpace(contentType);
+
+        return new ExportedResult(content, contentType);
     }
+
+    public sealed record ExportedResult : ProxyMetricsExportResult
+    {
+        public ExportedResult(string content, string contentType)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(content);
+            ArgumentException.ThrowIfNullOrWhiteSpace(contentType);
+
+            Content = content;
+            ContentType = contentType;
+        }
+
+        public string Content { get; }
+
+        public string ContentType { get; }
+    }
+
+    public sealed record UnavailableResult : ProxyMetricsExportResult;
 }

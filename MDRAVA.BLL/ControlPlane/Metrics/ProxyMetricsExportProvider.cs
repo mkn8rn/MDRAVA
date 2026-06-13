@@ -20,16 +20,16 @@ public sealed class ProxyMetricsExportProvider : IProxyMetricsExportProvider
     {
         if (!_availabilityService.GetAvailability().Available)
         {
-            return ProxyMetricsExportResult.NotAvailable;
+            return ProxyMetricsExportResult.Unavailable;
         }
 
         var inputResult = _inputSource.ReadInput();
         if (inputResult is not ProxyMetricsExportInputReadResult.AvailableResult available)
         {
-            return ProxyMetricsExportResult.NotAvailable;
+            return ProxyMetricsExportResult.Unavailable;
         }
 
-        return ProxyMetricsExportResult.Create(
+        return ProxyMetricsExportResult.Exported(
             _exporter.Export(available.Input),
             PrometheusMetricsExporter.ContentType);
     }

@@ -163,15 +163,15 @@ internal static class MetricsTests
 
     public static void MetricsExportResultNamesAvailableAndUnavailableStates()
     {
-        var notAvailable = ProxyMetricsExportResult.NotAvailable;
-        var available = ProxyMetricsExportResult.Create("metrics text", PrometheusMetricsExporter.ContentType);
+        var unavailable = ProxyMetricsExportResult.Unavailable;
+        var exported = ProxyMetricsExportResult.Exported("metrics text", PrometheusMetricsExporter.ContentType);
 
-        AssertEx.False(notAvailable.Available);
-        AssertEx.Equal(string.Empty, notAvailable.Content);
-        AssertEx.Equal(string.Empty, notAvailable.ContentType);
-        AssertEx.True(available.Available);
-        AssertEx.Equal("metrics text", available.Content);
-        AssertEx.Equal(PrometheusMetricsExporter.ContentType, available.ContentType);
+        AssertEx.True(unavailable is not ProxyMetricsExportResult.ExportedResult);
+        AssertEx.True(exported is ProxyMetricsExportResult.ExportedResult);
+        AssertEx.Equal("metrics text", ((ProxyMetricsExportResult.ExportedResult)exported).Content);
+        AssertEx.Equal(
+            PrometheusMetricsExporter.ContentType,
+            ((ProxyMetricsExportResult.ExportedResult)exported).ContentType);
     }
 
     public static void MetricsExportAvailabilityRequiresActiveEnabledConfig()
@@ -383,7 +383,7 @@ internal static class MetricsTests
             AssertEx.True(response.Contains("200 OK", StringComparison.Ordinal), response);
             await upstreamTask.WaitAsync(timeout.Token);
             var provider = host.Services.GetRequiredService<IProxyMetricsExportProvider>();
-            return provider.Export().Content;
+            return ExportedMetricsText(provider);
         }
         finally
         {
@@ -407,12 +407,23 @@ internal static class MetricsTests
             var response = await SendSingleRequestAsync(proxyPort, request, timeout.Token);
             AssertEx.True(response.Contains("404 Not Found", StringComparison.Ordinal), response);
             var provider = host.Services.GetRequiredService<IProxyMetricsExportProvider>();
-            return provider.Export().Content;
+            return ExportedMetricsText(provider);
         }
         finally
         {
             await host.StopAsync(CancellationToken.None);
         }
+    }
+
+    private static string ExportedMetricsText(IProxyMetricsExportProvider provider)
+    {
+        var result = provider.Export();
+        if (result is ProxyMetricsExportResult.ExportedResult exported)
+        {
+            return exported.Content;
+        }
+
+        throw new InvalidOperationException("Expected metrics export to be available.");
     }
 
     private static async Task<string> RunSingleUpstreamAsync(

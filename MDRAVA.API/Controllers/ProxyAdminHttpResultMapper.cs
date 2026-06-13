@@ -35,8 +35,8 @@ internal static class ProxyAdminHttpResultMapper
         ControllerBase controller,
         ProxyMetricsExportResult result)
     {
-        return result.Available
-            ? controller.Content(result.Content, result.ContentType, Encoding.UTF8)
+        return result is ProxyMetricsExportResult.ExportedResult exported
+            ? controller.Content(exported.Content, exported.ContentType, Encoding.UTF8)
             : controller.NotFound();
     }
 }
