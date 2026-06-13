@@ -67,7 +67,7 @@ public sealed class ProxyRequestContext
 
     public bool KeepClientConnectionOpen { get; set; }
 
-    public bool IsUpgrade { get; set; }
+    public bool IsUpgrade { get; private set; }
 
     public bool TunnelEstablished { get; set; }
 
@@ -175,6 +175,11 @@ public sealed class ProxyRequestContext
     public void RecordClientDisconnect()
     {
         FailureKind = ProxyFailureKind.ClientDisconnected;
+    }
+
+    public void RecordUpgradeRequest()
+    {
+        IsUpgrade = true;
     }
 
 }

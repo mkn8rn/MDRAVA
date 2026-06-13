@@ -710,7 +710,7 @@ public sealed class ClientConnection
         ProxyRequestContext context,
         CancellationToken cancellationToken)
     {
-        context.IsUpgrade = true;
+        context.RecordUpgradeRequest();
         _metrics.UpgradeRequestReceived();
         if (_rateLimiter.AcquireUpgrade(
             forwardedHeaders.ResolvedClientAddress,

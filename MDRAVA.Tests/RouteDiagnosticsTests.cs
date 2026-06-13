@@ -451,6 +451,21 @@ internal static class RouteDiagnosticsTests
         AssertEx.Equal(ProxyFailureKind.ClientDisconnected, context.FailureKind);
     }
 
+    public static void RequestContextRecordsUpgradeRequest()
+    {
+        var context = new ProxyRequestContext(
+            "req-upgrade",
+            "listener",
+            "tcp",
+            "127.0.0.1:50000",
+            7,
+            TimeProvider.System);
+
+        context.RecordUpgradeRequest();
+
+        AssertEx.True(context.IsUpgrade);
+    }
+
     public static void RouteDiagnosticsStatusNamesEnabledAvailability()
     {
         var status = RouteDiagnosticsStatus.Enabled;
