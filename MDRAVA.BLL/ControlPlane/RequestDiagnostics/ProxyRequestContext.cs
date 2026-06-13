@@ -65,7 +65,7 @@ public sealed class ProxyRequestContext
 
     public bool ResponseStarted { get; set; }
 
-    public bool KeepClientConnectionOpen { get; set; }
+    public bool KeepClientConnectionOpen { get; private set; }
 
     public bool IsUpgrade { get; private set; }
 
@@ -180,6 +180,11 @@ public sealed class ProxyRequestContext
     public void RecordUpgradeRequest()
     {
         IsUpgrade = true;
+    }
+
+    public void RecordClientConnectionClose()
+    {
+        KeepClientConnectionOpen = false;
     }
 
 }

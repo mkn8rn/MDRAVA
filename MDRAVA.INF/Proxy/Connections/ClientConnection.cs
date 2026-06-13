@@ -418,7 +418,7 @@ public sealed class ClientConnection
                     if (requestsProcessed >= _configurationSnapshot.ConnectionLimits.MaxRequestsPerClientConnection)
                     {
                         _metrics.ClientConnectionClosedByMaxRequests();
-                        currentContext.KeepClientConnectionOpen = false;
+                        currentContext.RecordClientConnectionClose();
                         CompleteContext(ref currentContext);
                         return;
                     }
@@ -453,7 +453,7 @@ public sealed class ClientConnection
                 if (requestsProcessed >= _configurationSnapshot.ConnectionLimits.MaxRequestsPerClientConnection)
                 {
                     _metrics.ClientConnectionClosedByMaxRequests();
-                    currentContext.KeepClientConnectionOpen = false;
+                    currentContext.RecordClientConnectionClose();
                     CompleteContext(ref currentContext);
                     return;
                 }

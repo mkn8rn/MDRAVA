@@ -466,6 +466,30 @@ internal static class RouteDiagnosticsTests
         AssertEx.True(context.IsUpgrade);
     }
 
+    public static void RequestContextRecordsClientConnectionClose()
+    {
+        var context = new ProxyRequestContext(
+            "req-close",
+            "listener",
+            "tcp",
+            "127.0.0.1:50000",
+            7,
+            TimeProvider.System);
+        var response = new GeneratedRouteResponse(
+            204,
+            "No Content",
+            null,
+            string.Empty,
+            []);
+
+        context.RecordGeneratedRouteResponse(
+            response,
+            keepClientConnectionOpen: true);
+        context.RecordClientConnectionClose();
+
+        AssertEx.False(context.KeepClientConnectionOpen);
+    }
+
     public static void RouteDiagnosticsStatusNamesEnabledAvailability()
     {
         var status = RouteDiagnosticsStatus.Enabled;
