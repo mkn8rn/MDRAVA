@@ -64,23 +64,11 @@ public sealed partial class ProxyMetrics
         Interlocked.Increment(ref _upstreamBodyRelayFailures);
     }
 
-    public void ClientRequestHeadTimedOut() => Interlocked.Increment(ref _clientRequestHeadTimeouts);
-
-    public void ClientRequestBodyTimedOut() => Interlocked.Increment(ref _clientRequestBodyTimeouts);
-
-    public void UpstreamConnectTimedOut() => Interlocked.Increment(ref _upstreamConnectTimeouts);
-
-    public void UpstreamResponseHeadTimedOut() => Interlocked.Increment(ref _upstreamResponseHeadTimeouts);
-
-    public void UpstreamResponseBodyTimedOut() => Interlocked.Increment(ref _upstreamResponseBodyTimeouts);
-
     public void UpstreamPrematureDisconnect() => Interlocked.Increment(ref _upstreamPrematureDisconnects);
 
     public void ProxyGenerated502() => Interlocked.Increment(ref _proxyGenerated502Responses);
 
     public void ProxyGenerated504() => Interlocked.Increment(ref _proxyGenerated504Responses);
-
-    public void DownstreamWriteTimedOut() => Interlocked.Increment(ref _downstreamWriteTimeouts);
 
     public void UpstreamRequestFailed() => Interlocked.Increment(ref _upstreamRequestFailures);
 }
