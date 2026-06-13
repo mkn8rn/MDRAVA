@@ -3,17 +3,6 @@ using MDRAVA.BLL.Http;
 
 namespace MDRAVA.BLL.ControlPlane.RouteDiagnostics;
 
-public sealed record ProxyRouteDiagnosticsRequestInput(
-    string Scheme,
-    string? Protocol,
-    string? ListenerName,
-    int? Port,
-    string Target,
-    string Path,
-    ProxyRouteDiagnosticsRequestHead RequestHead,
-    bool IsUpgradeRequest,
-    List<RouteMatchDryRunFinding> Findings);
-
 public static class ProxyRouteDiagnosticsRequestReader
 {
     private const int MaxInputLength = 4096;
@@ -229,27 +218,4 @@ public static class ProxyRouteDiagnosticsRequestReader
     {
         return value.Any(char.IsControl);
     }
-}
-
-public abstract record ProxyRouteDiagnosticsRequestDecision
-{
-    private ProxyRouteDiagnosticsRequestDecision()
-    {
-    }
-
-    public static ProxyRouteDiagnosticsRequestDecision Accepted(ProxyRouteDiagnosticsRequestInput input)
-    {
-        ArgumentNullException.ThrowIfNull(input);
-        return new AcceptedDecision(input);
-    }
-
-    public static ProxyRouteDiagnosticsRequestDecision Rejected(RouteMatchDryRunResult.FailedResult failure)
-    {
-        ArgumentNullException.ThrowIfNull(failure);
-        return new RejectedDecision(failure);
-    }
-
-    public sealed record AcceptedDecision(ProxyRouteDiagnosticsRequestInput Input) : ProxyRouteDiagnosticsRequestDecision;
-
-    public sealed record RejectedDecision(RouteMatchDryRunResult.FailedResult Failure) : ProxyRouteDiagnosticsRequestDecision;
 }
