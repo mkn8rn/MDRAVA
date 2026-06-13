@@ -1251,7 +1251,12 @@ public sealed class ProxyForwarder
 
         while (true)
         {
-            var responseHeadRead = await ReadResponseHeadAsync(upstreamStream, listener.MaxResponseHeadBytes, timeouts.UpstreamResponseHeadTimeout, cancellationToken);
+            var responseHeadRead = await Http1UpstreamResponseHeadReader.ReadAsync(
+                upstreamStream,
+                listener.MaxResponseHeadBytes,
+                timeouts.UpstreamResponseHeadTimeout,
+                _metrics,
+                cancellationToken);
             if (!responseHeadRead.HasReadableHead)
             {
                 throw new Http1UpstreamProtocolException("Upstream closed before a complete response head was received.");
@@ -1689,52 +1694,6 @@ public sealed class ProxyForwarder
         }
     }
 
-    private async ValueTask<Http1HeadReadResult> ReadResponseHeadAsync(
-        Stream upstreamStream,
-        int maxResponseHeadBytes,
-        TimeSpan responseHeadTimeout,
-        CancellationToken cancellationToken)
-    {
-        var buffer = ArrayPool<byte>.Shared.Rent(maxResponseHeadBytes);
-        var totalBytesRead = 0;
-
-        try
-        {
-            while (totalBytesRead < maxResponseHeadBytes)
-            {
-                var bytesRead = await ProxyTimeoutPolicy.RunAsync(
-                    async timeoutToken => await upstreamStream.ReadAsync(
-                        buffer.AsMemory(totalBytesRead, maxResponseHeadBytes - totalBytesRead),
-                        timeoutToken),
-                    responseHeadTimeout,
-                    ProxyTimeoutKind.UpstreamResponseHead,
-                    cancellationToken);
-
-                if (bytesRead == 0)
-                {
-                    return Http1HeadReadResult.ResponseUnreadable(totalBytesRead);
-                }
-
-                totalBytesRead += bytesRead;
-                _metrics.AddBytesRead(bytesRead);
-
-                var headLength = FindHeadLength(buffer.AsSpan(0, totalBytesRead));
-                if (headLength > 0)
-                {
-                    var headBytes = buffer.AsMemory(0, headLength).ToArray();
-                    var initialBody = buffer.AsMemory(headLength, totalBytesRead - headLength).ToArray();
-                    return Http1HeadReadResult.Read(headLength, totalBytesRead, headBytes, initialBody);
-                }
-            }
-
-            return Http1HeadReadResult.ResponseUnreadable(totalBytesRead);
-        }
-        finally
-        {
-            ArrayPool<byte>.Shared.Return(buffer);
-        }
-    }
-
     private static async ValueTask WriteWithTimeoutAsync(
         Stream destination,
         ReadOnlyMemory<byte> bytes,
@@ -1749,22 +1708,6 @@ public sealed class ProxyForwarder
             timeout,
             ProxyTimeoutKind.DownstreamWrite,
             cancellationToken);
-    }
-
-    private static int FindHeadLength(ReadOnlySpan<byte> bytes)
-    {
-        for (var index = 3; index < bytes.Length; index++)
-        {
-            if (bytes[index - 3] == (byte)'\r'
-                && bytes[index - 2] == (byte)'\n'
-                && bytes[index - 1] == (byte)'\r'
-                && bytes[index] == (byte)'\n')
-            {
-                return index + 1;
-            }
-        }
-
-        return -1;
     }
 
     private sealed class Http1BodyReader
