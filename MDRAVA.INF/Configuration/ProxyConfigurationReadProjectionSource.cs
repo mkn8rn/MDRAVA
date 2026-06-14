@@ -6,11 +6,11 @@ namespace MDRAVA.INF.Configuration;
 public sealed class ProxyConfigurationReadProjectionSource
     : IProxyConfigurationReadProjectionSource<ProxyConfigurationProjection>
 {
-    private readonly IProxyConfigurationStore _configurationStore;
+    private readonly IProxyActiveConfigurationSnapshotReader _configurationStore;
     private readonly IRuntimeHttp3PlatformSupportSource _http3PlatformSupportSource;
 
     public ProxyConfigurationReadProjectionSource(
-        IProxyConfigurationStore configurationStore,
+        IProxyActiveConfigurationSnapshotReader configurationStore,
         IRuntimeHttp3PlatformSupportSource http3PlatformSupportSource)
     {
         _configurationStore = configurationStore;

@@ -15,12 +15,12 @@ namespace MDRAVA.INF.Proxy.Http3;
 
 public sealed class SystemHttp3QuicListenerFactory : IHttp3QuicListenerFactory
 {
-    private readonly IProxyConfigurationStore _configurationStore;
+    private readonly IProxyActiveConfigurationSnapshotReader _configurationStore;
     private readonly ProxyMetrics _metrics;
     private readonly ILogger<SystemHttp3QuicListenerFactory> _logger;
 
     public SystemHttp3QuicListenerFactory(
-        IProxyConfigurationStore configurationStore,
+        IProxyActiveConfigurationSnapshotReader configurationStore,
         ProxyMetrics metrics,
         ILogger<SystemHttp3QuicListenerFactory> logger)
     {

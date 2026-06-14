@@ -45,9 +45,9 @@ public static class AcmeRenewalConfigurationSourceMapper
 
 public sealed class ProxyConfigurationAcmeRenewalConfigurationSource : IAcmeRenewalConfigurationSource
 {
-    private readonly IProxyConfigurationStore _configurationStore;
+    private readonly IProxyActiveConfigurationSnapshotReader _configurationStore;
 
-    public ProxyConfigurationAcmeRenewalConfigurationSource(IProxyConfigurationStore configurationStore)
+    public ProxyConfigurationAcmeRenewalConfigurationSource(IProxyActiveConfigurationSnapshotReader configurationStore)
     {
         _configurationStore = configurationStore;
     }

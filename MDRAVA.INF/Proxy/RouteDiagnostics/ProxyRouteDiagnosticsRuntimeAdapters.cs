@@ -7,9 +7,9 @@ namespace MDRAVA.INF.Proxy.RouteDiagnostics;
 public sealed class ProxyRouteDiagnosticsConfigurationSource
     : IProxyRouteDiagnosticsConfigurationSource
 {
-    private readonly IProxyConfigurationStore _configurationStore;
+    private readonly IProxyActiveConfigurationSnapshotReader _configurationStore;
 
-    public ProxyRouteDiagnosticsConfigurationSource(IProxyConfigurationStore configurationStore)
+    public ProxyRouteDiagnosticsConfigurationSource(IProxyActiveConfigurationSnapshotReader configurationStore)
     {
         _configurationStore = configurationStore;
     }

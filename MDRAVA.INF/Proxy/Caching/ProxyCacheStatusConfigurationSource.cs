@@ -6,9 +6,9 @@ namespace MDRAVA.INF.Proxy.Caching;
 public sealed class ProxyCacheStatusConfigurationSource
     : IProxyCacheStatusConfigurationSource
 {
-    private readonly IProxyConfigurationStore _configurationStore;
+    private readonly IProxyActiveConfigurationSnapshotReader _configurationStore;
 
-    public ProxyCacheStatusConfigurationSource(IProxyConfigurationStore configurationStore)
+    public ProxyCacheStatusConfigurationSource(IProxyActiveConfigurationSnapshotReader configurationStore)
     {
         _configurationStore = configurationStore;
     }

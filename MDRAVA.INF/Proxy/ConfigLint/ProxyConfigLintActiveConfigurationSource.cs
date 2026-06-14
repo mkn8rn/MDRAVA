@@ -7,11 +7,11 @@ namespace MDRAVA.INF.Proxy.ConfigLint;
 public sealed class ProxyConfigLintActiveConfigurationSource
     : IProxyConfigLintActiveConfigurationSource
 {
-    private readonly IProxyConfigurationStore _configurationStore;
+    private readonly IProxyActiveConfigurationSnapshotReader _configurationStore;
     private readonly IRuntimeHttp3PlatformSupportSource _http3PlatformSupportSource;
 
     public ProxyConfigLintActiveConfigurationSource(
-        IProxyConfigurationStore configurationStore,
+        IProxyActiveConfigurationSnapshotReader configurationStore,
         IRuntimeHttp3PlatformSupportSource http3PlatformSupportSource)
     {
         _configurationStore = configurationStore;

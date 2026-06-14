@@ -6,9 +6,9 @@ namespace MDRAVA.INF.Observability;
 public sealed class ProxyConfigurationLogPersistenceSettingsSource
     : IProxyLogPersistenceSettingsSource
 {
-    private readonly IProxyConfigurationStore _configurationStore;
+    private readonly IProxyActiveConfigurationSnapshotReader _configurationStore;
 
-    public ProxyConfigurationLogPersistenceSettingsSource(IProxyConfigurationStore configurationStore)
+    public ProxyConfigurationLogPersistenceSettingsSource(IProxyActiveConfigurationSnapshotReader configurationStore)
     {
         _configurationStore = configurationStore;
     }

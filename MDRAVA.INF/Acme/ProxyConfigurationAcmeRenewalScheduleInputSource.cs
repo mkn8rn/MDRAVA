@@ -16,9 +16,9 @@ public static class AcmeRenewalScheduleSourceMapper
 
 public sealed class ProxyConfigurationAcmeRenewalScheduleInputSource : IAcmeRenewalScheduleInputSource
 {
-    private readonly IProxyConfigurationStore _configurationStore;
+    private readonly IProxyActiveConfigurationSnapshotReader _configurationStore;
 
-    public ProxyConfigurationAcmeRenewalScheduleInputSource(IProxyConfigurationStore configurationStore)
+    public ProxyConfigurationAcmeRenewalScheduleInputSource(IProxyActiveConfigurationSnapshotReader configurationStore)
     {
         _configurationStore = configurationStore;
     }

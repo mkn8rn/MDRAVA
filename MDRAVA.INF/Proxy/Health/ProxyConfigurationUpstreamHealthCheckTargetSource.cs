@@ -5,9 +5,9 @@ namespace MDRAVA.INF.Proxy.Health;
 
 public sealed class ProxyConfigurationUpstreamHealthCheckTargetSource : IUpstreamHealthCheckTargetSource
 {
-    private readonly IProxyConfigurationStore _configurationStore;
+    private readonly IProxyActiveConfigurationSnapshotReader _configurationStore;
 
-    public ProxyConfigurationUpstreamHealthCheckTargetSource(IProxyConfigurationStore configurationStore)
+    public ProxyConfigurationUpstreamHealthCheckTargetSource(IProxyActiveConfigurationSnapshotReader configurationStore)
     {
         _configurationStore = configurationStore;
     }

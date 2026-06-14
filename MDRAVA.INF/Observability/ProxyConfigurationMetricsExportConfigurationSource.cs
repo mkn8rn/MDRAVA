@@ -7,10 +7,10 @@ namespace MDRAVA.INF.Observability;
 public sealed class ProxyConfigurationMetricsExportConfigurationSource
     : IProxyMetricsExportConfigurationSource
 {
-    private readonly IProxyConfigurationStore _configurationStore;
+    private readonly IProxyActiveConfigurationSnapshotReader _configurationStore;
 
     public ProxyConfigurationMetricsExportConfigurationSource(
-        IProxyConfigurationStore configurationStore)
+        IProxyActiveConfigurationSnapshotReader configurationStore)
     {
         _configurationStore = configurationStore;
     }

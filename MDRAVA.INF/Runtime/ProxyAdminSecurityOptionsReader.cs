@@ -6,9 +6,9 @@ namespace MDRAVA.INF.Runtime;
 
 public sealed class ProxyAdminSecurityOptionsReader : IProxyAdminSecurityOptionsReader
 {
-    private readonly IProxyConfigurationStore _configurationStore;
+    private readonly IProxyActiveConfigurationSnapshotReader _configurationStore;
 
-    public ProxyAdminSecurityOptionsReader(IProxyConfigurationStore configurationStore)
+    public ProxyAdminSecurityOptionsReader(IProxyActiveConfigurationSnapshotReader configurationStore)
     {
         _configurationStore = configurationStore;
     }

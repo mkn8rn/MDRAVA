@@ -5,9 +5,9 @@ namespace MDRAVA.INF.Acme;
 
 public sealed class ProxyAcmeStatusConfigurationSource : IProxyAcmeStatusConfigurationSource
 {
-    private readonly IProxyConfigurationStore _configurationStore;
+    private readonly IProxyActiveConfigurationSnapshotReader _configurationStore;
 
-    public ProxyAcmeStatusConfigurationSource(IProxyConfigurationStore configurationStore)
+    public ProxyAcmeStatusConfigurationSource(IProxyActiveConfigurationSnapshotReader configurationStore)
     {
         _configurationStore = configurationStore;
     }

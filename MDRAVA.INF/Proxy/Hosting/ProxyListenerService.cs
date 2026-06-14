@@ -33,7 +33,7 @@ namespace MDRAVA.INF.Proxy.Hosting;
 
 public sealed class ProxyListenerService : BackgroundService, IProxyListenerReloadApplier
 {
-    private readonly IProxyConfigurationStore _configurationStore;
+    private readonly IProxyActiveConfigurationSnapshotReader _configurationStore;
     private readonly IRouteMatcher _routeMatcher;
     private readonly IUpstreamSelector _upstreamSelector;
     private readonly UpstreamHealthStore _healthStore;
@@ -68,7 +68,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
     private readonly Dictionary<string, ManagedQuicListener> _quicListeners = new(StringComparer.OrdinalIgnoreCase);
 
     public ProxyListenerService(
-        IProxyConfigurationStore configurationStore,
+        IProxyActiveConfigurationSnapshotReader configurationStore,
         IRouteMatcher routeMatcher,
         IUpstreamSelector upstreamSelector,
         UpstreamHealthStore healthStore,
