@@ -19,8 +19,7 @@ public sealed partial class ProxyMetrics
             ReadUpstreamSelectionMetricsSnapshot(),
             ReadHealthMetricsSnapshot(),
             ReadDiagnosticsMetricsSnapshot(),
-            ReadRequestFailuresByKind(),
-            ReadRequestsByRoute(),
+            ReadRequestClassificationMetricsSnapshot(),
             ReadConfigReloadMetricsSnapshot(),
             ReadAdminAuthMetricsSnapshot(),
             ReadAcmeRenewalMetricsSnapshot(),
@@ -80,6 +79,13 @@ public sealed partial class ProxyMetrics
         return new ProxyRouteDiagnosticsMetricsSnapshot(
             Interlocked.Read(ref _routeMatchDryRuns),
             ReadRouteMatchDryRunFailures());
+    }
+
+    private ProxyRequestClassificationMetricsSnapshot ReadRequestClassificationMetricsSnapshot()
+    {
+        return new ProxyRequestClassificationMetricsSnapshot(
+            ReadRequestFailuresByKind(),
+            ReadRequestsByRoute());
     }
 
     private ProxyClientConnectionMetricsSnapshot ReadClientConnectionMetricsSnapshot()

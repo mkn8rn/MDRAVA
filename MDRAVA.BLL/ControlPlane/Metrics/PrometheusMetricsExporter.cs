@@ -17,6 +17,7 @@ public sealed partial class PrometheusMetricsExporter
         var adminAuth = proxy.AdminAuth;
         var acmeRenewals = proxy.AcmeRenewals;
         var clientConnections = proxy.ClientConnections;
+        var requestClassifications = proxy.RequestClassifications;
         var rejections = proxy.Rejections;
         var routeDiagnostics = proxy.RouteDiagnostics;
         var traffic = proxy.Traffic;
@@ -28,7 +29,7 @@ public sealed partial class PrometheusMetricsExporter
 
         AppendCounter(builder, "mdrava_requests_total", "HTTP requests received by the dataplane.", traffic.Requests);
         AppendClientProtocolMetrics(builder, input, proxy);
-        AppendRouteRequestCounters(builder, input.IncludePerRouteLabels, proxy.RequestsByRoute);
+        AppendRouteRequestCounters(builder, input.IncludePerRouteLabels, requestClassifications.ByRoute);
         AppendRequestRejectionCounters(builder, proxy);
         AppendUpstreamAndResilienceMetrics(builder, input, proxy, health);
 

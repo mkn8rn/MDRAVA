@@ -152,6 +152,7 @@ public sealed record ProxyMetricsSnapshotResponse(
         var http2 = snapshot.Http2;
         var http3 = snapshot.Http3;
         var listeners = snapshot.Listeners;
+        var requestClassifications = snapshot.RequestClassifications;
         var rejections = snapshot.Rejections;
         var resilience = snapshot.Resilience;
         var routeDiagnostics = snapshot.RouteDiagnostics;
@@ -230,8 +231,8 @@ public sealed record ProxyMetricsSnapshotResponse(
             rejections.RateLimitedUpgrades,
             rejections.RequestBodySizeRejections,
             rejections.ParserLimitRejections,
-            new Dictionary<string, long>(snapshot.RequestFailuresByKind),
-            ProxyRequestSeriesSnapshotResponse.FromSnapshots(snapshot.RequestsByRoute),
+            new Dictionary<string, long>(requestClassifications.FailuresByKind),
+            ProxyRequestSeriesSnapshotResponse.FromSnapshots(requestClassifications.ByRoute),
             configReloads.Successes,
             configReloads.Failures,
             adminAuth.Successes,

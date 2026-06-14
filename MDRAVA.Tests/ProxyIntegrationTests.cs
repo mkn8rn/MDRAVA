@@ -258,7 +258,7 @@ internal static class ProxyIntegrationTests
 
         AssertEx.Equal("UpstreamConnectFailed", result.Diagnostics[0].FailureKind);
         AssertEx.Equal(502, result.Diagnostics[0].ResponseStatusCode);
-        AssertEx.Equal(1L, result.Metrics.RequestFailuresByKind["UpstreamConnectFailed"]);
+        AssertEx.Equal(1L, result.Metrics.RequestClassifications.FailuresByKind["UpstreamConnectFailed"]);
     }
 
     public static async Task AccessLoggingCanBeDisabledWhileDiagnosticsRemainEnabled()

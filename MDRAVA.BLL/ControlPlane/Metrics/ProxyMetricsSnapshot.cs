@@ -15,8 +15,7 @@ public sealed record ProxyMetricsSnapshot(
     ProxyUpstreamSelectionMetricsSnapshot UpstreamSelections,
     ProxyHealthMetricsSnapshot Health,
     ProxyDiagnosticsMetricsSnapshot Diagnostics,
-    IReadOnlyDictionary<string, long> RequestFailuresByKind,
-    IReadOnlyList<ProxyRequestSeriesSnapshot> RequestsByRoute,
+    ProxyRequestClassificationMetricsSnapshot RequestClassifications,
     ProxyConfigReloadMetricsSnapshot ConfigReloads,
     ProxyAdminAuthMetricsSnapshot AdminAuth,
     ProxyAcmeRenewalMetricsSnapshot AcmeRenewals,
@@ -80,6 +79,9 @@ public sealed record ProxyMetricsSnapshot(
     public ProxyDiagnosticsMetricsSnapshot Diagnostics { get; } =
         Diagnostics ?? throw new ArgumentNullException(nameof(Diagnostics));
 
+    public ProxyRequestClassificationMetricsSnapshot RequestClassifications { get; } =
+        RequestClassifications ?? throw new ArgumentNullException(nameof(RequestClassifications));
+
     public ProxyConfigReloadMetricsSnapshot ConfigReloads { get; } =
         ConfigReloads ?? throw new ArgumentNullException(nameof(ConfigReloads));
 
@@ -103,11 +105,5 @@ public sealed record ProxyMetricsSnapshot(
 
     public ProxyTlsMetricsSnapshot Tls { get; } =
         Tls ?? throw new ArgumentNullException(nameof(Tls));
-
-    public IReadOnlyDictionary<string, long> RequestFailuresByKind { get; } =
-        MetricsList.CopyDictionary(RequestFailuresByKind, StringComparer.Ordinal);
-
-    public IReadOnlyList<ProxyRequestSeriesSnapshot> RequestsByRoute { get; } =
-        MetricsList.Copy(RequestsByRoute);
 
 }

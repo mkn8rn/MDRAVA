@@ -200,8 +200,9 @@ internal static class MetricsTests
                 RequestIdsGenerated: 0,
                 AccessLogsEmitted: 0,
                 RecentDiagnosticsOverwritten: 0),
-            RequestFailuresByKind: requestFailures,
-            RequestsByRoute: requestsByRoute,
+            RequestClassifications: new ProxyRequestClassificationMetricsSnapshot(
+                FailuresByKind: requestFailures,
+                ByRoute: requestsByRoute),
             ConfigReloads: new ProxyConfigReloadMetricsSnapshot(
                 Successes: 0,
                 Failures: 0),
@@ -293,8 +294,8 @@ internal static class MetricsTests
         configLintFindings.Clear();
         routeMatchFailures.Clear();
 
-        AssertEx.Equal(2L, snapshot.RequestFailuresByKind["ConnectFailure"]);
-        AssertEx.Equal("route-a", snapshot.RequestsByRoute[0].Route);
+        AssertEx.Equal(2L, snapshot.RequestClassifications.FailuresByKind["ConnectFailure"]);
+        AssertEx.Equal("route-a", snapshot.RequestClassifications.ByRoute[0].Route);
         AssertEx.Equal("unsafe_method", snapshot.Resilience.RetrySkipped[0].Reason);
         AssertEx.Equal("upstream-a", snapshot.UpstreamSelections.ByUpstream[0].Upstream);
         AssertEx.Equal(6L, snapshot.Http2.ProtocolErrors["stream_error"]);
@@ -304,8 +305,8 @@ internal static class MetricsTests
         AssertEx.Equal(10L, snapshot.Http3.ProtocolErrors["qpack"]);
         AssertEx.Equal("route_shadowed", snapshot.ConfigLint.Findings[0].Code);
         AssertEx.Equal("no_route", snapshot.RouteDiagnostics.DryRunFailures[0].Reason);
-        AssertEx.False(snapshot.RequestFailuresByKind is Dictionary<string, long>);
-        AssertEx.False(snapshot.RequestsByRoute is ProxyRequestSeriesSnapshot[]);
+        AssertEx.False(snapshot.RequestClassifications.FailuresByKind is Dictionary<string, long>);
+        AssertEx.False(snapshot.RequestClassifications.ByRoute is ProxyRequestSeriesSnapshot[]);
         AssertEx.False(snapshot.Resilience.RetrySkipped is ProxyRetrySkippedSnapshot[]);
         AssertEx.False(snapshot.UpstreamSelections.ByUpstream is ProxyUpstreamSelectionSnapshot[]);
         AssertEx.False(snapshot.Http2.ProtocolErrors is Dictionary<string, long>);
