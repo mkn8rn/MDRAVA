@@ -382,8 +382,12 @@ internal static class Http3InfrastructureTests
     {
         var listener = RuntimeListenerFor("http1AndHttp2AndHttp3");
         var protocols = listener.Protocols;
-        var tcpPolicy = ListenerProtocolAdvertisementPolicy.BuildTcpAlpnProtocolNames(protocols);
-        var quicPolicy = ListenerProtocolAdvertisementPolicy.BuildHttp3AlpnProtocolNames(listener);
+        var tcpPolicy = ListenerProtocolAdvertisementPolicy.BuildTcpAlpnProtocolNames(
+            new TcpAlpnAdvertisementInput(
+                protocols.HasFlag(RuntimeListenerProtocols.Http1),
+                protocols.HasFlag(RuntimeListenerProtocols.Http2)));
+        var quicPolicy = ListenerProtocolAdvertisementPolicy.BuildHttp3AlpnProtocolNames(
+            new Http3AlpnAdvertisementInput(listener.Http3.EnabledForTraffic));
         var tcpAlpn = ListenerProtocolAdvertisement.BuildTcpAlpn(protocols);
         var quicAlpn = ListenerProtocolAdvertisement.BuildHttp3Alpn(listener);
 

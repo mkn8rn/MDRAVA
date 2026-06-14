@@ -1,6 +1,8 @@
-using MDRAVA.BLL.Configuration;
-
 namespace MDRAVA.BLL.ControlPlane.Listeners;
+
+public sealed record TcpAlpnAdvertisementInput(bool Http1Enabled, bool Http2Enabled);
+
+public sealed record Http3AlpnAdvertisementInput(bool EnabledForTraffic);
 
 public static class ListenerProtocolAdvertisementPolicy
 {
@@ -8,15 +10,15 @@ public static class ListenerProtocolAdvertisementPolicy
     public const string Http2Alpn = "h2";
     public const string Http3Alpn = "h3";
 
-    public static IReadOnlyList<string> BuildTcpAlpnProtocolNames(RuntimeListenerProtocols protocols)
+    public static IReadOnlyList<string> BuildTcpAlpnProtocolNames(TcpAlpnAdvertisementInput input)
     {
         List<string> advertised = [];
-        if (protocols.HasFlag(RuntimeListenerProtocols.Http2))
+        if (input.Http2Enabled)
         {
             advertised.Add(Http2Alpn);
         }
 
-        if (protocols.HasFlag(RuntimeListenerProtocols.Http1))
+        if (input.Http1Enabled)
         {
             advertised.Add(Http1Alpn);
         }
@@ -24,9 +26,9 @@ public static class ListenerProtocolAdvertisementPolicy
         return advertised;
     }
 
-    public static IReadOnlyList<string> BuildHttp3AlpnProtocolNames(RuntimeListener listener)
+    public static IReadOnlyList<string> BuildHttp3AlpnProtocolNames(Http3AlpnAdvertisementInput input)
     {
-        return listener.Http3.EnabledForTraffic
+        return input.EnabledForTraffic
             ? [Http3Alpn]
             : [];
     }
