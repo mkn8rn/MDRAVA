@@ -1,6 +1,7 @@
 using MDRAVA.BLL.ControlPlane.Http3;
+using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 
-namespace MDRAVA.BLL.ControlPlane.ConfigurationManagement;
+namespace MDRAVA.INF.Configuration;
 
 public sealed class ProxyConfigurationReadProjectionSource
     : IProxyConfigurationReadProjectionSource<ProxyConfigurationProjection>
