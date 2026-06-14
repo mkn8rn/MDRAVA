@@ -46,7 +46,7 @@ public sealed record RuntimeRouteResponse(
             route.LoadBalancingPolicy,
             RuntimeHealthCheckResponse.FromProjection(route.HealthCheck),
             RuntimeUpstreamResponse.FromUpstreams(route.Upstreams),
-            RuntimeHttpsRedirectResponse.FromPolicy(route.HttpsRedirect),
+            RuntimeHttpsRedirectResponse.FromProjection(route.HttpsRedirect),
             RuntimeCanonicalHostResponse.FromPolicy(route.CanonicalHost),
             RuntimeHeaderPolicyResponse.FromPolicy(route.HeaderPolicy),
             RuntimePathRewriteResponse.FromPolicy(route.PathRewrite),

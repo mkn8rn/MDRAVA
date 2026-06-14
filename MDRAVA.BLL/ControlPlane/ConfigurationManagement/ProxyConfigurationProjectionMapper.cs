@@ -107,7 +107,10 @@ public static class ProxyConfigurationProjectionMapper
                                 upstream.CircuitBreaker.HalfOpenMaxAttempts,
                                 upstream.CircuitBreaker.FailureStatusCodes)))
                         .ToArray()),
-                    route.HttpsRedirect,
+                    new RuntimeHttpsRedirectProjection(
+                        route.HttpsRedirect.Enabled,
+                        route.HttpsRedirect.StatusCode,
+                        route.HttpsRedirect.HttpsPort),
                     route.CanonicalHost,
                     route.HeaderPolicy,
                     route.PathRewrite,

@@ -590,6 +590,9 @@ internal static class ResilienceTests
         var statusController = new ProxyStatusController(new ProxyStatusAdministrationService(statusOperations));
         var status = statusController.Get();
 
+        object httpsRedirect = projection.Routes[0].HttpsRedirect;
+        AssertEx.True(httpsRedirect is RuntimeHttpsRedirectProjection);
+        AssertEx.False(httpsRedirect is RuntimeHttpsRedirectPolicy);
         object healthCheck = projection.Routes[0].HealthCheck;
         AssertEx.True(healthCheck is RuntimeHealthCheckProjection);
         AssertEx.False(healthCheck is RuntimeHealthCheckOptions);

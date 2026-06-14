@@ -1,5 +1,5 @@
 using BusinessRuntimeCanonicalHostPolicy = MDRAVA.BLL.Configuration.RuntimeCanonicalHostPolicy;
-using BusinessRuntimeHttpsRedirectPolicy = MDRAVA.BLL.Configuration.RuntimeHttpsRedirectPolicy;
+using BusinessRuntimeHttpsRedirectProjection = MDRAVA.BLL.Configuration.RuntimeHttpsRedirectProjection;
 using BusinessRuntimeMaintenancePolicy = MDRAVA.BLL.Configuration.RuntimeMaintenancePolicy;
 using BusinessRuntimePathRewritePolicy = MDRAVA.BLL.Configuration.RuntimePathRewritePolicy;
 using BusinessRuntimeRedirectPolicy = MDRAVA.BLL.Configuration.RuntimeRedirectPolicy;
@@ -12,11 +12,11 @@ public sealed record RuntimeHttpsRedirectResponse(
     int StatusCode,
     int? HttpsPort)
 {
-    public static RuntimeHttpsRedirectResponse FromPolicy(BusinessRuntimeHttpsRedirectPolicy policy)
+    public static RuntimeHttpsRedirectResponse FromProjection(BusinessRuntimeHttpsRedirectProjection projection)
     {
-        ArgumentNullException.ThrowIfNull(policy);
+        ArgumentNullException.ThrowIfNull(projection);
 
-        return new RuntimeHttpsRedirectResponse(policy.Enabled, policy.StatusCode, policy.HttpsPort);
+        return new RuntimeHttpsRedirectResponse(projection.Enabled, projection.StatusCode, projection.HttpsPort);
     }
 }
 

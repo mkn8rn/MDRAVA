@@ -10,7 +10,7 @@ public sealed record RuntimeRouteProjection
         string LoadBalancingPolicy,
         RuntimeHealthCheckProjection HealthCheck,
         IReadOnlyList<RuntimeUpstreamProjection> Upstreams,
-        RuntimeHttpsRedirectPolicy HttpsRedirect,
+        RuntimeHttpsRedirectProjection HttpsRedirect,
         RuntimeCanonicalHostPolicy CanonicalHost,
         RuntimeHeaderPolicy HeaderPolicy,
         RuntimePathRewritePolicy PathRewrite,
@@ -56,7 +56,7 @@ public sealed record RuntimeRouteProjection
 
     public IReadOnlyList<RuntimeUpstreamProjection> Upstreams { get; }
 
-    public RuntimeHttpsRedirectPolicy HttpsRedirect { get; init; }
+    public RuntimeHttpsRedirectProjection HttpsRedirect { get; init; }
 
     public RuntimeCanonicalHostPolicy CanonicalHost { get; init; }
 
