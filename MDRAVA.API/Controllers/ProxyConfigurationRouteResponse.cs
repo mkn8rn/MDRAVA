@@ -53,7 +53,7 @@ public sealed record RuntimeRouteResponse(
             RuntimeRedirectResponse.FromPolicy(route.Redirect),
             RuntimeStaticResponseResponse.FromResponse(route.StaticResponse),
             RuntimeMaintenanceResponse.FromPolicy(route.Maintenance),
-            RuntimeCachePolicyResponse.FromPolicy(route.Cache),
+            RuntimeCachePolicyResponse.FromProjection(route.Cache),
             RuntimeRouteResolvedOptionsResponse.FromOptions(route.ResolvedOptions))
         {
             SiteName = route.SiteName,

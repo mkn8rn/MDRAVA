@@ -1,4 +1,4 @@
-using BusinessRuntimeCachePolicy = MDRAVA.BLL.Configuration.RuntimeCachePolicy;
+using BusinessRuntimeCacheProjection = MDRAVA.BLL.Configuration.RuntimeCacheProjection;
 using BusinessRuntimeRetryProjection = MDRAVA.BLL.Configuration.RuntimeRetryProjection;
 
 namespace MDRAVA.API.Controllers;
@@ -13,19 +13,19 @@ public sealed record RuntimeCachePolicyResponse(
     IReadOnlyList<int> CacheableStatusCodes,
     IReadOnlyList<string> Methods)
 {
-    public static RuntimeCachePolicyResponse FromPolicy(BusinessRuntimeCachePolicy policy)
+    public static RuntimeCachePolicyResponse FromProjection(BusinessRuntimeCacheProjection projection)
     {
-        ArgumentNullException.ThrowIfNull(policy);
+        ArgumentNullException.ThrowIfNull(projection);
 
         return new RuntimeCachePolicyResponse(
-            policy.Enabled,
-            policy.MaxEntryBytes,
-            policy.MaxTotalBytes,
-            policy.DefaultTtl,
-            policy.RespectOriginCacheControl,
-            policy.VaryByHeaders.ToArray(),
-            policy.CacheableStatusCodes.ToArray(),
-            policy.Methods.ToArray());
+            projection.Enabled,
+            projection.MaxEntryBytes,
+            projection.MaxTotalBytes,
+            projection.DefaultTtl,
+            projection.RespectOriginCacheControl,
+            projection.VaryByHeaders.ToArray(),
+            projection.CacheableStatusCodes.ToArray(),
+            projection.Methods.ToArray());
     }
 }
 

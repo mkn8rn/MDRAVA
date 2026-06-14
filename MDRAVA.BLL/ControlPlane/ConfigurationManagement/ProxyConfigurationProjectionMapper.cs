@@ -108,7 +108,15 @@ public static class ProxyConfigurationProjectionMapper
                     route.Redirect,
                     route.StaticResponse,
                     route.Maintenance,
-                    route.Cache,
+                    new RuntimeCacheProjection(
+                        route.Cache.Enabled,
+                        route.Cache.MaxEntryBytes,
+                        route.Cache.MaxTotalBytes,
+                        route.Cache.DefaultTtl,
+                        route.Cache.RespectOriginCacheControl,
+                        route.Cache.VaryByHeaders,
+                        route.Cache.CacheableStatusCodes,
+                        route.Cache.Methods),
                     route.ResolvedOptions,
                     route.SiteName,
                     new RuntimeRetryProjection(

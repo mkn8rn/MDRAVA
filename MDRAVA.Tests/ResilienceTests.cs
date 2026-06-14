@@ -598,6 +598,15 @@ internal static class ResilienceTests
         AssertEx.False(retry is RuntimeRetryPolicy);
         AssertEx.False(retryStatusCodes is int[]);
         AssertEx.False(retryMethods is string[]);
+        object cache = projection.Routes[0].Cache;
+        object cacheVaryHeaders = projection.Routes[0].Cache.VaryByHeaders;
+        object cacheStatusCodes = projection.Routes[0].Cache.CacheableStatusCodes;
+        object cacheMethods = projection.Routes[0].Cache.Methods;
+        AssertEx.True(cache is RuntimeCacheProjection);
+        AssertEx.False(cache is RuntimeCachePolicy);
+        AssertEx.False(cacheVaryHeaders is string[]);
+        AssertEx.False(cacheStatusCodes is int[]);
+        AssertEx.False(cacheMethods is string[]);
         AssertEx.Equal(2, projection.Routes[0].Upstreams[0].Weight);
         AssertEx.Equal(true, projection.Routes[0].Upstreams[0].CircuitBreaker.Enabled);
         object circuitBreaker = projection.Routes[0].Upstreams[0].CircuitBreaker;
