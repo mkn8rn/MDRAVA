@@ -5,6 +5,8 @@ namespace MDRAVA.BLL.ControlPlane.Http3;
 
 public sealed record Http3SupportConfigurationSource
 {
+    public static Http3SupportConfigurationSource Empty { get; } = new([], false);
+
     public Http3SupportConfigurationSource(
         IReadOnlyList<Http3SupportListenerSource> Listeners,
         bool UpstreamHttp3Configured)

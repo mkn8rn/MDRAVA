@@ -58,7 +58,7 @@ public sealed class ProxyStatusInputReader : IProxyStatusInputReader
         var upstreams = _upstreamReader.ReadUpstreams();
         var metrics = _metricsSource.ReadMetrics();
         var http3 = Http3RuntimeSupport.ProjectRuntime(
-            configuration?.Http3Configuration ?? Http3SupportSourceMapper.FromConfiguration([], []),
+            configuration?.Http3Configuration ?? Http3SupportConfigurationSource.Empty,
             _http3PlatformSupportSource.Read(),
             Http3SupportSourceMapper.FromRuntimeListeners(runtimeSummary.Listeners));
         var logPersistence = _logPersistenceStore.GetStatus();

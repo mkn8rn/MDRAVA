@@ -96,7 +96,7 @@ internal static class OperatorStatusTests
                 ListenerCount: 0,
                 RouteCount: 0),
             UpstreamHealthSources: healthSources,
-            Http3Configuration: Http3SupportSourceMapper.FromConfiguration([], []),
+            Http3Configuration: Http3SupportConfigurationSource.Empty,
             ReadinessConfiguration: ProxyStatusReadinessConfigurationSourceSet.Missing);
         var upstreamHealthSource = new CapturingStatusUpstreamHealthSource();
         var reader = new ProxyStatusUpstreamHealthReader(
