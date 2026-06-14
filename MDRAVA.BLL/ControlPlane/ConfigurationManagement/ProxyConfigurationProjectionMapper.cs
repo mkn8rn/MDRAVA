@@ -26,7 +26,17 @@ public static class ProxyConfigurationProjectionMapper
             snapshot.Discovery,
             adminSecurity,
             snapshot.Acme,
-            snapshot.Timeouts,
+            new RuntimeTimeoutsProjection(
+                snapshot.Timeouts.ClientRequestHeadTimeout,
+                snapshot.Timeouts.ClientRequestBodyIdleTimeout,
+                snapshot.Timeouts.UpstreamConnectTimeout,
+                snapshot.Timeouts.UpstreamResponseHeadTimeout,
+                snapshot.Timeouts.UpstreamResponseBodyIdleTimeout,
+                snapshot.Timeouts.DownstreamWriteTimeout,
+                snapshot.Timeouts.TlsHandshakeTimeout,
+                snapshot.Timeouts.ClientKeepAliveIdleTimeout,
+                snapshot.Timeouts.UpstreamIdleConnectionLifetime,
+                snapshot.Timeouts.TunnelIdleTimeout),
             new RuntimeConnectionLimitsProjection(
                 snapshot.ConnectionLimits.MaxRequestsPerClientConnection,
                 snapshot.ConnectionLimits.MaxIdleUpstreamConnectionsPerUpstream,

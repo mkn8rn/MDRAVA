@@ -11,7 +11,7 @@ public sealed record ProxyConfigurationProjection(
     ProxyConfigurationDiscovery Discovery,
     RuntimeAdminSecurityProjection AdminSecurity,
     RuntimeAcmeOptions Acme,
-    RuntimeTimeouts Timeouts,
+    RuntimeTimeoutsProjection Timeouts,
     RuntimeConnectionLimitsProjection ConnectionLimits,
     RuntimeObservabilityOptions Observability,
     RuntimeLimitsProjection Limits,

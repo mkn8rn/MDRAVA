@@ -1,7 +1,7 @@
 using BusinessRuntimeConnectionLimitsProjection = MDRAVA.BLL.Configuration.RuntimeConnectionLimitsProjection;
 using BusinessRuntimeForwardedHeadersOptions = MDRAVA.BLL.Configuration.RuntimeForwardedHeadersOptions;
 using BusinessRuntimeLimitsProjection = MDRAVA.BLL.Configuration.RuntimeLimitsProjection;
-using BusinessRuntimeTimeouts = MDRAVA.BLL.Configuration.RuntimeTimeouts;
+using BusinessRuntimeTimeoutsProjection = MDRAVA.BLL.Configuration.RuntimeTimeoutsProjection;
 
 namespace MDRAVA.API.Controllers;
 
@@ -17,21 +17,21 @@ public sealed record RuntimeTimeoutsResponse(
     TimeSpan UpstreamIdleConnectionLifetime,
     TimeSpan TunnelIdleTimeout)
 {
-    public static RuntimeTimeoutsResponse FromTimeouts(BusinessRuntimeTimeouts timeouts)
+    public static RuntimeTimeoutsResponse FromProjection(BusinessRuntimeTimeoutsProjection projection)
     {
-        ArgumentNullException.ThrowIfNull(timeouts);
+        ArgumentNullException.ThrowIfNull(projection);
 
         return new RuntimeTimeoutsResponse(
-            timeouts.ClientRequestHeadTimeout,
-            timeouts.ClientRequestBodyIdleTimeout,
-            timeouts.UpstreamConnectTimeout,
-            timeouts.UpstreamResponseHeadTimeout,
-            timeouts.UpstreamResponseBodyIdleTimeout,
-            timeouts.DownstreamWriteTimeout,
-            timeouts.TlsHandshakeTimeout,
-            timeouts.ClientKeepAliveIdleTimeout,
-            timeouts.UpstreamIdleConnectionLifetime,
-            timeouts.TunnelIdleTimeout);
+            projection.ClientRequestHeadTimeout,
+            projection.ClientRequestBodyIdleTimeout,
+            projection.UpstreamConnectTimeout,
+            projection.UpstreamResponseHeadTimeout,
+            projection.UpstreamResponseBodyIdleTimeout,
+            projection.DownstreamWriteTimeout,
+            projection.TlsHandshakeTimeout,
+            projection.ClientKeepAliveIdleTimeout,
+            projection.UpstreamIdleConnectionLifetime,
+            projection.TunnelIdleTimeout);
     }
 }
 

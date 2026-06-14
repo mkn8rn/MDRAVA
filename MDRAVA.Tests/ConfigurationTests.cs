@@ -1133,6 +1133,9 @@ internal static class ConfigurationTests
         AssertEx.Equal(1, projection.Version);
         AssertEx.Equal("home", projection.Routes[0].Name);
         AssertEx.Equal(1, projection.SourceFiles.Count);
+        object timeouts = projection.Timeouts;
+        AssertEx.True(timeouts is RuntimeTimeoutsProjection);
+        AssertEx.False(timeouts is RuntimeTimeouts);
         object connectionLimits = projection.ConnectionLimits;
         AssertEx.True(connectionLimits is RuntimeConnectionLimitsProjection);
         AssertEx.False(connectionLimits is RuntimeConnectionLimits);
