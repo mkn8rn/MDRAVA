@@ -905,7 +905,7 @@ internal static class OperatorStatusTests
             MaxPathBytes: 8192,
             ShutdownGracePeriod: TimeSpan.FromSeconds(15));
 
-        var source = ProxyLimitSummarySourceMapper.FromConfiguration(limits);
+        var source = ProxyLimitConfigurationSummarySourceMapper.FromConfiguration(limits);
 
         AssertEx.Equal(123, source.MaxActiveClientConnections);
         AssertEx.Equal(7, source.MaxConcurrentTlsHandshakes);

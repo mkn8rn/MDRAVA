@@ -1,4 +1,3 @@
-using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.HealthChecks;
 using MDRAVA.BLL.ControlPlane.Http3;
 using MDRAVA.BLL.ControlPlane.Metrics;
@@ -72,24 +71,6 @@ public sealed record ProxyStatusConfigurationSourceSet
     public Http3SupportConfigurationSource Http3Configuration { get; }
 
     public ProxyStatusReadinessConfigurationSourceSet ReadinessConfiguration { get; }
-}
-
-public static class ProxyStatusConfigurationSourceMapper
-{
-    public static ProxyStatusConfigurationSourceSet FromConfiguration(
-        ProxyConfigurationSnapshot configuration,
-        IReadOnlyList<ProxyUpstreamHealthSource> upstreamHealthSources)
-    {
-        return new ProxyStatusConfigurationSourceSet(
-            ProxyStatusConfigurationSummaryMapper.FromRuntimeConfiguration(
-                configuration.Version,
-                configuration.LoadedAtUtc,
-                configuration.Listeners,
-                configuration.Routes),
-            upstreamHealthSources,
-            Http3SupportSourceMapper.FromConfiguration(configuration.Listeners, configuration.Routes),
-            ProxyStatusReadinessConfigurationSourceMapper.FromConfiguration(configuration));
-    }
 }
 
 public interface IProxyStatusMetricsSource

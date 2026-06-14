@@ -1,4 +1,3 @@
-using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.Acme;
 using MDRAVA.BLL.ControlPlane.Caching;
 using MDRAVA.BLL.ControlPlane.Http3;
@@ -137,30 +136,6 @@ public sealed record ProxyStatusReadinessConfigurationSourceSet
     public ProxyAcmeSummaryConfigurationSource? Acme { get; }
 
     public ProxyLimitConfigurationSummarySource? LimitConfiguration { get; }
-}
-
-public static class ProxyStatusReadinessConfigurationSourceMapper
-{
-    public static ProxyStatusReadinessConfigurationSourceSet FromConfiguration(
-        ProxyConfigurationSnapshot? configuration)
-    {
-        if (configuration is null)
-        {
-            return ProxyStatusReadinessConfigurationSourceSet.Missing;
-        }
-
-        return new ProxyStatusReadinessConfigurationSourceSet(
-            true,
-            configuration.Version,
-            configuration.LoadedAtUtc,
-            ProxyConfiguredListenerSummarySourceMapper.FromListeners(configuration.Listeners),
-            ProxyRouteSummarySourceMapper.FromRoutes(configuration.Routes),
-            ProxyCertificateSummarySourceMapper.FromConfiguration(
-                configuration.Listeners,
-                configuration.Certificates),
-            ProxyAcmeSummaryConfigurationSourceMapper.FromConfiguration(configuration.Acme),
-            ProxyLimitSummarySourceMapper.FromConfiguration(configuration.Limits));
-    }
 }
 
 public static class ProxyStatusReadinessSourceMapper
