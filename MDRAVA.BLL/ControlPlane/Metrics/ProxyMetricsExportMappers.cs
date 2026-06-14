@@ -1,4 +1,3 @@
-using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.Acme;
 using MDRAVA.BLL.ControlPlane.Caching;
 using MDRAVA.BLL.ControlPlane.Status;
@@ -16,32 +15,6 @@ public static class ProxyMetricsExportConfigurationMapper
             metricsEnabled,
             labelOptions,
             http3Facts);
-    }
-}
-
-public static class ProxyMetricsExportLabelOptionsMapper
-{
-    public static ProxyMetricsExportLabelOptions FromMetrics(RuntimeMetricsOptions metrics)
-    {
-        return new ProxyMetricsExportLabelOptions(
-            metrics.IncludePerRouteLabels,
-            metrics.IncludePerUpstreamLabels);
-    }
-}
-
-public static class ProxyMetricsExportHttp3FactsMapper
-{
-    public static ProxyMetricsExportHttp3Facts FromRuntimeConfiguration(
-        IReadOnlyList<RuntimeListener> listeners,
-        IReadOnlyList<RuntimeRoute> routes)
-    {
-        return new ProxyMetricsExportHttp3Facts(
-            listeners.Count(static listener =>
-                listener.Http3.EnabledForTraffic
-                && string.Equals(listener.Http3.EnablementLevel, "default", StringComparison.OrdinalIgnoreCase)),
-            listeners.Any(static listener => listener.Http3.EnabledForTraffic),
-            routes.Any(static route =>
-                route.Upstreams.Any(static upstream => RuntimeUpstreamProtocol.IsHttp3(upstream.Protocol))));
     }
 }
 
