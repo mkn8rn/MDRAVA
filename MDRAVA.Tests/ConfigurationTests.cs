@@ -1169,14 +1169,20 @@ internal static class ConfigurationTests
 
         var projection = ProxyConfigurationReloadResultAssertions.Reloaded(result).ActiveConfiguration;
         var route = projection.Routes[0];
+        var upstream = route.Upstreams[0];
         object routeCollection = projection.Routes;
+        object upstreamCollection = route.Upstreams;
 
         AssertEx.Equal("home", route.Name);
         AssertEx.Equal("home", route.SiteName);
         AssertEx.Equal(1, route.Upstreams.Count);
-        AssertEx.Equal("home", route.Upstreams[0].RouteName);
+        AssertEx.Equal("home", upstream.RouteName);
+        AssertEx.Equal("local-test", upstream.Name);
+        AssertEx.Equal("127.0.0.1:15000", upstream.Endpoint);
         AssertEx.False(routeCollection is RuntimeRoute[]);
         AssertEx.False(routeCollection is RuntimeRouteProjection[]);
+        AssertEx.False(upstreamCollection is RuntimeUpstream[]);
+        AssertEx.False(upstreamCollection is RuntimeUpstreamProjection[]);
     }
 
     public static async Task ConfigReloadControllerReturnsConfigurationResponse()

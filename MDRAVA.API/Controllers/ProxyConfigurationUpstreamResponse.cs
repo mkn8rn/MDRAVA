@@ -1,5 +1,5 @@
 using BusinessRuntimeCircuitBreakerPolicy = MDRAVA.BLL.Configuration.RuntimeCircuitBreakerPolicy;
-using BusinessRuntimeUpstream = MDRAVA.BLL.Configuration.RuntimeUpstream;
+using BusinessRuntimeUpstreamProjection = MDRAVA.BLL.Configuration.RuntimeUpstreamProjection;
 using BusinessRuntimeUpstreamTlsOptions = MDRAVA.BLL.Configuration.RuntimeUpstreamTlsOptions;
 
 namespace MDRAVA.API.Controllers;
@@ -25,14 +25,14 @@ public sealed record RuntimeUpstreamResponse(
     public RuntimeCircuitBreakerResponse CircuitBreaker { get; init; } = null!;
 
     public static IReadOnlyList<RuntimeUpstreamResponse> FromUpstreams(
-        IReadOnlyList<BusinessRuntimeUpstream> upstreams)
+        IReadOnlyList<BusinessRuntimeUpstreamProjection> upstreams)
     {
         ArgumentNullException.ThrowIfNull(upstreams);
 
         return upstreams.Select(FromUpstream).ToArray();
     }
 
-    private static RuntimeUpstreamResponse FromUpstream(BusinessRuntimeUpstream upstream)
+    private static RuntimeUpstreamResponse FromUpstream(BusinessRuntimeUpstreamProjection upstream)
     {
         ArgumentNullException.ThrowIfNull(upstream);
 

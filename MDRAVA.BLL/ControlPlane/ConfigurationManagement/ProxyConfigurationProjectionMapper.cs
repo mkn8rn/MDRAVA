@@ -77,7 +77,22 @@ public static class ProxyConfigurationProjectionMapper
                     route.Action,
                     route.LoadBalancingPolicy,
                     route.HealthCheck,
-                    route.Upstreams,
+                    new ReadOnlyCollection<RuntimeUpstreamProjection>(route.Upstreams
+                        .Select(static upstream => new RuntimeUpstreamProjection(
+                            upstream.RouteName,
+                            upstream.Name,
+                            upstream.Scheme,
+                            upstream.Protocol,
+                            upstream.Address,
+                            upstream.Port,
+                            upstream.Weight,
+                            upstream.Tls,
+                            upstream.Endpoint,
+                            upstream.UriEndpoint,
+                            upstream.EffectiveSniHost,
+                            upstream.Identity,
+                            upstream.CircuitBreaker))
+                        .ToArray()),
                     route.HttpsRedirect,
                     route.CanonicalHost,
                     route.HeaderPolicy,

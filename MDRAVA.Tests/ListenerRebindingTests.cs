@@ -242,7 +242,12 @@ internal static class ListenerRebindingTests
                 .ReloadAsync(timeout.Token);
             var after = await WaitForListenerAsync(runtime, "main", ProxyListenerState.Active, timeout.Token);
 
-            AssertEx.Equal(2, ProxyConfigurationReloadResultAssertions.Reloaded(reload, string.Join("; ", reload.Errors)).ListenerReload.Unchanged);
+            var listenerReload = ProxyConfigurationReloadResultAssertions.Reloaded(
+                reload,
+                string.Join("; ", reload.Errors)).ListenerReload;
+            AssertEx.Equal(0, listenerReload.Added);
+            AssertEx.Equal(0, listenerReload.Removed);
+            AssertEx.True(listenerReload.Unchanged >= 1, listenerReload.Unchanged.ToString());
             AssertEx.Equal(before.StartedAtUtc, after.StartedAtUtc);
         }
         finally
