@@ -633,23 +633,34 @@ internal static class ResilienceTests
 
     public static void RetryPolicyNamesAdmissionDecisions()
     {
-        var retryRoute = Route([]) with
-        {
-            Retry = new RuntimeRetryPolicy(
-                true,
-                2,
-                null,
-                true,
-                false,
-                [],
-                ["GET", "HEAD"],
-                TimeSpan.Zero)
-        };
-
-        var disabled = ProxyRetryPolicy.EvaluateAdmission(Route([]), RequestHead("GET", Http1RequestFraming.None));
-        var methodSkipped = ProxyRetryPolicy.EvaluateAdmission(retryRoute, RequestHead("POST", Http1RequestFraming.None));
-        var bodySkipped = ProxyRetryPolicy.EvaluateAdmission(retryRoute, RequestHead("GET", Http1RequestFraming.FromContentLength(5)));
-        var allowed = ProxyRetryPolicy.EvaluateAdmission(retryRoute, RequestHead("GET", Http1RequestFraming.None));
+        var disabled = ProxyRetryPolicy.EvaluateAdmission(
+            RetryAdmissionInput(
+                enabled: false,
+                maxAttempts: 2,
+                retryMethods: ["GET", "HEAD"],
+                requestMethod: "GET",
+                hasRequestBody: false));
+        var methodSkipped = ProxyRetryPolicy.EvaluateAdmission(
+            RetryAdmissionInput(
+                enabled: true,
+                maxAttempts: 2,
+                retryMethods: ["GET", "HEAD"],
+                requestMethod: "POST",
+                hasRequestBody: false));
+        var bodySkipped = ProxyRetryPolicy.EvaluateAdmission(
+            RetryAdmissionInput(
+                enabled: true,
+                maxAttempts: 2,
+                retryMethods: ["GET", "HEAD"],
+                requestMethod: "GET",
+                hasRequestBody: true));
+        var allowed = ProxyRetryPolicy.EvaluateAdmission(
+            RetryAdmissionInput(
+                enabled: true,
+                maxAttempts: 2,
+                retryMethods: ["GET", "HEAD"],
+                requestMethod: "GET",
+                hasRequestBody: false));
 
         AssertEx.Equal(ProxyRetryAdmissionDecision.NotAllowed, disabled);
         AssertEx.True(methodSkipped is ProxyRetryAdmissionDecision.SkippedDecision);
@@ -661,22 +672,27 @@ internal static class ResilienceTests
 
     public static void RetryPolicyCreatesExecutionPlanFromAdmission()
     {
-        var retryRoute = Route([]) with
-        {
-            Retry = new RuntimeRetryPolicy(
-                true,
-                3,
-                null,
-                true,
-                false,
-                [],
-                ["GET"],
-                TimeSpan.Zero)
-        };
-
-        var disabled = ProxyRetryPolicy.CreatePlan(Route([]), RequestHead("GET", Http1RequestFraming.None));
-        var skipped = ProxyRetryPolicy.CreatePlan(retryRoute, RequestHead("POST", Http1RequestFraming.None));
-        var allowed = ProxyRetryPolicy.CreatePlan(retryRoute, RequestHead("GET", Http1RequestFraming.None));
+        var disabled = ProxyRetryPolicy.CreatePlan(
+            RetryAdmissionInput(
+                enabled: false,
+                maxAttempts: 3,
+                retryMethods: ["GET"],
+                requestMethod: "GET",
+                hasRequestBody: false));
+        var skipped = ProxyRetryPolicy.CreatePlan(
+            RetryAdmissionInput(
+                enabled: true,
+                maxAttempts: 3,
+                retryMethods: ["GET"],
+                requestMethod: "POST",
+                hasRequestBody: false));
+        var allowed = ProxyRetryPolicy.CreatePlan(
+            RetryAdmissionInput(
+                enabled: true,
+                maxAttempts: 3,
+                retryMethods: ["GET"],
+                requestMethod: "GET",
+                hasRequestBody: false));
 
         AssertEx.Equal(ProxyRetryAdmissionDecision.NotAllowed, disabled.Admission);
         AssertEx.False(disabled.IsAllowed);
@@ -688,11 +704,13 @@ internal static class ResilienceTests
         AssertEx.True(allowed.IsAllowed);
         AssertEx.Equal(3, allowed.MaxAttempts);
 
-        var malformedRetryRoute = retryRoute with
-        {
-            Retry = new RuntimeRetryPolicy(true, 0, null, true, false, [], ["GET"], TimeSpan.Zero)
-        };
-        var malformedAllowed = ProxyRetryPolicy.CreatePlan(malformedRetryRoute, RequestHead("GET", Http1RequestFraming.None));
+        var malformedAllowed = ProxyRetryPolicy.CreatePlan(
+            RetryAdmissionInput(
+                enabled: true,
+                maxAttempts: 0,
+                retryMethods: ["GET"],
+                requestMethod: "GET",
+                hasRequestBody: false));
 
         AssertEx.True(malformedAllowed.IsAllowed);
         AssertEx.Equal(1, malformedAllowed.MaxAttempts);
@@ -803,6 +821,21 @@ internal static class ResilienceTests
             "resilience.test",
             framing,
             []);
+    }
+
+    private static ProxyRetryAdmissionInput RetryAdmissionInput(
+        bool enabled,
+        int maxAttempts,
+        IReadOnlyList<string> retryMethods,
+        string requestMethod,
+        bool hasRequestBody)
+    {
+        return new ProxyRetryAdmissionInput(
+            enabled,
+            maxAttempts,
+            retryMethods,
+            requestMethod,
+            hasRequestBody);
     }
 
     private static async Task<ClosedUpstreamResult> RunClosedUpstreamScenarioAsync(

@@ -1,34 +1,34 @@
-using MDRAVA.BLL.ControlPlane.Http1;
 using MDRAVA.BLL.ControlPlane.Forwarding;
 using MDRAVA.BLL.Configuration;
+using System.Collections.ObjectModel;
 
 namespace MDRAVA.BLL.ControlPlane.Resilience;
 
 public static class ProxyRetryPolicy
 {
-    public static ProxyRetryPlan CreatePlan(RuntimeRoute route, Http1RequestHead requestHead)
+    public static ProxyRetryPlan CreatePlan(ProxyRetryAdmissionInput input)
     {
-        var admission = EvaluateAdmission(route, requestHead);
+        var admission = EvaluateAdmission(input);
         var isAllowed = admission == ProxyRetryAdmissionDecision.Allowed;
         return new ProxyRetryPlan(
             admission,
             isAllowed,
-            isAllowed ? Math.Max(1, route.Retry.MaxAttempts) : 1);
+            isAllowed ? Math.Max(1, input.MaxAttempts) : 1);
     }
 
-    public static ProxyRetryAdmissionDecision EvaluateAdmission(RuntimeRoute route, Http1RequestHead requestHead)
+    public static ProxyRetryAdmissionDecision EvaluateAdmission(ProxyRetryAdmissionInput input)
     {
-        if (!route.Retry.Enabled)
+        if (!input.Enabled)
         {
             return ProxyRetryAdmissionDecision.NotAllowed;
         }
 
-        if (!route.Retry.RetryMethods.Any(method => string.Equals(method, requestHead.Method, StringComparison.OrdinalIgnoreCase)))
+        if (!input.RetryMethods.Any(method => string.Equals(method, input.RequestMethod, StringComparison.OrdinalIgnoreCase)))
         {
             return ProxyRetryAdmissionDecision.Skipped("method");
         }
 
-        if (requestHead.Framing.Kind != Http1BodyKind.None)
+        if (input.HasRequestBody)
         {
             return ProxyRetryAdmissionDecision.Skipped("request_body");
         }
@@ -117,6 +117,35 @@ public static class ProxyRetryPolicy
 
         return false;
     }
+}
+
+public sealed record ProxyRetryAdmissionInput
+{
+    public ProxyRetryAdmissionInput(
+        bool Enabled,
+        int MaxAttempts,
+        IReadOnlyList<string> RetryMethods,
+        string RequestMethod,
+        bool HasRequestBody)
+    {
+        ArgumentNullException.ThrowIfNull(RetryMethods);
+
+        this.Enabled = Enabled;
+        this.MaxAttempts = MaxAttempts;
+        this.RetryMethods = new ReadOnlyCollection<string>(RetryMethods.ToArray());
+        this.RequestMethod = RequestMethod;
+        this.HasRequestBody = HasRequestBody;
+    }
+
+    public bool Enabled { get; }
+
+    public int MaxAttempts { get; }
+
+    public IReadOnlyList<string> RetryMethods { get; }
+
+    public string RequestMethod { get; }
+
+    public bool HasRequestBody { get; }
 }
 
 public sealed record ProxyRetryPlan(

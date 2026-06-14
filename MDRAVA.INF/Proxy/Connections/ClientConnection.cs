@@ -611,7 +611,8 @@ public sealed class ClientConnection
         string requestId,
         CancellationToken cancellationToken)
     {
-        var retryPlan = ProxyRetryPolicy.CreatePlan(route, requestHead);
+        var retryPlan = ProxyRetryPolicy.CreatePlan(
+            ProxyRetryRuntimeMapper.ToAdmissionInput(route, requestHead));
         if (retryPlan.Admission is ProxyRetryAdmissionDecision.SkippedDecision skippedAdmission)
         {
             _metrics.RetrySkipped(skippedAdmission.Reason);
