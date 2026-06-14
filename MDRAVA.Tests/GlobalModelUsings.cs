@@ -34,5 +34,6 @@ global using MDRAVA.INF.Observability;
 global using MDRAVA.INF.Proxy.Caching;
 global using MDRAVA.INF.Proxy.ConfigLint;
 global using MDRAVA.INF.Proxy.Forwarding;
+global using MDRAVA.INF.Proxy.RouteDiagnostics;
 global using MDRAVA.INF.Proxy.Tls;
 global using MDRAVA.INF.Runtime;

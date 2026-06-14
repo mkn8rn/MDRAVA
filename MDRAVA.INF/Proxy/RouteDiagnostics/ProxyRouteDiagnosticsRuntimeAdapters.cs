@@ -1,7 +1,8 @@
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
+using MDRAVA.BLL.ControlPlane.RouteDiagnostics;
 
-namespace MDRAVA.BLL.ControlPlane.RouteDiagnostics;
+namespace MDRAVA.INF.Proxy.RouteDiagnostics;
 
 public sealed class ProxyRouteDiagnosticsConfigurationSource
     : IProxyRouteDiagnosticsConfigurationSource
