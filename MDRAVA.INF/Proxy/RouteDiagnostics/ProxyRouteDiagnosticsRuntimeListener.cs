@@ -13,7 +13,9 @@ public sealed class ProxyRouteDiagnosticsRuntimeListener
         Address = runtimeListener.Address;
         Port = runtimeListener.Port;
         Enabled = runtimeListener.Enabled;
-        Protocols = runtimeListener.Protocols;
+        SupportsHttp1 = runtimeListener.Protocols.HasFlag(RuntimeListenerProtocols.Http1);
+        SupportsHttp2 = runtimeListener.Protocols.HasFlag(RuntimeListenerProtocols.Http2);
+        SupportsHttp3 = runtimeListener.Protocols.HasFlag(RuntimeListenerProtocols.Http3);
         Http3EnabledForTraffic = runtimeListener.Http3.EnabledForTraffic;
     }
 
@@ -27,7 +29,11 @@ public sealed class ProxyRouteDiagnosticsRuntimeListener
 
     public bool Enabled { get; }
 
-    public RuntimeListenerProtocols Protocols { get; }
+    public bool SupportsHttp1 { get; }
+
+    public bool SupportsHttp2 { get; }
+
+    public bool SupportsHttp3 { get; }
 
     public bool Http3EnabledForTraffic { get; }
 }

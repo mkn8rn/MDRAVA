@@ -1,5 +1,3 @@
-using MDRAVA.BLL.Configuration;
-
 namespace MDRAVA.BLL.ControlPlane.RouteDiagnostics;
 
 public interface IProxyRouteDiagnosticsConfigurationSource
@@ -52,7 +50,11 @@ public interface IProxyRouteDiagnosticsListener
 
     bool Enabled { get; }
 
-    RuntimeListenerProtocols Protocols { get; }
+    bool SupportsHttp1 { get; }
+
+    bool SupportsHttp2 { get; }
+
+    bool SupportsHttp3 { get; }
 
     bool Http3EnabledForTraffic { get; }
 }

@@ -1,5 +1,3 @@
-using MDRAVA.BLL.Configuration;
-
 namespace MDRAVA.BLL.ControlPlane.RouteDiagnostics;
 
 public static class ProxyRouteDiagnosticsListenerSelector
@@ -26,8 +24,8 @@ public static class ProxyRouteDiagnosticsListenerSelector
 
         candidates = protocol switch
         {
-            "http1" => candidates.Where(static listener => listener.Protocols.HasFlag(RuntimeListenerProtocols.Http1)),
-            "http2" => candidates.Where(static listener => listener.Protocols.HasFlag(RuntimeListenerProtocols.Http2)),
+            "http1" => candidates.Where(static listener => listener.SupportsHttp1),
+            "http2" => candidates.Where(static listener => listener.SupportsHttp2),
             "http3" => candidates.Where(static listener => listener.Http3EnabledForTraffic),
             _ => candidates
         };

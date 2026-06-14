@@ -60,6 +60,21 @@ public sealed partial class RouteMatchDiagnosticsService
             string.Equals(listener.Transport, "https", StringComparison.OrdinalIgnoreCase) ? "https" : "http",
             listener.Address,
             listener.Port,
-            listener.Protocols.ToString());
+            ProtocolsText(listener));
+    }
+
+    private static string ProtocolsText(IProxyRouteDiagnosticsListener listener)
+    {
+        return (listener.SupportsHttp1, listener.SupportsHttp2, listener.SupportsHttp3) switch
+        {
+            (true, true, true) => "Http1AndHttp2AndHttp3",
+            (true, true, false) => "Http1AndHttp2",
+            (true, false, true) => "Http1AndHttp3",
+            (false, true, true) => "Http2AndHttp3",
+            (true, false, false) => "Http1",
+            (false, true, false) => "Http2",
+            (false, false, true) => "Http3",
+            _ => "None"
+        };
     }
 }

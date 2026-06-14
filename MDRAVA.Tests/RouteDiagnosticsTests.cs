@@ -1579,7 +1579,9 @@ internal static class RouteDiagnosticsTests
             "127.0.0.1",
             port,
             true,
-            protocols,
+            protocols.HasFlag(RuntimeListenerProtocols.Http1),
+            protocols.HasFlag(RuntimeListenerProtocols.Http2),
+            protocols.HasFlag(RuntimeListenerProtocols.Http3),
             http3EnabledForTraffic);
     }
 
@@ -1706,7 +1708,9 @@ internal static class RouteDiagnosticsTests
         string Address,
         int Port,
         bool Enabled,
-        RuntimeListenerProtocols Protocols,
+        bool SupportsHttp1,
+        bool SupportsHttp2,
+        bool SupportsHttp3,
         bool Http3EnabledForTraffic)
         : IProxyRouteDiagnosticsListener;
 
