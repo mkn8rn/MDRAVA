@@ -22,8 +22,8 @@ public sealed record RuntimeListenerProjection
         RuntimeHttp2LimitsProjection Http2Limits,
         bool TcpTrafficEnabled,
         bool Http3ProtocolConfigured,
-        RuntimeQuicListenerIdentity? QuicIdentity,
-        RuntimeHttp3ListenerReadiness Http3)
+        RuntimeQuicListenerIdentityProjection? QuicIdentity,
+        RuntimeHttp3ListenerReadinessProjection Http3)
     {
         this.Name = Name;
         this.Address = Address;
@@ -86,7 +86,7 @@ public sealed record RuntimeListenerProjection
 
     public bool Http3ProtocolConfigured { get; init; }
 
-    public RuntimeQuicListenerIdentity? QuicIdentity { get; init; }
+    public RuntimeQuicListenerIdentityProjection? QuicIdentity { get; init; }
 
-    public RuntimeHttp3ListenerReadiness Http3 { get; init; }
+    public RuntimeHttp3ListenerReadinessProjection Http3 { get; init; }
 }

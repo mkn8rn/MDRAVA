@@ -1,7 +1,8 @@
 using BusinessRuntimeHttp3AltSvcProjection = MDRAVA.BLL.Configuration.RuntimeHttp3AltSvcProjection;
 using BusinessRuntimeHttp3Enablement = MDRAVA.BLL.Configuration.RuntimeHttp3Enablement;
-using BusinessRuntimeHttp3ListenerReadiness = MDRAVA.BLL.Configuration.RuntimeHttp3ListenerReadiness;
-using BusinessRuntimeQuicListenerIdentity = MDRAVA.BLL.Configuration.RuntimeQuicListenerIdentity;
+using BusinessRuntimeHttp3ListenerReadinessProjection =
+    MDRAVA.BLL.Configuration.RuntimeHttp3ListenerReadinessProjection;
+using BusinessRuntimeQuicListenerIdentityProjection = MDRAVA.BLL.Configuration.RuntimeQuicListenerIdentityProjection;
 
 namespace MDRAVA.API.Controllers;
 
@@ -28,23 +29,23 @@ public sealed record RuntimeHttp3ListenerReadinessResponse(
     bool UdpQuicListenerIdentityModeled,
     RuntimeQuicListenerIdentityResponse? QuicIdentity)
 {
-    public static RuntimeHttp3ListenerReadinessResponse FromReadiness(
-        BusinessRuntimeHttp3ListenerReadiness readiness)
+    public static RuntimeHttp3ListenerReadinessResponse FromProjection(
+        BusinessRuntimeHttp3ListenerReadinessProjection projection)
     {
-        ArgumentNullException.ThrowIfNull(readiness);
+        ArgumentNullException.ThrowIfNull(projection);
 
         return new RuntimeHttp3ListenerReadinessResponse(
-            readiness.Configured,
-            readiness.DefaultEnabled,
-            readiness.EnablementLevel,
-            readiness.EnabledForTraffic,
-            readiness.DisabledReason,
-            readiness.AltSvcConfigured,
-            readiness.AltSvcMaxAgeSeconds,
-            readiness.UdpQuicListenerIdentityModeled,
-            readiness.QuicIdentity is null
+            projection.Configured,
+            projection.DefaultEnabled,
+            projection.EnablementLevel,
+            projection.EnabledForTraffic,
+            projection.DisabledReason,
+            projection.AltSvcConfigured,
+            projection.AltSvcMaxAgeSeconds,
+            projection.UdpQuicListenerIdentityModeled,
+            projection.QuicIdentity is null
                 ? null
-                : RuntimeQuicListenerIdentityResponse.FromIdentity(readiness.QuicIdentity));
+                : RuntimeQuicListenerIdentityResponse.FromProjection(projection.QuicIdentity));
     }
 }
 
@@ -58,18 +59,19 @@ public sealed record RuntimeQuicListenerIdentityResponse(
 
     public string BindKey { get; init; } = "";
 
-    public static RuntimeQuicListenerIdentityResponse FromIdentity(BusinessRuntimeQuicListenerIdentity identity)
+    public static RuntimeQuicListenerIdentityResponse FromProjection(
+        BusinessRuntimeQuicListenerIdentityProjection projection)
     {
-        ArgumentNullException.ThrowIfNull(identity);
+        ArgumentNullException.ThrowIfNull(projection);
 
         return new RuntimeQuicListenerIdentityResponse(
-            identity.Name,
-            identity.Address,
-            identity.Port,
-            identity.TlsEnabled)
+            projection.Name,
+            projection.Address,
+            projection.Port,
+            projection.TlsEnabled)
         {
-            Key = identity.Key,
-            BindKey = identity.BindKey
+            Key = projection.Key,
+            BindKey = projection.BindKey
         };
     }
 }

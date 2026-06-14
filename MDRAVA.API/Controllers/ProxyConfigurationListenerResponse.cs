@@ -71,8 +71,8 @@ public sealed record RuntimeListenerResponse(
             Http3ProtocolConfigured = listener.Http3ProtocolConfigured,
             QuicIdentity = listener.QuicIdentity is null
                 ? null
-                : RuntimeQuicListenerIdentityResponse.FromIdentity(listener.QuicIdentity),
-            Http3 = RuntimeHttp3ListenerReadinessResponse.FromReadiness(listener.Http3)
+                : RuntimeQuicListenerIdentityResponse.FromProjection(listener.QuicIdentity),
+            Http3 = RuntimeHttp3ListenerReadinessResponse.FromProjection(listener.Http3)
         };
     }
 }

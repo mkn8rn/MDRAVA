@@ -1168,6 +1168,12 @@ internal static class ConfigurationTests
         object http2Limits = listener.Http2Limits;
         AssertEx.True(http2Limits is RuntimeHttp2LimitsProjection);
         AssertEx.False(http2Limits is RuntimeHttp2Limits);
+        object http3 = listener.Http3;
+        AssertEx.True(http3 is RuntimeHttp3ListenerReadinessProjection);
+        AssertEx.False(http3 is RuntimeHttp3ListenerReadiness);
+        object? quicIdentity = listener.QuicIdentity;
+        AssertEx.True(quicIdentity is null or RuntimeQuicListenerIdentityProjection);
+        AssertEx.False(quicIdentity is RuntimeQuicListenerIdentity);
         AssertEx.False(listenerCollection is RuntimeListener[]);
         AssertEx.False(listenerCollection is RuntimeListenerProjection[]);
     }

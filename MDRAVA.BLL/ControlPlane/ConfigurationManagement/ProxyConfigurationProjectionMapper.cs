@@ -82,8 +82,17 @@ public static class ProxyConfigurationProjectionMapper
                         listener.Http2Limits.MaxFrameSize),
                     listener.TcpTrafficEnabled,
                     listener.Http3ProtocolConfigured,
-                    listener.QuicIdentity,
-                    listener.Http3))
+                    ToQuicListenerIdentityProjection(listener.QuicIdentity),
+                    new RuntimeHttp3ListenerReadinessProjection(
+                        listener.Http3.Configured,
+                        listener.Http3.DefaultEnabled,
+                        listener.Http3.EnablementLevel,
+                        listener.Http3.EnabledForTraffic,
+                        listener.Http3.DisabledReason,
+                        listener.Http3.AltSvcConfigured,
+                        listener.Http3.AltSvcMaxAgeSeconds,
+                        listener.Http3.UdpQuicListenerIdentityModeled,
+                        ToQuicListenerIdentityProjection(listener.Http3.QuicIdentity))))
                 .ToArray()),
             new ReadOnlyCollection<RuntimeRouteProjection>(snapshot.Routes
                 .Select(static route => new RuntimeRouteProjection(
@@ -187,5 +196,19 @@ public static class ProxyConfigurationProjectionMapper
             Metrics = snapshot.Metrics,
             Http3 = http3
         };
+    }
+
+    private static RuntimeQuicListenerIdentityProjection? ToQuicListenerIdentityProjection(
+        RuntimeQuicListenerIdentity? identity)
+    {
+        return identity is null
+            ? null
+            : new RuntimeQuicListenerIdentityProjection(
+                identity.Name,
+                identity.Address,
+                identity.Port,
+                identity.TlsEnabled,
+                identity.Key,
+                identity.BindKey);
     }
 }
