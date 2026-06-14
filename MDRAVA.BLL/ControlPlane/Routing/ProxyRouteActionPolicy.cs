@@ -1,89 +1,70 @@
 using MDRAVA.BLL.Http;
 using MDRAVA.BLL.ControlPlane.Headers;
-using MDRAVA.BLL.ControlPlane.Http1;
 using System.Globalization;
-using MDRAVA.BLL.Configuration;
 
 namespace MDRAVA.BLL.ControlPlane.Routing;
 
 public sealed class ProxyRouteActionPolicy
 {
-    public RouteActionDecision Evaluate(
-        RuntimeRoute route,
-        Http1RequestHead requestHead,
-        RuntimeListener listener,
-        bool isUpgradeRequest)
+    public RouteActionDecision Evaluate(ProxyRouteActionInput input)
     {
-        var policyRedirect = isUpgradeRequest
+        ArgumentNullException.ThrowIfNull(input);
+
+        var policyRedirect = input.IsUpgradeRequest
             ? ProxyRoutePolicyRedirectDecision.NoRedirect
-            : ProxyRoutePolicyRedirectEvaluator.Evaluate(ToPolicyRedirectInput(route, requestHead, listener));
+            : ProxyRoutePolicyRedirectEvaluator.Evaluate(input.PolicyRedirect);
         if (policyRedirect is ProxyRoutePolicyRedirectDecision.RedirectDecision redirect)
         {
             return new RouteActionDecision(RedirectResponse(redirect.StatusCode, redirect.Location));
         }
 
-        if (route.Maintenance.Enabled)
+        if (input.Maintenance.Enabled)
         {
             List<ProxyHeaderField> headers = [];
-            if (route.Maintenance.RetryAfterSeconds.HasValue)
+            if (input.Maintenance.RetryAfterSeconds.HasValue)
             {
-                headers.Add(new ProxyHeaderField("Retry-After", route.Maintenance.RetryAfterSeconds.Value.ToString(CultureInfo.InvariantCulture)));
+                headers.Add(new ProxyHeaderField("Retry-After", input.Maintenance.RetryAfterSeconds.Value.ToString(CultureInfo.InvariantCulture)));
             }
 
             return new RouteActionDecision(new GeneratedRouteResponse(
                 503,
                 "Service Unavailable",
-                route.Maintenance.ContentType,
-                route.Maintenance.Body,
+                input.Maintenance.ContentType,
+                input.Maintenance.Body,
                 headers));
         }
 
-        return route.Action switch
+        return input.Action switch
         {
-            RuntimeRouteAction.Redirect => new RouteActionDecision(BuildRouteRedirect(route, requestHead)),
-            RuntimeRouteAction.StaticResponse => new RouteActionDecision(new GeneratedRouteResponse(
-                route.StaticResponse.StatusCode,
-                ReasonPhrase(route.StaticResponse.StatusCode),
-                route.StaticResponse.ContentType,
-                route.StaticResponse.Body,
+            ProxyRouteActionKind.Redirect => new RouteActionDecision(BuildRouteRedirect(input.Redirect, input.PolicyRedirect.RequestTarget)),
+            ProxyRouteActionKind.StaticResponse => new RouteActionDecision(new GeneratedRouteResponse(
+                input.StaticResponse.StatusCode,
+                ReasonPhrase(input.StaticResponse.StatusCode),
+                input.StaticResponse.ContentType,
+                input.StaticResponse.Body,
                 [])),
             _ => RouteActionDecision.Proxy
         };
     }
 
-    private static ProxyRoutePolicyRedirectInput ToPolicyRedirectInput(
-        RuntimeRoute route,
-        Http1RequestHead requestHead,
-        RuntimeListener listener)
+    private static GeneratedRouteResponse BuildRouteRedirect(
+        ProxyRouteRedirectActionInput redirect,
+        string requestTarget)
     {
-        return new ProxyRoutePolicyRedirectInput(
-            route.HttpsRedirect.Enabled,
-            route.HttpsRedirect.StatusCode,
-            route.HttpsRedirect.HttpsPort,
-            route.CanonicalHost.Enabled,
-            route.CanonicalHost.TargetHost,
-            route.CanonicalHost.StatusCode,
-            listener.Transport == RuntimeListenerTransport.Https ? "https" : "http",
-            requestHead.Host,
-            requestHead.Target);
-    }
+        var location = !string.IsNullOrWhiteSpace(redirect.TargetUrl)
+            ? redirect.TargetUrl
+            : redirect.TargetPath;
 
-    private static GeneratedRouteResponse BuildRouteRedirect(RuntimeRoute route, Http1RequestHead requestHead)
-    {
-        var location = !string.IsNullOrWhiteSpace(route.Redirect.TargetUrl)
-            ? route.Redirect.TargetUrl
-            : route.Redirect.TargetPath;
-
-        if (route.Redirect.PreserveQuery)
+        if (redirect.PreserveQuery)
         {
-            var query = ExtractQuery(requestHead.Target);
+            var query = ExtractQuery(requestTarget);
             if (!string.IsNullOrEmpty(query) && !location.Contains('?'))
             {
                 location += query;
             }
         }
 
-        return RedirectResponse(route.Redirect.StatusCode, location);
+        return RedirectResponse(redirect.StatusCode, location);
     }
 
     private static GeneratedRouteResponse RedirectResponse(int statusCode, string location)
@@ -129,3 +110,35 @@ public sealed class ProxyRouteActionPolicy
         };
     }
 }
+
+public sealed record ProxyRouteActionInput(
+    ProxyRouteActionKind Action,
+    ProxyRoutePolicyRedirectInput PolicyRedirect,
+    ProxyRouteMaintenanceActionInput Maintenance,
+    ProxyRouteRedirectActionInput Redirect,
+    ProxyRouteStaticResponseActionInput StaticResponse,
+    bool IsUpgradeRequest);
+
+public enum ProxyRouteActionKind
+{
+    Proxy = 0,
+    Redirect,
+    StaticResponse
+}
+
+public sealed record ProxyRouteMaintenanceActionInput(
+    bool Enabled,
+    int? RetryAfterSeconds,
+    string ContentType,
+    string Body);
+
+public sealed record ProxyRouteRedirectActionInput(
+    int StatusCode,
+    string TargetUrl,
+    string TargetPath,
+    bool PreserveQuery);
+
+public sealed record ProxyRouteStaticResponseActionInput(
+    int StatusCode,
+    string ContentType,
+    string Body);

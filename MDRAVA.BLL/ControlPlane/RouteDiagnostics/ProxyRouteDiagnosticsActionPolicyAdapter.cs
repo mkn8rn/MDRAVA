@@ -5,52 +5,65 @@ using MDRAVA.BLL.ControlPlane.Routing;
 public sealed class ProxyRouteDiagnosticsActionPolicyAdapter
     : IProxyRouteDiagnosticsActionPolicy
 {
+    private readonly ProxyRouteActionPolicy _policy = new();
+
     public ProxyRouteDiagnosticsActionDecision Evaluate(
         IProxyRouteDiagnosticsRoute route,
         ProxyRouteDiagnosticsRequestHead requestHead,
         IProxyRouteDiagnosticsListener listener,
         bool isUpgradeRequest)
     {
-        var policyRedirect = isUpgradeRequest
-            ? ProxyRoutePolicyRedirectDecision.NoRedirect
-            : ProxyRoutePolicyRedirectEvaluator.Evaluate(ToPolicyRedirectInput(route, requestHead, listener));
-        if (policyRedirect is ProxyRoutePolicyRedirectDecision.RedirectDecision redirect)
+        var decision = _policy.Evaluate(ToPolicyInput(route, requestHead, listener, isUpgradeRequest));
+        if (decision.Response is not null)
         {
-            return ProxyRouteDiagnosticsActionDecision.GeneratedResponse(redirect.StatusCode);
-        }
-
-        if (route.Maintenance.Enabled)
-        {
-            return ProxyRouteDiagnosticsActionDecision.GeneratedResponse(503);
-        }
-
-        if (string.Equals(route.Action, "Redirect", StringComparison.OrdinalIgnoreCase))
-        {
-            return ProxyRouteDiagnosticsActionDecision.GeneratedResponse(route.Redirect.StatusCode);
-        }
-
-        if (string.Equals(route.Action, "StaticResponse", StringComparison.OrdinalIgnoreCase))
-        {
-            return ProxyRouteDiagnosticsActionDecision.GeneratedResponse(route.StaticResponse.StatusCode);
+            return ProxyRouteDiagnosticsActionDecision.GeneratedResponse(decision.Response.StatusCode);
         }
 
         return ProxyRouteDiagnosticsActionDecision.Proxy;
     }
 
-    private static ProxyRoutePolicyRedirectInput ToPolicyRedirectInput(
+    private static ProxyRouteActionInput ToPolicyInput(
         IProxyRouteDiagnosticsRoute route,
         ProxyRouteDiagnosticsRequestHead requestHead,
-        IProxyRouteDiagnosticsListener listener)
+        IProxyRouteDiagnosticsListener listener,
+        bool isUpgradeRequest)
     {
-        return new ProxyRoutePolicyRedirectInput(
-            route.HttpsRedirect.Enabled,
-            route.HttpsRedirect.StatusCode,
-            route.HttpsRedirect.HttpsPort,
-            route.CanonicalHost.Enabled,
-            route.CanonicalHost.TargetHost,
-            route.CanonicalHost.StatusCode,
-            listener.Transport,
-            requestHead.Host,
-            requestHead.Target);
+        return new ProxyRouteActionInput(
+            ToActionKind(route.Action),
+            new ProxyRoutePolicyRedirectInput(
+                route.HttpsRedirect.Enabled,
+                route.HttpsRedirect.StatusCode,
+                route.HttpsRedirect.HttpsPort,
+                route.CanonicalHost.Enabled,
+                route.CanonicalHost.TargetHost,
+                route.CanonicalHost.StatusCode,
+                listener.Transport,
+                requestHead.Host,
+                requestHead.Target),
+            new ProxyRouteMaintenanceActionInput(
+                route.Maintenance.Enabled,
+                route.Maintenance.RetryAfterSeconds,
+                route.Maintenance.ContentType,
+                route.Maintenance.Body),
+            new ProxyRouteRedirectActionInput(
+                route.Redirect.StatusCode,
+                route.Redirect.TargetUrl,
+                route.Redirect.TargetPath,
+                route.Redirect.PreserveQuery),
+            new ProxyRouteStaticResponseActionInput(
+                route.StaticResponse.StatusCode,
+                route.StaticResponse.ContentType,
+                route.StaticResponse.Body),
+            isUpgradeRequest);
+    }
+
+    private static ProxyRouteActionKind ToActionKind(string action)
+    {
+        return action switch
+        {
+            _ when string.Equals(action, "Redirect", StringComparison.OrdinalIgnoreCase) => ProxyRouteActionKind.Redirect,
+            _ when string.Equals(action, "StaticResponse", StringComparison.OrdinalIgnoreCase) => ProxyRouteActionKind.StaticResponse,
+            _ => ProxyRouteActionKind.Proxy
+        };
     }
 }

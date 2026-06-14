@@ -487,10 +487,11 @@ public sealed class Http2ClientConnection
         CancellationToken cancellationToken)
     {
         var actionDecision = _routeActionPolicy.Evaluate(
-            route,
-            requestHead,
-            _listener,
-            isUpgradeRequest: false);
+            ProxyRouteActionRuntimeMapper.ToPolicyInput(
+                route,
+                requestHead,
+                _listener,
+                isUpgradeRequest: false));
         if (actionDecision.ShouldProxy)
         {
             return false;

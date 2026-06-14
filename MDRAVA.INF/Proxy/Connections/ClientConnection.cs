@@ -526,10 +526,11 @@ public sealed class ClientConnection
         CancellationToken cancellationToken)
     {
         var actionDecision = _routeActionPolicy.Evaluate(
-            route,
-            requestHead,
-            _listener,
-            isUpgradeRequest: false);
+            ProxyRouteActionRuntimeMapper.ToPolicyInput(
+                route,
+                requestHead,
+                _listener,
+                isUpgradeRequest: false));
         if (actionDecision.ShouldProxy)
         {
             return false;
@@ -777,10 +778,11 @@ public sealed class ClientConnection
         context.SetRoute(ProxyRequestContextRuntimeMapper.ToRequestRoute(upgradeRouteMatch.Route));
 
         var actionDecision = _routeActionPolicy.Evaluate(
-            upgradeRouteMatch.Route,
-            requestHead,
-            _listener,
-            isUpgradeRequest: true);
+            ProxyRouteActionRuntimeMapper.ToPolicyInput(
+                upgradeRouteMatch.Route,
+                requestHead,
+                _listener,
+                isUpgradeRequest: true));
         if (!actionDecision.ShouldProxy)
         {
             await WriteGeneratedRouteResponseAsync(
