@@ -306,7 +306,10 @@ public sealed class UpgradeForwarder
             preserveTransferEncoding: false,
             preserveTrailer: false);
 
-        var requestHeaders = ProxyHeaderMutationPolicy.ApplyRequestHeaders(filtered, route.HeaderPolicy, forwardedHeaders);
+        var requestHeaders = ProxyHeaderMutationPolicy.ApplyRequestHeaders(
+            filtered,
+            ProxyHeaderMutationRuntimeMapper.ToPolicyInput(route.HeaderPolicy),
+            forwardedHeaders);
         foreach (var header in requestHeaders)
         {
             if (UpgradeRequestPolicy.IsManagedUpgradeHeader(header.Name))
@@ -338,7 +341,9 @@ public sealed class UpgradeForwarder
             .Append(responseHead.StatusCode).Append(' ')
             .Append(responseHead.ReasonPhrase).Append("\r\n");
 
-        var responseHeaders = ProxyHeaderMutationPolicy.ApplyResponseHeaders(responseHead.Headers, route.HeaderPolicy);
+        var responseHeaders = ProxyHeaderMutationPolicy.ApplyResponseHeaders(
+            responseHead.Headers,
+            ProxyHeaderMutationRuntimeMapper.ToPolicyInput(route.HeaderPolicy));
         foreach (var header in responseHeaders)
         {
             if (UpgradeRequestPolicy.IsManagedUpgradeHeader(header.Name)
@@ -393,7 +398,9 @@ public sealed class UpgradeForwarder
             preserveTransferEncoding: false,
             preserveTrailer: responseHead.Framing.Kind == Http1BodyKind.Chunked);
 
-        var responseHeaders = ProxyHeaderMutationPolicy.ApplyResponseHeaders(filtered, route.HeaderPolicy);
+        var responseHeaders = ProxyHeaderMutationPolicy.ApplyResponseHeaders(
+            filtered,
+            ProxyHeaderMutationRuntimeMapper.ToPolicyInput(route.HeaderPolicy));
         await Http1ResponseHeadWriter.WriteAsync(
             clientStream,
             responseHead,

@@ -803,7 +803,10 @@ public sealed class ProxyForwarder
             requestHead.Headers,
             preserveTransferEncoding: false,
             preserveTrailer: false);
-        var requestHeaders = ProxyHeaderMutationPolicy.ApplyRequestHeaders(filtered, route.HeaderPolicy, forwardedHeaders);
+        var requestHeaders = ProxyHeaderMutationPolicy.ApplyRequestHeaders(
+            filtered,
+            ProxyHeaderMutationRuntimeMapper.ToPolicyInput(route.HeaderPolicy),
+            forwardedHeaders);
         var authority = requestHeaders.FirstOrDefault(static header =>
             string.Equals(header.Name, "Host", StringComparison.OrdinalIgnoreCase))?.Value;
         if (string.IsNullOrWhiteSpace(authority))
@@ -1165,7 +1168,10 @@ public sealed class ProxyForwarder
             preserveTransferEncoding: false,
             preserveTrailer: requestHead.Framing.Kind == Http1BodyKind.Chunked);
 
-        var requestHeaders = ProxyHeaderMutationPolicy.ApplyRequestHeaders(filtered, route.HeaderPolicy, forwardedHeaders);
+        var requestHeaders = ProxyHeaderMutationPolicy.ApplyRequestHeaders(
+            filtered,
+            ProxyHeaderMutationRuntimeMapper.ToPolicyInput(route.HeaderPolicy),
+            forwardedHeaders);
         foreach (var header in requestHeaders)
         {
             if (Http1ManagedHeaderPolicy.IsManagedFramingHeader(header.Name))
@@ -1419,7 +1425,9 @@ public sealed class ProxyForwarder
             preserveTransferEncoding: false,
             preserveTrailer: responseHead.Framing.Kind == Http1BodyKind.Chunked);
 
-        return ProxyHeaderMutationPolicy.ApplyResponseHeaders(filtered, route.HeaderPolicy);
+        return ProxyHeaderMutationPolicy.ApplyResponseHeaders(
+            filtered,
+            ProxyHeaderMutationRuntimeMapper.ToPolicyInput(route.HeaderPolicy));
     }
 
     private static ResponseForwardingResult CreateRetrySuppressedResult(int statusCode)

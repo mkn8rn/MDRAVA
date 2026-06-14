@@ -83,7 +83,7 @@ internal static class HeaderPolicyTests
 
     public static void AppliesRequestHeaderMutationPolicy()
     {
-        var policy = new RuntimeHeaderPolicy(
+        var policy = new ProxyHeaderMutationPolicyInput(
             [new ProxyHeaderField("X-Set", "new")],
             ["X-Remove"],
             [],
@@ -139,7 +139,7 @@ internal static class HeaderPolicyTests
 
     public static void AppliesResponseHeaderMutationPolicy()
     {
-        var policy = new RuntimeHeaderPolicy(
+        var policy = new ProxyHeaderMutationPolicyInput(
             [],
             [],
             [new ProxyHeaderField("X-Set", "new")],
@@ -157,5 +157,37 @@ internal static class HeaderPolicyTests
         AssertEx.True(result.Any(static header => header.Name == "X-Set" && header.Value == "new"));
         AssertEx.False(result.Any(static header => header.Name == "X-Remove"));
         AssertEx.False(result.Any(static header => header.Name == "X-Set" && header.Value == "old"));
+    }
+
+    public static void HeaderMutationPolicyInputCopiesCollections()
+    {
+        var setRequest = new List<ProxyHeaderField> { new("X-Request", "one") };
+        var removeRequest = new List<string> { "X-Remove-Request" };
+        var setResponse = new List<ProxyHeaderField> { new("X-Response", "one") };
+        var removeResponse = new List<string> { "X-Remove-Response" };
+
+        var input = new ProxyHeaderMutationPolicyInput(
+            setRequest,
+            removeRequest,
+            setResponse,
+            removeResponse);
+
+        setRequest[0] = new ProxyHeaderField("X-Request", "two");
+        removeRequest[0] = "X-Other-Request";
+        setResponse[0] = new ProxyHeaderField("X-Response", "two");
+        removeResponse[0] = "X-Other-Response";
+        setRequest.Clear();
+        removeRequest.Clear();
+        setResponse.Clear();
+        removeResponse.Clear();
+
+        AssertEx.Equal("one", input.SetRequestHeaders[0].Value);
+        AssertEx.Equal("X-Remove-Request", input.RemoveRequestHeaders[0]);
+        AssertEx.Equal("one", input.SetResponseHeaders[0].Value);
+        AssertEx.Equal("X-Remove-Response", input.RemoveResponseHeaders[0]);
+        AssertEx.False(input.SetRequestHeaders is ProxyHeaderField[], "Header mutation request set headers should not expose a mutable array.");
+        AssertEx.False(input.RemoveRequestHeaders is string[], "Header mutation request remove headers should not expose a mutable array.");
+        AssertEx.False(input.SetResponseHeaders is ProxyHeaderField[], "Header mutation response set headers should not expose a mutable array.");
+        AssertEx.False(input.RemoveResponseHeaders is string[], "Header mutation response remove headers should not expose a mutable array.");
     }
 }
