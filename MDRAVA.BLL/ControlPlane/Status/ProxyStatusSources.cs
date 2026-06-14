@@ -77,7 +77,8 @@ public sealed record ProxyStatusConfigurationSourceSet
 public static class ProxyStatusConfigurationSourceMapper
 {
     public static ProxyStatusConfigurationSourceSet FromConfiguration(
-        ProxyConfigurationSnapshot configuration)
+        ProxyConfigurationSnapshot configuration,
+        IReadOnlyList<ProxyUpstreamHealthSource> upstreamHealthSources)
     {
         return new ProxyStatusConfigurationSourceSet(
             ProxyStatusConfigurationSummaryMapper.FromRuntimeConfiguration(
@@ -85,7 +86,7 @@ public static class ProxyStatusConfigurationSourceMapper
                 configuration.LoadedAtUtc,
                 configuration.Listeners,
                 configuration.Routes),
-            ProxyUpstreamHealthSourceMapper.FromRoutes(configuration.Routes),
+            upstreamHealthSources,
             Http3SupportSourceMapper.FromConfiguration(configuration.Listeners, configuration.Routes),
             ProxyStatusReadinessConfigurationSourceMapper.FromConfiguration(configuration));
     }

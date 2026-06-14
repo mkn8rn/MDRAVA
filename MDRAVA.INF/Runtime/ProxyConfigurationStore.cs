@@ -1,6 +1,7 @@
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 using MDRAVA.BLL.ControlPlane.Status;
+using MDRAVA.INF.Proxy.Health;
 
 namespace MDRAVA.INF.Runtime;
 
@@ -36,7 +37,9 @@ public sealed class ProxyConfigurationStore
         }
 
         return ProxyStatusConfigurationReadResult.Available(
-            ProxyStatusConfigurationSourceMapper.FromConfiguration(available.Snapshot));
+            ProxyStatusConfigurationSourceMapper.FromConfiguration(
+                available.Snapshot,
+                ProxyUpstreamHealthSourceMapper.FromRoutes(available.Snapshot.Routes)));
     }
 
     public ProxyConfigurationSnapshot Replace(ProxyConfigurationSnapshot snapshot)

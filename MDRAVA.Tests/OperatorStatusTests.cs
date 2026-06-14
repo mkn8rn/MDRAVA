@@ -241,7 +241,9 @@ internal static class OperatorStatusTests
         var route = StaticRoute();
         var snapshot = Snapshot([listener], [route]);
 
-        var source = ProxyStatusConfigurationSourceMapper.FromConfiguration(snapshot);
+        var source = ProxyStatusConfigurationSourceMapper.FromConfiguration(
+            snapshot,
+            ProxyUpstreamHealthSourceMapper.FromRoutes(snapshot.Routes));
 
         AssertEx.Equal(snapshot.Version, source.ConfigurationSummary.Version);
         AssertEx.Equal(snapshot.LoadedAtUtc, source.ConfigurationSummary.LoadedAtUtc);
