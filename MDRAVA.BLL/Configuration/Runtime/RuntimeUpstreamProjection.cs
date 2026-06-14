@@ -10,7 +10,7 @@ public sealed record RuntimeUpstreamProjection
         string Address,
         int Port,
         int Weight,
-        RuntimeUpstreamTlsOptions Tls,
+        RuntimeUpstreamTlsProjection Tls,
         string Endpoint,
         string UriEndpoint,
         string EffectiveSniHost,
@@ -46,7 +46,7 @@ public sealed record RuntimeUpstreamProjection
 
     public int Weight { get; init; }
 
-    public RuntimeUpstreamTlsOptions Tls { get; init; }
+    public RuntimeUpstreamTlsProjection Tls { get; init; }
 
     public string Endpoint { get; init; }
 

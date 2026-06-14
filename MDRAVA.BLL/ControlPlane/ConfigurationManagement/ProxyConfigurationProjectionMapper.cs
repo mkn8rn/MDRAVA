@@ -86,7 +86,9 @@ public static class ProxyConfigurationProjectionMapper
                             upstream.Address,
                             upstream.Port,
                             upstream.Weight,
-                            upstream.Tls,
+                            new RuntimeUpstreamTlsProjection(
+                                upstream.Tls.ValidateCertificate,
+                                upstream.Tls.SniHost),
                             upstream.Endpoint,
                             upstream.UriEndpoint,
                             upstream.EffectiveSniHost,

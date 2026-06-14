@@ -217,9 +217,12 @@ internal static class UpstreamTlsTests
             snapshot,
             TestHttp3PlatformSupport.Project(snapshot));
         var upstream = projection.Routes[0].Upstreams[0];
+        object tlsProjection = upstream.Tls;
         AssertEx.Equal("https", upstream.Scheme);
         AssertEx.False(upstream.Tls.ValidateCertificate);
         AssertEx.Equal("app.internal", upstream.EffectiveSniHost);
+        AssertEx.True(tlsProjection is RuntimeUpstreamTlsProjection);
+        AssertEx.False(tlsProjection is RuntimeUpstreamTlsOptions);
     }
 
     public static async Task TlsValidationFailureDoesNotFallBackToPlaintext()

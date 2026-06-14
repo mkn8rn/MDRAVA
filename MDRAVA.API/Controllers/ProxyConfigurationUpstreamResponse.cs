@@ -1,6 +1,6 @@
 using BusinessRuntimeCircuitBreakerPolicy = MDRAVA.BLL.Configuration.RuntimeCircuitBreakerPolicy;
 using BusinessRuntimeUpstreamProjection = MDRAVA.BLL.Configuration.RuntimeUpstreamProjection;
-using BusinessRuntimeUpstreamTlsOptions = MDRAVA.BLL.Configuration.RuntimeUpstreamTlsOptions;
+using BusinessRuntimeUpstreamTlsProjection = MDRAVA.BLL.Configuration.RuntimeUpstreamTlsProjection;
 
 namespace MDRAVA.API.Controllers;
 
@@ -44,7 +44,7 @@ public sealed record RuntimeUpstreamResponse(
             upstream.Address,
             upstream.Port,
             upstream.Weight,
-            RuntimeUpstreamTlsResponse.FromOptions(upstream.Tls))
+            RuntimeUpstreamTlsResponse.FromProjection(upstream.Tls))
         {
             Endpoint = upstream.Endpoint,
             UriEndpoint = upstream.UriEndpoint,
@@ -59,11 +59,11 @@ public sealed record RuntimeUpstreamTlsResponse(
     bool ValidateCertificate,
     string? SniHost)
 {
-    public static RuntimeUpstreamTlsResponse FromOptions(BusinessRuntimeUpstreamTlsOptions options)
+    public static RuntimeUpstreamTlsResponse FromProjection(BusinessRuntimeUpstreamTlsProjection projection)
     {
-        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(projection);
 
-        return new RuntimeUpstreamTlsResponse(options.ValidateCertificate, options.SniHost);
+        return new RuntimeUpstreamTlsResponse(projection.ValidateCertificate, projection.SniHost);
     }
 }
 
