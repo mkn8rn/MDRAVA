@@ -93,7 +93,13 @@ public static class ProxyConfigurationProjectionMapper
                             upstream.UriEndpoint,
                             upstream.EffectiveSniHost,
                             upstream.Identity,
-                            upstream.CircuitBreaker))
+                            new RuntimeCircuitBreakerProjection(
+                                upstream.CircuitBreaker.Enabled,
+                                upstream.CircuitBreaker.FailureThreshold,
+                                upstream.CircuitBreaker.SamplingWindow,
+                                upstream.CircuitBreaker.OpenDuration,
+                                upstream.CircuitBreaker.HalfOpenMaxAttempts,
+                                upstream.CircuitBreaker.FailureStatusCodes)))
                         .ToArray()),
                     route.HttpsRedirect,
                     route.CanonicalHost,

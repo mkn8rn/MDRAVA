@@ -593,6 +593,11 @@ internal static class ResilienceTests
         AssertEx.True(projection.Routes[0].Retry.Enabled);
         AssertEx.Equal(2, projection.Routes[0].Upstreams[0].Weight);
         AssertEx.Equal(true, projection.Routes[0].Upstreams[0].CircuitBreaker.Enabled);
+        object circuitBreaker = projection.Routes[0].Upstreams[0].CircuitBreaker;
+        object failureStatusCodes = projection.Routes[0].Upstreams[0].CircuitBreaker.FailureStatusCodes;
+        AssertEx.True(circuitBreaker is RuntimeCircuitBreakerProjection);
+        AssertEx.False(circuitBreaker is RuntimeCircuitBreakerPolicy);
+        AssertEx.False(failureStatusCodes is int[]);
         AssertEx.Equal(CircuitBreakerRuntimeStateResponse.Open, status.Upstreams[0].CircuitBreaker.State);
         AssertEx.Equal(2, status.Upstreams[0].Weight);
     }

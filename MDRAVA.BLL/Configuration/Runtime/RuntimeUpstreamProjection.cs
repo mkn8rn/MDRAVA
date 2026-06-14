@@ -15,7 +15,7 @@ public sealed record RuntimeUpstreamProjection
         string UriEndpoint,
         string EffectiveSniHost,
         string Identity,
-        RuntimeCircuitBreakerPolicy CircuitBreaker)
+        RuntimeCircuitBreakerProjection CircuitBreaker)
     {
         this.RouteName = RouteName;
         this.Name = Name;
@@ -56,5 +56,5 @@ public sealed record RuntimeUpstreamProjection
 
     public string Identity { get; init; }
 
-    public RuntimeCircuitBreakerPolicy CircuitBreaker { get; init; }
+    public RuntimeCircuitBreakerProjection CircuitBreaker { get; init; }
 }

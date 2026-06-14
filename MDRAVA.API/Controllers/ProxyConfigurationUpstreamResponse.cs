@@ -1,4 +1,4 @@
-using BusinessRuntimeCircuitBreakerPolicy = MDRAVA.BLL.Configuration.RuntimeCircuitBreakerPolicy;
+using BusinessRuntimeCircuitBreakerProjection = MDRAVA.BLL.Configuration.RuntimeCircuitBreakerProjection;
 using BusinessRuntimeUpstreamProjection = MDRAVA.BLL.Configuration.RuntimeUpstreamProjection;
 using BusinessRuntimeUpstreamTlsProjection = MDRAVA.BLL.Configuration.RuntimeUpstreamTlsProjection;
 
@@ -50,7 +50,7 @@ public sealed record RuntimeUpstreamResponse(
             UriEndpoint = upstream.UriEndpoint,
             EffectiveSniHost = upstream.EffectiveSniHost,
             Identity = upstream.Identity,
-            CircuitBreaker = RuntimeCircuitBreakerResponse.FromPolicy(upstream.CircuitBreaker)
+            CircuitBreaker = RuntimeCircuitBreakerResponse.FromProjection(upstream.CircuitBreaker)
         };
     }
 }
@@ -75,16 +75,16 @@ public sealed record RuntimeCircuitBreakerResponse(
     int HalfOpenMaxAttempts,
     IReadOnlyList<int> FailureStatusCodes)
 {
-    public static RuntimeCircuitBreakerResponse FromPolicy(BusinessRuntimeCircuitBreakerPolicy policy)
+    public static RuntimeCircuitBreakerResponse FromProjection(BusinessRuntimeCircuitBreakerProjection projection)
     {
-        ArgumentNullException.ThrowIfNull(policy);
+        ArgumentNullException.ThrowIfNull(projection);
 
         return new RuntimeCircuitBreakerResponse(
-            policy.Enabled,
-            policy.FailureThreshold,
-            policy.SamplingWindow,
-            policy.OpenDuration,
-            policy.HalfOpenMaxAttempts,
-            policy.FailureStatusCodes.ToArray());
+            projection.Enabled,
+            projection.FailureThreshold,
+            projection.SamplingWindow,
+            projection.OpenDuration,
+            projection.HalfOpenMaxAttempts,
+            projection.FailureStatusCodes.ToArray());
     }
 }
