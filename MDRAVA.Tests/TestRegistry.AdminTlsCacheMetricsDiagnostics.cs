@@ -32,6 +32,7 @@ internal static partial class TestRegistry
     Test("Non-ACME request does not create HTTP-01 challenge response", Sync(AcmeTests.NonAcmeRequestDoesNotCreateHttp01ChallengeResponse), TestTaxonomy.Tls),
     Test("ACME certificate issue result names success and failure", Sync(AcmeTests.AcmeCertificateIssueResultNamesSuccessAndFailure), TestTaxonomy.Tls),
     Test("ACME request and status records copy input collections", Sync(AcmeTests.AcmeRequestAndStatusRecordsCopyInputCollections), TestTaxonomy.Tls, TestTaxonomy.Config),
+    Test("ACME lifecycle status consumes active certificate dates", Sync(AcmeTests.AcmeLifecycleStatusConsumesActiveCertificateDates), TestTaxonomy.Tls, TestTaxonomy.Config),
     Test("ACME renewal stores material under certs directory", AcmeTests.AcmeRenewalStoresMaterialUnderCertsDirectory, TestTaxonomy.Tls),
     Test("Loader loads stored ACME certificate on startup", AcmeTests.LoaderLoadsStoredAcmeCertificateOnStartup, TestTaxonomy.Config, TestTaxonomy.Tls),
     Test("Failed ACME renewal preserves current active certificate", AcmeTests.FailedAcmeRenewalPreservesCurrentActiveCertificate, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),

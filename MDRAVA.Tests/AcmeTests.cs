@@ -219,6 +219,37 @@ internal static class AcmeTests
         AssertEx.False(status.Certificates is AcmeCertificateLifecycleStatus[], "ACME status certificates should not expose a mutable array.");
     }
 
+    public static void AcmeLifecycleStatusConsumesActiveCertificateDates()
+    {
+        var notBefore = DateTimeOffset.UnixEpoch.AddDays(1);
+        var notAfter = DateTimeOffset.UnixEpoch.AddDays(91);
+        var configured = new ProxyAcmeConfiguredCertificateStatus(
+            "home-acme",
+            Enabled: true,
+            Domains: ["home.example.test"],
+            RenewBeforeDays: 30);
+
+        var active = AcmeCertificateLifecycleStatus.FromConfiguredCertificate(
+            configured,
+            new AcmeCertificateLifecycleActiveCertificate(notBefore, notAfter));
+        var inactive = AcmeCertificateLifecycleStatus.FromConfiguredCertificate(
+            configured,
+            activeCertificate: null);
+
+        AssertEx.True(active.Active);
+        AssertEx.Equal("acme", active.Source);
+        AssertEx.Equal(notBefore, active.NotBeforeUtc);
+        AssertEx.Equal(notAfter, active.NotAfterUtc);
+        AssertEx.Equal(notAfter.AddDays(-30), active.RenewalDueAtUtc);
+        AssertEx.Equal("loaded", active.LastResult);
+        AssertEx.False(inactive.Active);
+        AssertEx.Equal("none", inactive.Source);
+        AssertEx.Equal(null, inactive.NotBeforeUtc);
+        AssertEx.Equal(null, inactive.NotAfterUtc);
+        AssertEx.Equal(null, inactive.RenewalDueAtUtc);
+        AssertEx.Equal("inactive", inactive.LastResult);
+    }
+
     public static async Task AcmeRenewalStoresMaterialUnderCertsDirectory()
     {
         using var temp = TemporaryDirectory.Create();

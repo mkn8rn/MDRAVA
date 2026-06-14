@@ -31,10 +31,21 @@ public sealed class ProxyAcmeAdministrationService
                 snapshot.RuntimeCertificates.TryGetValue(certificate.Id, out var runtimeCertificate);
                 return AcmeCertificateLifecycleStatus.FromConfiguredCertificate(
                     certificate,
-                    runtimeCertificate);
+                    ToActiveCertificate(runtimeCertificate));
             })
             .ToArray();
 
         return AcmeStatus.FromSnapshot(snapshot, statuses);
+    }
+
+    private static AcmeCertificateLifecycleActiveCertificate? ToActiveCertificate(
+        ProxyAcmeRuntimeCertificateStatus? runtimeCertificate)
+    {
+        return runtimeCertificate is not null
+            && string.Equals(runtimeCertificate.Source, "acme", StringComparison.OrdinalIgnoreCase)
+            ? new AcmeCertificateLifecycleActiveCertificate(
+                runtimeCertificate.NotBeforeUtc,
+                runtimeCertificate.NotAfterUtc)
+            : null;
     }
 }
