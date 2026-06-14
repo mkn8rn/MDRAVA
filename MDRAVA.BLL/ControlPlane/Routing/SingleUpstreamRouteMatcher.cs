@@ -1,25 +1,23 @@
-using MDRAVA.BLL.ControlPlane.Http1;
-using MDRAVA.BLL.Configuration;
-
 namespace MDRAVA.BLL.ControlPlane.Routing;
 
 public sealed class SingleUpstreamRouteMatcher : IRouteMatcher
 {
-    public RouteMatch? Match(IReadOnlyList<RuntimeRoute> routes, Http1RequestHead requestHead)
+    public RouteMatch? Match(IReadOnlyList<RouteMatchCandidate> routes, RouteMatchRequest request)
     {
-        foreach (var route in routes)
+        for (var index = 0; index < routes.Count; index++)
         {
-            if (!HostMatches(route.Host, requestHead.Host))
+            var route = routes[index];
+            if (!HostMatches(route.Host, request.Host))
             {
                 continue;
             }
 
-            if (!requestHead.Path.StartsWith(route.PathPrefix, StringComparison.Ordinal))
+            if (!request.Path.StartsWith(route.PathPrefix, StringComparison.Ordinal))
             {
                 continue;
             }
 
-            return new RouteMatch(route);
+            return new RouteMatch(index);
         }
 
         return null;

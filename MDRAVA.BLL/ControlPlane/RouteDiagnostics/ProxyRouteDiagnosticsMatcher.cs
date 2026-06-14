@@ -1,54 +1,22 @@
 namespace MDRAVA.BLL.ControlPlane.RouteDiagnostics;
 
+using MDRAVA.BLL.ControlPlane.Routing;
+
 public sealed class ProxyRouteDiagnosticsMatcher
     : IProxyRouteDiagnosticsMatcher
 {
+    private readonly SingleUpstreamRouteMatcher _matcher = new();
+
     public IProxyRouteDiagnosticsRoute? Match(
         IReadOnlyList<IProxyRouteDiagnosticsRoute> routes,
         ProxyRouteDiagnosticsRequestHead requestHead)
     {
-        foreach (var route in routes)
-        {
-            if (!HostMatches(route.Host, requestHead.Host))
-            {
-                continue;
-            }
+        var match = _matcher.Match(
+            routes
+                .Select(static route => new RouteMatchCandidate(route.Host, route.PathPrefix))
+                .ToArray(),
+            new RouteMatchRequest(requestHead.Host, requestHead.Path));
 
-            if (!requestHead.Path.StartsWith(route.PathPrefix, StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            return route;
-        }
-
-        return null;
-    }
-
-    private static bool HostMatches(string configuredHost, string requestHost)
-    {
-        if (configuredHost == "*")
-        {
-            return true;
-        }
-
-        if (string.Equals(configuredHost, requestHost, StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        var requestHostWithoutPort = StripSimplePort(requestHost);
-        return string.Equals(configuredHost, requestHostWithoutPort, StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static string StripSimplePort(string host)
-    {
-        var colonIndex = host.LastIndexOf(':');
-        if (colonIndex <= 0 || host.Contains(']', StringComparison.Ordinal))
-        {
-            return host;
-        }
-
-        return host[..colonIndex];
+        return match is null ? null : routes[match.RouteIndex];
     }
 }

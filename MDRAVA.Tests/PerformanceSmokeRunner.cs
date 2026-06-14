@@ -174,6 +174,9 @@ internal static class PerformanceSmokeRunner
         const int operations = 50_000;
         var matcher = new SingleUpstreamRouteMatcher();
         var snapshot = CreateSnapshot(routeCount, cacheEnabled: false);
+        var routeCandidates = snapshot.Routes
+            .Select(static route => new RouteMatchCandidate(route.Host, route.PathPrefix))
+            .ToArray();
         var request = new Http1RequestHead(
             "GET",
             "/svc42/resource?id=1",
@@ -182,22 +185,23 @@ internal static class PerformanceSmokeRunner
             "perf.test",
             Http1RequestFraming.None,
             []);
+        var matchRequest = new RouteMatchRequest(request.Host, request.Path);
 
         for (var index = 0; index < warmup; index++)
         {
-            matcher.Match(snapshot.Routes, request);
+            matcher.Match(routeCandidates, matchRequest);
         }
 
         var stopwatch = Stopwatch.StartNew();
         RouteMatch? match = null;
         for (var index = 0; index < operations; index++)
         {
-            match = matcher.Match(snapshot.Routes, request);
+            match = matcher.Match(routeCandidates, matchRequest);
         }
 
         stopwatch.Stop();
         AssertEx.NotNull(match);
-        AssertEx.Equal("route-42", match!.Route.Name);
+        AssertEx.Equal("route-42", snapshot.Routes[match!.RouteIndex].Name);
         return Task.FromResult(new PerformanceSmokeResult(
             Routing,
             operations,

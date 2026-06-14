@@ -37,6 +37,7 @@ public sealed class Http2ClientConnection
     private readonly Stream _stream;
     private readonly IPEndPoint? _remoteEndPoint;
     private readonly ProxyConfigurationSnapshot _configurationSnapshot;
+    private readonly IReadOnlyList<RouteMatchCandidate> _routeCandidates;
     private readonly RuntimeListener _listener;
     private readonly IRouteMatcher _routeMatcher;
     private readonly IUpstreamSelector _upstreamSelector;
@@ -84,6 +85,7 @@ public sealed class Http2ClientConnection
         _stream = stream;
         _remoteEndPoint = remoteEndPoint;
         _configurationSnapshot = configurationSnapshot;
+        _routeCandidates = ProxyRouteMatchRuntimeMapper.ToCandidates(configurationSnapshot.Routes);
         _listener = listener;
         _routeMatcher = routeMatcher;
         _upstreamSelector = upstreamSelector;
@@ -398,7 +400,9 @@ public sealed class Http2ClientConnection
                 return;
             }
 
-            var routeMatch = _routeMatcher.Match(_configurationSnapshot.Routes, requestHead);
+            var routeMatch = _routeMatcher.Match(
+                _routeCandidates,
+                ProxyRouteMatchRuntimeMapper.ToRequest(requestHead));
             if (routeMatch is null)
             {
                 await WriteGeneratedResponseAsync(
@@ -413,10 +417,11 @@ public sealed class Http2ClientConnection
                 return;
             }
 
-            context.SetRoute(ProxyRequestContextRuntimeMapper.ToRequestRoute(routeMatch.Route));
+            var route = ProxyRouteMatchRuntimeMapper.SelectRoute(_configurationSnapshot.Routes, routeMatch);
+            context.SetRoute(ProxyRequestContextRuntimeMapper.ToRequestRoute(route));
             if (await TryHandleGeneratedRouteActionAsync(
                     stream.Id,
-                    routeMatch.Route,
+                    route,
                     requestHead,
                     context,
                     cancellationToken))
@@ -427,7 +432,7 @@ public sealed class Http2ClientConnection
 
             if (await TryRejectKnownLengthRequestBodyAsync(
                     stream.Id,
-                    routeMatch.Route,
+                    route,
                     requestHead,
                     context,
                     cancellationToken))
@@ -437,15 +442,15 @@ public sealed class Http2ClientConnection
             }
 
             var upstreamTarget = _pathRewritePolicy.Apply(
-                ProxyPathRewriteRuntimeMapper.ToPolicyInput(routeMatch.Route),
+                ProxyPathRewriteRuntimeMapper.ToPolicyInput(route),
                 requestHead.Target,
                 requestHead.Path);
             var effectiveTimeouts = ProxyTimeoutPolicy.ApplyRouteTimeouts(
-                ProxyTimeoutRuntimeMapper.ToPolicyInput(routeMatch.Route),
+                ProxyTimeoutRuntimeMapper.ToPolicyInput(route),
                 _configurationSnapshot.Timeouts);
             if (await TryHandleCacheHitAsync(
                     stream.Id,
-                    routeMatch.Route,
+                    route,
                     requestHead,
                     upstreamTarget,
                     context,
@@ -459,7 +464,7 @@ public sealed class Http2ClientConnection
                 stream.Id,
                 stream.Body.ToArray(),
                 requestHead,
-                routeMatch.Route,
+                route,
                 effectiveTimeouts,
                 _configurationSnapshot.ConnectionLimits,
                 _configurationSnapshot.Limits,

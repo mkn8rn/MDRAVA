@@ -26,12 +26,15 @@ internal static class RouteDiagnosticsTests
         var matcher = new SingleUpstreamRouteMatcher();
         var requestHead = Request("GET", "/api/users?id=1", "/api/users", "diag.test");
 
-        var direct = matcher.Match(Snapshot(options).Routes, requestHead);
+        var routes = Snapshot(options).Routes;
+        var direct = matcher.Match(
+            routes.Select(static route => new RouteMatchCandidate(route.Host, route.PathPrefix)).ToArray(),
+            new RouteMatchRequest(requestHead.Host, requestHead.Path));
         var dryRun = service.Explain(new RouteMatchDryRunRequest("http", "diag.test", 8080, "GET", "/api/users", "?id=1", NoHeaders(), null, null));
         var matched = Matched(dryRun);
 
         AssertEx.NotNull(direct);
-        AssertEx.Equal(direct!.Route.Name, matched.Route.Name);
+        AssertEx.Equal(routes[direct!.RouteIndex].Name, matched.Route.Name);
         AssertEx.Equal("proxy", matched.EffectiveAction);
     }
 

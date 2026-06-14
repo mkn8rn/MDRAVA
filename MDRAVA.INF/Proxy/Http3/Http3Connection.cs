@@ -34,6 +34,7 @@ public sealed class Http3Connection
     private const int MaxProtocolErrorsPerConnection = 8;
     private readonly QuicConnection _connection;
     private readonly ProxyConfigurationSnapshot _configurationSnapshot;
+    private readonly IReadOnlyList<RouteMatchCandidate> _routeCandidates;
     private readonly RuntimeListener _listener;
     private readonly IRouteMatcher _routeMatcher;
     private readonly IUpstreamSelector _upstreamSelector;
@@ -77,6 +78,7 @@ public sealed class Http3Connection
     {
         _connection = connection;
         _configurationSnapshot = configurationSnapshot;
+        _routeCandidates = ProxyRouteMatchRuntimeMapper.ToCandidates(configurationSnapshot.Routes);
         _listener = listener;
         _routeMatcher = routeMatcher;
         _upstreamSelector = upstreamSelector;
@@ -228,7 +230,9 @@ public sealed class Http3Connection
                 return true;
             }
 
-            var routeMatch = _routeMatcher.Match(_configurationSnapshot.Routes, requestHead);
+            var routeMatch = _routeMatcher.Match(
+                _routeCandidates,
+                ProxyRouteMatchRuntimeMapper.ToRequest(requestHead));
             if (routeMatch is null)
             {
                 await WriteGeneratedResponseAsync(stream, 404, "Not Found", context, ProxyFailureKind.NoMatchingRoute, requestHead.Method, cancellationToken);
@@ -236,10 +240,11 @@ public sealed class Http3Connection
                 return true;
             }
 
-            context.SetRoute(ProxyRequestContextRuntimeMapper.ToRequestRoute(routeMatch.Route));
+            var route = ProxyRouteMatchRuntimeMapper.SelectRoute(_configurationSnapshot.Routes, routeMatch);
+            context.SetRoute(ProxyRequestContextRuntimeMapper.ToRequestRoute(route));
             if (await TryHandleGeneratedRouteActionAsync(
                     stream,
-                    routeMatch.Route,
+                    route,
                     requestHead,
                     context,
                     cancellationToken))
@@ -250,7 +255,7 @@ public sealed class Http3Connection
 
             if (await TryRejectKnownLengthRequestBodyAsync(
                     stream,
-                    routeMatch.Route,
+                    route,
                     requestHead,
                     context,
                     cancellationToken))
@@ -265,15 +270,15 @@ public sealed class Http3Connection
                 requestHead.Framing,
                 cancellationToken);
             var upstreamTarget = _pathRewritePolicy.Apply(
-                ProxyPathRewriteRuntimeMapper.ToPolicyInput(routeMatch.Route),
+                ProxyPathRewriteRuntimeMapper.ToPolicyInput(route),
                 requestHead.Target,
                 requestHead.Path);
             var effectiveTimeouts = ProxyTimeoutPolicy.ApplyRouteTimeouts(
-                ProxyTimeoutRuntimeMapper.ToPolicyInput(routeMatch.Route),
+                ProxyTimeoutRuntimeMapper.ToPolicyInput(route),
                 _configurationSnapshot.Timeouts);
             if (await TryHandleCacheHitAsync(
                     stream,
-                    routeMatch.Route,
+                    route,
                     requestHead,
                     upstreamTarget,
                     context,
@@ -288,7 +293,7 @@ public sealed class Http3Connection
                 stream,
                 requestBody,
                 requestHead,
-                routeMatch.Route,
+                route,
                 effectiveTimeouts,
                 _configurationSnapshot.ConnectionLimits,
                 _configurationSnapshot.Limits,

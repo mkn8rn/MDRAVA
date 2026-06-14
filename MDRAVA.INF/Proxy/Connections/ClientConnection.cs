@@ -36,6 +36,7 @@ public sealed class ClientConnection
 {
     private readonly Socket _socket;
     private readonly ProxyConfigurationSnapshot _configurationSnapshot;
+    private readonly IReadOnlyList<RouteMatchCandidate> _routeCandidates;
     private readonly RuntimeListener _listener;
     private readonly IRouteMatcher _routeMatcher;
     private readonly IUpstreamSelector _upstreamSelector;
@@ -85,6 +86,7 @@ public sealed class ClientConnection
     {
         _socket = socket;
         _configurationSnapshot = configurationSnapshot;
+        _routeCandidates = ProxyRouteMatchRuntimeMapper.ToCandidates(configurationSnapshot.Routes);
         _listener = listener;
         _routeMatcher = routeMatcher;
         _upstreamSelector = upstreamSelector;
@@ -360,7 +362,9 @@ public sealed class ClientConnection
                     continue;
                 }
 
-                var routeMatch = _routeMatcher.Match(_configurationSnapshot.Routes, requestHead);
+                var routeMatch = _routeMatcher.Match(
+                    _routeCandidates,
+                    ProxyRouteMatchRuntimeMapper.ToRequest(requestHead));
                 if (routeMatch is null)
                 {
                     await WriteGeneratedResponseAsync(
@@ -374,11 +378,12 @@ public sealed class ClientConnection
                     CompleteContext(ref currentContext);
                     return;
                 }
-                currentContext.SetRoute(ProxyRequestContextRuntimeMapper.ToRequestRoute(routeMatch.Route));
+                var route = ProxyRouteMatchRuntimeMapper.SelectRoute(_configurationSnapshot.Routes, routeMatch);
+                currentContext.SetRoute(ProxyRequestContextRuntimeMapper.ToRequestRoute(route));
 
                 if (await TryHandleGeneratedRouteActionAsync(
                         clientStream,
-                        routeMatch.Route,
+                        route,
                         requestHead,
                         currentContext,
                         cancellationToken))
@@ -389,7 +394,7 @@ public sealed class ClientConnection
 
                 if (await TryRejectKnownLengthRequestBodyAsync(
                         clientStream,
-                        routeMatch.Route,
+                        route,
                         requestHead,
                         currentContext,
                         cancellationToken))
@@ -402,16 +407,16 @@ public sealed class ClientConnection
                 var preferKeepAlive = Http1ClientConnectionPolicy.ShouldKeepOpen(requestHead)
                     && nextRequestCount < _configurationSnapshot.ConnectionLimits.MaxRequestsPerClientConnection;
                 var upstreamTarget = _pathRewritePolicy.Apply(
-                    ProxyPathRewriteRuntimeMapper.ToPolicyInput(routeMatch.Route),
+                    ProxyPathRewriteRuntimeMapper.ToPolicyInput(route),
                     requestHead.Target,
                     requestHead.Path);
                 var effectiveTimeouts = ProxyTimeoutPolicy.ApplyRouteTimeouts(
-                    ProxyTimeoutRuntimeMapper.ToPolicyInput(routeMatch.Route),
+                    ProxyTimeoutRuntimeMapper.ToPolicyInput(route),
                     _configurationSnapshot.Timeouts);
 
                 if (await TryHandleCacheHitAsync(
                         clientStream,
-                        routeMatch.Route,
+                        route,
                         requestHead,
                         upstreamTarget,
                         preferKeepAlive,
@@ -441,7 +446,7 @@ public sealed class ClientConnection
                     clientStream,
                     requestHeadRead,
                     requestHead,
-                    routeMatch.Route,
+                    route,
                     _listener,
                     effectiveTimeouts,
                     _configurationSnapshot.ConnectionLimits,
@@ -761,7 +766,9 @@ public sealed class ClientConnection
         }
 
         var upgrade = ((UpgradeRequestValidationDecision.AcceptedDecision)validation).Upgrade;
-        var upgradeRouteMatch = _routeMatcher.Match(_configurationSnapshot.Routes, requestHead);
+        var upgradeRouteMatch = _routeMatcher.Match(
+            _routeCandidates,
+            ProxyRouteMatchRuntimeMapper.ToRequest(requestHead));
         if (upgradeRouteMatch is null)
         {
             _metrics.UpgradeRequestRejected();
@@ -775,11 +782,12 @@ public sealed class ClientConnection
                 cancellationToken);
             return false;
         }
-        context.SetRoute(ProxyRequestContextRuntimeMapper.ToRequestRoute(upgradeRouteMatch.Route));
+        var upgradeRoute = ProxyRouteMatchRuntimeMapper.SelectRoute(_configurationSnapshot.Routes, upgradeRouteMatch);
+        context.SetRoute(ProxyRequestContextRuntimeMapper.ToRequestRoute(upgradeRoute));
 
         var actionDecision = _routeActionPolicy.Evaluate(
             ProxyRouteActionRuntimeMapper.ToPolicyInput(
-                upgradeRouteMatch.Route,
+                upgradeRoute,
                 requestHead,
                 _listener,
                 isUpgradeRequest: true));
@@ -793,7 +801,7 @@ public sealed class ClientConnection
             return false;
         }
 
-        var upgradeSelection = _upstreamSelector.Select(ProxyUpstreamSelectionRuntimeMapper.ToSelectionRoute(upgradeRouteMatch.Route));
+        var upgradeSelection = _upstreamSelector.Select(ProxyUpstreamSelectionRuntimeMapper.ToSelectionRoute(upgradeRoute));
         if (upgradeSelection is null)
         {
             _metrics.UpgradeRequestRejected();
@@ -809,17 +817,17 @@ public sealed class ClientConnection
         context.SetUpstream(ProxyRequestContextRuntimeMapper.ToRequestUpstream(upgradeSelection.Upstream));
 
         var upstreamTarget = _pathRewritePolicy.Apply(
-            ProxyPathRewriteRuntimeMapper.ToPolicyInput(upgradeRouteMatch.Route),
+            ProxyPathRewriteRuntimeMapper.ToPolicyInput(upgradeRoute),
             requestHead.Target,
             requestHead.Path);
         var effectiveTimeouts = ProxyTimeoutPolicy.ApplyRouteTimeouts(
-            ProxyTimeoutRuntimeMapper.ToPolicyInput(upgradeRouteMatch.Route),
+            ProxyTimeoutRuntimeMapper.ToPolicyInput(upgradeRoute),
             _configurationSnapshot.Timeouts);
         var upgradeResult = await _upgradeForwarder.ForwardAsync(
             clientStream,
             requestHead,
             upgrade,
-            upgradeRouteMatch.Route,
+            upgradeRoute,
             upgradeSelection.Upstream,
             _listener,
             effectiveTimeouts,

@@ -31,11 +31,12 @@ internal static class RouteMatcherTests
 
         var request = new Http1RequestHead("GET", "/anything", "/anything", "HTTP/1.1", "example.test", Http1RequestFraming.None, []);
 
-        var match = matcher.Match(snapshot.Routes, request);
+        var match = Match(matcher, snapshot.Routes, request);
 
         AssertEx.NotNull(match);
-        AssertEx.Equal("default", match!.Route.Name);
-        AssertEx.Equal("local", match.Route.Upstreams[0].Name);
+        var route = snapshot.Routes[match!.RouteIndex];
+        AssertEx.Equal("default", route.Name);
+        AssertEx.Equal("local", route.Upstreams[0].Name);
     }
 
     public static void MatchesHostWithoutRequestPort()
@@ -65,11 +66,12 @@ internal static class RouteMatcherTests
 
         var request = new Http1RequestHead("GET", "/api/status", "/api/status", "HTTP/1.1", "example.test:8080", Http1RequestFraming.None, []);
 
-        var match = matcher.Match(snapshot.Routes, request);
+        var match = Match(matcher, snapshot.Routes, request);
 
         AssertEx.NotNull(match);
-        AssertEx.Equal("example", match!.Route.Name);
-        AssertEx.Equal("api", match.Route.Upstreams[0].Name);
+        var route = snapshot.Routes[match!.RouteIndex];
+        AssertEx.Equal("example", route.Name);
+        AssertEx.Equal("api", route.Upstreams[0].Name);
     }
 
     public static void ExactHostRouteBeatsWildcardFallbackWhenBothCouldMatch()
@@ -85,10 +87,11 @@ internal static class RouteMatcherTests
         });
         var request = Request("GET", "/resource", "example.test");
 
-        var match = AssertEx.NotNull(matcher.Match(snapshot.Routes, request));
+        var match = AssertEx.NotNull(Match(matcher, snapshot.Routes, request));
+        var route = snapshot.Routes[match.RouteIndex];
 
-        AssertEx.Equal("exact", match.Route.Name);
-        AssertEx.Equal("exact-upstream", match.Route.Upstreams[0].Name);
+        AssertEx.Equal("exact", route.Name);
+        AssertEx.Equal("exact-upstream", route.Upstreams[0].Name);
     }
 
     public static void PortSpecificHostRouteBeatsHostFallbackWhenAuthorityIncludesPort()
@@ -104,10 +107,11 @@ internal static class RouteMatcherTests
         });
         var request = Request("GET", "/resource", "example.test:8443");
 
-        var match = AssertEx.NotNull(matcher.Match(snapshot.Routes, request));
+        var match = AssertEx.NotNull(Match(matcher, snapshot.Routes, request));
+        var route = snapshot.Routes[match.RouteIndex];
 
-        AssertEx.Equal("port-specific", match.Route.Name);
-        AssertEx.Equal("port-upstream", match.Route.Upstreams[0].Name);
+        AssertEx.Equal("port-specific", route.Name);
+        AssertEx.Equal("port-upstream", route.Upstreams[0].Name);
     }
 
     public static void SpecificRoutePathBeatsCatchAllFallbackWhenBothCouldMatch()
@@ -123,10 +127,11 @@ internal static class RouteMatcherTests
         });
         var request = Request("GET", "/api/users", "example.test");
 
-        var match = AssertEx.NotNull(matcher.Match(snapshot.Routes, request));
+        var match = AssertEx.NotNull(Match(matcher, snapshot.Routes, request));
+        var route = snapshot.Routes[match.RouteIndex];
 
-        AssertEx.Equal("api", match.Route.Name);
-        AssertEx.Equal("api-upstream", match.Route.Upstreams[0].Name);
+        AssertEx.Equal("api", route.Name);
+        AssertEx.Equal("api-upstream", route.Upstreams[0].Name);
     }
 
     public static void MatchesRuntimeRoutesWithoutConfigurationSnapshot()
@@ -141,10 +146,21 @@ internal static class RouteMatcherTests
         }).Routes;
         var request = Request("GET", "/api/users", "example.test");
 
-        var match = AssertEx.NotNull(matcher.Match(routes, request));
+        var match = AssertEx.NotNull(Match(matcher, routes, request));
+        var route = routes[match.RouteIndex];
 
-        AssertEx.Equal("api", match.Route.Name);
-        AssertEx.Equal("api-upstream", match.Route.Upstreams[0].Name);
+        AssertEx.Equal("api", route.Name);
+        AssertEx.Equal("api-upstream", route.Upstreams[0].Name);
+    }
+
+    private static RouteMatch? Match(
+        SingleUpstreamRouteMatcher matcher,
+        IReadOnlyList<RuntimeRoute> routes,
+        Http1RequestHead request)
+    {
+        return matcher.Match(
+            routes.Select(static route => new RouteMatchCandidate(route.Host, route.PathPrefix)).ToArray(),
+            new RouteMatchRequest(request.Host, request.Path));
     }
 
     private static ProxyRouteOptions Route(
