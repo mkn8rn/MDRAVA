@@ -1,5 +1,5 @@
 using BusinessRuntimeConnectionLimitsProjection = MDRAVA.BLL.Configuration.RuntimeConnectionLimitsProjection;
-using BusinessRuntimeForwardedHeadersOptions = MDRAVA.BLL.Configuration.RuntimeForwardedHeadersOptions;
+using BusinessRuntimeForwardedHeadersProjection = MDRAVA.BLL.Configuration.RuntimeForwardedHeadersProjection;
 using BusinessRuntimeLimitsProjection = MDRAVA.BLL.Configuration.RuntimeLimitsProjection;
 using BusinessRuntimeTimeoutsProjection = MDRAVA.BLL.Configuration.RuntimeTimeoutsProjection;
 
@@ -85,10 +85,10 @@ public sealed record RuntimeForwardedHeadersResponse(
     bool Enabled,
     IReadOnlyList<string> TrustedProxies)
 {
-    public static RuntimeForwardedHeadersResponse FromOptions(BusinessRuntimeForwardedHeadersOptions options)
+    public static RuntimeForwardedHeadersResponse FromProjection(BusinessRuntimeForwardedHeadersProjection projection)
     {
-        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(projection);
 
-        return new RuntimeForwardedHeadersResponse(options.Enabled, options.TrustedProxies.ToArray());
+        return new RuntimeForwardedHeadersResponse(projection.Enabled, projection.TrustedProxies.ToArray());
     }
 }

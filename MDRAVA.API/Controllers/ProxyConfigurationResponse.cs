@@ -40,7 +40,7 @@ public sealed record ProxyConfigurationResponse(
             RuntimeConnectionLimitsResponse.FromProjection(projection.ConnectionLimits),
             RuntimeObservabilityResponse.FromOptions(projection.Observability),
             RuntimeLimitsResponse.FromProjection(projection.Limits),
-            RuntimeForwardedHeadersResponse.FromOptions(projection.ForwardedHeaders),
+            RuntimeForwardedHeadersResponse.FromProjection(projection.ForwardedHeaders),
             RuntimeCertificateResponse.FromCertificates(projection.Certificates),
             RuntimeListenerResponse.FromListeners(projection.Listeners),
             RuntimeRouteResponse.FromRoutes(projection.Routes))

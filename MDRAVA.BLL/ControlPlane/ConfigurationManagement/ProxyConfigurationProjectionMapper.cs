@@ -53,7 +53,9 @@ public static class ProxyConfigurationProjectionMapper
                 snapshot.Limits.MaxRequestBodyBytes,
                 snapshot.Limits.MaxPathBytes,
                 snapshot.Limits.ShutdownGracePeriod),
-            snapshot.ForwardedHeaders,
+            new RuntimeForwardedHeadersProjection(
+                snapshot.ForwardedHeaders.Enabled,
+                snapshot.ForwardedHeaders.TrustedProxies),
             snapshot.Certificates.Values
                 .Select(static certificate => new RuntimeCertificateProjection(
                     certificate.Id,

@@ -15,7 +15,7 @@ public sealed record ProxyConfigurationProjection(
     RuntimeConnectionLimitsProjection ConnectionLimits,
     RuntimeObservabilityOptions Observability,
     RuntimeLimitsProjection Limits,
-    RuntimeForwardedHeadersOptions ForwardedHeaders,
+    RuntimeForwardedHeadersProjection ForwardedHeaders,
     IReadOnlyList<RuntimeCertificateProjection> Certificates,
     IReadOnlyList<RuntimeListenerProjection> Listeners,
     IReadOnlyList<RuntimeRouteProjection> Routes)
