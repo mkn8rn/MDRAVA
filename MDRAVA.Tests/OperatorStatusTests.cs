@@ -217,22 +217,20 @@ internal static class OperatorStatusTests
         AssertEx.Equal(ProxyListenerState.Active, afterSnapshotMutation.Listeners[0].State);
     }
 
-    public static void StatusConfigurationSummaryMapperReadsRuntimeConfigurationFactsWithoutSnapshot()
+    public static void StatusConfigurationSummaryMapperReadsCountsWithoutRuntimeConfigurationObjects()
     {
         var loadedAtUtc = new DateTimeOffset(2026, 6, 12, 8, 0, 0, TimeSpan.Zero);
-        var listener = Listener();
-        var route = StaticRoute();
 
-        var summary = ProxyStatusConfigurationSummaryMapper.FromRuntimeConfiguration(
+        var summary = ProxyStatusConfigurationSummaryMapper.FromCounts(
             version: 17,
             loadedAtUtc,
-            listeners: [listener],
-            routes: [route]);
+            listenerCount: 2,
+            routeCount: 3);
 
         AssertEx.Equal(17, summary.Version);
         AssertEx.Equal(loadedAtUtc, summary.LoadedAtUtc);
-        AssertEx.Equal(1, summary.ListenerCount);
-        AssertEx.Equal(1, summary.RouteCount);
+        AssertEx.Equal(2, summary.ListenerCount);
+        AssertEx.Equal(3, summary.RouteCount);
     }
 
     public static void StatusConfigurationSourceMapperShapesStatusFactsFromActiveConfiguration()
@@ -319,11 +317,11 @@ internal static class OperatorStatusTests
             observedAtUtc);
         var input = new ProxyStatusInput(
             runtimeSummary,
-            ProxyStatusConfigurationSummaryMapper.FromRuntimeConfiguration(
+            ProxyStatusConfigurationSummaryMapper.FromCounts(
                 snapshot.Version,
                 snapshot.LoadedAtUtc,
-                snapshot.Listeners,
-                snapshot.Routes),
+                snapshot.Listeners.Count,
+                snapshot.Routes.Count),
             metrics,
             [],
             http3,

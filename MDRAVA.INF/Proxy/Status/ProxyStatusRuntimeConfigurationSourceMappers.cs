@@ -12,11 +12,11 @@ public static class ProxyStatusConfigurationSourceMapper
         IReadOnlyList<ProxyUpstreamHealthSource> upstreamHealthSources)
     {
         return new ProxyStatusConfigurationSourceSet(
-            ProxyStatusConfigurationSummaryMapper.FromRuntimeConfiguration(
+            ProxyStatusConfigurationSummaryMapper.FromCounts(
                 configuration.Version,
                 configuration.LoadedAtUtc,
-                configuration.Listeners,
-                configuration.Routes),
+                configuration.Listeners.Count,
+                configuration.Routes.Count),
             upstreamHealthSources,
             Http3SupportSourceMapper.FromConfiguration(configuration.Listeners, configuration.Routes),
             ProxyStatusReadinessConfigurationSourceMapper.FromConfiguration(configuration));

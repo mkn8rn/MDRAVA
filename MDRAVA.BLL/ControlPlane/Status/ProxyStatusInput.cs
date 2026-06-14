@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.Acme;
 using MDRAVA.BLL.ControlPlane.Caching;
 using MDRAVA.BLL.ControlPlane.ConfigLint;
@@ -149,17 +148,17 @@ public sealed record ProxyStatusConfigurationSummary(
 
 public static class ProxyStatusConfigurationSummaryMapper
 {
-    public static ProxyStatusConfigurationSummary FromRuntimeConfiguration(
+    public static ProxyStatusConfigurationSummary FromCounts(
         int version,
         DateTimeOffset loadedAtUtc,
-        IReadOnlyList<RuntimeListener> listeners,
-        IReadOnlyList<RuntimeRoute> routes)
+        int listenerCount,
+        int routeCount)
     {
         return new ProxyStatusConfigurationSummary(
             version,
             loadedAtUtc,
-            listeners.Count,
-            routes.Count);
+            listenerCount,
+            routeCount);
     }
 }
 
