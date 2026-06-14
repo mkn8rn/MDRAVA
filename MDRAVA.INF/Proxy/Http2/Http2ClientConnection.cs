@@ -948,7 +948,9 @@ public sealed class Http2ClientConnection
 
     private void AddAltSvcHeader(List<ProxyHeaderField> headers)
     {
-        var projected = Http3AltSvcPolicy.ApplyHeader(headers, _altSvcPolicy.CreateHeader(_listener));
+        var projected = Http3AltSvcPolicy.ApplyHeader(
+            headers,
+            _altSvcPolicy.CreateHeader(ProxyHttp3AltSvcRuntimeMapper.ToListenerInput(_listener)));
         headers.Clear();
         headers.AddRange(projected);
     }

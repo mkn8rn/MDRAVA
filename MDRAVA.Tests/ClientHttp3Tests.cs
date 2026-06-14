@@ -484,7 +484,13 @@ internal static class ClientHttp3Tests
         var metrics = new ProxyMetrics();
         var policy = new Http3AltSvcPolicy(source, metrics);
 
-        var result = policy.CreateHeader(listener);
+        var result = policy.CreateHeader(new Http3AltSvcListenerInput(
+            listener.Http3.EnabledForTraffic,
+            listener.Http3.EnablementLevel,
+            listener.Http3AltSvc.Enabled,
+            listener.Http3AltSvc.MaxAgeSeconds,
+            listener.Port,
+            listener.QuicIdentity?.Key));
         var snapshot = metrics.Snapshot();
 
         AssertEx.True(result is Http3AltSvcHeaderResult.EmittedResult);

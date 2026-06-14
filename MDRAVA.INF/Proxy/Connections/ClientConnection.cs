@@ -980,7 +980,9 @@ public sealed class ClientConnection
 
     private IReadOnlyList<ProxyHeaderField> ApplyAltSvc(IReadOnlyList<ProxyHeaderField> headers)
     {
-        return Http3AltSvcPolicy.ApplyHeader(headers, _altSvcPolicy.CreateHeader(_listener));
+        return Http3AltSvcPolicy.ApplyHeader(
+            headers,
+            _altSvcPolicy.CreateHeader(ProxyHttp3AltSvcRuntimeMapper.ToListenerInput(_listener)));
     }
 
     private ProxyRequestContext CreateRequestContext()

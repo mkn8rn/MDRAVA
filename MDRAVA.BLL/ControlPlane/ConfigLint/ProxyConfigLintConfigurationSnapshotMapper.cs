@@ -81,7 +81,13 @@ public static class ProxyConfigLintConfigurationSnapshotMapper
                     listener.Http3.EnabledForTraffic,
                     listener.Http3.DisabledReason,
                     listener.Http3.EnablementLevel,
-                    RuntimeHttp3AltSvcPolicy.IsEnabled(listener),
+                    Http3AltSvcListenerPolicy.IsEnabled(new Http3AltSvcListenerInput(
+                        listener.Http3.EnabledForTraffic,
+                        listener.Http3.EnablementLevel,
+                        listener.Http3AltSvc.Enabled,
+                        listener.Http3AltSvc.MaxAgeSeconds,
+                        listener.Port,
+                        listener.QuicIdentity?.Key)),
                     listener.QuicIdentity?.Key))
                 .ToArray(),
             source.Routes

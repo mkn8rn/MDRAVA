@@ -1353,7 +1353,9 @@ public sealed class ProxyForwarder
             clientStream,
             responseHead,
             responseHeaders,
-            Http3AltSvcPolicy.ApplyHeader([], _altSvcPolicy.CreateHeader(listener)),
+            Http3AltSvcPolicy.ApplyHeader(
+                [],
+                _altSvcPolicy.CreateHeader(ProxyHttp3AltSvcRuntimeMapper.ToListenerInput(listener))),
             requestId,
             responseHead.Framing.Kind == Http1BodyKind.ContentLength
                 ? responseHead.Framing.ContentLength
@@ -1380,7 +1382,9 @@ public sealed class ProxyForwarder
             clientStream,
             responseHead,
             responseHeaders,
-            Http3AltSvcPolicy.ApplyHeader([], _altSvcPolicy.CreateHeader(listener)),
+            Http3AltSvcPolicy.ApplyHeader(
+                [],
+                _altSvcPolicy.CreateHeader(ProxyHttp3AltSvcRuntimeMapper.ToListenerInput(listener))),
             requestId,
             body.Length,
             useChunkedTransferEncoding: false,

@@ -1,8 +1,15 @@
 using MDRAVA.BLL.Http;
 using MDRAVA.BLL.ControlPlane.Headers;
-using MDRAVA.BLL.Configuration;
 
 namespace MDRAVA.BLL.ControlPlane.Http3;
+
+public sealed record Http3AltSvcListenerInput(
+    bool EnabledForTraffic,
+    string EnablementLevel,
+    bool AltSvcEnabled,
+    int AltSvcMaxAgeSeconds,
+    int Port,
+    string? QuicListenerIdentity);
 
 public sealed class Http3AltSvcPolicy
 {
@@ -17,15 +24,15 @@ public sealed class Http3AltSvcPolicy
         _metrics = metrics;
     }
 
-    public Http3AltSvcHeaderResult CreateHeader(RuntimeListener listener)
+    public Http3AltSvcHeaderResult CreateHeader(Http3AltSvcListenerInput listener)
     {
-        if (!RuntimeHttp3AltSvcPolicy.IsEnabled(listener))
+        if (!Http3AltSvcListenerPolicy.IsEnabled(listener))
         {
             _metrics.Http3AltSvcSuppressed();
             return Http3AltSvcHeaderResult.Suppressed;
         }
 
-        if (!RuntimeHttp3AltSvcPolicy.HasActiveQuicListener(
+        if (!Http3AltSvcListenerPolicy.HasActiveQuicListener(
             listener,
             _runtimeListeners.ReadRuntimeListeners()))
         {
@@ -37,7 +44,7 @@ public sealed class Http3AltSvcPolicy
         return Http3AltSvcHeaderResult.Emitted(
             new ProxyHeaderField(
                 "Alt-Svc",
-                $"h3=\":{listener.Port}\"; ma={listener.Http3AltSvc.MaxAgeSeconds}"));
+                $"h3=\":{listener.Port}\"; ma={listener.AltSvcMaxAgeSeconds}"));
     }
 
     public static IReadOnlyList<ProxyHeaderField> ApplyHeader(
