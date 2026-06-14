@@ -11,6 +11,7 @@ using MDRAVA.BLL.ControlPlane.RuntimeGuards;
 using MDRAVA.INF.Configuration.Loading;
 using MDRAVA.INF.DataDirectory;
 using MDRAVA.INF.Observability;
+using MDRAVA.INF.Proxy.Caching;
 using MDRAVA.INF.Proxy.RuntimeGuards;
 using MDRAVA.INF.Runtime;
 
