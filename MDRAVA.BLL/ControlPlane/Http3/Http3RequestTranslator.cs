@@ -2,9 +2,10 @@ using MDRAVA.BLL.ControlPlane.Headers;
 using MDRAVA.BLL.ControlPlane.Http1;
 using MDRAVA.BLL.Http;
 using System.Globalization;
-using MDRAVA.BLL.Configuration;
 
 namespace MDRAVA.BLL.ControlPlane.Http3;
+
+public sealed record Http3RequestTranslationListenerInput(bool IsHttps);
 
 public static class Http3RequestTranslator
 {
@@ -20,7 +21,7 @@ public static class Http3RequestTranslator
 
     public static Http3RequestTranslationResult BuildRequest(
         IReadOnlyList<ProxyHeaderField> headers,
-        RuntimeListener listener,
+        Http3RequestTranslationListenerInput listener,
         bool bodyMayFollow = true)
     {
         Dictionary<string, string> pseudo = new(StringComparer.Ordinal);
@@ -89,7 +90,7 @@ public static class Http3RequestTranslator
         }
 
         if (!string.Equals(scheme, "https", StringComparison.OrdinalIgnoreCase)
-            || listener.Transport != RuntimeListenerTransport.Https)
+            || !listener.IsHttps)
         {
             return Http3RequestTranslationResult.Rejected("invalid_scheme");
         }
@@ -139,7 +140,7 @@ public static class Http3RequestTranslator
     private static Http3RequestTranslationResult BuildConnectRequest(
         IReadOnlyDictionary<string, string> pseudo,
         List<ProxyHeaderField> regularHeaders,
-        RuntimeListener listener,
+        Http3RequestTranslationListenerInput listener,
         string method)
     {
         if (pseudo.ContainsKey(":scheme") || pseudo.ContainsKey(":path"))
@@ -153,7 +154,7 @@ public static class Http3RequestTranslator
             return Http3RequestTranslationResult.Rejected("invalid_connect_target");
         }
 
-        if (listener.Transport != RuntimeListenerTransport.Https)
+        if (!listener.IsHttps)
         {
             return Http3RequestTranslationResult.Rejected("invalid_scheme");
         }

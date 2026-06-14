@@ -1876,7 +1876,9 @@ internal static class ClientHttp3Tests
 
     private static string RejectHttp3Request(IReadOnlyList<ProxyHeaderField> headers)
     {
-        var result = Http3RequestTranslator.BuildRequest(headers, TestHttp3Listener("http3"));
+        var result = Http3RequestTranslator.BuildRequest(
+            headers,
+            new Http3RequestTranslationListenerInput(IsHttps: true));
 
         AssertEx.True(result is Http3RequestTranslationResult.RejectedResult);
         return ((Http3RequestTranslationResult.RejectedResult)result).Reason;

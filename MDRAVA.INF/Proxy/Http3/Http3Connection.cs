@@ -166,7 +166,7 @@ public sealed class Http3Connection
 
             var translationResult = Http3RequestTranslator.BuildRequest(
                 headerRead.Headers,
-                _listener,
+                ProxyHttp3RequestTranslationRuntimeMapper.ToListenerInput(_listener),
                 bodyMayFollow: true);
             if (translationResult is not Http3RequestTranslationResult.AcceptedResult translation)
             {
