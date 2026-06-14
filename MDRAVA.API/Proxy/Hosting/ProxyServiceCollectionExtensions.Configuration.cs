@@ -31,6 +31,8 @@ public static partial class ProxyServiceCollectionExtensions
         services.AddSingleton<IProxyConfigurationNormalizeSiteParser, ProxyConfigurationNormalizeSiteParser>();
         services.AddSingleton<ProxyConfigurationStore>();
         services.AddSingleton<IProxyConfigurationStore>(static services => services.GetRequiredService<ProxyConfigurationStore>());
+        services.AddSingleton<IProxyActiveConfigurationSnapshotReader>(static services => services.GetRequiredService<ProxyConfigurationStore>());
+        services.AddSingleton<IProxyActiveConfigurationSnapshotWriter>(static services => services.GetRequiredService<ProxyConfigurationStore>());
         services.AddSingleton<IProxyActiveConfigurationVersionReader>(static services => services.GetRequiredService<ProxyConfigurationStore>());
         services.AddSingleton<ProxyConfigurationLoader>();
         services.AddSingleton<IProxyConfigurationLoader>(static services => services.GetRequiredService<ProxyConfigurationLoader>());

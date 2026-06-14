@@ -10,7 +10,8 @@ public sealed class ProxyConfigurationReloadService
         IProxyConfigurationValidationOperations
 {
     private readonly IProxyConfigurationLoader _loader;
-    private readonly IProxyConfigurationStore _store;
+    private readonly IProxyActiveConfigurationSnapshotReader _snapshotReader;
+    private readonly IProxyActiveConfigurationSnapshotWriter _snapshotWriter;
     private readonly ResponseCacheStore _cacheStore;
     private readonly IProxyConfigurationReloadMetricsSink _metrics;
     private readonly IProxyListenerReloadApplier _listenerReloadApplier;
@@ -19,7 +20,8 @@ public sealed class ProxyConfigurationReloadService
 
     public ProxyConfigurationReloadService(
         IProxyConfigurationLoader loader,
-        IProxyConfigurationStore store,
+        IProxyActiveConfigurationSnapshotReader snapshotReader,
+        IProxyActiveConfigurationSnapshotWriter snapshotWriter,
         ResponseCacheStore cacheStore,
         IProxyConfigurationReloadMetricsSink metrics,
         IProxyListenerReloadApplier listenerReloadApplier,
@@ -27,7 +29,8 @@ public sealed class ProxyConfigurationReloadService
         IRuntimeHttp3PlatformSupportSource http3PlatformSupportSource)
     {
         _loader = loader;
-        _store = store;
+        _snapshotReader = snapshotReader;
+        _snapshotWriter = snapshotWriter;
         _cacheStore = cacheStore;
         _metrics = metrics;
         _listenerReloadApplier = listenerReloadApplier;
@@ -59,7 +62,7 @@ public sealed class ProxyConfigurationReloadService
         var loaded = (ProxyConfigurationLoadResult.LoadedResult)loadResult;
         var listenerReload = await _listenerReloadApplier.ApplyReloadAsync(
             loaded.Snapshot,
-            candidate => _store.Replace(candidate),
+            candidate => _snapshotWriter.Replace(candidate),
             cancellationToken);
         if (listenerReload is ProxyListenerReloadResult.FailedResult)
         {
@@ -75,7 +78,7 @@ public sealed class ProxyConfigurationReloadService
                 activeConfiguration: existing is null ? null : ToProjection(existing));
         }
 
-        var snapshot = _store.Snapshot;
+        var snapshot = _snapshotReader.Snapshot;
         _metrics.ConfigReloadSucceeded();
         _cacheStore.Clear("reload");
         _events.Loaded(snapshot.Version, snapshot.SourceDirectory);
@@ -123,7 +126,7 @@ public sealed class ProxyConfigurationReloadService
 
     private ProxyConfigurationSnapshot? ReadExistingSnapshot()
     {
-        return _store.ReadSnapshot() is ProxyConfigurationSnapshotReadResult.AvailableResult available
+        return _snapshotReader.ReadSnapshot() is ProxyConfigurationSnapshotReadResult.AvailableResult available
             ? available.Snapshot
             : null;
     }

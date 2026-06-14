@@ -2,15 +2,23 @@ using MDRAVA.BLL.Configuration;
 
 namespace MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 
-public interface IProxyConfigurationStore
+public interface IProxyActiveConfigurationSnapshotReader
 {
-    bool HasActiveSnapshot { get; }
-
     ProxyConfigurationSnapshot Snapshot { get; }
 
     ProxyConfigurationSnapshotReadResult ReadSnapshot();
+}
 
+public interface IProxyActiveConfigurationSnapshotWriter
+{
     ProxyConfigurationSnapshot Replace(ProxyConfigurationSnapshot snapshot);
+}
+
+public interface IProxyConfigurationStore
+    : IProxyActiveConfigurationSnapshotReader,
+        IProxyActiveConfigurationSnapshotWriter
+{
+    bool HasActiveSnapshot { get; }
 }
 
 public abstract record ProxyConfigurationSnapshotReadResult

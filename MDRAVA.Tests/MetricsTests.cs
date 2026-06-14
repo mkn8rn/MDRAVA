@@ -609,6 +609,7 @@ internal static class MetricsTests
         var service = new ProxyConfigurationReloadService(
             CreateLoader(temp.Path),
             store,
+            store,
             fixture.Cache,
             fixture.Metrics,
             ActivatingProxyListenerReloadApplier.Instance,

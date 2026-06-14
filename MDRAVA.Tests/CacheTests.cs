@@ -607,6 +607,7 @@ internal static class CacheTests
         var service = new ProxyConfigurationReloadService(
             CreateLoader(temp.Path),
             store,
+            store,
             cache,
             new ProxyMetrics(),
             ActivatingProxyListenerReloadApplier.Instance,
@@ -633,6 +634,7 @@ internal static class CacheTests
         var cache = new ResponseCacheStore(new ManualTimeProvider());
         var service = new ProxyConfigurationReloadService(
             CreateLoader(temp.Path),
+            store,
             store,
             cache,
             new ProxyMetrics(),

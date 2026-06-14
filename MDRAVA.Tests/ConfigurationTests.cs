@@ -1878,6 +1878,7 @@ internal static class ConfigurationTests
         return new ProxyConfigurationReloadService(
             CreateLoader(dataDirectory),
             store,
+            store,
             new ResponseCacheStore(TimeProvider.System),
             new ProxyMetrics(),
             ActivatingProxyListenerReloadApplier.Instance,
