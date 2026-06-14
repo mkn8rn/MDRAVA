@@ -41,7 +41,14 @@ public static class ProxyConfigurationProjectionMapper
                 snapshot.ConnectionLimits.MaxRequestsPerClientConnection,
                 snapshot.ConnectionLimits.MaxIdleUpstreamConnectionsPerUpstream,
                 snapshot.ConnectionLimits.MaxActiveUpgradedTunnels),
-            snapshot.Observability,
+            new RuntimeObservabilityProjection(
+                snapshot.Observability.AccessLogEnabled,
+                snapshot.Observability.RecentDiagnosticsCapacity,
+                new RuntimeLogPersistenceProjection(
+                    snapshot.Observability.LogPersistence.AccessLogEnabled,
+                    snapshot.Observability.LogPersistence.AdminAuditEnabled,
+                    snapshot.Observability.LogPersistence.MaxFileBytes,
+                    snapshot.Observability.LogPersistence.MaxFiles)),
             new RuntimeLimitsProjection(
                 snapshot.Limits.MaxActiveClientConnections,
                 snapshot.Limits.MaxConcurrentTlsHandshakes,

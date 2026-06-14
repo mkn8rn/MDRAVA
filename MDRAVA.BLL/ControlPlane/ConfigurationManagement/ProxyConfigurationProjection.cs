@@ -13,7 +13,7 @@ public sealed record ProxyConfigurationProjection(
     RuntimeAcmeOptions Acme,
     RuntimeTimeoutsProjection Timeouts,
     RuntimeConnectionLimitsProjection ConnectionLimits,
-    RuntimeObservabilityOptions Observability,
+    RuntimeObservabilityProjection Observability,
     RuntimeLimitsProjection Limits,
     RuntimeForwardedHeadersProjection ForwardedHeaders,
     IReadOnlyList<RuntimeCertificateProjection> Certificates,

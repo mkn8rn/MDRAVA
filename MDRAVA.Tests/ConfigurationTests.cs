@@ -1139,6 +1139,12 @@ internal static class ConfigurationTests
         object connectionLimits = projection.ConnectionLimits;
         AssertEx.True(connectionLimits is RuntimeConnectionLimitsProjection);
         AssertEx.False(connectionLimits is RuntimeConnectionLimits);
+        object observability = projection.Observability;
+        AssertEx.True(observability is RuntimeObservabilityProjection);
+        AssertEx.False(observability is RuntimeObservabilityOptions);
+        object logPersistence = projection.Observability.LogPersistence;
+        AssertEx.True(logPersistence is RuntimeLogPersistenceProjection);
+        AssertEx.False(logPersistence is RuntimeLogPersistenceOptions);
         object limits = projection.Limits;
         AssertEx.True(limits is RuntimeLimitsProjection);
         AssertEx.False(limits is RuntimeLimits);

@@ -1,6 +1,6 @@
-using BusinessRuntimeLogPersistenceOptions = MDRAVA.BLL.Configuration.RuntimeLogPersistenceOptions;
+using BusinessRuntimeLogPersistenceProjection = MDRAVA.BLL.Configuration.RuntimeLogPersistenceProjection;
 using BusinessRuntimeMetricsOptions = MDRAVA.BLL.Configuration.RuntimeMetricsOptions;
-using BusinessRuntimeObservabilityOptions = MDRAVA.BLL.Configuration.RuntimeObservabilityOptions;
+using BusinessRuntimeObservabilityProjection = MDRAVA.BLL.Configuration.RuntimeObservabilityProjection;
 
 namespace MDRAVA.API.Controllers;
 
@@ -9,14 +9,14 @@ public sealed record RuntimeObservabilityResponse(
     int RecentDiagnosticsCapacity,
     RuntimeLogPersistenceResponse LogPersistence)
 {
-    public static RuntimeObservabilityResponse FromOptions(BusinessRuntimeObservabilityOptions options)
+    public static RuntimeObservabilityResponse FromProjection(BusinessRuntimeObservabilityProjection projection)
     {
-        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(projection);
 
         return new RuntimeObservabilityResponse(
-            options.AccessLogEnabled,
-            options.RecentDiagnosticsCapacity,
-            RuntimeLogPersistenceResponse.FromOptions(options.LogPersistence));
+            projection.AccessLogEnabled,
+            projection.RecentDiagnosticsCapacity,
+            RuntimeLogPersistenceResponse.FromProjection(projection.LogPersistence));
     }
 }
 
@@ -26,15 +26,15 @@ public sealed record RuntimeLogPersistenceResponse(
     long MaxFileBytes,
     int MaxFiles)
 {
-    public static RuntimeLogPersistenceResponse FromOptions(BusinessRuntimeLogPersistenceOptions options)
+    public static RuntimeLogPersistenceResponse FromProjection(BusinessRuntimeLogPersistenceProjection projection)
     {
-        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(projection);
 
         return new RuntimeLogPersistenceResponse(
-            options.AccessLogEnabled,
-            options.AdminAuditEnabled,
-            options.MaxFileBytes,
-            options.MaxFiles);
+            projection.AccessLogEnabled,
+            projection.AdminAuditEnabled,
+            projection.MaxFileBytes,
+            projection.MaxFiles);
     }
 }
 
