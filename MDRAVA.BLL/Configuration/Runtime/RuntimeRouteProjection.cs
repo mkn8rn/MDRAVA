@@ -18,7 +18,7 @@ public sealed record RuntimeRouteProjection
         RuntimeStaticResponse StaticResponse,
         RuntimeMaintenancePolicy Maintenance,
         RuntimeCacheProjection Cache,
-        RuntimeRouteResolvedOptions ResolvedOptions,
+        RuntimeRouteResolvedOptionsProjection ResolvedOptions,
         string SiteName,
         RuntimeRetryProjection Retry)
     {
@@ -72,7 +72,7 @@ public sealed record RuntimeRouteProjection
 
     public RuntimeCacheProjection Cache { get; init; }
 
-    public RuntimeRouteResolvedOptions ResolvedOptions { get; init; }
+    public RuntimeRouteResolvedOptionsProjection ResolvedOptions { get; init; }
 
     public string SiteName { get; init; }
 

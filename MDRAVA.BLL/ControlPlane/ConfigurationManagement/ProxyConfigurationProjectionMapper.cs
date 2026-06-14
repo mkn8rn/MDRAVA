@@ -123,7 +123,11 @@ public static class ProxyConfigurationProjectionMapper
                         route.Cache.VaryByHeaders,
                         route.Cache.CacheableStatusCodes,
                         route.Cache.Methods),
-                    route.ResolvedOptions,
+                    new RuntimeRouteResolvedOptionsProjection(
+                        route.ResolvedOptions.MaxRequestBodyBytes,
+                        route.ResolvedOptions.ClientRequestHeadTimeout,
+                        route.ResolvedOptions.UpstreamResponseHeadTimeout,
+                        route.ResolvedOptions.AccessLogEnabled),
                     route.SiteName,
                     new RuntimeRetryProjection(
                         route.Retry.Enabled,

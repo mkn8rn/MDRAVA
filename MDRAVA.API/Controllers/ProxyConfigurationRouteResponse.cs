@@ -1,7 +1,7 @@
 using BusinessRuntimeHealthCheckProjection = MDRAVA.BLL.Configuration.RuntimeHealthCheckProjection;
 using BusinessRuntimeRouteAction = MDRAVA.BLL.Configuration.RuntimeRouteAction;
 using BusinessRuntimeRouteProjection = MDRAVA.BLL.Configuration.RuntimeRouteProjection;
-using BusinessRuntimeRouteResolvedOptions = MDRAVA.BLL.Configuration.RuntimeRouteResolvedOptions;
+using BusinessRuntimeRouteResolvedOptionsProjection = MDRAVA.BLL.Configuration.RuntimeRouteResolvedOptionsProjection;
 
 namespace MDRAVA.API.Controllers;
 
@@ -54,7 +54,7 @@ public sealed record RuntimeRouteResponse(
             RuntimeStaticResponseResponse.FromResponse(route.StaticResponse),
             RuntimeMaintenanceResponse.FromPolicy(route.Maintenance),
             RuntimeCachePolicyResponse.FromProjection(route.Cache),
-            RuntimeRouteResolvedOptionsResponse.FromOptions(route.ResolvedOptions))
+            RuntimeRouteResolvedOptionsResponse.FromProjection(route.ResolvedOptions))
         {
             SiteName = route.SiteName,
             Retry = RuntimeRetryPolicyResponse.FromProjection(route.Retry)
@@ -90,16 +90,16 @@ public sealed record RuntimeRouteResolvedOptionsResponse(
     TimeSpan UpstreamResponseHeadTimeout,
     bool AccessLogEnabled)
 {
-    public static RuntimeRouteResolvedOptionsResponse FromOptions(
-        BusinessRuntimeRouteResolvedOptions options)
+    public static RuntimeRouteResolvedOptionsResponse FromProjection(
+        BusinessRuntimeRouteResolvedOptionsProjection projection)
     {
-        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(projection);
 
         return new RuntimeRouteResolvedOptionsResponse(
-            options.MaxRequestBodyBytes,
-            options.ClientRequestHeadTimeout,
-            options.UpstreamResponseHeadTimeout,
-            options.AccessLogEnabled);
+            projection.MaxRequestBodyBytes,
+            projection.ClientRequestHeadTimeout,
+            projection.UpstreamResponseHeadTimeout,
+            projection.AccessLogEnabled);
     }
 }
 
