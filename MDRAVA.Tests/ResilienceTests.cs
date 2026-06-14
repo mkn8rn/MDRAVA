@@ -777,21 +777,12 @@ internal static class ResilienceTests
     public static void TimeoutPolicyAppliesRouteAndRetryAttemptTimeouts()
     {
         var baseTimeouts = Timeouts();
-        var route = Route([Upstream("first", weight: 1)]) with
-        {
-            Retry = new RuntimeRetryPolicy(
-                true,
-                3,
-                TimeSpan.FromSeconds(2),
-                true,
-                false,
-                [],
-                ["GET"],
-                TimeSpan.Zero)
-        };
+        var input = new ProxyRouteTimeoutPolicyInput(
+            UpstreamResponseHeadTimeout: TimeSpan.FromSeconds(30),
+            RetryPerAttemptTimeout: TimeSpan.FromSeconds(2));
 
-        var routeTimeouts = ProxyTimeoutPolicy.ApplyRouteTimeouts(route, baseTimeouts);
-        var retryAttemptTimeouts = ProxyTimeoutPolicy.ApplyRetryAttemptTimeout(route, routeTimeouts);
+        var routeTimeouts = ProxyTimeoutPolicy.ApplyRouteTimeouts(input, baseTimeouts);
+        var retryAttemptTimeouts = ProxyTimeoutPolicy.ApplyRetryAttemptTimeout(input, routeTimeouts);
 
         AssertEx.Equal(TimeSpan.FromSeconds(10), baseTimeouts.UpstreamConnectTimeout);
         AssertEx.Equal(TimeSpan.FromSeconds(10), baseTimeouts.UpstreamResponseHeadTimeout);

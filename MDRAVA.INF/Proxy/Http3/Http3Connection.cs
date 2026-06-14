@@ -265,7 +265,9 @@ public sealed class Http3Connection
                 requestHead.Framing,
                 cancellationToken);
             var upstreamTarget = _pathRewritePolicy.Apply(routeMatch.Route, requestHead.Target, requestHead.Path);
-            var effectiveTimeouts = ProxyTimeoutPolicy.ApplyRouteTimeouts(routeMatch.Route, _configurationSnapshot.Timeouts);
+        var effectiveTimeouts = ProxyTimeoutPolicy.ApplyRouteTimeouts(
+            ProxyTimeoutRuntimeMapper.ToPolicyInput(routeMatch.Route),
+            _configurationSnapshot.Timeouts);
             if (await TryHandleCacheHitAsync(
                     stream,
                     routeMatch.Route,
@@ -648,7 +650,9 @@ public sealed class Http3Connection
                 route,
                 selection.Upstream,
                 _listener,
-                ProxyTimeoutPolicy.ApplyRetryAttemptTimeout(route, timeouts),
+                    ProxyTimeoutPolicy.ApplyRetryAttemptTimeout(
+                        ProxyTimeoutRuntimeMapper.ToPolicyInput(route),
+                        timeouts),
                 connectionLimits,
                 limits,
                 upstreamTarget,

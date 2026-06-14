@@ -42,17 +42,17 @@ public static class ProxyTimeoutPolicy
         }
     }
 
-    public static RuntimeTimeouts ApplyRouteTimeouts(RuntimeRoute route, RuntimeTimeouts timeouts)
+    public static RuntimeTimeouts ApplyRouteTimeouts(ProxyRouteTimeoutPolicyInput input, RuntimeTimeouts timeouts)
     {
         return timeouts with
         {
-            UpstreamResponseHeadTimeout = route.ResolvedOptions.UpstreamResponseHeadTimeout
+            UpstreamResponseHeadTimeout = input.UpstreamResponseHeadTimeout
         };
     }
 
-    public static RuntimeTimeouts ApplyRetryAttemptTimeout(RuntimeRoute route, RuntimeTimeouts timeouts)
+    public static RuntimeTimeouts ApplyRetryAttemptTimeout(ProxyRouteTimeoutPolicyInput input, RuntimeTimeouts timeouts)
     {
-        if (route.Retry.PerAttemptTimeout is not { } perAttemptTimeout)
+        if (input.RetryPerAttemptTimeout is not { } perAttemptTimeout)
         {
             return timeouts;
         }
@@ -64,3 +64,7 @@ public static class ProxyTimeoutPolicy
         };
     }
 }
+
+public sealed record ProxyRouteTimeoutPolicyInput(
+    TimeSpan UpstreamResponseHeadTimeout,
+    TimeSpan? RetryPerAttemptTimeout);
