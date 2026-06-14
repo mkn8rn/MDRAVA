@@ -401,10 +401,13 @@ public sealed class ClientConnection
                 var nextRequestCount = requestsProcessed + 1;
                 var preferKeepAlive = Http1ClientConnectionPolicy.ShouldKeepOpen(requestHead)
                     && nextRequestCount < _configurationSnapshot.ConnectionLimits.MaxRequestsPerClientConnection;
-                var upstreamTarget = _pathRewritePolicy.Apply(routeMatch.Route, requestHead.Target, requestHead.Path);
-            var effectiveTimeouts = ProxyTimeoutPolicy.ApplyRouteTimeouts(
-                ProxyTimeoutRuntimeMapper.ToPolicyInput(routeMatch.Route),
-                _configurationSnapshot.Timeouts);
+                var upstreamTarget = _pathRewritePolicy.Apply(
+                    ProxyPathRewriteRuntimeMapper.ToPolicyInput(routeMatch.Route),
+                    requestHead.Target,
+                    requestHead.Path);
+                var effectiveTimeouts = ProxyTimeoutPolicy.ApplyRouteTimeouts(
+                    ProxyTimeoutRuntimeMapper.ToPolicyInput(routeMatch.Route),
+                    _configurationSnapshot.Timeouts);
 
                 if (await TryHandleCacheHitAsync(
                         clientStream,
@@ -803,7 +806,10 @@ public sealed class ClientConnection
         }
         context.SetUpstream(ProxyRequestContextRuntimeMapper.ToRequestUpstream(upgradeSelection.Upstream));
 
-        var upstreamTarget = _pathRewritePolicy.Apply(upgradeRouteMatch.Route, requestHead.Target, requestHead.Path);
+        var upstreamTarget = _pathRewritePolicy.Apply(
+            ProxyPathRewriteRuntimeMapper.ToPolicyInput(upgradeRouteMatch.Route),
+            requestHead.Target,
+            requestHead.Path);
         var effectiveTimeouts = ProxyTimeoutPolicy.ApplyRouteTimeouts(
             ProxyTimeoutRuntimeMapper.ToPolicyInput(upgradeRouteMatch.Route),
             _configurationSnapshot.Timeouts);

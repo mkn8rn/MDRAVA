@@ -1,22 +1,19 @@
-using MDRAVA.BLL.Configuration;
-
 namespace MDRAVA.BLL.ControlPlane.Routing;
 
 public sealed class PathRewritePolicy
 {
-    public string Apply(RuntimeRoute route, string target, string path)
+    public string Apply(PathRewritePolicyInput input, string target, string path)
     {
-        var rewrite = route.PathRewrite;
-        if (!string.IsNullOrWhiteSpace(rewrite.StripPrefix)
-            && path.StartsWith(rewrite.StripPrefix, StringComparison.Ordinal))
+        if (!string.IsNullOrWhiteSpace(input.StripPrefix)
+            && path.StartsWith(input.StripPrefix, StringComparison.Ordinal))
         {
-            return RewriteTarget(target, rewrite.StripPrefix, "");
+            return RewriteTarget(target, input.StripPrefix, "");
         }
 
-        if (!string.IsNullOrWhiteSpace(rewrite.ReplacePrefix)
-            && path.StartsWith(rewrite.ReplacePrefix, StringComparison.Ordinal))
+        if (!string.IsNullOrWhiteSpace(input.ReplacePrefix)
+            && path.StartsWith(input.ReplacePrefix, StringComparison.Ordinal))
         {
-            return RewriteTarget(target, rewrite.ReplacePrefix, rewrite.Replacement);
+            return RewriteTarget(target, input.ReplacePrefix, input.Replacement);
         }
 
         return target;
@@ -41,4 +38,23 @@ public sealed class PathRewritePolicy
 
         return rewrittenPath + query;
     }
+}
+
+public sealed record PathRewritePolicyInput
+{
+    public PathRewritePolicyInput(
+        string? StripPrefix,
+        string? ReplacePrefix,
+        string? Replacement)
+    {
+        this.StripPrefix = StripPrefix ?? "";
+        this.ReplacePrefix = ReplacePrefix ?? "";
+        this.Replacement = Replacement ?? "";
+    }
+
+    public string StripPrefix { get; }
+
+    public string ReplacePrefix { get; }
+
+    public string Replacement { get; }
 }

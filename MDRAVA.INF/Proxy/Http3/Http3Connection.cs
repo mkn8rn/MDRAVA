@@ -264,10 +264,13 @@ public sealed class Http3Connection
                 stream,
                 requestHead.Framing,
                 cancellationToken);
-            var upstreamTarget = _pathRewritePolicy.Apply(routeMatch.Route, requestHead.Target, requestHead.Path);
-        var effectiveTimeouts = ProxyTimeoutPolicy.ApplyRouteTimeouts(
-            ProxyTimeoutRuntimeMapper.ToPolicyInput(routeMatch.Route),
-            _configurationSnapshot.Timeouts);
+            var upstreamTarget = _pathRewritePolicy.Apply(
+                ProxyPathRewriteRuntimeMapper.ToPolicyInput(routeMatch.Route),
+                requestHead.Target,
+                requestHead.Path);
+            var effectiveTimeouts = ProxyTimeoutPolicy.ApplyRouteTimeouts(
+                ProxyTimeoutRuntimeMapper.ToPolicyInput(routeMatch.Route),
+                _configurationSnapshot.Timeouts);
             if (await TryHandleCacheHitAsync(
                     stream,
                     routeMatch.Route,

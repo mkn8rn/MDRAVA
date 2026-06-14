@@ -436,10 +436,13 @@ public sealed class Http2ClientConnection
                 return;
             }
 
-            var upstreamTarget = _pathRewritePolicy.Apply(routeMatch.Route, requestHead.Target, requestHead.Path);
-        var effectiveTimeouts = ProxyTimeoutPolicy.ApplyRouteTimeouts(
-            ProxyTimeoutRuntimeMapper.ToPolicyInput(routeMatch.Route),
-            _configurationSnapshot.Timeouts);
+            var upstreamTarget = _pathRewritePolicy.Apply(
+                ProxyPathRewriteRuntimeMapper.ToPolicyInput(routeMatch.Route),
+                requestHead.Target,
+                requestHead.Path);
+            var effectiveTimeouts = ProxyTimeoutPolicy.ApplyRouteTimeouts(
+                ProxyTimeoutRuntimeMapper.ToPolicyInput(routeMatch.Route),
+                _configurationSnapshot.Timeouts);
             if (await TryHandleCacheHitAsync(
                     stream.Id,
                     routeMatch.Route,
