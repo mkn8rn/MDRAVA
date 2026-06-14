@@ -1,5 +1,5 @@
-using BusinessRuntimeAcmeCertificateOptions = MDRAVA.BLL.Configuration.RuntimeAcmeCertificateOptions;
-using BusinessRuntimeAcmeOptions = MDRAVA.BLL.Configuration.RuntimeAcmeOptions;
+using BusinessRuntimeAcmeCertificateProjection = MDRAVA.BLL.Configuration.RuntimeAcmeCertificateProjection;
+using BusinessRuntimeAcmeProjection = MDRAVA.BLL.Configuration.RuntimeAcmeProjection;
 using BusinessRuntimeCertificateProjection = MDRAVA.BLL.Configuration.RuntimeCertificateProjection;
 
 namespace MDRAVA.API.Controllers;
@@ -16,21 +16,21 @@ public sealed record RuntimeAcmeResponse(
     int RetryAfterMinutes,
     IReadOnlyList<RuntimeAcmeCertificateResponse> Certificates)
 {
-    public static RuntimeAcmeResponse FromOptions(BusinessRuntimeAcmeOptions options)
+    public static RuntimeAcmeResponse FromProjection(BusinessRuntimeAcmeProjection projection)
     {
-        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(projection);
 
         return new RuntimeAcmeResponse(
-            options.Enabled,
-            options.UseStaging,
-            options.DirectoryUrl,
-            options.ContactEmails.ToArray(),
-            options.TermsAccepted,
-            options.StoragePath,
-            options.RenewBeforeDays,
-            options.CheckIntervalMinutes,
-            options.RetryAfterMinutes,
-            options.Certificates.Select(RuntimeAcmeCertificateResponse.FromOptions).ToArray());
+            projection.Enabled,
+            projection.UseStaging,
+            projection.DirectoryUrl,
+            projection.ContactEmails.ToArray(),
+            projection.TermsAccepted,
+            projection.StoragePath,
+            projection.RenewBeforeDays,
+            projection.CheckIntervalMinutes,
+            projection.RetryAfterMinutes,
+            projection.Certificates.Select(RuntimeAcmeCertificateResponse.FromProjection).ToArray());
     }
 }
 
@@ -40,15 +40,15 @@ public sealed record RuntimeAcmeCertificateResponse(
     IReadOnlyList<string> Domains,
     int RenewBeforeDays)
 {
-    public static RuntimeAcmeCertificateResponse FromOptions(BusinessRuntimeAcmeCertificateOptions options)
+    public static RuntimeAcmeCertificateResponse FromProjection(BusinessRuntimeAcmeCertificateProjection projection)
     {
-        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(projection);
 
         return new RuntimeAcmeCertificateResponse(
-            options.Id,
-            options.Enabled,
-            options.Domains.ToArray(),
-            options.RenewBeforeDays);
+            projection.Id,
+            projection.Enabled,
+            projection.Domains.ToArray(),
+            projection.RenewBeforeDays);
     }
 }
 

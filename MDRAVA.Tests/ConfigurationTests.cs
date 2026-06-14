@@ -237,6 +237,12 @@ internal static class ConfigurationTests
         {
             new("home-cert", true, acmeDomains, 21)
         };
+        var acmeProjectionDomains = new List<string> { "api.home.test" };
+        var acmeProjectionContacts = new List<string> { "ops@home.test" };
+        var acmeProjectionCertificates = new List<RuntimeAcmeCertificateProjection>
+        {
+            new("api-cert", true, acmeProjectionDomains, 14)
+        };
         var adminUrls = new List<string> { "http://127.0.0.1:18081" };
         var projectionUrls = new List<string> { "http://127.0.0.1:18082" };
         var trustedProxies = new List<string> { "127.0.0.1" };
@@ -267,6 +273,17 @@ internal static class ConfigurationTests
             60,
             10,
             acmeCertificates);
+        var acmeProjection = new RuntimeAcmeProjection(
+            true,
+            false,
+            "https://acme.test/directory",
+            acmeProjectionContacts,
+            true,
+            "acme",
+            14,
+            60,
+            10,
+            acmeProjectionCertificates);
         var admin = new RuntimeAdminSecurityOptions(
             adminUrls,
             RequireAuthentication: true,
@@ -339,6 +356,9 @@ internal static class ConfigurationTests
         acmeDomains.Clear();
         acmeContacts.Clear();
         acmeCertificates.Clear();
+        acmeProjectionDomains.Clear();
+        acmeProjectionContacts.Clear();
+        acmeProjectionCertificates.Clear();
         adminUrls.Clear();
         projectionUrls.Clear();
         trustedProxies.Clear();
@@ -357,6 +377,8 @@ internal static class ConfigurationTests
 
         AssertEx.Equal("home.test", acme.Certificates[0].Domains[0]);
         AssertEx.Equal("admin@home.test", acme.ContactEmails[0]);
+        AssertEx.Equal("api.home.test", acmeProjection.Certificates[0].Domains[0]);
+        AssertEx.Equal("ops@home.test", acmeProjection.ContactEmails[0]);
         AssertEx.Equal("http://127.0.0.1:18081", admin.Urls[0]);
         AssertEx.Equal("http://127.0.0.1:18082", adminProjection.Urls[0]);
         AssertEx.Equal("127.0.0.1", forwardedHeaders.TrustedProxies[0]);
@@ -375,6 +397,9 @@ internal static class ConfigurationTests
         AssertEx.False(acme.ContactEmails is string[]);
         AssertEx.False(acme.Certificates is RuntimeAcmeCertificateOptions[]);
         AssertEx.False(acme.Certificates[0].Domains is string[]);
+        AssertEx.False(acmeProjection.ContactEmails is string[]);
+        AssertEx.False(acmeProjection.Certificates is RuntimeAcmeCertificateProjection[]);
+        AssertEx.False(acmeProjection.Certificates[0].Domains is string[]);
         AssertEx.False(admin.Urls is string[]);
         AssertEx.False(adminProjection.Urls is string[]);
         AssertEx.False(forwardedHeaders.TrustedProxies is string[]);
@@ -1133,6 +1158,11 @@ internal static class ConfigurationTests
         AssertEx.Equal(1, projection.Version);
         AssertEx.Equal("home", projection.Routes[0].Name);
         AssertEx.Equal(1, projection.SourceFiles.Count);
+        object acme = projection.Acme;
+        AssertEx.True(acme is RuntimeAcmeProjection);
+        AssertEx.False(acme is RuntimeAcmeOptions);
+        object acmeCertificates = projection.Acme.Certificates;
+        AssertEx.False(acmeCertificates is RuntimeAcmeCertificateOptions[]);
         object timeouts = projection.Timeouts;
         AssertEx.True(timeouts is RuntimeTimeoutsProjection);
         AssertEx.False(timeouts is RuntimeTimeouts);

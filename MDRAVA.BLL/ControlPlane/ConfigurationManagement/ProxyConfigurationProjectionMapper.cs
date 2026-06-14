@@ -25,7 +25,23 @@ public static class ProxyConfigurationProjectionMapper
             snapshot.SourceFiles,
             snapshot.Discovery,
             adminSecurity,
-            snapshot.Acme,
+            new RuntimeAcmeProjection(
+                snapshot.Acme.Enabled,
+                snapshot.Acme.UseStaging,
+                snapshot.Acme.DirectoryUrl,
+                snapshot.Acme.ContactEmails,
+                snapshot.Acme.TermsAccepted,
+                snapshot.Acme.StoragePath,
+                snapshot.Acme.RenewBeforeDays,
+                snapshot.Acme.CheckIntervalMinutes,
+                snapshot.Acme.RetryAfterMinutes,
+                snapshot.Acme.Certificates
+                    .Select(static certificate => new RuntimeAcmeCertificateProjection(
+                        certificate.Id,
+                        certificate.Enabled,
+                        certificate.Domains,
+                        certificate.RenewBeforeDays))
+                    .ToArray()),
             new RuntimeTimeoutsProjection(
                 snapshot.Timeouts.ClientRequestHeadTimeout,
                 snapshot.Timeouts.ClientRequestBodyIdleTimeout,

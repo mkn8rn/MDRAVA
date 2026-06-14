@@ -35,7 +35,7 @@ public sealed record ProxyConfigurationResponse(
             projection.SourceFiles.ToArray(),
             ProxyConfigurationDiscoveryResponse.FromDiscovery(projection.Discovery),
             RuntimeAdminSecurityResponse.FromProjection(projection.AdminSecurity),
-            RuntimeAcmeResponse.FromOptions(projection.Acme),
+            RuntimeAcmeResponse.FromProjection(projection.Acme),
             RuntimeTimeoutsResponse.FromProjection(projection.Timeouts),
             RuntimeConnectionLimitsResponse.FromProjection(projection.ConnectionLimits),
             RuntimeObservabilityResponse.FromProjection(projection.Observability),
