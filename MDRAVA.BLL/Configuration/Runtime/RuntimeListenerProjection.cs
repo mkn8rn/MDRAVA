@@ -19,7 +19,7 @@ public sealed record RuntimeListenerProjection
         RuntimeListenerProtocols Protocols,
         RuntimeHttp3Enablement Http3Enablement,
         RuntimeHttp3AltSvcOptions Http3AltSvc,
-        RuntimeHttp2Limits Http2Limits,
+        RuntimeHttp2LimitsProjection Http2Limits,
         bool TcpTrafficEnabled,
         bool Http3ProtocolConfigured,
         RuntimeQuicListenerIdentity? QuicIdentity,
@@ -80,7 +80,7 @@ public sealed record RuntimeListenerProjection
 
     public RuntimeHttp3AltSvcOptions Http3AltSvc { get; init; }
 
-    public RuntimeHttp2Limits Http2Limits { get; init; }
+    public RuntimeHttp2LimitsProjection Http2Limits { get; init; }
 
     public bool TcpTrafficEnabled { get; init; }
 

@@ -1,4 +1,4 @@
-using BusinessRuntimeHttp2Limits = MDRAVA.BLL.Configuration.RuntimeHttp2Limits;
+using BusinessRuntimeHttp2LimitsProjection = MDRAVA.BLL.Configuration.RuntimeHttp2LimitsProjection;
 using BusinessRuntimeListenerProjection = MDRAVA.BLL.Configuration.RuntimeListenerProjection;
 using BusinessRuntimeListenerProtocols = MDRAVA.BLL.Configuration.RuntimeListenerProtocols;
 
@@ -66,7 +66,7 @@ public sealed record RuntimeListenerResponse(
             Protocols = RuntimeListenerProtocolsResponseMapper.FromProtocols(listener.Protocols),
             Http3Enablement = RuntimeHttp3EnablementResponseMapper.FromEnablement(listener.Http3Enablement),
             Http3AltSvc = RuntimeHttp3AltSvcResponse.FromOptions(listener.Http3AltSvc),
-            Http2Limits = RuntimeHttp2LimitsResponse.FromLimits(listener.Http2Limits),
+            Http2Limits = RuntimeHttp2LimitsResponse.FromProjection(listener.Http2Limits),
             TcpTrafficEnabled = listener.TcpTrafficEnabled,
             Http3ProtocolConfigured = listener.Http3ProtocolConfigured,
             QuicIdentity = listener.QuicIdentity is null
@@ -82,14 +82,14 @@ public sealed record RuntimeHttp2LimitsResponse(
     int MaxHeaderListBytes,
     int MaxFrameSize)
 {
-    public static RuntimeHttp2LimitsResponse FromLimits(BusinessRuntimeHttp2Limits limits)
+    public static RuntimeHttp2LimitsResponse FromProjection(BusinessRuntimeHttp2LimitsProjection projection)
     {
-        ArgumentNullException.ThrowIfNull(limits);
+        ArgumentNullException.ThrowIfNull(projection);
 
         return new RuntimeHttp2LimitsResponse(
-            limits.MaxConcurrentStreams,
-            limits.MaxHeaderListBytes,
-            limits.MaxFrameSize);
+            projection.MaxConcurrentStreams,
+            projection.MaxHeaderListBytes,
+            projection.MaxFrameSize);
     }
 }
 
