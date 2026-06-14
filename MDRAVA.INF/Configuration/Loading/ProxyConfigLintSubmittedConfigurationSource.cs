@@ -3,6 +3,7 @@ using System.Text.Json;
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.ConfigLint;
 using MDRAVA.BLL.ControlPlane.Http3;
+using MDRAVA.INF.Proxy.ConfigLint;
 using YamlDotNet.Core;
 
 namespace MDRAVA.INF.Configuration.Loading;

@@ -1,7 +1,9 @@
-using MDRAVA.BLL.ControlPlane.Http3;
+using System.Collections.ObjectModel;
 using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane.ConfigLint;
+using MDRAVA.BLL.ControlPlane.Http3;
 
-namespace MDRAVA.BLL.ControlPlane.ConfigLint;
+namespace MDRAVA.INF.Proxy.ConfigLint;
 
 public sealed record ProxyConfigLintRuntimeConfigurationSource
 {
@@ -18,12 +20,12 @@ public sealed record ProxyConfigLintRuntimeConfigurationSource
         ArgumentNullException.ThrowIfNull(Listeners);
         ArgumentNullException.ThrowIfNull(Routes);
 
-        this.SourceFiles = ConfigLintList.Copy(SourceFiles);
-        this.AdminUrls = ConfigLintList.Copy(AdminUrls);
+        this.SourceFiles = Copy(SourceFiles);
+        this.AdminUrls = Copy(AdminUrls);
         this.AdminRequiresAuthentication = AdminRequiresAuthentication;
         this.PublicMetricsEnabled = PublicMetricsEnabled;
-        this.Listeners = ConfigLintList.Copy(Listeners);
-        this.Routes = ConfigLintList.Copy(Routes);
+        this.Listeners = Copy(Listeners);
+        this.Routes = Copy(Routes);
     }
 
     public IReadOnlyList<string> SourceFiles { get; }
@@ -37,6 +39,11 @@ public sealed record ProxyConfigLintRuntimeConfigurationSource
     public IReadOnlyList<RuntimeListener> Listeners { get; }
 
     public IReadOnlyList<RuntimeRoute> Routes { get; }
+
+    private static ReadOnlyCollection<T> Copy<T>(IReadOnlyList<T> values)
+    {
+        return new ReadOnlyCollection<T>(values.ToArray());
+    }
 }
 
 public static class ProxyConfigLintRuntimeConfigurationSourceMapper

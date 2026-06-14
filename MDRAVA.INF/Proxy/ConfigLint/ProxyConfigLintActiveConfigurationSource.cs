@@ -1,7 +1,8 @@
+using MDRAVA.BLL.ControlPlane.ConfigLint;
 using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 using MDRAVA.BLL.ControlPlane.Http3;
 
-namespace MDRAVA.BLL.ControlPlane.ConfigLint;
+namespace MDRAVA.INF.Proxy.ConfigLint;
 
 public sealed class ProxyConfigLintActiveConfigurationSource
     : IProxyConfigLintActiveConfigurationSource
