@@ -15,7 +15,7 @@ public sealed record RuntimeListenerProjection
         int MaxResponseHeadBytes,
         int MaxChunkLineBytes,
         int ForwardingBufferBytes,
-        RuntimeListenerIdentity Identity,
+        RuntimeListenerIdentityProjection Identity,
         RuntimeListenerProtocols Protocols,
         RuntimeHttp3Enablement Http3Enablement,
         RuntimeHttp3AltSvcProjection Http3AltSvc,
@@ -72,7 +72,7 @@ public sealed record RuntimeListenerProjection
 
     public int ForwardingBufferBytes { get; init; }
 
-    public RuntimeListenerIdentity Identity { get; init; }
+    public RuntimeListenerIdentityProjection Identity { get; init; }
 
     public RuntimeListenerProtocols Protocols { get; init; }
 

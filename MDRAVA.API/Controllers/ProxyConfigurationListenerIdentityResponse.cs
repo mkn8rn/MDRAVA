@@ -1,4 +1,4 @@
-using BusinessRuntimeListenerIdentity = MDRAVA.BLL.Configuration.RuntimeListenerIdentity;
+using BusinessRuntimeListenerIdentityProjection = MDRAVA.BLL.Configuration.RuntimeListenerIdentityProjection;
 using BusinessRuntimeListenerTransport = MDRAVA.BLL.Configuration.RuntimeListenerTransport;
 using BusinessRuntimeSniCertificateBinding = MDRAVA.BLL.Configuration.RuntimeSniCertificateBinding;
 
@@ -15,19 +15,19 @@ public sealed record RuntimeListenerIdentityResponse(
 
     public string BindKey { get; init; } = "";
 
-    public static RuntimeListenerIdentityResponse FromIdentity(BusinessRuntimeListenerIdentity identity)
+    public static RuntimeListenerIdentityResponse FromProjection(BusinessRuntimeListenerIdentityProjection projection)
     {
-        ArgumentNullException.ThrowIfNull(identity);
+        ArgumentNullException.ThrowIfNull(projection);
 
         return new RuntimeListenerIdentityResponse(
-            identity.Name,
-            identity.Address,
-            identity.Port,
-            RuntimeListenerTransportResponseMapper.FromTransport(identity.Transport),
-            identity.TlsEnabled)
+            projection.Name,
+            projection.Address,
+            projection.Port,
+            RuntimeListenerTransportResponseMapper.FromTransport(projection.Transport),
+            projection.TlsEnabled)
         {
-            Key = identity.Key,
-            BindKey = identity.BindKey
+            Key = projection.Key,
+            BindKey = projection.BindKey
         };
     }
 }

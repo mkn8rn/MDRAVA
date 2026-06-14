@@ -1154,6 +1154,9 @@ internal static class ConfigurationTests
         AssertEx.Equal(listener.Name, listener.Identity.Name);
         AssertEx.Equal(listener.Address, listener.Identity.Address);
         AssertEx.Equal(listener.Port, listener.Identity.Port);
+        object identity = listener.Identity;
+        AssertEx.True(identity is RuntimeListenerIdentityProjection);
+        AssertEx.False(identity is RuntimeListenerIdentity);
         object http3AltSvc = listener.Http3AltSvc;
         AssertEx.True(http3AltSvc is RuntimeHttp3AltSvcProjection);
         AssertEx.False(http3AltSvc is RuntimeHttp3AltSvcOptions);

@@ -62,7 +62,7 @@ public sealed record RuntimeListenerResponse(
             listener.MaxChunkLineBytes,
             listener.ForwardingBufferBytes)
         {
-            Identity = RuntimeListenerIdentityResponse.FromIdentity(listener.Identity),
+            Identity = RuntimeListenerIdentityResponse.FromProjection(listener.Identity),
             Protocols = RuntimeListenerProtocolsResponseMapper.FromProtocols(listener.Protocols),
             Http3Enablement = RuntimeHttp3EnablementResponseMapper.FromEnablement(listener.Http3Enablement),
             Http3AltSvc = RuntimeHttp3AltSvcResponse.FromProjection(listener.Http3AltSvc),

@@ -59,7 +59,14 @@ public static class ProxyConfigurationProjectionMapper
                     listener.MaxResponseHeadBytes,
                     listener.MaxChunkLineBytes,
                     listener.ForwardingBufferBytes,
-                    listener.Identity,
+                    new RuntimeListenerIdentityProjection(
+                        listener.Identity.Name,
+                        listener.Identity.Address,
+                        listener.Identity.Port,
+                        listener.Identity.Transport,
+                        listener.Identity.TlsEnabled,
+                        listener.Identity.Key,
+                        listener.Identity.BindKey),
                     listener.Protocols,
                     listener.Http3Enablement,
                     new RuntimeHttp3AltSvcProjection(
