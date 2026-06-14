@@ -25,5 +25,5 @@ public sealed record ProxyUpstreamStatus(
     public int Weight { get; init; } = 1;
 
     public CircuitBreakerStatus CircuitBreaker { get; init; } =
-        CircuitBreakerStatus.Disabled(RuntimeCircuitBreakerPolicy.Disabled);
+        CircuitBreakerStatus.Disabled(CircuitBreakerPolicyInput.Disabled);
 }

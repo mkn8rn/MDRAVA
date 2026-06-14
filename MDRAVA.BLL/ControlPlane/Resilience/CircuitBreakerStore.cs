@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using MDRAVA.BLL.Configuration;
 
 namespace MDRAVA.BLL.ControlPlane.Resilience;
 

@@ -1,10 +1,8 @@
-using MDRAVA.BLL.Configuration;
-
 namespace MDRAVA.BLL.ControlPlane.Resilience;
 
 public sealed partial class CircuitBreakerStore
 {
-    private void RefreshOpenState(RuntimeCircuitBreakerPolicy policy, MutableCircuitState state, DateTimeOffset now)
+    private void RefreshOpenState(CircuitBreakerPolicyInput policy, MutableCircuitState state, DateTimeOffset now)
     {
         if (state.State != CircuitBreakerRuntimeState.Open || state.OpenedAtUtc is null)
         {

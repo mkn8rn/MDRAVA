@@ -70,7 +70,7 @@ internal static class OperatorStatusTests
                 "site-a",
                 "upstream-a",
                 "https://upstream.internal:443"),
-            new CircuitBreakerStatusSource("site-a/upstream-a", RuntimeCircuitBreakerPolicy.Disabled),
+            new CircuitBreakerStatusSource("site-a/upstream-a", CircuitBreakerPolicyInput.Disabled),
             "https",
             RuntimeUpstreamProtocol.Http2,
             7,

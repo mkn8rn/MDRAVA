@@ -1,5 +1,6 @@
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.Resilience;
+using MDRAVA.BLL.ControlPlane.Upstreams;
 
 namespace MDRAVA.BLL.ControlPlane.HealthChecks;
 

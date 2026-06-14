@@ -1,7 +1,5 @@
 namespace MDRAVA.BLL.ControlPlane.Resilience;
 
-using MDRAVA.BLL.Configuration;
-
 public sealed record CircuitBreakerStatus(
     CircuitBreakerRuntimeState State,
     bool Enabled,
@@ -13,7 +11,7 @@ public sealed record CircuitBreakerStatus(
     long RejectedRequests,
     string? LastFailureReason)
 {
-    public static CircuitBreakerStatus Disabled(RuntimeCircuitBreakerPolicy policy)
+    public static CircuitBreakerStatus Disabled(CircuitBreakerPolicyInput policy)
     {
         ArgumentNullException.ThrowIfNull(policy);
 
@@ -30,7 +28,7 @@ public sealed record CircuitBreakerStatus(
     }
 
     public static CircuitBreakerStatus FromEnabledPolicyState(
-        RuntimeCircuitBreakerPolicy policy,
+        CircuitBreakerPolicyInput policy,
         CircuitBreakerRuntimeState state,
         DateTimeOffset? openedAtUtc,
         int failureCount,
