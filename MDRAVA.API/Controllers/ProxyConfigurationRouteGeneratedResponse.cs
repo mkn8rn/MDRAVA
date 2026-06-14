@@ -1,4 +1,4 @@
-using BusinessRuntimeCanonicalHostPolicy = MDRAVA.BLL.Configuration.RuntimeCanonicalHostPolicy;
+using BusinessRuntimeCanonicalHostProjection = MDRAVA.BLL.Configuration.RuntimeCanonicalHostProjection;
 using BusinessRuntimeHttpsRedirectProjection = MDRAVA.BLL.Configuration.RuntimeHttpsRedirectProjection;
 using BusinessRuntimeMaintenancePolicy = MDRAVA.BLL.Configuration.RuntimeMaintenancePolicy;
 using BusinessRuntimePathRewritePolicy = MDRAVA.BLL.Configuration.RuntimePathRewritePolicy;
@@ -25,11 +25,11 @@ public sealed record RuntimeCanonicalHostResponse(
     string TargetHost,
     int StatusCode)
 {
-    public static RuntimeCanonicalHostResponse FromPolicy(BusinessRuntimeCanonicalHostPolicy policy)
+    public static RuntimeCanonicalHostResponse FromProjection(BusinessRuntimeCanonicalHostProjection projection)
     {
-        ArgumentNullException.ThrowIfNull(policy);
+        ArgumentNullException.ThrowIfNull(projection);
 
-        return new RuntimeCanonicalHostResponse(policy.Enabled, policy.TargetHost, policy.StatusCode);
+        return new RuntimeCanonicalHostResponse(projection.Enabled, projection.TargetHost, projection.StatusCode);
     }
 }
 

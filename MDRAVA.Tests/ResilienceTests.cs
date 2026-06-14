@@ -593,6 +593,9 @@ internal static class ResilienceTests
         object httpsRedirect = projection.Routes[0].HttpsRedirect;
         AssertEx.True(httpsRedirect is RuntimeHttpsRedirectProjection);
         AssertEx.False(httpsRedirect is RuntimeHttpsRedirectPolicy);
+        object canonicalHost = projection.Routes[0].CanonicalHost;
+        AssertEx.True(canonicalHost is RuntimeCanonicalHostProjection);
+        AssertEx.False(canonicalHost is RuntimeCanonicalHostPolicy);
         object healthCheck = projection.Routes[0].HealthCheck;
         AssertEx.True(healthCheck is RuntimeHealthCheckProjection);
         AssertEx.False(healthCheck is RuntimeHealthCheckOptions);

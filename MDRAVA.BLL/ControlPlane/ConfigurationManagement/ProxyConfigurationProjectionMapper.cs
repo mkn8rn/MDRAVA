@@ -111,7 +111,10 @@ public static class ProxyConfigurationProjectionMapper
                         route.HttpsRedirect.Enabled,
                         route.HttpsRedirect.StatusCode,
                         route.HttpsRedirect.HttpsPort),
-                    route.CanonicalHost,
+                    new RuntimeCanonicalHostProjection(
+                        route.CanonicalHost.Enabled,
+                        route.CanonicalHost.TargetHost,
+                        route.CanonicalHost.StatusCode),
                     route.HeaderPolicy,
                     route.PathRewrite,
                     route.Redirect,
