@@ -27,9 +27,22 @@ public static class ProxyConfigurationProjectionMapper
             adminSecurity,
             snapshot.Acme,
             snapshot.Timeouts,
-            snapshot.ConnectionLimits,
+            new RuntimeConnectionLimitsProjection(
+                snapshot.ConnectionLimits.MaxRequestsPerClientConnection,
+                snapshot.ConnectionLimits.MaxIdleUpstreamConnectionsPerUpstream,
+                snapshot.ConnectionLimits.MaxActiveUpgradedTunnels),
             snapshot.Observability,
-            snapshot.Limits,
+            new RuntimeLimitsProjection(
+                snapshot.Limits.MaxActiveClientConnections,
+                snapshot.Limits.MaxConcurrentTlsHandshakes,
+                snapshot.Limits.RequestsPerMinutePerIp,
+                snapshot.Limits.UpgradeRequestsPerMinutePerIp,
+                snapshot.Limits.MaxRequestHeadBytes,
+                snapshot.Limits.MaxHeaderCount,
+                snapshot.Limits.MaxHeaderLineBytes,
+                snapshot.Limits.MaxRequestBodyBytes,
+                snapshot.Limits.MaxPathBytes,
+                snapshot.Limits.ShutdownGracePeriod),
             snapshot.ForwardedHeaders,
             snapshot.Certificates.Values
                 .Select(static certificate => new RuntimeCertificateProjection(

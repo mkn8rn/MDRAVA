@@ -1,6 +1,6 @@
-using BusinessRuntimeConnectionLimits = MDRAVA.BLL.Configuration.RuntimeConnectionLimits;
+using BusinessRuntimeConnectionLimitsProjection = MDRAVA.BLL.Configuration.RuntimeConnectionLimitsProjection;
 using BusinessRuntimeForwardedHeadersOptions = MDRAVA.BLL.Configuration.RuntimeForwardedHeadersOptions;
-using BusinessRuntimeLimits = MDRAVA.BLL.Configuration.RuntimeLimits;
+using BusinessRuntimeLimitsProjection = MDRAVA.BLL.Configuration.RuntimeLimitsProjection;
 using BusinessRuntimeTimeouts = MDRAVA.BLL.Configuration.RuntimeTimeouts;
 
 namespace MDRAVA.API.Controllers;
@@ -40,14 +40,14 @@ public sealed record RuntimeConnectionLimitsResponse(
     int MaxIdleUpstreamConnectionsPerUpstream,
     int MaxActiveUpgradedTunnels)
 {
-    public static RuntimeConnectionLimitsResponse FromLimits(BusinessRuntimeConnectionLimits limits)
+    public static RuntimeConnectionLimitsResponse FromProjection(BusinessRuntimeConnectionLimitsProjection projection)
     {
-        ArgumentNullException.ThrowIfNull(limits);
+        ArgumentNullException.ThrowIfNull(projection);
 
         return new RuntimeConnectionLimitsResponse(
-            limits.MaxRequestsPerClientConnection,
-            limits.MaxIdleUpstreamConnectionsPerUpstream,
-            limits.MaxActiveUpgradedTunnels);
+            projection.MaxRequestsPerClientConnection,
+            projection.MaxIdleUpstreamConnectionsPerUpstream,
+            projection.MaxActiveUpgradedTunnels);
     }
 }
 
@@ -63,21 +63,21 @@ public sealed record RuntimeLimitsResponse(
     int MaxPathBytes,
     TimeSpan ShutdownGracePeriod)
 {
-    public static RuntimeLimitsResponse FromLimits(BusinessRuntimeLimits limits)
+    public static RuntimeLimitsResponse FromProjection(BusinessRuntimeLimitsProjection projection)
     {
-        ArgumentNullException.ThrowIfNull(limits);
+        ArgumentNullException.ThrowIfNull(projection);
 
         return new RuntimeLimitsResponse(
-            limits.MaxActiveClientConnections,
-            limits.MaxConcurrentTlsHandshakes,
-            limits.RequestsPerMinutePerIp,
-            limits.UpgradeRequestsPerMinutePerIp,
-            limits.MaxRequestHeadBytes,
-            limits.MaxHeaderCount,
-            limits.MaxHeaderLineBytes,
-            limits.MaxRequestBodyBytes,
-            limits.MaxPathBytes,
-            limits.ShutdownGracePeriod);
+            projection.MaxActiveClientConnections,
+            projection.MaxConcurrentTlsHandshakes,
+            projection.RequestsPerMinutePerIp,
+            projection.UpgradeRequestsPerMinutePerIp,
+            projection.MaxRequestHeadBytes,
+            projection.MaxHeaderCount,
+            projection.MaxHeaderLineBytes,
+            projection.MaxRequestBodyBytes,
+            projection.MaxPathBytes,
+            projection.ShutdownGracePeriod);
     }
 }
 
