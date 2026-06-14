@@ -1,6 +1,3 @@
-using MDRAVA.BLL.Configuration;
-using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
-
 namespace MDRAVA.BLL.ControlPlane.Acme;
 
 public sealed record AcmeRenewalScheduleInput(
@@ -54,35 +51,6 @@ public static class AcmeRenewalScheduleInputMapper
         return new AcmeRenewalScheduleInput(
             source.Enabled,
             source.CheckIntervalMinutes);
-    }
-}
-
-public static class AcmeRenewalScheduleSourceMapper
-{
-    public static AcmeRenewalScheduleSource FromRuntimeConfiguration(RuntimeAcmeOptions acme)
-    {
-        return new AcmeRenewalScheduleSource(
-            acme.Enabled,
-            acme.CheckIntervalMinutes);
-    }
-}
-
-public sealed class ProxyConfigurationAcmeRenewalScheduleInputSource : IAcmeRenewalScheduleInputSource
-{
-    private readonly IProxyConfigurationStore _configurationStore;
-
-    public ProxyConfigurationAcmeRenewalScheduleInputSource(IProxyConfigurationStore configurationStore)
-    {
-        _configurationStore = configurationStore;
-    }
-
-    public AcmeRenewalScheduleInputReadResult ReadInput()
-    {
-        return _configurationStore.ReadSnapshot() is ProxyConfigurationSnapshotReadResult.AvailableResult available
-            ? AcmeRenewalScheduleInputReadResult.Available(
-                AcmeRenewalScheduleInputMapper.FromSource(
-                    AcmeRenewalScheduleSourceMapper.FromRuntimeConfiguration(available.Snapshot.Acme)))
-            : AcmeRenewalScheduleInputReadResult.MissingConfiguration;
     }
 }
 
