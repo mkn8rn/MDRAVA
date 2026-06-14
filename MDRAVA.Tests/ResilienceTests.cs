@@ -599,6 +599,9 @@ internal static class ResilienceTests
         object redirect = projection.Routes[0].Redirect;
         AssertEx.True(redirect is RuntimeRedirectProjection);
         AssertEx.False(redirect is RuntimeRedirectPolicy);
+        object pathRewrite = projection.Routes[0].PathRewrite;
+        AssertEx.True(pathRewrite is RuntimePathRewriteProjection);
+        AssertEx.False(pathRewrite is RuntimePathRewritePolicy);
         object healthCheck = projection.Routes[0].HealthCheck;
         AssertEx.True(healthCheck is RuntimeHealthCheckProjection);
         AssertEx.False(healthCheck is RuntimeHealthCheckOptions);
