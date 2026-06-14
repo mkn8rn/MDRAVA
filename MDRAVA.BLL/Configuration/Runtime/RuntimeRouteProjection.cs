@@ -14,7 +14,7 @@ public sealed record RuntimeRouteProjection
         RuntimeCanonicalHostProjection CanonicalHost,
         RuntimeHeaderPolicy HeaderPolicy,
         RuntimePathRewritePolicy PathRewrite,
-        RuntimeRedirectPolicy Redirect,
+        RuntimeRedirectProjection Redirect,
         RuntimeStaticResponse StaticResponse,
         RuntimeMaintenancePolicy Maintenance,
         RuntimeCacheProjection Cache,
@@ -64,7 +64,7 @@ public sealed record RuntimeRouteProjection
 
     public RuntimePathRewritePolicy PathRewrite { get; init; }
 
-    public RuntimeRedirectPolicy Redirect { get; init; }
+    public RuntimeRedirectProjection Redirect { get; init; }
 
     public RuntimeStaticResponse StaticResponse { get; init; }
 

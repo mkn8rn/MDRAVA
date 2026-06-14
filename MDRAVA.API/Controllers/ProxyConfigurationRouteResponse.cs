@@ -50,7 +50,7 @@ public sealed record RuntimeRouteResponse(
             RuntimeCanonicalHostResponse.FromProjection(route.CanonicalHost),
             RuntimeHeaderPolicyResponse.FromPolicy(route.HeaderPolicy),
             RuntimePathRewriteResponse.FromPolicy(route.PathRewrite),
-            RuntimeRedirectResponse.FromPolicy(route.Redirect),
+            RuntimeRedirectResponse.FromProjection(route.Redirect),
             RuntimeStaticResponseResponse.FromResponse(route.StaticResponse),
             RuntimeMaintenanceResponse.FromPolicy(route.Maintenance),
             RuntimeCachePolicyResponse.FromProjection(route.Cache),

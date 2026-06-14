@@ -2,7 +2,7 @@ using BusinessRuntimeCanonicalHostProjection = MDRAVA.BLL.Configuration.RuntimeC
 using BusinessRuntimeHttpsRedirectProjection = MDRAVA.BLL.Configuration.RuntimeHttpsRedirectProjection;
 using BusinessRuntimeMaintenancePolicy = MDRAVA.BLL.Configuration.RuntimeMaintenancePolicy;
 using BusinessRuntimePathRewritePolicy = MDRAVA.BLL.Configuration.RuntimePathRewritePolicy;
-using BusinessRuntimeRedirectPolicy = MDRAVA.BLL.Configuration.RuntimeRedirectPolicy;
+using BusinessRuntimeRedirectProjection = MDRAVA.BLL.Configuration.RuntimeRedirectProjection;
 using BusinessRuntimeStaticResponse = MDRAVA.BLL.Configuration.RuntimeStaticResponse;
 
 namespace MDRAVA.API.Controllers;
@@ -52,15 +52,15 @@ public sealed record RuntimeRedirectResponse(
     string TargetPath,
     bool PreserveQuery)
 {
-    public static RuntimeRedirectResponse FromPolicy(BusinessRuntimeRedirectPolicy policy)
+    public static RuntimeRedirectResponse FromProjection(BusinessRuntimeRedirectProjection projection)
     {
-        ArgumentNullException.ThrowIfNull(policy);
+        ArgumentNullException.ThrowIfNull(projection);
 
         return new RuntimeRedirectResponse(
-            policy.StatusCode,
-            policy.TargetUrl,
-            policy.TargetPath,
-            policy.PreserveQuery);
+            projection.StatusCode,
+            projection.TargetUrl,
+            projection.TargetPath,
+            projection.PreserveQuery);
     }
 }
 
