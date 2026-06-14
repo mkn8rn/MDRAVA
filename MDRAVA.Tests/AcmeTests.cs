@@ -608,7 +608,12 @@ internal static class AcmeTests
         AssertEx.Equal(15, source.RetryAfterMinutes);
         AssertEx.Equal(2, source.Certificates.Count);
         AssertEx.NotNull(source.Certificates[0].ActiveCertificate);
-        AssertEx.Equal("home-acme", source.Certificates[0].ActiveCertificate!.Id);
+        AssertEx.Equal(
+            new DateTimeOffset(certificate.NotBefore.ToUniversalTime()),
+            source.Certificates[0].ActiveCertificate!.NotBeforeUtc);
+        AssertEx.Equal(
+            new DateTimeOffset(certificate.NotAfter.ToUniversalTime()),
+            source.Certificates[0].ActiveCertificate!.NotAfterUtc);
         AssertEx.Equal("home.example.test", source.Certificates[0].Domains[0]);
         AssertEx.Equal(20, source.Certificates[0].RenewBeforeDays);
         AssertEx.Equal("manual-cert", source.Certificates[1].Id);
@@ -619,12 +624,15 @@ internal static class AcmeTests
     {
         var contactEmails = new List<string> { "ops@example.test" };
         var certificateDomains = new List<string> { "home.example.test" };
+        var activeCertificate = new AcmeRenewalActiveCertificate(
+            DateTimeOffset.UnixEpoch.AddDays(-10),
+            DateTimeOffset.UnixEpoch.AddDays(20));
         var certificateSource = new AcmeRenewalCertificateSource(
             "home-acme",
             Enabled: true,
             Domains: certificateDomains,
             RenewBeforeDays: 20,
-            ActiveCertificate: null);
+            activeCertificate);
         var certificates = new List<AcmeRenewalCertificateSource> { certificateSource };
         var source = new AcmeRenewalConfigurationSourceSet(
             Enabled: true,
@@ -662,7 +670,7 @@ internal static class AcmeTests
         AssertEx.Equal("home-acme", input.Certificates[0].Id);
         AssertEx.Equal("home.example.test", input.Certificates[0].Domains[0]);
         AssertEx.Equal(20, input.Certificates[0].RenewBeforeDays);
-        AssertEx.Equal(null, input.Certificates[0].ActiveCertificate);
+        AssertEx.Equal(activeCertificate, input.Certificates[0].ActiveCertificate);
         AssertEx.False(source.ContactEmails is string[], "ACME renewal source contacts should not expose a mutable array.");
         AssertEx.False(source.Certificates is AcmeRenewalCertificateSource[], "ACME renewal source certificates should not expose a mutable array.");
         AssertEx.False(input.ContactEmails is string[], "ACME renewal input contacts should not expose a mutable array.");

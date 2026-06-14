@@ -153,7 +153,8 @@ public sealed class AcmeCertificateManager
 
         _certificateActivator.Activate(renewedCertificate);
         _metrics.AcmeRenewalSucceeded();
-        _statusStore.Upsert(CreateStatus(certificate, renewedCertificate, nowUtc, "succeeded", null, CalculateRenewalDueAt(renewedCertificate, certificate.RenewBeforeDays)) with
+        var renewedActiveCertificate = ToActiveCertificate(renewedCertificate);
+        _statusStore.Upsert(CreateStatus(certificate, renewedActiveCertificate, nowUtc, "succeeded", null, CalculateRenewalDueAt(renewedActiveCertificate, certificate.RenewBeforeDays)) with
         {
             LastAttemptAtUtc = attemptStartedAtUtc,
             LastSucceededAtUtc = attemptStartedAtUtc
@@ -162,7 +163,7 @@ public sealed class AcmeCertificateManager
 
     private AcmeCertificateLifecycleStatus CreateStatus(
         AcmeRenewalCertificateInput certificate,
-        RuntimeCertificate? activeCertificate,
+        AcmeRenewalActiveCertificate? activeCertificate,
         DateTimeOffset nowUtc,
         string result,
         string? errorSummary,
@@ -176,8 +177,8 @@ public sealed class AcmeCertificateManager
             certificate.Domains,
             active,
             active ? "acme" : "none",
-            active ? activeCertificate!.Certificate.NotBefore.ToUniversalTime() : null,
-            active ? activeCertificate!.Certificate.NotAfter.ToUniversalTime() : null,
+            active ? activeCertificate!.NotBeforeUtc : null,
+            active ? activeCertificate!.NotAfterUtc : null,
             active ? renewalDueAtUtc : nowUtc,
             null,
             null,
@@ -188,7 +189,7 @@ public sealed class AcmeCertificateManager
     }
 
     private static DateTimeOffset CalculateRenewalDueAt(
-        RuntimeCertificate? certificate,
+        AcmeRenewalActiveCertificate? certificate,
         int renewBeforeDays)
     {
         if (certificate is null)
@@ -196,8 +197,14 @@ public sealed class AcmeCertificateManager
             return DateTimeOffset.MinValue;
         }
 
-        return new DateTimeOffset(certificate.Certificate.NotAfter.ToUniversalTime())
-            .AddDays(-renewBeforeDays);
+        return certificate.NotAfterUtc.AddDays(-renewBeforeDays);
+    }
+
+    private static AcmeRenewalActiveCertificate ToActiveCertificate(RuntimeCertificate certificate)
+    {
+        return new AcmeRenewalActiveCertificate(
+            certificate.Certificate.NotBefore.ToUniversalTime(),
+            certificate.Certificate.NotAfter.ToUniversalTime());
     }
 
     private static string? SafeError(string? error)

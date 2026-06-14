@@ -48,7 +48,7 @@ public sealed record AcmeRenewalCertificateInput
         bool Enabled,
         IReadOnlyList<string> Domains,
         int RenewBeforeDays,
-        RuntimeCertificate? ActiveCertificate)
+        AcmeRenewalActiveCertificate? ActiveCertificate)
     {
         ArgumentNullException.ThrowIfNull(Domains);
 
@@ -67,8 +67,12 @@ public sealed record AcmeRenewalCertificateInput
 
     public int RenewBeforeDays { get; }
 
-    public RuntimeCertificate? ActiveCertificate { get; }
+    public AcmeRenewalActiveCertificate? ActiveCertificate { get; }
 }
+
+public sealed record AcmeRenewalActiveCertificate(
+    DateTimeOffset NotBeforeUtc,
+    DateTimeOffset NotAfterUtc);
 
 public sealed record AcmeRenewalConfigurationSourceSet
 {
@@ -115,7 +119,7 @@ public sealed record AcmeRenewalCertificateSource
         bool Enabled,
         IReadOnlyList<string> Domains,
         int RenewBeforeDays,
-        RuntimeCertificate? ActiveCertificate)
+        AcmeRenewalActiveCertificate? ActiveCertificate)
     {
         ArgumentNullException.ThrowIfNull(Domains);
 
@@ -134,7 +138,7 @@ public sealed record AcmeRenewalCertificateSource
 
     public int RenewBeforeDays { get; }
 
-    public RuntimeCertificate? ActiveCertificate { get; }
+    public AcmeRenewalActiveCertificate? ActiveCertificate { get; }
 }
 
 public interface IAcmeRenewalConfigurationSource
@@ -224,14 +228,19 @@ public static class AcmeRenewalConfigurationSourceMapper
                 .ToArray());
     }
 
-    private static RuntimeCertificate? ReadActiveAcmeCertificate(
+    private static AcmeRenewalActiveCertificate? ReadActiveAcmeCertificate(
         IReadOnlyDictionary<string, RuntimeCertificate> runtimeCertificates,
         string certificateId)
     {
-        return runtimeCertificates.TryGetValue(certificateId, out var certificate)
-            && string.Equals(certificate.Source, "acme", StringComparison.OrdinalIgnoreCase)
-            ? certificate
-            : null;
+        if (!runtimeCertificates.TryGetValue(certificateId, out var certificate)
+            || !string.Equals(certificate.Source, "acme", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        return new AcmeRenewalActiveCertificate(
+            certificate.Certificate.NotBefore.ToUniversalTime(),
+            certificate.Certificate.NotAfter.ToUniversalTime());
     }
 }
 
