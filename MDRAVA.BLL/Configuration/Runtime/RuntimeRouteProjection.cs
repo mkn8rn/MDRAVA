@@ -16,7 +16,7 @@ public sealed record RuntimeRouteProjection
         RuntimePathRewriteProjection PathRewrite,
         RuntimeRedirectProjection Redirect,
         RuntimeStaticResponse StaticResponse,
-        RuntimeMaintenancePolicy Maintenance,
+        RuntimeMaintenanceProjection Maintenance,
         RuntimeCacheProjection Cache,
         RuntimeRouteResolvedOptionsProjection ResolvedOptions,
         string SiteName,
@@ -68,7 +68,7 @@ public sealed record RuntimeRouteProjection
 
     public RuntimeStaticResponse StaticResponse { get; init; }
 
-    public RuntimeMaintenancePolicy Maintenance { get; init; }
+    public RuntimeMaintenanceProjection Maintenance { get; init; }
 
     public RuntimeCacheProjection Cache { get; init; }
 

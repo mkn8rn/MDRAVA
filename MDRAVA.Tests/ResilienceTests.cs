@@ -602,6 +602,9 @@ internal static class ResilienceTests
         object pathRewrite = projection.Routes[0].PathRewrite;
         AssertEx.True(pathRewrite is RuntimePathRewriteProjection);
         AssertEx.False(pathRewrite is RuntimePathRewritePolicy);
+        object maintenance = projection.Routes[0].Maintenance;
+        AssertEx.True(maintenance is RuntimeMaintenanceProjection);
+        AssertEx.False(maintenance is RuntimeMaintenancePolicy);
         object healthCheck = projection.Routes[0].HealthCheck;
         AssertEx.True(healthCheck is RuntimeHealthCheckProjection);
         AssertEx.False(healthCheck is RuntimeHealthCheckOptions);

@@ -52,7 +52,7 @@ public sealed record RuntimeRouteResponse(
             RuntimePathRewriteResponse.FromProjection(route.PathRewrite),
             RuntimeRedirectResponse.FromProjection(route.Redirect),
             RuntimeStaticResponseResponse.FromResponse(route.StaticResponse),
-            RuntimeMaintenanceResponse.FromPolicy(route.Maintenance),
+            RuntimeMaintenanceResponse.FromProjection(route.Maintenance),
             RuntimeCachePolicyResponse.FromProjection(route.Cache),
             RuntimeRouteResolvedOptionsResponse.FromProjection(route.ResolvedOptions))
         {

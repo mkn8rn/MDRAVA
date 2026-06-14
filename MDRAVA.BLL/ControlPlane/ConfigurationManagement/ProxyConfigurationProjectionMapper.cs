@@ -126,7 +126,11 @@ public static class ProxyConfigurationProjectionMapper
                         route.Redirect.TargetPath,
                         route.Redirect.PreserveQuery),
                     route.StaticResponse,
-                    route.Maintenance,
+                    new RuntimeMaintenanceProjection(
+                        route.Maintenance.Enabled,
+                        route.Maintenance.RetryAfterSeconds,
+                        route.Maintenance.ContentType,
+                        route.Maintenance.Body),
                     new RuntimeCacheProjection(
                         route.Cache.Enabled,
                         route.Cache.MaxEntryBytes,
