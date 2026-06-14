@@ -1,4 +1,4 @@
-using BusinessRuntimeHttp3AltSvcOptions = MDRAVA.BLL.Configuration.RuntimeHttp3AltSvcOptions;
+using BusinessRuntimeHttp3AltSvcProjection = MDRAVA.BLL.Configuration.RuntimeHttp3AltSvcProjection;
 using BusinessRuntimeHttp3Enablement = MDRAVA.BLL.Configuration.RuntimeHttp3Enablement;
 using BusinessRuntimeHttp3ListenerReadiness = MDRAVA.BLL.Configuration.RuntimeHttp3ListenerReadiness;
 using BusinessRuntimeQuicListenerIdentity = MDRAVA.BLL.Configuration.RuntimeQuicListenerIdentity;
@@ -9,11 +9,11 @@ public sealed record RuntimeHttp3AltSvcResponse(
     bool Enabled,
     int MaxAgeSeconds)
 {
-    public static RuntimeHttp3AltSvcResponse FromOptions(BusinessRuntimeHttp3AltSvcOptions options)
+    public static RuntimeHttp3AltSvcResponse FromProjection(BusinessRuntimeHttp3AltSvcProjection projection)
     {
-        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(projection);
 
-        return new RuntimeHttp3AltSvcResponse(options.Enabled, options.MaxAgeSeconds);
+        return new RuntimeHttp3AltSvcResponse(projection.Enabled, projection.MaxAgeSeconds);
     }
 }
 

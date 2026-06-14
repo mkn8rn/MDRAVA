@@ -65,7 +65,7 @@ public sealed record RuntimeListenerResponse(
             Identity = RuntimeListenerIdentityResponse.FromIdentity(listener.Identity),
             Protocols = RuntimeListenerProtocolsResponseMapper.FromProtocols(listener.Protocols),
             Http3Enablement = RuntimeHttp3EnablementResponseMapper.FromEnablement(listener.Http3Enablement),
-            Http3AltSvc = RuntimeHttp3AltSvcResponse.FromOptions(listener.Http3AltSvc),
+            Http3AltSvc = RuntimeHttp3AltSvcResponse.FromProjection(listener.Http3AltSvc),
             Http2Limits = RuntimeHttp2LimitsResponse.FromProjection(listener.Http2Limits),
             TcpTrafficEnabled = listener.TcpTrafficEnabled,
             Http3ProtocolConfigured = listener.Http3ProtocolConfigured,

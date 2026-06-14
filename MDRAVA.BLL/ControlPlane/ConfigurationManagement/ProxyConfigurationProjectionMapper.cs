@@ -62,7 +62,9 @@ public static class ProxyConfigurationProjectionMapper
                     listener.Identity,
                     listener.Protocols,
                     listener.Http3Enablement,
-                    listener.Http3AltSvc,
+                    new RuntimeHttp3AltSvcProjection(
+                        listener.Http3AltSvc.Enabled,
+                        listener.Http3AltSvc.MaxAgeSeconds),
                     new RuntimeHttp2LimitsProjection(
                         listener.Http2Limits.MaxConcurrentStreams,
                         listener.Http2Limits.MaxHeaderListBytes,
