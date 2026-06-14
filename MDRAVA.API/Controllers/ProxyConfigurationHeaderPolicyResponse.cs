@@ -1,5 +1,5 @@
-using BusinessProxyHeaderField = MDRAVA.BLL.Http.ProxyHeaderField;
-using BusinessRuntimeHeaderPolicy = MDRAVA.BLL.Configuration.RuntimeHeaderPolicy;
+using BusinessRuntimeHeaderFieldProjection = MDRAVA.BLL.Configuration.RuntimeHeaderFieldProjection;
+using BusinessRuntimeHeaderPolicyProjection = MDRAVA.BLL.Configuration.RuntimeHeaderPolicyProjection;
 
 namespace MDRAVA.API.Controllers;
 
@@ -9,29 +9,29 @@ public sealed record RuntimeHeaderPolicyResponse(
     IReadOnlyList<RuntimeHeaderFieldResponse> SetResponseHeaders,
     IReadOnlyList<string> RemoveResponseHeaders)
 {
-    public static RuntimeHeaderPolicyResponse FromPolicy(BusinessRuntimeHeaderPolicy policy)
+    public static RuntimeHeaderPolicyResponse FromProjection(BusinessRuntimeHeaderPolicyProjection projection)
     {
-        ArgumentNullException.ThrowIfNull(policy);
+        ArgumentNullException.ThrowIfNull(projection);
 
         return new RuntimeHeaderPolicyResponse(
-            RuntimeHeaderFieldResponse.FromFields(policy.SetRequestHeaders),
-            policy.RemoveRequestHeaders.ToArray(),
-            RuntimeHeaderFieldResponse.FromFields(policy.SetResponseHeaders),
-            policy.RemoveResponseHeaders.ToArray());
+            RuntimeHeaderFieldResponse.FromFields(projection.SetRequestHeaders),
+            projection.RemoveRequestHeaders.ToArray(),
+            RuntimeHeaderFieldResponse.FromFields(projection.SetResponseHeaders),
+            projection.RemoveResponseHeaders.ToArray());
     }
 }
 
 public sealed record RuntimeHeaderFieldResponse(string Name, string Value)
 {
     public static IReadOnlyList<RuntimeHeaderFieldResponse> FromFields(
-        IReadOnlyList<BusinessProxyHeaderField> fields)
+        IReadOnlyList<BusinessRuntimeHeaderFieldProjection> fields)
     {
         ArgumentNullException.ThrowIfNull(fields);
 
         return fields.Select(FromField).ToArray();
     }
 
-    private static RuntimeHeaderFieldResponse FromField(BusinessProxyHeaderField field)
+    private static RuntimeHeaderFieldResponse FromField(BusinessRuntimeHeaderFieldProjection field)
     {
         ArgumentNullException.ThrowIfNull(field);
 

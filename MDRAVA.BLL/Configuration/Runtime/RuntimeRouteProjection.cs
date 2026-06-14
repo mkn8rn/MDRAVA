@@ -12,7 +12,7 @@ public sealed record RuntimeRouteProjection
         IReadOnlyList<RuntimeUpstreamProjection> Upstreams,
         RuntimeHttpsRedirectProjection HttpsRedirect,
         RuntimeCanonicalHostProjection CanonicalHost,
-        RuntimeHeaderPolicy HeaderPolicy,
+        RuntimeHeaderPolicyProjection HeaderPolicy,
         RuntimePathRewriteProjection PathRewrite,
         RuntimeRedirectProjection Redirect,
         RuntimeStaticResponseProjection StaticResponse,
@@ -60,7 +60,7 @@ public sealed record RuntimeRouteProjection
 
     public RuntimeCanonicalHostProjection CanonicalHost { get; init; }
 
-    public RuntimeHeaderPolicy HeaderPolicy { get; init; }
+    public RuntimeHeaderPolicyProjection HeaderPolicy { get; init; }
 
     public RuntimePathRewriteProjection PathRewrite { get; init; }
 

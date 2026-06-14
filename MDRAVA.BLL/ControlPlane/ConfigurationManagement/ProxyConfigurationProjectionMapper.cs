@@ -115,7 +115,15 @@ public static class ProxyConfigurationProjectionMapper
                         route.CanonicalHost.Enabled,
                         route.CanonicalHost.TargetHost,
                         route.CanonicalHost.StatusCode),
-                    route.HeaderPolicy,
+                    new RuntimeHeaderPolicyProjection(
+                        route.HeaderPolicy.SetRequestHeaders
+                            .Select(static header => new RuntimeHeaderFieldProjection(header.Name, header.Value))
+                            .ToArray(),
+                        route.HeaderPolicy.RemoveRequestHeaders,
+                        route.HeaderPolicy.SetResponseHeaders
+                            .Select(static header => new RuntimeHeaderFieldProjection(header.Name, header.Value))
+                            .ToArray(),
+                        route.HeaderPolicy.RemoveResponseHeaders),
                     new RuntimePathRewriteProjection(
                         route.PathRewrite.StripPrefix,
                         route.PathRewrite.ReplacePrefix,
