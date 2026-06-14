@@ -1,5 +1,5 @@
 using BusinessRuntimeHttp2Limits = MDRAVA.BLL.Configuration.RuntimeHttp2Limits;
-using BusinessRuntimeListener = MDRAVA.BLL.Configuration.RuntimeListener;
+using BusinessRuntimeListenerProjection = MDRAVA.BLL.Configuration.RuntimeListenerProjection;
 using BusinessRuntimeListenerProtocols = MDRAVA.BLL.Configuration.RuntimeListenerProtocols;
 
 namespace MDRAVA.API.Controllers;
@@ -37,14 +37,14 @@ public sealed record RuntimeListenerResponse(
     public RuntimeHttp3ListenerReadinessResponse Http3 { get; init; } = null!;
 
     public static IReadOnlyList<RuntimeListenerResponse> FromListeners(
-        IReadOnlyList<BusinessRuntimeListener> listeners)
+        IReadOnlyList<BusinessRuntimeListenerProjection> listeners)
     {
         ArgumentNullException.ThrowIfNull(listeners);
 
         return listeners.Select(FromListener).ToArray();
     }
 
-    private static RuntimeListenerResponse FromListener(BusinessRuntimeListener listener)
+    private static RuntimeListenerResponse FromListener(BusinessRuntimeListenerProjection listener)
     {
         ArgumentNullException.ThrowIfNull(listener);
 

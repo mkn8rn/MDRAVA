@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.Http3;
 
@@ -44,7 +45,30 @@ public static class ProxyConfigurationProjectionMapper
                     certificate.Certificate.NotAfter))
                 .OrderBy(static certificate => certificate.Id, StringComparer.OrdinalIgnoreCase)
                 .ToArray(),
-            snapshot.Listeners,
+            new ReadOnlyCollection<RuntimeListenerProjection>(snapshot.Listeners
+                .Select(static listener => new RuntimeListenerProjection(
+                    listener.Name,
+                    listener.Address,
+                    listener.Port,
+                    listener.Enabled,
+                    listener.Transport,
+                    listener.DefaultCertificateId,
+                    listener.SniCertificates,
+                    listener.Backlog,
+                    listener.MaxRequestHeadBytes,
+                    listener.MaxResponseHeadBytes,
+                    listener.MaxChunkLineBytes,
+                    listener.ForwardingBufferBytes,
+                    listener.Identity,
+                    listener.Protocols,
+                    listener.Http3Enablement,
+                    listener.Http3AltSvc,
+                    listener.Http2Limits,
+                    listener.TcpTrafficEnabled,
+                    listener.Http3ProtocolConfigured,
+                    listener.QuicIdentity,
+                    listener.Http3))
+                .ToArray()),
             snapshot.Routes)
         {
             Metrics = snapshot.Metrics,

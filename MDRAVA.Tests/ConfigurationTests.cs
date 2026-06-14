@@ -1135,6 +1135,29 @@ internal static class ConfigurationTests
         AssertEx.Equal(1, projection.SourceFiles.Count);
     }
 
+    public static async Task ActiveInspectionProjectionUsesListenerReadModels()
+    {
+        using var temp = TemporaryDirectory.Create();
+        WriteSite(temp.Path, "home.json", port: 18080, upstreamPort: 15000);
+
+        var store = new ProxyConfigurationStore();
+        var service = CreateReloadService(temp.Path, store);
+        var result = await service.ReloadAsync(CancellationToken.None);
+
+        var projection = ProxyConfigurationReloadResultAssertions.Reloaded(result).ActiveConfiguration;
+        var listener = projection.Listeners[0];
+        object listenerCollection = projection.Listeners;
+
+        AssertEx.Equal("main", listener.Name);
+        AssertEx.Equal(18080, listener.Port);
+        AssertEx.Equal(RuntimeListenerTransport.Http, listener.Transport);
+        AssertEx.Equal(listener.Name, listener.Identity.Name);
+        AssertEx.Equal(listener.Address, listener.Identity.Address);
+        AssertEx.Equal(listener.Port, listener.Identity.Port);
+        AssertEx.False(listenerCollection is RuntimeListener[]);
+        AssertEx.False(listenerCollection is RuntimeListenerProjection[]);
+    }
+
     public static async Task ConfigReloadControllerReturnsConfigurationResponse()
     {
         using var temp = TemporaryDirectory.Create();
