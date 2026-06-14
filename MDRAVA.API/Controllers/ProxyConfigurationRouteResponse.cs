@@ -57,7 +57,7 @@ public sealed record RuntimeRouteResponse(
             RuntimeRouteResolvedOptionsResponse.FromOptions(route.ResolvedOptions))
         {
             SiteName = route.SiteName,
-            Retry = RuntimeRetryPolicyResponse.FromPolicy(route.Retry)
+            Retry = RuntimeRetryPolicyResponse.FromProjection(route.Retry)
         };
     }
 }

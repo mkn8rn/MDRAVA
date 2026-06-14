@@ -1,5 +1,5 @@
 using BusinessRuntimeCachePolicy = MDRAVA.BLL.Configuration.RuntimeCachePolicy;
-using BusinessRuntimeRetryPolicy = MDRAVA.BLL.Configuration.RuntimeRetryPolicy;
+using BusinessRuntimeRetryProjection = MDRAVA.BLL.Configuration.RuntimeRetryProjection;
 
 namespace MDRAVA.API.Controllers;
 
@@ -39,18 +39,18 @@ public sealed record RuntimeRetryPolicyResponse(
     IReadOnlyList<string> RetryMethods,
     TimeSpan RetryBackoff)
 {
-    public static RuntimeRetryPolicyResponse FromPolicy(BusinessRuntimeRetryPolicy policy)
+    public static RuntimeRetryPolicyResponse FromProjection(BusinessRuntimeRetryProjection projection)
     {
-        ArgumentNullException.ThrowIfNull(policy);
+        ArgumentNullException.ThrowIfNull(projection);
 
         return new RuntimeRetryPolicyResponse(
-            policy.Enabled,
-            policy.MaxAttempts,
-            policy.PerAttemptTimeout,
-            policy.RetryOnConnectFailure,
-            policy.RetryOnUpstreamResponseHeadTimeout,
-            policy.RetryOnStatusCodes.ToArray(),
-            policy.RetryMethods.ToArray(),
-            policy.RetryBackoff);
+            projection.Enabled,
+            projection.MaxAttempts,
+            projection.PerAttemptTimeout,
+            projection.RetryOnConnectFailure,
+            projection.RetryOnUpstreamResponseHeadTimeout,
+            projection.RetryOnStatusCodes.ToArray(),
+            projection.RetryMethods.ToArray(),
+            projection.RetryBackoff);
     }
 }

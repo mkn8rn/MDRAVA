@@ -591,6 +591,13 @@ internal static class ResilienceTests
         var status = statusController.Get();
 
         AssertEx.True(projection.Routes[0].Retry.Enabled);
+        object retry = projection.Routes[0].Retry;
+        object retryStatusCodes = projection.Routes[0].Retry.RetryOnStatusCodes;
+        object retryMethods = projection.Routes[0].Retry.RetryMethods;
+        AssertEx.True(retry is RuntimeRetryProjection);
+        AssertEx.False(retry is RuntimeRetryPolicy);
+        AssertEx.False(retryStatusCodes is int[]);
+        AssertEx.False(retryMethods is string[]);
         AssertEx.Equal(2, projection.Routes[0].Upstreams[0].Weight);
         AssertEx.Equal(true, projection.Routes[0].Upstreams[0].CircuitBreaker.Enabled);
         object circuitBreaker = projection.Routes[0].Upstreams[0].CircuitBreaker;

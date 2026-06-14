@@ -20,7 +20,7 @@ public sealed record RuntimeRouteProjection
         RuntimeCachePolicy Cache,
         RuntimeRouteResolvedOptions ResolvedOptions,
         string SiteName,
-        RuntimeRetryPolicy Retry)
+        RuntimeRetryProjection Retry)
     {
         this.Name = Name;
         this.Host = Host;
@@ -76,5 +76,5 @@ public sealed record RuntimeRouteProjection
 
     public string SiteName { get; init; }
 
-    public RuntimeRetryPolicy Retry { get; init; }
+    public RuntimeRetryProjection Retry { get; init; }
 }

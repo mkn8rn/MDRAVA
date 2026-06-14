@@ -111,7 +111,15 @@ public static class ProxyConfigurationProjectionMapper
                     route.Cache,
                     route.ResolvedOptions,
                     route.SiteName,
-                    route.Retry))
+                    new RuntimeRetryProjection(
+                        route.Retry.Enabled,
+                        route.Retry.MaxAttempts,
+                        route.Retry.PerAttemptTimeout,
+                        route.Retry.RetryOnConnectFailure,
+                        route.Retry.RetryOnUpstreamResponseHeadTimeout,
+                        route.Retry.RetryOnStatusCodes,
+                        route.Retry.RetryMethods,
+                        route.Retry.RetryBackoff)))
                 .ToArray()))
         {
             Metrics = snapshot.Metrics,
