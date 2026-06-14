@@ -32,6 +32,7 @@ global using MDRAVA.INF.Configuration.Paths;
 global using MDRAVA.INF.Configuration.Loading;
 global using MDRAVA.INF.Observability;
 global using MDRAVA.INF.Proxy.Caching;
+global using MDRAVA.INF.Proxy.ConfigLint;
 global using MDRAVA.INF.Proxy.Forwarding;
 global using MDRAVA.INF.Proxy.Tls;
 global using MDRAVA.INF.Runtime;
