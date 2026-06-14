@@ -53,7 +53,11 @@ public static class ProxyConfigurationProjectionMapper
                     listener.Enabled,
                     listener.Transport,
                     listener.DefaultCertificateId,
-                    listener.SniCertificates,
+                    listener.SniCertificates
+                        .Select(static binding => new RuntimeSniCertificateBindingProjection(
+                            binding.HostName,
+                            binding.CertificateId))
+                        .ToArray(),
                     listener.Backlog,
                     listener.MaxRequestHeadBytes,
                     listener.MaxResponseHeadBytes,

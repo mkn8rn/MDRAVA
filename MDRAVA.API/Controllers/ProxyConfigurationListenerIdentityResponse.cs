@@ -1,6 +1,6 @@
 using BusinessRuntimeListenerIdentityProjection = MDRAVA.BLL.Configuration.RuntimeListenerIdentityProjection;
 using BusinessRuntimeListenerTransport = MDRAVA.BLL.Configuration.RuntimeListenerTransport;
-using BusinessRuntimeSniCertificateBinding = MDRAVA.BLL.Configuration.RuntimeSniCertificateBinding;
+using BusinessRuntimeSniCertificateBindingProjection = MDRAVA.BLL.Configuration.RuntimeSniCertificateBindingProjection;
 
 namespace MDRAVA.API.Controllers;
 
@@ -37,14 +37,15 @@ public sealed record RuntimeSniCertificateBindingResponse(
     string CertificateId)
 {
     public static IReadOnlyList<RuntimeSniCertificateBindingResponse> FromBindings(
-        IReadOnlyList<BusinessRuntimeSniCertificateBinding> bindings)
+        IReadOnlyList<BusinessRuntimeSniCertificateBindingProjection> bindings)
     {
         ArgumentNullException.ThrowIfNull(bindings);
 
         return bindings.Select(FromBinding).ToArray();
     }
 
-    private static RuntimeSniCertificateBindingResponse FromBinding(BusinessRuntimeSniCertificateBinding binding)
+    private static RuntimeSniCertificateBindingResponse FromBinding(
+        BusinessRuntimeSniCertificateBindingProjection binding)
     {
         ArgumentNullException.ThrowIfNull(binding);
 

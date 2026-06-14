@@ -1157,6 +1157,11 @@ internal static class ConfigurationTests
         object identity = listener.Identity;
         AssertEx.True(identity is RuntimeListenerIdentityProjection);
         AssertEx.False(identity is RuntimeListenerIdentity);
+        object sniCertificates = listener.SniCertificates;
+        AssertEx.True(sniCertificates is IReadOnlyList<RuntimeSniCertificateBindingProjection>);
+        AssertEx.False(sniCertificates is IReadOnlyList<RuntimeSniCertificateBinding>);
+        AssertEx.False(sniCertificates is RuntimeSniCertificateBinding[]);
+        AssertEx.False(sniCertificates is RuntimeSniCertificateBindingProjection[]);
         object http3AltSvc = listener.Http3AltSvc;
         AssertEx.True(http3AltSvc is RuntimeHttp3AltSvcProjection);
         AssertEx.False(http3AltSvc is RuntimeHttp3AltSvcOptions);

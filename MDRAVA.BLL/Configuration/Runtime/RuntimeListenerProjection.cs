@@ -9,7 +9,7 @@ public sealed record RuntimeListenerProjection
         bool Enabled,
         RuntimeListenerTransport Transport,
         string? DefaultCertificateId,
-        IReadOnlyList<RuntimeSniCertificateBinding> SniCertificates,
+        IReadOnlyList<RuntimeSniCertificateBindingProjection> SniCertificates,
         int Backlog,
         int MaxRequestHeadBytes,
         int MaxResponseHeadBytes,
@@ -60,7 +60,7 @@ public sealed record RuntimeListenerProjection
 
     public string? DefaultCertificateId { get; init; }
 
-    public IReadOnlyList<RuntimeSniCertificateBinding> SniCertificates { get; }
+    public IReadOnlyList<RuntimeSniCertificateBindingProjection> SniCertificates { get; }
 
     public int Backlog { get; init; }
 
