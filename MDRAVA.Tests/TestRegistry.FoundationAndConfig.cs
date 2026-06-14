@@ -114,6 +114,7 @@ internal static partial class TestRegistry
     Test("Reload replaces active snapshot with empty sites directory", ConfigurationTests.ReloadReplacesActiveSnapshotWithEmptySitesDirectory, TestTaxonomy.Config),
     Test("Active inspection projection reflects store", ConfigurationTests.ActiveInspectionProjectionReflectsStore, TestTaxonomy.Config),
     Test("Active inspection projection uses listener read models", ConfigurationTests.ActiveInspectionProjectionUsesListenerReadModels, TestTaxonomy.Config),
+    Test("Active inspection projection uses route read models", ConfigurationTests.ActiveInspectionProjectionUsesRouteReadModels, TestTaxonomy.Config),
     Test("Config reload controller returns configuration response", ConfigurationTests.ConfigReloadControllerReturnsConfigurationResponse, TestTaxonomy.Config),
     Test("Config read operations project active and effective from current source", Sync(ConfigurationTests.ConfigReadOperationsProjectActiveAndEffectiveFromCurrentSource), TestTaxonomy.Config),
     Test("Loader rejects unsafe header policy rule", ConfigurationTests.LoaderRejectsUnsafeHeaderRule, TestTaxonomy.Config, TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),

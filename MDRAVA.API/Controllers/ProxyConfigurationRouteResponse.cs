@@ -1,6 +1,6 @@
 using BusinessRuntimeHealthCheckOptions = MDRAVA.BLL.Configuration.RuntimeHealthCheckOptions;
-using BusinessRuntimeRoute = MDRAVA.BLL.Configuration.RuntimeRoute;
 using BusinessRuntimeRouteAction = MDRAVA.BLL.Configuration.RuntimeRouteAction;
+using BusinessRuntimeRouteProjection = MDRAVA.BLL.Configuration.RuntimeRouteProjection;
 using BusinessRuntimeRouteResolvedOptions = MDRAVA.BLL.Configuration.RuntimeRouteResolvedOptions;
 
 namespace MDRAVA.API.Controllers;
@@ -27,14 +27,14 @@ public sealed record RuntimeRouteResponse(
 
     public RuntimeRetryPolicyResponse Retry { get; init; } = null!;
 
-    public static IReadOnlyList<RuntimeRouteResponse> FromRoutes(IReadOnlyList<BusinessRuntimeRoute> routes)
+    public static IReadOnlyList<RuntimeRouteResponse> FromRoutes(IReadOnlyList<BusinessRuntimeRouteProjection> routes)
     {
         ArgumentNullException.ThrowIfNull(routes);
 
         return routes.Select(FromRoute).ToArray();
     }
 
-    private static RuntimeRouteResponse FromRoute(BusinessRuntimeRoute route)
+    private static RuntimeRouteResponse FromRoute(BusinessRuntimeRouteProjection route)
     {
         ArgumentNullException.ThrowIfNull(route);
 

@@ -69,7 +69,27 @@ public static class ProxyConfigurationProjectionMapper
                     listener.QuicIdentity,
                     listener.Http3))
                 .ToArray()),
-            snapshot.Routes)
+            new ReadOnlyCollection<RuntimeRouteProjection>(snapshot.Routes
+                .Select(static route => new RuntimeRouteProjection(
+                    route.Name,
+                    route.Host,
+                    route.PathPrefix,
+                    route.Action,
+                    route.LoadBalancingPolicy,
+                    route.HealthCheck,
+                    route.Upstreams,
+                    route.HttpsRedirect,
+                    route.CanonicalHost,
+                    route.HeaderPolicy,
+                    route.PathRewrite,
+                    route.Redirect,
+                    route.StaticResponse,
+                    route.Maintenance,
+                    route.Cache,
+                    route.ResolvedOptions,
+                    route.SiteName,
+                    route.Retry))
+                .ToArray()))
         {
             Metrics = snapshot.Metrics,
             Http3 = http3

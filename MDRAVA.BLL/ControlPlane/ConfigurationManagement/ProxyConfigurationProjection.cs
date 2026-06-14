@@ -18,7 +18,7 @@ public sealed record ProxyConfigurationProjection(
     RuntimeForwardedHeadersOptions ForwardedHeaders,
     IReadOnlyList<RuntimeCertificateProjection> Certificates,
     IReadOnlyList<RuntimeListenerProjection> Listeners,
-    IReadOnlyList<RuntimeRoute> Routes)
+    IReadOnlyList<RuntimeRouteProjection> Routes)
 {
     public RuntimeMetricsOptions Metrics { get; init; } = RuntimeMetricsOptions.Default;
 
