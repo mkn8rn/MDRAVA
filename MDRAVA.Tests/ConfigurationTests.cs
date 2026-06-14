@@ -960,7 +960,7 @@ internal static class ConfigurationTests
         AssertEx.Equal(1, snapshot.Certificates.Count);
         var projection = ProxyConfigurationProjectionMapper.ToProjection(
             snapshot,
-            TestHttp3PlatformSupport.Supported);
+            TestHttp3PlatformSupport.Project(snapshot));
         AssertEx.Equal(1, projection.Certificates.Count);
         AssertEx.Equal(true, projection.Certificates[0].HasConfiguredPassword);
     }
@@ -1524,7 +1524,7 @@ internal static class ConfigurationTests
         var snapshot = ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(result);
         var projection = ProxyConfigurationProjectionMapper.ToProjection(
             snapshot,
-            TestHttp3PlatformSupport.Supported);
+            TestHttp3PlatformSupport.Project(snapshot));
         AssertEx.True(projection.Certificates[0].NotAfter < DateTime.UtcNow);
         AssertEx.True(projection.Certificates[0].NotBefore < projection.Certificates[0].NotAfter);
     }
@@ -1547,7 +1547,7 @@ internal static class ConfigurationTests
         var snapshot = ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(result);
         var projection = ProxyConfigurationProjectionMapper.ToProjection(
             snapshot,
-            TestHttp3PlatformSupport.Supported);
+            TestHttp3PlatformSupport.Project(snapshot));
         AssertEx.True(projection.Certificates[0].NotBefore > DateTime.UtcNow);
         AssertEx.True(projection.Certificates[0].NotAfter > projection.Certificates[0].NotBefore);
     }
@@ -1883,7 +1883,7 @@ internal static class ConfigurationTests
             new ProxyMetrics(),
             ActivatingProxyListenerReloadApplier.Instance,
             SilentProxyConfigurationReloadEventSink.Instance,
-            TestHttp3PlatformSupport.SupportedSource);
+            TestHttp3PlatformSupport.ProjectionSource);
     }
 
     private static ProxyConfigurationReadAdministrationService<ProxyConfigurationProjection> CreateReadAdministration(
@@ -1893,7 +1893,7 @@ internal static class ConfigurationTests
             new ProxyConfigurationReadOperations<ProxyConfigurationProjection>(
                 new ProxyConfigurationReadProjectionSource(
                     store,
-                    TestHttp3PlatformSupport.SupportedSource)));
+                    TestHttp3PlatformSupport.ProjectionSource)));
     }
 
     private static ProxyConfigurationNormalizer CreateNormalizer()

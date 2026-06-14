@@ -581,7 +581,7 @@ internal static class ResilienceTests
 
         var projection = ProxyConfigurationProjectionMapper.ToProjection(
             fixture.Store.Snapshot,
-            TestHttp3PlatformSupport.Supported);
+            TestHttp3PlatformSupport.Project(fixture.Store.Snapshot));
         var statusOperations = ProxyStatusOperationFactory.Create(
             new ProxyRuntimeState(TimeProvider.System),
             fixture.Metrics,

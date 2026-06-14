@@ -1,5 +1,4 @@
 using MDRAVA.BLL.ControlPlane.Listeners;
-using MDRAVA.BLL.Configuration;
 
 namespace MDRAVA.BLL.ControlPlane.Http3;
 
@@ -37,30 +36,6 @@ public sealed record Http3SupportRuntimeListenerSource(
 
 public static class Http3SupportSourceMapper
 {
-    public static Http3SupportConfigurationSource FromConfiguration(
-        IReadOnlyList<RuntimeListener> listeners,
-        IReadOnlyList<RuntimeRoute> routes)
-    {
-        return new Http3SupportConfigurationSource(
-            listeners
-                .Select(static listener => new Http3SupportListenerSource(
-                    listener.Http3.Configured,
-                    listener.Http3.EnabledForTraffic,
-                    listener.Http3.EnablementLevel,
-                    Http3AltSvcListenerPolicy.IsEnabled(new Http3AltSvcListenerInput(
-                        listener.Http3.EnabledForTraffic,
-                        listener.Http3.EnablementLevel,
-                        listener.Http3AltSvc.Enabled,
-                        listener.Http3AltSvc.MaxAgeSeconds,
-                        listener.Port,
-                        listener.QuicIdentity?.Key)),
-                    listener.Http3AltSvc.MaxAgeSeconds,
-                    listener.QuicIdentity?.Key))
-                .ToArray(),
-            routes.Any(static route => route.Upstreams.Any(static upstream =>
-                RuntimeUpstreamProtocol.IsHttp3(upstream.Protocol))));
-    }
-
     public static IReadOnlyList<Http3SupportRuntimeListenerSource> FromRuntimeListeners(
         IReadOnlyList<ProxyListenerStatus> listeners)
     {

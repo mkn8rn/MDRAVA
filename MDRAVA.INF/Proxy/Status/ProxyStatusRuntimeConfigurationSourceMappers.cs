@@ -2,6 +2,7 @@ using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.HealthChecks;
 using MDRAVA.BLL.ControlPlane.Http3;
 using MDRAVA.BLL.ControlPlane.Status;
+using MDRAVA.INF.Proxy.Http3;
 
 namespace MDRAVA.INF.Proxy.Status;
 
@@ -18,7 +19,7 @@ public static class ProxyStatusConfigurationSourceMapper
                 configuration.Listeners.Count,
                 configuration.Routes.Count),
             upstreamHealthSources,
-            Http3SupportSourceMapper.FromConfiguration(configuration.Listeners, configuration.Routes),
+            ProxyHttp3SupportConfigurationSourceMapper.FromConfiguration(configuration.Listeners, configuration.Routes),
             ProxyStatusReadinessConfigurationSourceMapper.FromConfiguration(configuration));
     }
 }

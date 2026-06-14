@@ -416,14 +416,14 @@ internal static class Http3InfrastructureTests
             Discovery());
         var projection = ProxyConfigurationProjectionMapper.ToProjection(
             snapshot,
-            TestHttp3PlatformSupport.Supported);
+            TestHttp3PlatformSupport.Project(snapshot));
 
         AssertEx.Equal("default", projection.Http3.Configured);
         AssertEx.True(projection.Http3.EnabledForTraffic);
         AssertEx.Equal("default_enabled", projection.Http3.DisabledReason);
         AssertEx.True(projection.Http3.UdpQuicListenerIdentityModeled);
         var statusProjection = Http3RuntimeSupport.ProjectConfiguration(
-            Http3SupportSourceMapper.FromConfiguration(snapshot.Listeners, snapshot.Routes),
+            ProxyHttp3SupportConfigurationSourceMapper.FromConfiguration(snapshot.Listeners, snapshot.Routes),
             TestHttp3PlatformSupport.Supported);
         AssertEx.Equal("default", statusProjection.Configured);
         AssertEx.True(statusProjection.EnabledForTraffic);
@@ -459,7 +459,7 @@ internal static class Http3InfrastructureTests
 
         var projection = ProxyConfigurationProjectionMapper.ToProjection(
             snapshot,
-            TestHttp3PlatformSupport.Supported).Http3;
+            TestHttp3PlatformSupport.Project(snapshot)).Http3;
 
         AssertEx.Equal("default_enabled_for_eligible_tls_proxy_listeners", projection.ClientHttp3SupportLevel);
         AssertEx.Equal("opt_in_https_quic_reused_multiplexed", projection.UpstreamHttp3SupportLevel);

@@ -424,7 +424,7 @@ internal static class ClientHttp3Tests
 
         var projection = ProxyConfigurationProjectionMapper.ToProjection(
             snapshot,
-            TestHttp3PlatformSupport.Supported);
+            TestHttp3PlatformSupport.Project(snapshot));
 
         AssertEx.Equal("default", projection.Http3.Configured);
         AssertEx.True(projection.Http3.EnabledForTraffic);

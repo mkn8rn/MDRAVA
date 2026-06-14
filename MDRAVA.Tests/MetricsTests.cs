@@ -614,7 +614,7 @@ internal static class MetricsTests
             fixture.Metrics,
             ActivatingProxyListenerReloadApplier.Instance,
             SilentProxyConfigurationReloadEventSink.Instance,
-            TestHttp3PlatformSupport.SupportedSource);
+            TestHttp3PlatformSupport.ProjectionSource);
 
         var first = await service.ReloadAsync(CancellationToken.None);
         ProxyConfigurationReloadResultAssertions.Reloaded(first);

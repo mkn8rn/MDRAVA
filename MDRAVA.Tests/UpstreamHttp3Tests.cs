@@ -65,7 +65,7 @@ internal static class UpstreamHttp3Tests
         var snapshot = ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(result);
         var projection = ProxyConfigurationProjectionMapper.ToProjection(
             snapshot,
-            TestHttp3PlatformSupport.Supported);
+            TestHttp3PlatformSupport.Project(snapshot));
 
         AssertEx.True(projection.Http3.UpstreamHttp3Configured);
         AssertEx.Equal("reused_multiplexed", projection.Http3.UpstreamPoolingMode);

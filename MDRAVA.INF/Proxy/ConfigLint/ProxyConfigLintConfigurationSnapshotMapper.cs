@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.ConfigLint;
 using MDRAVA.BLL.ControlPlane.Http3;
+using MDRAVA.INF.Proxy.Http3;
 
 namespace MDRAVA.INF.Proxy.ConfigLint;
 
@@ -68,7 +69,7 @@ public static class ProxyConfigLintConfigurationSnapshotMapper
         RuntimeHttp3PlatformSupport platformSupport)
     {
         var http3 = Http3RuntimeSupport.ProjectConfiguration(
-            Http3SupportSourceMapper.FromConfiguration(source.Listeners, source.Routes),
+            ProxyHttp3SupportConfigurationSourceMapper.FromConfiguration(source.Listeners, source.Routes),
             platformSupport);
         return new ProxyConfigLintConfigurationSnapshot(
             source.SourceFiles,

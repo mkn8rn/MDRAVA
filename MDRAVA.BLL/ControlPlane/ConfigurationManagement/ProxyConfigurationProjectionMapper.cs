@@ -1,5 +1,5 @@
-using MDRAVA.BLL.ControlPlane.Http3;
 using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane.Http3;
 
 namespace MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 
@@ -7,7 +7,7 @@ public static class ProxyConfigurationProjectionMapper
 {
     public static ProxyConfigurationProjection ToProjection(
         ProxyConfigurationSnapshot snapshot,
-        RuntimeHttp3PlatformSupport platformSupport)
+        RuntimeHttp3SupportProjection http3)
     {
         var adminSecurity = new RuntimeAdminSecurityProjection(
             snapshot.AdminSecurity.Urls,
@@ -48,9 +48,7 @@ public static class ProxyConfigurationProjectionMapper
             snapshot.Routes)
         {
             Metrics = snapshot.Metrics,
-            Http3 = Http3RuntimeSupport.ProjectConfiguration(
-                Http3SupportSourceMapper.FromConfiguration(snapshot.Listeners, snapshot.Routes),
-                platformSupport)
+            Http3 = http3
         };
     }
 }

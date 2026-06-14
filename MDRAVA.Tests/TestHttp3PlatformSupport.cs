@@ -10,6 +10,14 @@ internal static class TestHttp3PlatformSupport
     public static IRuntimeHttp3PlatformSupportSource SupportedSource { get; } =
         new FixedRuntimeHttp3PlatformSupportSource(Supported);
 
+    public static IProxyConfigurationHttp3ProjectionSource ProjectionSource { get; } =
+        new ProxyConfigurationHttp3ProjectionSource(SupportedSource);
+
+    public static RuntimeHttp3SupportProjection Project(ProxyConfigurationSnapshot snapshot)
+    {
+        return ProjectionSource.Project(snapshot);
+    }
+
     private sealed class FixedRuntimeHttp3PlatformSupportSource : IRuntimeHttp3PlatformSupportSource
     {
         private readonly RuntimeHttp3PlatformSupport _support;

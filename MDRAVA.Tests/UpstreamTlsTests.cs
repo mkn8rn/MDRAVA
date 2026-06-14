@@ -215,7 +215,7 @@ internal static class UpstreamTlsTests
         var snapshot = ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(result);
         var projection = ProxyConfigurationProjectionMapper.ToProjection(
             snapshot,
-            TestHttp3PlatformSupport.Supported);
+            TestHttp3PlatformSupport.Project(snapshot));
         var upstream = projection.Routes[0].Upstreams[0];
         AssertEx.Equal("https", upstream.Scheme);
         AssertEx.False(upstream.Tls.ValidateCertificate);

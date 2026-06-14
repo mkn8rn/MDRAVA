@@ -612,7 +612,7 @@ internal static class CacheTests
             new ProxyMetrics(),
             ActivatingProxyListenerReloadApplier.Instance,
             SilentProxyConfigurationReloadEventSink.Instance,
-            TestHttp3PlatformSupport.SupportedSource);
+            TestHttp3PlatformSupport.ProjectionSource);
 
         var first = await service.ReloadAsync(CancellationToken.None);
         ProxyConfigurationReloadResultAssertions.Reloaded(first);
@@ -640,7 +640,7 @@ internal static class CacheTests
             new ProxyMetrics(),
             ActivatingProxyListenerReloadApplier.Instance,
             SilentProxyConfigurationReloadEventSink.Instance,
-            TestHttp3PlatformSupport.SupportedSource);
+            TestHttp3PlatformSupport.ProjectionSource);
         var first = await service.ReloadAsync(CancellationToken.None);
         ProxyConfigurationReloadResultAssertions.Reloaded(first);
         SeedCache(cache, store.Snapshot.Routes[0], store.Snapshot.Listeners[0]);

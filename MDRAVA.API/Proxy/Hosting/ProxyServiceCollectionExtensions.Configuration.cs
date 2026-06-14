@@ -8,6 +8,7 @@ using MDRAVA.INF.Configuration.Paths;
 using MDRAVA.INF.DataDirectory;
 using MDRAVA.INF.Observability;
 using MDRAVA.INF.Proxy.Forwarding;
+using MDRAVA.INF.Proxy.Http3;
 using MDRAVA.INF.Runtime;
 using Microsoft.Extensions.Options;
 
@@ -38,6 +39,7 @@ public static partial class ProxyServiceCollectionExtensions
         services.AddSingleton<IProxyConfigurationLoader>(static services => services.GetRequiredService<ProxyConfigurationLoader>());
         services.AddSingleton<IProxyRestoreConfigurationValidator>(static services => services.GetRequiredService<ProxyConfigurationLoader>());
         services.AddSingleton<IProxyConfigurationReloadEventSink, ProxyConfigurationReloadLogger>();
+        services.AddSingleton<IProxyConfigurationHttp3ProjectionSource, ProxyConfigurationHttp3ProjectionSource>();
         services.AddSingleton<ProxyConfigurationReloadService>();
         services.AddSingleton<IProxyConfigurationReloadOperations<ProxyConfigurationProjection>>(
             static services => services.GetRequiredService<ProxyConfigurationReloadService>());

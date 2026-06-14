@@ -233,8 +233,8 @@ internal static class PerformanceSmokeRunner
             var result = await loader.LoadAsync(CancellationToken.None);
             var snapshot = ProxyConfigurationLoadResultAssertions.AssertLoadedSnapshot(result);
             var projection = ProxyConfigurationProjectionMapper.ToProjection(
-                snapshot,
-                TestHttp3PlatformSupport.Supported);
+            snapshot,
+            TestHttp3PlatformSupport.Project(snapshot));
             AssertEx.Equal(sites, projection.Routes.Count);
         }
 

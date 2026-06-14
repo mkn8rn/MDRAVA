@@ -1,6 +1,5 @@
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.Caching;
-using MDRAVA.BLL.ControlPlane.Http3;
 using MDRAVA.BLL.ControlPlane.Listeners;
 
 namespace MDRAVA.BLL.ControlPlane.ConfigurationManagement;
@@ -16,7 +15,7 @@ public sealed class ProxyConfigurationReloadService
     private readonly IProxyConfigurationReloadMetricsSink _metrics;
     private readonly IProxyListenerReloadApplier _listenerReloadApplier;
     private readonly IProxyConfigurationReloadEventSink _events;
-    private readonly IRuntimeHttp3PlatformSupportSource _http3PlatformSupportSource;
+    private readonly IProxyConfigurationHttp3ProjectionSource _http3ProjectionSource;
 
     public ProxyConfigurationReloadService(
         IProxyConfigurationLoader loader,
@@ -26,7 +25,7 @@ public sealed class ProxyConfigurationReloadService
         IProxyConfigurationReloadMetricsSink metrics,
         IProxyListenerReloadApplier listenerReloadApplier,
         IProxyConfigurationReloadEventSink events,
-        IRuntimeHttp3PlatformSupportSource http3PlatformSupportSource)
+        IProxyConfigurationHttp3ProjectionSource http3ProjectionSource)
     {
         _loader = loader;
         _snapshotReader = snapshotReader;
@@ -35,7 +34,7 @@ public sealed class ProxyConfigurationReloadService
         _metrics = metrics;
         _listenerReloadApplier = listenerReloadApplier;
         _events = events;
-        _http3PlatformSupportSource = http3PlatformSupportSource;
+        _http3ProjectionSource = http3ProjectionSource;
     }
 
     public async ValueTask<ProxyConfigurationReloadResult<ProxyConfigurationProjection>> ReloadAsync(
@@ -135,6 +134,6 @@ public sealed class ProxyConfigurationReloadService
     {
         return ProxyConfigurationProjectionMapper.ToProjection(
             snapshot,
-            _http3PlatformSupportSource.Read());
+            _http3ProjectionSource.Project(snapshot));
     }
 }
