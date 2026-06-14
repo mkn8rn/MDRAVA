@@ -599,20 +599,23 @@ internal static class ResilienceTests
 
     public static void RetryPolicySuppressesConfiguredStatusOnlyWhenAllowed()
     {
-        var retry = new RuntimeRetryPolicy(
+        var retry = new ProxyRetryOutcomeInput(
             true,
-            2,
-            null,
             false,
             false,
-            [503],
-            ["GET"],
-            TimeSpan.Zero);
+            [503]);
 
         AssertEx.True(ProxyRetryPolicy.ShouldSuppressRetryableStatusResponse(retry, 503, true));
         AssertEx.False(ProxyRetryPolicy.ShouldSuppressRetryableStatusResponse(retry, 503, false));
         AssertEx.False(ProxyRetryPolicy.ShouldSuppressRetryableStatusResponse(retry, 502, true));
-        AssertEx.False(ProxyRetryPolicy.ShouldSuppressRetryableStatusResponse(retry with { Enabled = false }, 503, true));
+        AssertEx.False(ProxyRetryPolicy.ShouldSuppressRetryableStatusResponse(
+            new ProxyRetryOutcomeInput(
+                false,
+                retry.RetryOnConnectFailure,
+                retry.RetryOnUpstreamResponseHeadTimeout,
+                retry.RetryOnStatusCodes),
+            503,
+            true));
     }
 
     public static void RetryPolicySuppressesAttemptFailureOnlyBeforeFinalAttempt()
@@ -718,15 +721,11 @@ internal static class ResilienceTests
 
     public static void RetryPolicyNamesAttemptDecisions()
     {
-        var retry = new RuntimeRetryPolicy(
+        var retry = new ProxyRetryOutcomeInput(
             true,
-            2,
-            null,
             true,
             false,
-            [],
-            ["GET"],
-            TimeSpan.Zero);
+            []);
         var retryableFailure = ForwardingResult.Failure(
             responseStarted: false,
             responseStatusCode: null,

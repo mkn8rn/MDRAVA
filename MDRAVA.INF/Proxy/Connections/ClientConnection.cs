@@ -620,6 +620,7 @@ public sealed class ClientConnection
 
         var retryAllowed = retryPlan.IsAllowed;
         var maxAttempts = retryPlan.MaxAttempts;
+        var retryOutcome = ProxyRetryRuntimeMapper.ToOutcomeInput(route.Retry);
         ForwardingResult? lastResult = null;
         for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
@@ -668,7 +669,7 @@ public sealed class ClientConnection
             ProxyUpstreamAttemptRecorder.Record(selection, result, _healthStore, _circuitBreakerStore);
 
             var retryAttempt = retryAllowed
-                ? ProxyRetryPolicy.EvaluateAttempt(route.Retry, result, attempt, maxAttempts)
+                ? ProxyRetryPolicy.EvaluateAttempt(retryOutcome, result, attempt, maxAttempts)
                 : ProxyRetryAttemptDecision.Stop;
             if (retryAttempt == ProxyRetryAttemptDecision.Retry)
             {
@@ -686,7 +687,7 @@ public sealed class ClientConnection
                 _metrics.RetrySkipped(skippedAttempt.Reason);
             }
 
-            if (retryAllowed && ProxyRetryPolicy.DidExhaustAttempts(route.Retry, result, attempt, maxAttempts))
+            if (retryAllowed && ProxyRetryPolicy.DidExhaustAttempts(retryOutcome, result, attempt, maxAttempts))
             {
                 _metrics.RetryExhausted();
             }

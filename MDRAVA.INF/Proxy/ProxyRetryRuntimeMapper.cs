@@ -17,4 +17,13 @@ internal static class ProxyRetryRuntimeMapper
             requestHead.Method,
             requestHead.Framing.Kind != Http1BodyKind.None);
     }
+
+    public static ProxyRetryOutcomeInput ToOutcomeInput(RuntimeRetryPolicy retry)
+    {
+        return new ProxyRetryOutcomeInput(
+            retry.Enabled,
+            retry.RetryOnConnectFailure,
+            retry.RetryOnUpstreamResponseHeadTimeout,
+            retry.RetryOnStatusCodes);
+    }
 }

@@ -540,7 +540,10 @@ public sealed class ProxyForwarder
                 $"Unexpected upstream response translation result {responseHeadTranslation.GetType().Name}.")
         };
 
-        if (ProxyRetryPolicy.ShouldSuppressRetryableStatusResponse(route.Retry, responseHead.StatusCode, suppressRetryableStatusResponse))
+        if (ProxyRetryPolicy.ShouldSuppressRetryableStatusResponse(
+            ProxyRetryRuntimeMapper.ToOutcomeInput(route.Retry),
+            responseHead.StatusCode,
+            suppressRetryableStatusResponse))
         {
             return CreateRetrySuppressedResult(responseHead.StatusCode);
         }
@@ -664,7 +667,10 @@ public sealed class ProxyForwarder
                 $"Unexpected upstream response translation result {responseHeadTranslation.GetType().Name}.")
         };
 
-        if (ProxyRetryPolicy.ShouldSuppressRetryableStatusResponse(route.Retry, responseHead.StatusCode, suppressRetryableStatusResponse))
+        if (ProxyRetryPolicy.ShouldSuppressRetryableStatusResponse(
+            ProxyRetryRuntimeMapper.ToOutcomeInput(route.Retry),
+            responseHead.StatusCode,
+            suppressRetryableStatusResponse))
         {
             return CreateRetrySuppressedResult(responseHead.StatusCode);
         }
@@ -1274,7 +1280,10 @@ public sealed class ProxyForwarder
 
             if (!Http1ResponseParser.IsInformational(responseHead))
             {
-                if (ProxyRetryPolicy.ShouldSuppressRetryableStatusResponse(route.Retry, responseHead.StatusCode, suppressRetryableStatusResponse))
+                if (ProxyRetryPolicy.ShouldSuppressRetryableStatusResponse(
+                    ProxyRetryRuntimeMapper.ToOutcomeInput(route.Retry),
+                    responseHead.StatusCode,
+                    suppressRetryableStatusResponse))
                 {
                     return CreateRetrySuppressedResult(responseHead.StatusCode);
                 }

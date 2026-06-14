@@ -1,5 +1,4 @@
 using MDRAVA.BLL.ControlPlane.Forwarding;
-using MDRAVA.BLL.Configuration;
 using System.Collections.ObjectModel;
 
 namespace MDRAVA.BLL.ControlPlane.Resilience;
@@ -37,12 +36,12 @@ public static class ProxyRetryPolicy
     }
 
     public static ProxyRetryAttemptDecision EvaluateAttempt(
-        RuntimeRetryPolicy retry,
+        ProxyRetryOutcomeInput input,
         ForwardingResult result,
         int attempt,
         int maxAttempts)
     {
-        if (!IsRetryableFailure(retry, result))
+        if (!IsRetryableFailure(input, result))
         {
             return ProxyRetryAttemptDecision.Stop;
         }
@@ -58,13 +57,13 @@ public static class ProxyRetryPolicy
     }
 
     public static bool ShouldSuppressRetryableStatusResponse(
-        RuntimeRetryPolicy retry,
+        ProxyRetryOutcomeInput input,
         int statusCode,
         bool suppressRetryableStatusResponse)
     {
         return suppressRetryableStatusResponse
-            && retry.Enabled
-            && retry.RetryOnStatusCodes.Any(code => code == statusCode);
+            && input.Enabled
+            && input.RetryOnStatusCodes.Any(code => code == statusCode);
     }
 
     public static bool ShouldSuppressAttemptFailureResponse(
@@ -77,13 +76,13 @@ public static class ProxyRetryPolicy
     }
 
     public static bool DidExhaustAttempts(
-        RuntimeRetryPolicy retry,
+        ProxyRetryOutcomeInput input,
         ForwardingResult result,
         int attempt,
         int maxAttempts)
     {
         return attempt == maxAttempts
-            && IsRetryableFailure(retry, result);
+            && IsRetryableFailure(input, result);
     }
 
     public static bool DidExhaustAttemptsBeforeUpstreamSelection(int attempt)
@@ -96,10 +95,10 @@ public static class ProxyRetryPolicy
         return result ?? throw new InvalidOperationException("Retry attempt loop completed without running an attempt.");
     }
 
-    public static bool IsRetryableFailure(RuntimeRetryPolicy retry, ForwardingResult result)
+    public static bool IsRetryableFailure(ProxyRetryOutcomeInput input, ForwardingResult result)
     {
         if (result.ResponseStatusCode.HasValue
-            && retry.RetryOnStatusCodes.Any(code => code == result.ResponseStatusCode.Value))
+            && input.RetryOnStatusCodes.Any(code => code == result.ResponseStatusCode.Value))
         {
             return true;
         }
@@ -108,15 +107,40 @@ public static class ProxyRetryPolicy
         {
             return result.FailureKind switch
             {
-                ProxyFailureKind.UpstreamConnectFailed => retry.RetryOnConnectFailure,
-                ProxyFailureKind.UpstreamConnectTimeout => retry.RetryOnConnectFailure,
-                ProxyFailureKind.UpstreamResponseHeadTimeout => retry.RetryOnUpstreamResponseHeadTimeout,
+                ProxyFailureKind.UpstreamConnectFailed => input.RetryOnConnectFailure,
+                ProxyFailureKind.UpstreamConnectTimeout => input.RetryOnConnectFailure,
+                ProxyFailureKind.UpstreamResponseHeadTimeout => input.RetryOnUpstreamResponseHeadTimeout,
                 _ => false
             };
         }
 
         return false;
     }
+}
+
+public sealed record ProxyRetryOutcomeInput
+{
+    public ProxyRetryOutcomeInput(
+        bool Enabled,
+        bool RetryOnConnectFailure,
+        bool RetryOnUpstreamResponseHeadTimeout,
+        IReadOnlyList<int> RetryOnStatusCodes)
+    {
+        ArgumentNullException.ThrowIfNull(RetryOnStatusCodes);
+
+        this.Enabled = Enabled;
+        this.RetryOnConnectFailure = RetryOnConnectFailure;
+        this.RetryOnUpstreamResponseHeadTimeout = RetryOnUpstreamResponseHeadTimeout;
+        this.RetryOnStatusCodes = new ReadOnlyCollection<int>(RetryOnStatusCodes.ToArray());
+    }
+
+    public bool Enabled { get; }
+
+    public bool RetryOnConnectFailure { get; }
+
+    public bool RetryOnUpstreamResponseHeadTimeout { get; }
+
+    public IReadOnlyList<int> RetryOnStatusCodes { get; }
 }
 
 public sealed record ProxyRetryAdmissionInput
