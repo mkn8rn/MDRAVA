@@ -3,7 +3,7 @@ using BusinessRuntimeHttpsRedirectProjection = MDRAVA.BLL.Configuration.RuntimeH
 using BusinessRuntimeMaintenanceProjection = MDRAVA.BLL.Configuration.RuntimeMaintenanceProjection;
 using BusinessRuntimePathRewriteProjection = MDRAVA.BLL.Configuration.RuntimePathRewriteProjection;
 using BusinessRuntimeRedirectProjection = MDRAVA.BLL.Configuration.RuntimeRedirectProjection;
-using BusinessRuntimeStaticResponse = MDRAVA.BLL.Configuration.RuntimeStaticResponse;
+using BusinessRuntimeStaticResponseProjection = MDRAVA.BLL.Configuration.RuntimeStaticResponseProjection;
 
 namespace MDRAVA.API.Controllers;
 
@@ -72,11 +72,11 @@ public sealed record RuntimeStaticResponseResponse(
     string ContentType,
     string Body)
 {
-    public static RuntimeStaticResponseResponse FromResponse(BusinessRuntimeStaticResponse response)
+    public static RuntimeStaticResponseResponse FromProjection(BusinessRuntimeStaticResponseProjection projection)
     {
-        ArgumentNullException.ThrowIfNull(response);
+        ArgumentNullException.ThrowIfNull(projection);
 
-        return new RuntimeStaticResponseResponse(response.StatusCode, response.ContentType, response.Body);
+        return new RuntimeStaticResponseResponse(projection.StatusCode, projection.ContentType, projection.Body);
     }
 }
 

@@ -125,7 +125,10 @@ public static class ProxyConfigurationProjectionMapper
                         route.Redirect.TargetUrl,
                         route.Redirect.TargetPath,
                         route.Redirect.PreserveQuery),
-                    route.StaticResponse,
+                    new RuntimeStaticResponseProjection(
+                        route.StaticResponse.StatusCode,
+                        route.StaticResponse.ContentType,
+                        route.StaticResponse.Body),
                     new RuntimeMaintenanceProjection(
                         route.Maintenance.Enabled,
                         route.Maintenance.RetryAfterSeconds,
