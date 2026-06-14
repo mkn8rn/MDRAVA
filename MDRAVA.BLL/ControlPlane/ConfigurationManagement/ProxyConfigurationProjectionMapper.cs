@@ -76,7 +76,13 @@ public static class ProxyConfigurationProjectionMapper
                     route.PathPrefix,
                     route.Action,
                     route.LoadBalancingPolicy,
-                    route.HealthCheck,
+                    new RuntimeHealthCheckProjection(
+                        route.HealthCheck.Enabled,
+                        route.HealthCheck.Path,
+                        route.HealthCheck.Interval,
+                        route.HealthCheck.Timeout,
+                        route.HealthCheck.HealthyThreshold,
+                        route.HealthCheck.UnhealthyThreshold),
                     new ReadOnlyCollection<RuntimeUpstreamProjection>(route.Upstreams
                         .Select(static upstream => new RuntimeUpstreamProjection(
                             upstream.RouteName,

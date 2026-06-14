@@ -1,4 +1,4 @@
-using BusinessRuntimeHealthCheckOptions = MDRAVA.BLL.Configuration.RuntimeHealthCheckOptions;
+using BusinessRuntimeHealthCheckProjection = MDRAVA.BLL.Configuration.RuntimeHealthCheckProjection;
 using BusinessRuntimeRouteAction = MDRAVA.BLL.Configuration.RuntimeRouteAction;
 using BusinessRuntimeRouteProjection = MDRAVA.BLL.Configuration.RuntimeRouteProjection;
 using BusinessRuntimeRouteResolvedOptions = MDRAVA.BLL.Configuration.RuntimeRouteResolvedOptions;
@@ -44,7 +44,7 @@ public sealed record RuntimeRouteResponse(
             route.PathPrefix,
             RuntimeRouteActionResponseMapper.FromAction(route.Action),
             route.LoadBalancingPolicy,
-            RuntimeHealthCheckResponse.FromOptions(route.HealthCheck),
+            RuntimeHealthCheckResponse.FromProjection(route.HealthCheck),
             RuntimeUpstreamResponse.FromUpstreams(route.Upstreams),
             RuntimeHttpsRedirectResponse.FromPolicy(route.HttpsRedirect),
             RuntimeCanonicalHostResponse.FromPolicy(route.CanonicalHost),
@@ -70,17 +70,17 @@ public sealed record RuntimeHealthCheckResponse(
     int HealthyThreshold,
     int UnhealthyThreshold)
 {
-    public static RuntimeHealthCheckResponse FromOptions(BusinessRuntimeHealthCheckOptions options)
+    public static RuntimeHealthCheckResponse FromProjection(BusinessRuntimeHealthCheckProjection projection)
     {
-        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(projection);
 
         return new RuntimeHealthCheckResponse(
-            options.Enabled,
-            options.Path,
-            options.Interval,
-            options.Timeout,
-            options.HealthyThreshold,
-            options.UnhealthyThreshold);
+            projection.Enabled,
+            projection.Path,
+            projection.Interval,
+            projection.Timeout,
+            projection.HealthyThreshold,
+            projection.UnhealthyThreshold);
     }
 }
 
