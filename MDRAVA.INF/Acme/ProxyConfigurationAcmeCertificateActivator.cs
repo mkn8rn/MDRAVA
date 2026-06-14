@@ -6,21 +6,25 @@ namespace MDRAVA.INF.Acme;
 
 public sealed class ProxyConfigurationAcmeCertificateActivator : IAcmeCertificateActivator
 {
-    private readonly IProxyConfigurationStore _configurationStore;
+    private readonly IProxyActiveConfigurationSnapshotReader _snapshotReader;
+    private readonly IProxyActiveConfigurationSnapshotWriter _snapshotWriter;
 
-    public ProxyConfigurationAcmeCertificateActivator(IProxyConfigurationStore configurationStore)
+    public ProxyConfigurationAcmeCertificateActivator(
+        IProxyActiveConfigurationSnapshotReader snapshotReader,
+        IProxyActiveConfigurationSnapshotWriter snapshotWriter)
     {
-        _configurationStore = configurationStore;
+        _snapshotReader = snapshotReader;
+        _snapshotWriter = snapshotWriter;
     }
 
     public void Activate(RuntimeCertificate certificate)
     {
-        var snapshot = _configurationStore.Snapshot;
+        var snapshot = _snapshotReader.Snapshot;
         Dictionary<string, RuntimeCertificate> certificates = new(snapshot.Certificates, StringComparer.OrdinalIgnoreCase)
         {
             [certificate.Id] = certificate
         };
 
-        _configurationStore.Replace(snapshot.WithCertificates(certificates));
+        _snapshotWriter.Replace(snapshot.WithCertificates(certificates));
     }
 }

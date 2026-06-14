@@ -794,7 +794,7 @@ internal static class AcmeTests
     {
         return new AcmeCertificateManager(
             new ProxyConfigurationAcmeRenewalConfigurationSource(store),
-            new ProxyConfigurationAcmeCertificateActivator(store),
+            new ProxyConfigurationAcmeCertificateActivator(store, store),
             new MdravaDataDirectoryProvider(new MdravaDataDirectoryOptions
             {
                 DataDirectory = dataDirectory
