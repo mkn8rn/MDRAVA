@@ -1141,6 +1141,8 @@ internal static class RouteDiagnosticsTests
         AssertEx.False(result.Succeeded);
         AssertFinding(result, "missing_request", "error");
         AssertEx.True(result.Findings[0].Message.Contains("request body is required", StringComparison.Ordinal));
+        AssertEx.False(result.Findings is ConfigLintFindingResponse[], "Config lint API findings should not expose a mutable array.");
+        AssertEx.False(result.ValidationErrors is ProxyConfigurationFileErrorResponse[], "Config lint API validation errors should not expose a mutable array.");
     }
 
     public static void ConfigLintControllerRejectsIncompleteSubmittedRequestFields()
@@ -1155,10 +1157,14 @@ internal static class RouteDiagnosticsTests
         var formatResponse = (BadRequestObjectResult)AssertEx.NotNull(missingFormat.Result);
         var formatResult = (ConfigLintResponse)AssertEx.NotNull(formatResponse.Value);
         AssertFinding(formatResult, "invalid_format", "error");
+        AssertEx.False(formatResult.Findings is ConfigLintFindingResponse[], "Config lint API findings should not expose a mutable array.");
+        AssertEx.False(formatResult.ValidationErrors is ProxyConfigurationFileErrorResponse[], "Config lint API validation errors should not expose a mutable array.");
         var textResponse = (BadRequestObjectResult)AssertEx.NotNull(missingText.Result);
         var textResult = (ConfigLintResponse)AssertEx.NotNull(textResponse.Value);
         AssertFinding(textResult, "empty_config", "error");
         AssertEx.True(textResult.Findings[0].Message.Contains("config text is required", StringComparison.Ordinal));
+        AssertEx.False(textResult.Findings is ConfigLintFindingResponse[], "Config lint API findings should not expose a mutable array.");
+        AssertEx.False(textResult.ValidationErrors is ProxyConfigurationFileErrorResponse[], "Config lint API validation errors should not expose a mutable array.");
     }
 
     public static void RouteDiagnosticsControllerRejectsMissingMatchRequestBody()

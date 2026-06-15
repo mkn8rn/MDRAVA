@@ -83,7 +83,7 @@ public sealed record ProxyConfigurationFileErrorResponse(
     {
         ArgumentNullException.ThrowIfNull(errors);
 
-        return errors.Select(FromError).ToArray();
+        return ApiResponseList.Copy(errors.Select(FromError));
     }
 
     private static ProxyConfigurationFileErrorResponse FromError(BusinessProxyConfigurationFileError error)
