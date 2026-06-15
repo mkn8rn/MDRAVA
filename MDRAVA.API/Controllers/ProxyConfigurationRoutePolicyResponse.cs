@@ -23,9 +23,9 @@ public sealed record RuntimeCachePolicyResponse(
             projection.MaxTotalBytes,
             projection.DefaultTtl,
             projection.RespectOriginCacheControl,
-            projection.VaryByHeaders.ToArray(),
-            projection.CacheableStatusCodes.ToArray(),
-            projection.Methods.ToArray());
+            ApiResponseList.Copy(projection.VaryByHeaders),
+            ApiResponseList.Copy(projection.CacheableStatusCodes),
+            ApiResponseList.Copy(projection.Methods));
     }
 }
 
@@ -49,8 +49,8 @@ public sealed record RuntimeRetryPolicyResponse(
             projection.PerAttemptTimeout,
             projection.RetryOnConnectFailure,
             projection.RetryOnUpstreamResponseHeadTimeout,
-            projection.RetryOnStatusCodes.ToArray(),
-            projection.RetryMethods.ToArray(),
+            ApiResponseList.Copy(projection.RetryOnStatusCodes),
+            ApiResponseList.Copy(projection.RetryMethods),
             projection.RetryBackoff);
     }
 }

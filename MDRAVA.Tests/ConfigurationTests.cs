@@ -391,6 +391,15 @@ internal static class ConfigurationTests
             VaryByHeaders: cacheVaryHeaders,
             CacheableStatusCodes: cacheStatusCodes,
             Methods: cacheMethods);
+        var cacheProjection = new RuntimeCacheProjection(
+            Enabled: true,
+            MaxEntryBytes: 1024,
+            MaxTotalBytes: 4096,
+            DefaultTtl: TimeSpan.FromSeconds(60),
+            RespectOriginCacheControl: true,
+            VaryByHeaders: cacheVaryHeaders,
+            CacheableStatusCodes: cacheStatusCodes,
+            Methods: cacheMethods);
         var runtimeCertificate = new RuntimeCertificate(
             "home-cert",
             "certs/home.pfx",
@@ -436,6 +445,15 @@ internal static class ConfigurationTests
             RetryOnStatusCodes: retryStatusCodes,
             RetryMethods: retryMethods,
             RetryBackoff: TimeSpan.FromMilliseconds(50));
+        var retryProjection = new RuntimeRetryProjection(
+            Enabled: true,
+            MaxAttempts: 2,
+            PerAttemptTimeout: TimeSpan.FromSeconds(1),
+            RetryOnConnectFailure: true,
+            RetryOnUpstreamResponseHeadTimeout: true,
+            RetryOnStatusCodes: retryStatusCodes,
+            RetryMethods: retryMethods,
+            RetryBackoff: TimeSpan.FromMilliseconds(50));
 
         acmeDomains.Clear();
         acmeContacts.Clear();
@@ -472,6 +490,9 @@ internal static class ConfigurationTests
         AssertEx.Equal("X-Tenant", cache.VaryByHeaders[0]);
         AssertEx.Equal(200, cache.CacheableStatusCodes[0]);
         AssertEx.Equal("GET", cache.Methods[0]);
+        AssertEx.Equal("X-Tenant", cacheProjection.VaryByHeaders[0]);
+        AssertEx.Equal(200, cacheProjection.CacheableStatusCodes[0]);
+        AssertEx.Equal("GET", cacheProjection.Methods[0]);
         AssertEx.Equal("home.test", runtimeCertificate.Domains[0]);
         AssertEx.Equal("api.home.test", certificateProjection.Domains[0]);
         AssertEx.Equal(503, circuitBreaker.FailureStatusCodes[0]);
@@ -485,6 +506,8 @@ internal static class ConfigurationTests
         AssertEx.Equal("Server", headerPolicyProjection.RemoveResponseHeaders[0]);
         AssertEx.Equal(502, retry.RetryOnStatusCodes[0]);
         AssertEx.Equal("GET", retry.RetryMethods[0]);
+        AssertEx.Equal(502, retryProjection.RetryOnStatusCodes[0]);
+        AssertEx.Equal("GET", retryProjection.RetryMethods[0]);
         AssertEx.False(acme.ContactEmails is string[]);
         AssertEx.False(acme.Certificates is RuntimeAcmeCertificateOptions[]);
         AssertEx.False(acme.Certificates[0].Domains is string[]);
@@ -498,6 +521,9 @@ internal static class ConfigurationTests
         AssertEx.False(cache.VaryByHeaders is string[]);
         AssertEx.False(cache.CacheableStatusCodes is int[]);
         AssertEx.False(cache.Methods is string[]);
+        AssertEx.False(cacheProjection.VaryByHeaders is string[]);
+        AssertEx.False(cacheProjection.CacheableStatusCodes is int[]);
+        AssertEx.False(cacheProjection.Methods is string[]);
         AssertEx.False(runtimeCertificate.Domains is string[]);
         AssertEx.False(certificateProjection.Domains is string[]);
         AssertEx.False(circuitBreaker.FailureStatusCodes is int[]);
@@ -511,6 +537,8 @@ internal static class ConfigurationTests
         AssertEx.False(headerPolicyProjection.RemoveResponseHeaders is string[]);
         AssertEx.False(retry.RetryOnStatusCodes is int[]);
         AssertEx.False(retry.RetryMethods is string[]);
+        AssertEx.False(retryProjection.RetryOnStatusCodes is int[]);
+        AssertEx.False(retryProjection.RetryMethods is string[]);
         var adminResponse = RuntimeAdminSecurityResponse.FromProjection(adminProjection);
         AssertEx.False(adminResponse.Urls is string[], "Admin security API URLs should not expose a mutable array.");
         var forwardedHeadersResponse = RuntimeForwardedHeadersResponse.FromProjection(forwardedHeadersProjection);
@@ -520,6 +548,13 @@ internal static class ConfigurationTests
         AssertEx.False(headerPolicyResponse.RemoveRequestHeaders is string[], "Header policy API remove request headers should not expose a mutable array.");
         AssertEx.False(headerPolicyResponse.SetResponseHeaders is RuntimeHeaderFieldResponse[], "Header policy API set response headers should not expose a mutable array.");
         AssertEx.False(headerPolicyResponse.RemoveResponseHeaders is string[], "Header policy API remove response headers should not expose a mutable array.");
+        var cacheResponse = RuntimeCachePolicyResponse.FromProjection(cacheProjection);
+        AssertEx.False(cacheResponse.VaryByHeaders is string[], "Cache API vary headers should not expose a mutable array.");
+        AssertEx.False(cacheResponse.CacheableStatusCodes is int[], "Cache API cacheable status codes should not expose a mutable array.");
+        AssertEx.False(cacheResponse.Methods is string[], "Cache API methods should not expose a mutable array.");
+        var retryResponse = RuntimeRetryPolicyResponse.FromProjection(retryProjection);
+        AssertEx.False(retryResponse.RetryOnStatusCodes is int[], "Retry API status codes should not expose a mutable array.");
+        AssertEx.False(retryResponse.RetryMethods is string[], "Retry API methods should not expose a mutable array.");
     }
 
     public static void RuntimeConfigurationGraphRecordsCopyInputCollections()
