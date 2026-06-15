@@ -12,7 +12,7 @@ public static class ProxyRouteActionRuntimeMapper
         bool isUpgradeRequest)
     {
         return new ProxyRouteActionInput(
-            ToActionKind(route.Action),
+            ProxyRouteActionKindMapper.FromRuntimeAction(route.Action),
             new ProxyRoutePolicyRedirectInput(
                 route.HttpsRedirect.Enabled,
                 route.HttpsRedirect.StatusCode,
@@ -38,15 +38,5 @@ public static class ProxyRouteActionRuntimeMapper
                 route.StaticResponse.ContentType,
                 route.StaticResponse.Body),
             isUpgradeRequest);
-    }
-
-    private static ProxyRouteActionKind ToActionKind(RuntimeRouteAction action)
-    {
-        return action switch
-        {
-            RuntimeRouteAction.Redirect => ProxyRouteActionKind.Redirect,
-            RuntimeRouteAction.StaticResponse => ProxyRouteActionKind.StaticResponse,
-            _ => ProxyRouteActionKind.Proxy
-        };
     }
 }

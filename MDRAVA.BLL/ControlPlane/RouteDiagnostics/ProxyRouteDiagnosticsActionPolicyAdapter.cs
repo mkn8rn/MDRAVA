@@ -29,7 +29,7 @@ public sealed class ProxyRouteDiagnosticsActionPolicyAdapter
         bool isUpgradeRequest)
     {
         return new ProxyRouteActionInput(
-            ToActionKind(route.Action),
+            ProxyRouteActionKindMapper.FromText(route.Action),
             new ProxyRoutePolicyRedirectInput(
                 route.HttpsRedirect.Enabled,
                 route.HttpsRedirect.StatusCode,
@@ -55,15 +55,5 @@ public sealed class ProxyRouteDiagnosticsActionPolicyAdapter
                 route.StaticResponse.ContentType,
                 route.StaticResponse.Body),
             isUpgradeRequest);
-    }
-
-    private static ProxyRouteActionKind ToActionKind(string action)
-    {
-        return action switch
-        {
-            _ when string.Equals(action, "Redirect", StringComparison.OrdinalIgnoreCase) => ProxyRouteActionKind.Redirect,
-            _ when string.Equals(action, "StaticResponse", StringComparison.OrdinalIgnoreCase) => ProxyRouteActionKind.StaticResponse,
-            _ => ProxyRouteActionKind.Proxy
-        };
     }
 }
