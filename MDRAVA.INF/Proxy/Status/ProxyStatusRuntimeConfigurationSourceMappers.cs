@@ -19,31 +19,45 @@ public static class ProxyStatusConfigurationSourceMapper
                 configuration.Routes.Count),
             upstreamHealthSources,
             ProxyHttp3SupportConfigurationSourceMapper.FromConfiguration(configuration.Listeners, configuration.Routes),
-            ProxyStatusReadinessConfigurationSourceMapper.FromConfiguration(configuration));
+            ProxyStatusReadinessConfigurationSourceMapper.FromConfiguration(
+                configuration.Version,
+                configuration.LoadedAtUtc,
+                configuration.Listeners,
+                configuration.Routes,
+                configuration.Certificates,
+                configuration.Acme,
+                configuration.Limits));
     }
 }
 
 public static class ProxyStatusReadinessConfigurationSourceMapper
 {
     public static ProxyStatusReadinessConfigurationSourceSet FromConfiguration(
-        ProxyConfigurationSnapshot? configuration)
+        int version,
+        DateTimeOffset loadedAtUtc,
+        IReadOnlyList<RuntimeListener> listeners,
+        IReadOnlyList<RuntimeRoute> routes,
+        IReadOnlyDictionary<string, RuntimeCertificate> certificates,
+        RuntimeAcmeOptions acme,
+        RuntimeLimits limits)
     {
-        if (configuration is null)
-        {
-            return ProxyStatusReadinessConfigurationSourceSet.Missing;
-        }
+        ArgumentNullException.ThrowIfNull(listeners);
+        ArgumentNullException.ThrowIfNull(routes);
+        ArgumentNullException.ThrowIfNull(certificates);
+        ArgumentNullException.ThrowIfNull(acme);
+        ArgumentNullException.ThrowIfNull(limits);
 
         return new ProxyStatusReadinessConfigurationSourceSet(
             true,
-            configuration.Version,
-            configuration.LoadedAtUtc,
-            ProxyConfiguredListenerSummarySourceMapper.FromListeners(configuration.Listeners),
-            ProxyRouteSummarySourceMapper.FromRoutes(configuration.Routes),
+            version,
+            loadedAtUtc,
+            ProxyConfiguredListenerSummarySourceMapper.FromListeners(listeners),
+            ProxyRouteSummarySourceMapper.FromRoutes(routes),
             ProxyCertificateSummarySourceMapper.FromConfiguration(
-                configuration.Listeners,
-                configuration.Certificates),
-            ProxyAcmeSummaryConfigurationSourceMapper.FromConfiguration(configuration.Acme),
-            ProxyLimitConfigurationSummarySourceMapper.FromConfiguration(configuration.Limits));
+                listeners,
+                certificates),
+            ProxyAcmeSummaryConfigurationSourceMapper.FromConfiguration(acme),
+            ProxyLimitConfigurationSummarySourceMapper.FromConfiguration(limits));
     }
 }
 

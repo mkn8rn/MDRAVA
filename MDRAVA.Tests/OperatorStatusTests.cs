@@ -305,7 +305,14 @@ internal static class OperatorStatusTests
         var preflight = ProxyRuntimePreflightStatus.Unknown;
         var readiness = ProxyStatusReadinessInputMapper.FromSources(
             ProxyStatusReadinessSourceMapper.FromSources(
-                ProxyStatusReadinessConfigurationSourceMapper.FromConfiguration(snapshot),
+                ProxyStatusReadinessConfigurationSourceMapper.FromConfiguration(
+                    snapshot.Version,
+                    snapshot.LoadedAtUtc,
+                    snapshot.Listeners,
+                    snapshot.Routes,
+                    snapshot.Certificates,
+                    snapshot.Acme,
+                    snapshot.Limits),
                 runtimeSummary,
                 metrics,
                 [],
