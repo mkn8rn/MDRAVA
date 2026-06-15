@@ -34,3 +34,18 @@ public sealed record TlsCertificateSelectionInput(
     string? DefaultCertificateId,
     IReadOnlyList<RuntimeSniCertificateBinding> SniCertificates,
     string? HostName);
+
+public static class TlsCertificateSelectionInputMapper
+{
+    public static TlsCertificateSelectionInput FromRuntimeConfiguration(
+        ProxyConfigurationSnapshot snapshot,
+        RuntimeListener listener,
+        string? hostName)
+    {
+        return new TlsCertificateSelectionInput(
+            snapshot.Certificates,
+            listener.DefaultCertificateId,
+            listener.SniCertificates,
+            hostName);
+    }
+}

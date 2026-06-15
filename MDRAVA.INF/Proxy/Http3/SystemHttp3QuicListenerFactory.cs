@@ -104,10 +104,6 @@ public sealed class SystemHttp3QuicListenerFactory : IHttp3QuicListenerFactory
         string? hostName)
     {
         return TlsCertificateSelector.SelectCertificate(
-            new TlsCertificateSelectionInput(
-                snapshot.Certificates,
-                listener.DefaultCertificateId,
-                listener.SniCertificates,
-                hostName));
+            TlsCertificateSelectionInputMapper.FromRuntimeConfiguration(snapshot, listener, hostName));
     }
 }

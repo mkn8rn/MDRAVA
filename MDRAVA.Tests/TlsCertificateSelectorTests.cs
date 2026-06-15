@@ -4,6 +4,29 @@ namespace MDRAVA.Tests;
 
 internal static class TlsCertificateSelectorTests
 {
+    public static void SelectionInputReadsRuntimeConfiguration()
+    {
+        using var defaultCertificate = Certificate("default.test");
+        var certificates = new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["default"] = RuntimeCertificate("default", defaultCertificate)
+        };
+        var bindings = new[]
+        {
+            new RuntimeSniCertificateBinding("home.test", "default")
+        };
+        var listener = Listener("default", bindings);
+        var snapshot = Snapshot(certificates, [listener]);
+
+        var input = TlsCertificateSelectionInputMapper.FromRuntimeConfiguration(snapshot, listener, "Home.Test");
+
+        AssertEx.True(ReferenceEquals(snapshot.Certificates, input.Certificates));
+        AssertEx.Equal("default", input.DefaultCertificateId);
+        AssertEx.Equal(1, input.SniCertificates.Count);
+        AssertEx.Equal("home.test", input.SniCertificates[0].HostName);
+        AssertEx.Equal("Home.Test", input.HostName);
+    }
+
     public static void SelectsSniCertificateBeforeDefaultAndFallsBackSafely()
     {
         using var defaultCertificate = Certificate("default.test");
@@ -62,6 +85,61 @@ internal static class TlsCertificateSelectorTests
             false,
             certificate,
             "manualPfx",
+            []);
+    }
+
+    private static RuntimeListener Listener(
+        string? defaultCertificateId,
+        IReadOnlyList<RuntimeSniCertificateBinding> sniCertificates)
+    {
+        return new RuntimeListener(
+            "main",
+            "127.0.0.1",
+            8443,
+            true,
+            RuntimeListenerTransport.Https,
+            defaultCertificateId,
+            sniCertificates,
+            512,
+            32 * 1024,
+            32 * 1024,
+            1024,
+            64 * 1024);
+    }
+
+    private static ProxyConfigurationSnapshot Snapshot(
+        IReadOnlyDictionary<string, RuntimeCertificate> certificates,
+        IReadOnlyList<RuntimeListener> listeners)
+    {
+        return new ProxyConfigurationSnapshot(
+            1,
+            DateTimeOffset.UnixEpoch,
+            "test",
+            ["site.json"],
+            new ProxyConfigurationDiscovery(
+                new ProxyFilesystemLayout("test", "test/config", "test/config/sites", "test/logs", "test/certs", "test/state", "test/config/proxy.json"),
+                [],
+                [],
+                []),
+            new RuntimeAdminSecurityOptions([], true, true, null, "MDRAVA_ADMIN_TOKEN", "none", 100),
+            new RuntimeAcmeOptions(false, true, "", [], false, "acme", 30, 720, 60, []),
+            new RuntimeTimeouts(
+                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(10)),
+            new RuntimeConnectionLimits(100, 16, 1024),
+            new RuntimeObservabilityOptions(true, 100, new RuntimeLogPersistenceOptions(true, true, 1_048_576, 8)),
+            new RuntimeLimits(4096, 128, 240, 30, 32768, 128, 8192, 104857600, 8192, TimeSpan.FromSeconds(15)),
+            new RuntimeForwardedHeadersOptions(true, []),
+            certificates,
+            listeners,
             []);
     }
 }

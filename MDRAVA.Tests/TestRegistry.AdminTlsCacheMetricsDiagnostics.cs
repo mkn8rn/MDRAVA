@@ -23,6 +23,7 @@ internal static partial class TestRegistry
     Test("Admin token resolution names direct environment and none", Sync(AdminSecurityTests.AdminTokenResolutionNamesDirectEnvironmentAndNone), TestTaxonomy.Config, TestTaxonomy.Admin),
     Test("Admin security options read result names active and default sources", Sync(AdminSecurityTests.AdminSecurityOptionsReadResultNamesActiveAndDefaultSources), TestTaxonomy.Config, TestTaxonomy.Admin),
     Test("Admin audit does not log token values", AdminSecurityTests.AdminAuditDoesNotLogTokenValues, TestTaxonomy.Admin),
+    Test("TLS certificate selection input reads runtime configuration", Sync(TlsCertificateSelectorTests.SelectionInputReadsRuntimeConfiguration), TestTaxonomy.Tls, TestTaxonomy.Config),
     Test("TLS certificate selector chooses SNI before default and falls back safely", Sync(TlsCertificateSelectorTests.SelectsSniCertificateBeforeDefaultAndFallsBackSafely), TestTaxonomy.Tls),
     Test("Manual PFX certificate behavior remains valid", AcmeTests.ManualPfxCertificateBehaviorRemainsValid, TestTaxonomy.Tls),
     Test("ACME config validation rejects missing terms acceptance", Sync(AcmeTests.AcmeConfigValidationRejectsMissingTermsAcceptance), TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),

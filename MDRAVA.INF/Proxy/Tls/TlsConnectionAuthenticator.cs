@@ -101,11 +101,7 @@ public sealed class TlsConnectionAuthenticator
         string? hostName)
     {
         var certificate = TlsCertificateSelector.SelectCertificate(
-            new TlsCertificateSelectionInput(
-                snapshot.Certificates,
-                listener.DefaultCertificateId,
-                listener.SniCertificates,
-                hostName));
+            TlsCertificateSelectionInputMapper.FromRuntimeConfiguration(snapshot, listener, hostName));
         if (certificate is null)
         {
             RecordNoCertificate(listener, hostName);
