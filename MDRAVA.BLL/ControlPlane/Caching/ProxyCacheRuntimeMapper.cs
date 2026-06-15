@@ -1,9 +1,8 @@
 using MDRAVA.BLL.Configuration;
-using MDRAVA.BLL.ControlPlane.Caching;
 
-namespace MDRAVA.INF.Proxy;
+namespace MDRAVA.BLL.ControlPlane.Caching;
 
-internal static class ProxyCacheRuntimeMapper
+public static class ProxyCacheRuntimeMapper
 {
     public static ProxyCacheRequestScope ToRequestScope(RuntimeRoute route, RuntimeListener listener)
     {
