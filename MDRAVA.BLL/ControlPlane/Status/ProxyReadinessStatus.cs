@@ -6,12 +6,12 @@ public sealed record ProxyReadinessStatus
 
     private ProxyReadinessStatus(
         string state,
-        IReadOnlyList<string> reasons,
+        IEnumerable<string> reasons,
         DateTimeOffset generatedAtUtc,
         int? configGeneration)
     {
         State = state;
-        Reasons = reasons;
+        Reasons = ProxyStatusList.Copy(reasons);
         GeneratedAtUtc = generatedAtUtc;
         ConfigGeneration = configGeneration;
     }
@@ -44,8 +44,7 @@ public sealed record ProxyReadinessStatus
             reasons
                 .Where(static reason => !string.IsNullOrWhiteSpace(reason))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
-                .Take(MaxReasons)
-                .ToArray(),
+                .Take(MaxReasons),
             generatedAtUtc,
             configGeneration);
     }

@@ -680,6 +680,12 @@ internal static class OperatorStatusTests
         AssertEx.False(input.Routes is ProxyRouteSummarySource[], "Readiness input routes should not expose a mutable array.");
         AssertEx.False(sources.Upstreams is ProxyUpstreamSummarySource[], "Readiness source upstreams should not expose a mutable array.");
         AssertEx.False(certificates.ReferencedCertificateIds is string[], "Certificate references should not expose a mutable array.");
+        var readiness = ProxyReadinessStatus.Evaluated(
+            ProxyStatusText.Degraded,
+            ["runtime_preflight_degraded"],
+            DateTimeOffset.UnixEpoch,
+            configGeneration: 42);
+        AssertEx.False(readiness.Reasons is string[], "Readiness status reasons should not expose a mutable array.");
     }
 
     public static void StatusReadinessSourceMapperConsumesRuntimeSummaryWithoutRuntimeSnapshot()

@@ -5,13 +5,13 @@ public sealed record ProxyRuntimePreflightStatus
     private ProxyRuntimePreflightStatus(
         string state,
         DateTimeOffset? generatedAtUtc,
-        IReadOnlyList<string> reasons,
-        IReadOnlyList<ProxyRuntimePreflightCheck> checks)
+        IEnumerable<string> reasons,
+        IEnumerable<ProxyRuntimePreflightCheck> checks)
     {
         State = state;
         GeneratedAtUtc = generatedAtUtc;
-        Reasons = reasons;
-        Checks = checks;
+        Reasons = ProxyStatusList.Copy(reasons);
+        Checks = ProxyStatusList.Copy(checks);
     }
 
     public string State { get; }
@@ -55,14 +55,13 @@ public sealed record ProxyRuntimePreflightStatus
             .Select(static check => check.Reason)
             .Where(static reason => !string.IsNullOrWhiteSpace(reason))
             .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Take(maxReasons)
-            .ToArray();
+            .Take(maxReasons);
 
         return new ProxyRuntimePreflightStatus(
             state,
             generatedAtUtc,
             reasons,
-            checks.ToArray());
+            checks);
     }
 }
 

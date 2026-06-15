@@ -214,6 +214,8 @@ internal static class RuntimePreflightTests
         AssertEx.Equal(1, status.Reasons.Count);
         AssertEx.Equal("missing_directory", status.Reasons[0]);
         AssertEx.Equal(3, status.Checks.Count);
+        AssertEx.False(status.Reasons is string[], "Runtime preflight reasons should not expose a mutable array.");
+        AssertEx.False(status.Checks is ProxyRuntimePreflightCheck[], "Runtime preflight checks should not expose a mutable array.");
     }
 
     public static void RuntimePreflightCheckFactoryBuildsUnsafeAndProbedChecks()

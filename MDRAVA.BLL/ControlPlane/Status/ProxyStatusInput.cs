@@ -169,7 +169,7 @@ public interface IProxyStatusInputReader
 
 internal static class ProxyStatusList
 {
-    public static ReadOnlyCollection<T> Copy<T>(IReadOnlyList<T> values)
+    public static ReadOnlyCollection<T> Copy<T>(IEnumerable<T> values)
     {
         ArgumentNullException.ThrowIfNull(values);
 
