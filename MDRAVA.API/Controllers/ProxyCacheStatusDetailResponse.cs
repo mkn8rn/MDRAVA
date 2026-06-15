@@ -12,7 +12,7 @@ public sealed record ProxyCacheRejectionStatusResponse(
     {
         ArgumentNullException.ThrowIfNull(statuses);
 
-        return statuses.Select(FromStatus).ToArray();
+        return ApiResponseList.Copy(statuses.Select(FromStatus));
     }
 
     private static ProxyCacheRejectionStatusResponse FromStatus(BusinessProxyCacheRejectionStatus status)
@@ -36,7 +36,7 @@ public sealed record ProxyCacheRouteStatusResponse(
     {
         ArgumentNullException.ThrowIfNull(statuses);
 
-        return statuses.Select(FromStatus).ToArray();
+        return ApiResponseList.Copy(statuses.Select(FromStatus));
     }
 
     private static ProxyCacheRouteStatusResponse FromStatus(BusinessProxyCacheRouteStatus status)

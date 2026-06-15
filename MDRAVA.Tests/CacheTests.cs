@@ -406,6 +406,10 @@ internal static class CacheTests
         AssertEx.False(response.Headers is ProxyHeaderField[], "Cached response headers should not expose a mutable array.");
         AssertEx.False(runtime.Rejections is ProxyCacheRuntimeRejectionSnapshot[], "Cache runtime rejections should not expose a mutable array.");
         AssertEx.False(status.Rejections is ProxyCacheRejectionStatus[], "Cache status rejections should not expose a mutable array.");
+        AssertEx.False(status.Routes is ProxyCacheRouteStatus[], "Cache status routes should not expose a mutable array.");
+        var statusResponse = ProxyCacheStatusResponse.FromStatus(status);
+        AssertEx.False(statusResponse.Rejections is ProxyCacheRejectionStatusResponse[], "Cache API rejections should not expose a mutable array.");
+        AssertEx.False(statusResponse.Routes is ProxyCacheRouteStatusResponse[], "Cache API routes should not expose a mutable array.");
     }
 
     public static async Task OversizedResponseIsStreamedButNotCached()
