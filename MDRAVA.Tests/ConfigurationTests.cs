@@ -235,17 +235,29 @@ internal static class ConfigurationTests
         fileErrors.Clear();
 
         AssertEx.Equal("sites/home.json", valid.SourceFiles[0]);
+        AssertEx.False(valid.SourceFiles is string[], "Validation source files should not expose a mutable array.");
         AssertEx.Equal("sites/home.json", invalid.SourceFiles[0]);
         AssertEx.Equal("parse failed", invalid.Errors[0]);
         AssertEx.Equal("sites/home.json", invalid.FileErrors[0].Path);
+        AssertEx.False(invalid.SourceFiles is string[], "Invalid validation source files should not expose a mutable array.");
+        AssertEx.False(invalid.Errors is string[], "Invalid validation errors should not expose a mutable array.");
+        AssertEx.False(invalid.FileErrors is ProxyConfigurationFileError[], "Invalid validation file errors should not expose a mutable array.");
         AssertEx.Equal("sites/home.json: parse failed", normalize.Errors[0]);
         AssertEx.Equal("sites/home.json", normalize.FileErrors[0].Path);
+        AssertEx.False(normalize.Errors is string[], "Normalize errors should not expose a mutable array.");
+        AssertEx.False(normalize.FileErrors is ProxyConfigurationFileError[], "Normalize file errors should not expose a mutable array.");
         AssertEx.Equal("sites/home.json", loadFailed.SourceFiles[0]);
         AssertEx.Equal("sites/home.json", loadFailed.FileErrors[0].Path);
         AssertEx.Equal("sites/home.json: parse failed", loadFailed.Errors[0]);
+        AssertEx.False(loadFailed.SourceFiles is string[], "Failed load source files should not expose a mutable array.");
+        AssertEx.False(loadFailed.Errors is string[], "Failed load errors should not expose a mutable array.");
+        AssertEx.False(loadFailed.FileErrors is ProxyConfigurationFileError[], "Failed load file errors should not expose a mutable array.");
         AssertEx.Equal("sites/home.json", loadValidated.SourceFiles[0]);
+        AssertEx.False(loadValidated.SourceFiles is string[], "Validated load source files should not expose a mutable array.");
         AssertEx.Equal("parse failed", reloadFailed.Errors[0]);
         AssertEx.Equal("sites/home.json", reloadFailed.FileErrors[0].Path);
+        AssertEx.False(reloadFailed.Errors is string[], "Reload errors should not expose a mutable array.");
+        AssertEx.False(reloadFailed.FileErrors is ProxyConfigurationFileError[], "Reload file errors should not expose a mutable array.");
     }
 
     public static void RuntimeConfigurationPolicyRecordsCopyInputCollections()

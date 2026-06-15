@@ -24,10 +24,10 @@ public abstract partial record ProxyConfigurationValidationResult
         ActiveVersion = activeVersion;
         LastSuccessfulLoadAtUtc = lastSuccessfulLoadAtUtc;
         WouldBeVersion = wouldBeVersion;
-        SourceFiles = sourceFiles.ToArray();
+        SourceFiles = ConfigurationManagementList.Copy(sourceFiles);
         Discovery = discovery;
-        Errors = errors.ToArray();
-        FileErrors = fileErrors.ToArray();
+        Errors = ConfigurationManagementList.Copy(errors);
+        FileErrors = ConfigurationManagementList.Copy(fileErrors);
     }
 
     public string SourceDirectory { get; }

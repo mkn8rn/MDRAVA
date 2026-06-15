@@ -25,8 +25,8 @@ public abstract partial record ProxyConfigurationReloadResult<TProjection>
         LoadedAtUtc = loadedAtUtc;
         LastSuccessfulLoadAtUtc = lastSuccessfulLoadAtUtc;
         Discovery = discovery;
-        Errors = errors.ToArray();
-        FileErrors = fileErrors.ToArray();
+        Errors = ConfigurationManagementList.Copy(errors);
+        FileErrors = ConfigurationManagementList.Copy(fileErrors);
     }
 
     public string SourceDirectory { get; }

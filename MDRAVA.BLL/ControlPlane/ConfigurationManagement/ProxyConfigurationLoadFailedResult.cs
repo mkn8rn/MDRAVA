@@ -23,16 +23,16 @@ public abstract partial record ProxyConfigurationLoadResult
                 throw new ArgumentException("A failed configuration load requires at least one file error.", nameof(fileErrors));
             }
 
-            var fileErrorSnapshot = fileErrors.ToArray();
+            var fileErrorSnapshot = ConfigurationManagementList.Copy(fileErrors);
 
             SourceDirectory = sourceDirectory;
             AttemptedAtUtc = attemptedAtUtc;
-            SourceFiles = sourceFiles.ToArray();
+            SourceFiles = ConfigurationManagementList.Copy(sourceFiles);
             Discovery = discovery;
             FileErrors = fileErrorSnapshot;
-            Errors = fileErrorSnapshot
+            Errors = ConfigurationManagementList.Copy(fileErrorSnapshot
                 .Select(static error => error.Path is null ? error.Message : $"{error.Path}: {error.Message}")
-                .ToArray();
+                .ToArray());
             WouldBeVersion = wouldBeVersion;
         }
 

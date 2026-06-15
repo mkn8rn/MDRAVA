@@ -13,8 +13,8 @@ public abstract record ProxyConfigurationNormalizeResult
         ArgumentNullException.ThrowIfNull(fileErrors);
 
         Format = format;
-        Errors = errors.ToArray();
-        FileErrors = fileErrors.ToArray();
+        Errors = ConfigurationManagementList.Copy(errors);
+        FileErrors = ConfigurationManagementList.Copy(fileErrors);
     }
 
     public string Format { get; }
