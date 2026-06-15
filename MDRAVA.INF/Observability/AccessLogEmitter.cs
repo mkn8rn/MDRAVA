@@ -44,7 +44,7 @@ public sealed class AccessLogEmitter
             Truncate(context.UpstreamEndpoint),
             context.ResponseStatusCode,
             (long)context.Elapsed.TotalMilliseconds,
-            context.FailureKind.ToString(),
+            ProxyFailureKindText.FromFailureKind(context.FailureKind),
             context.ResponseStarted,
             context.KeepClientConnectionOpen,
             context.IsUpgrade,

@@ -16,7 +16,8 @@ public sealed partial class ProxyMetrics
                 continue;
             }
 
-            failuresByKind[failureKind.ToString()] = Interlocked.Read(ref _requestFailuresByKind[(int)failureKind]);
+            failuresByKind[ProxyFailureKindText.FromFailureKind(failureKind)] =
+                Interlocked.Read(ref _requestFailuresByKind[(int)failureKind]);
         }
 
         return failuresByKind;
