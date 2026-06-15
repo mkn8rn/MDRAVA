@@ -1,18 +1,7 @@
-using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.Acme;
 using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 
 namespace MDRAVA.INF.Acme;
-
-public static class AcmeRenewalScheduleSourceMapper
-{
-    public static AcmeRenewalScheduleSource FromRuntimeConfiguration(RuntimeAcmeOptions acme)
-    {
-        return new AcmeRenewalScheduleSource(
-            acme.Enabled,
-            acme.CheckIntervalMinutes);
-    }
-}
 
 public sealed class ProxyConfigurationAcmeRenewalScheduleInputSource : IAcmeRenewalScheduleInputSource
 {
