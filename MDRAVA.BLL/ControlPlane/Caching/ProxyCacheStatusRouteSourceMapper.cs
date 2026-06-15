@@ -1,7 +1,6 @@
 using MDRAVA.BLL.Configuration;
-using MDRAVA.BLL.ControlPlane.Caching;
 
-namespace MDRAVA.INF.Proxy.Caching;
+namespace MDRAVA.BLL.ControlPlane.Caching;
 
 public static class ProxyCacheStatusRouteSourceMapper
 {
