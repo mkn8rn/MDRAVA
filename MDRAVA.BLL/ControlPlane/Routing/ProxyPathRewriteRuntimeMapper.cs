@@ -1,9 +1,8 @@
 using MDRAVA.BLL.Configuration;
-using MDRAVA.BLL.ControlPlane.Routing;
 
-namespace MDRAVA.INF.Proxy;
+namespace MDRAVA.BLL.ControlPlane.Routing;
 
-internal static class ProxyPathRewriteRuntimeMapper
+public static class ProxyPathRewriteRuntimeMapper
 {
     public static PathRewritePolicyInput ToPolicyInput(RuntimeRoute route)
     {
