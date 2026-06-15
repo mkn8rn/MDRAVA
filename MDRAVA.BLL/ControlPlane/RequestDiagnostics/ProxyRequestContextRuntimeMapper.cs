@@ -1,9 +1,8 @@
 using MDRAVA.BLL.Configuration;
-using MDRAVA.BLL.ControlPlane.RequestDiagnostics;
 
-namespace MDRAVA.INF.Proxy;
+namespace MDRAVA.BLL.ControlPlane.RequestDiagnostics;
 
-internal static class ProxyRequestContextRuntimeMapper
+public static class ProxyRequestContextRuntimeMapper
 {
     public static string ToTransport(RuntimeListener listener)
     {
