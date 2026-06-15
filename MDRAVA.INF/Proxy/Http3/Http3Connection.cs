@@ -204,9 +204,7 @@ public sealed class Http3Connection
 
             var forwardedHeaders = _forwardedHeadersPolicy.Build(
                 requestHead,
-                new ForwardedHeadersListener(
-                    _listener.Transport == RuntimeListenerTransport.Https ? "https" : "http",
-                    _listener.Port),
+                ProxyForwardedHeadersRuntimeMapper.ToListener(_listener),
                 _configurationSnapshot.ForwardedHeaders,
                 ProxyClientAddressPolicy.ToForwardedHeadersPeer(_connection.RemoteEndPoint));
             context.SetClientEndpoint(forwardedHeaders.ResolvedClientEndpoint);
