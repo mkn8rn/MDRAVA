@@ -62,7 +62,7 @@ public sealed record ProxyConfigurationReloadResponse(
             LoadedAtUtc: result.LoadedAtUtc,
             LastSuccessfulLoadAtUtc: result.LastSuccessfulLoadAtUtc,
             Discovery: ProxyConfigurationDiscoveryResponse.FromDiscovery(result.Discovery),
-            Errors: result.Errors.ToArray(),
+            Errors: ApiResponseList.Copy(result.Errors),
             FileErrors: ProxyConfigurationFileErrorResponse.FromErrors(result.FileErrors),
             ActiveConfiguration: activeConfiguration is null
                 ? null

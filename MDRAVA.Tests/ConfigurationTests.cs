@@ -234,6 +234,15 @@ internal static class ConfigurationTests
             errors,
             fileErrors,
             activeConfiguration: null);
+        var apiReloadFailed = ProxyConfigurationReloadResult<ProxyConfigurationProjection>.LoadFailed(
+            sourceDirectory: "data",
+            attemptedAtUtc: DateTimeOffset.UnixEpoch,
+            activeVersion: 1,
+            loadedAtUtc: DateTimeOffset.UnixEpoch,
+            discovery,
+            errors,
+            fileErrors,
+            activeConfiguration: null);
 
         sourceFiles.Clear();
         errors.Clear();
@@ -263,6 +272,16 @@ internal static class ConfigurationTests
         AssertEx.Equal("sites/home.json", reloadFailed.FileErrors[0].Path);
         AssertEx.False(reloadFailed.Errors is string[], "Reload errors should not expose a mutable array.");
         AssertEx.False(reloadFailed.FileErrors is ProxyConfigurationFileError[], "Reload file errors should not expose a mutable array.");
+        var normalizeResponse = ProxyConfigurationNormalizeResponse.FromResult(normalize);
+        AssertEx.False(normalizeResponse.Errors is string[], "Normalize API errors should not expose a mutable array.");
+        AssertEx.False(normalizeResponse.FileErrors is ProxyConfigurationFileErrorResponse[], "Normalize API file errors should not expose a mutable array.");
+        var validationResponse = ProxyConfigurationValidationResponse.FromResult(invalid);
+        AssertEx.False(validationResponse.SourceFiles is string[], "Validation API source files should not expose a mutable array.");
+        AssertEx.False(validationResponse.Errors is string[], "Validation API errors should not expose a mutable array.");
+        AssertEx.False(validationResponse.FileErrors is ProxyConfigurationFileErrorResponse[], "Validation API file errors should not expose a mutable array.");
+        var reloadResponse = ProxyConfigurationReloadResponse.FromResult(apiReloadFailed);
+        AssertEx.False(reloadResponse.Errors is string[], "Reload API errors should not expose a mutable array.");
+        AssertEx.False(reloadResponse.FileErrors is ProxyConfigurationFileErrorResponse[], "Reload API file errors should not expose a mutable array.");
     }
 
     public static void RuntimeConfigurationPolicyRecordsCopyInputCollections()

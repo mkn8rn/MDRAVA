@@ -20,13 +20,13 @@ public sealed record ProxyConfigurationNormalizeResponse(
                 Succeeded: true,
                 Format: normalized.Format,
                 CanonicalJson: normalized.CanonicalJson,
-                Errors: normalized.Errors.ToArray(),
+                Errors: ApiResponseList.Copy(normalized.Errors),
                 FileErrors: ProxyConfigurationFileErrorResponse.FromErrors(normalized.FileErrors)),
             BusinessProxyConfigurationNormalizeResult.FailedResult failed => new ProxyConfigurationNormalizeResponse(
                 Succeeded: false,
                 Format: failed.Format,
                 CanonicalJson: null,
-                Errors: failed.Errors.ToArray(),
+                Errors: ApiResponseList.Copy(failed.Errors),
                 FileErrors: ProxyConfigurationFileErrorResponse.FromErrors(failed.FileErrors)),
             _ => throw new InvalidOperationException($"Unknown normalize result '{result.GetType().Name}'.")
         };

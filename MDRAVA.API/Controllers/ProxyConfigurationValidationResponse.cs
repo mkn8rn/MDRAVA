@@ -40,9 +40,9 @@ public sealed record ProxyConfigurationValidationResponse(
             ActiveVersion: result.ActiveVersion,
             LastSuccessfulLoadAtUtc: result.LastSuccessfulLoadAtUtc,
             WouldBeVersion: result.WouldBeVersion,
-            SourceFiles: result.SourceFiles.ToArray(),
+            SourceFiles: ApiResponseList.Copy(result.SourceFiles),
             Discovery: ProxyConfigurationDiscoveryResponse.FromDiscovery(result.Discovery),
-            Errors: result.Errors.ToArray(),
+            Errors: ApiResponseList.Copy(result.Errors),
             FileErrors: ProxyConfigurationFileErrorResponse.FromErrors(result.FileErrors));
     }
 }
