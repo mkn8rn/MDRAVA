@@ -8,10 +8,10 @@ public sealed record AcmeRenewalConfigurationInput
         bool Enabled,
         string StoragePath,
         string DirectoryUrl,
-        IReadOnlyList<string> ContactEmails,
+        IEnumerable<string> ContactEmails,
         bool TermsAccepted,
         int RetryAfterMinutes,
-        IReadOnlyList<AcmeRenewalCertificateInput> Certificates)
+        IEnumerable<AcmeRenewalCertificateInput> Certificates)
     {
         ArgumentNullException.ThrowIfNull(ContactEmails);
         ArgumentNullException.ThrowIfNull(Certificates);
@@ -45,7 +45,7 @@ public sealed record AcmeRenewalCertificateInput
     public AcmeRenewalCertificateInput(
         string Id,
         bool Enabled,
-        IReadOnlyList<string> Domains,
+        IEnumerable<string> Domains,
         int RenewBeforeDays,
         AcmeRenewalActiveCertificate? ActiveCertificate)
     {
@@ -79,10 +79,10 @@ public sealed record AcmeRenewalConfigurationSourceSet
         bool Enabled,
         string StoragePath,
         string DirectoryUrl,
-        IReadOnlyList<string> ContactEmails,
+        IEnumerable<string> ContactEmails,
         bool TermsAccepted,
         int RetryAfterMinutes,
-        IReadOnlyList<AcmeRenewalCertificateSource> Certificates)
+        IEnumerable<AcmeRenewalCertificateSource> Certificates)
     {
         ArgumentNullException.ThrowIfNull(ContactEmails);
         ArgumentNullException.ThrowIfNull(Certificates);
@@ -116,7 +116,7 @@ public sealed record AcmeRenewalCertificateSource
     public AcmeRenewalCertificateSource(
         string Id,
         bool Enabled,
-        IReadOnlyList<string> Domains,
+        IEnumerable<string> Domains,
         int RenewBeforeDays,
         AcmeRenewalActiveCertificate? ActiveCertificate)
     {
@@ -199,7 +199,6 @@ public static class AcmeRenewalConfigurationInputMapper
                     certificate.Enabled,
                     certificate.Domains,
                     certificate.RenewBeforeDays,
-                    certificate.ActiveCertificate))
-                .ToArray());
+                    certificate.ActiveCertificate)));
     }
 }

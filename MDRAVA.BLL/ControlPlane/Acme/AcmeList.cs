@@ -4,7 +4,7 @@ namespace MDRAVA.BLL.ControlPlane.Acme;
 
 internal static class AcmeList
 {
-    public static ReadOnlyCollection<T> Copy<T>(IReadOnlyList<T> values)
+    public static ReadOnlyCollection<T> Copy<T>(IEnumerable<T> values)
     {
         ArgumentNullException.ThrowIfNull(values);
 

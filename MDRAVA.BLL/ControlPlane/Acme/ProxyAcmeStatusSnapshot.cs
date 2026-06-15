@@ -6,7 +6,7 @@ public sealed record ProxyAcmeStatusSnapshot
         bool Enabled,
         string DirectoryUrl,
         bool UseStaging,
-        IReadOnlyList<ProxyAcmeConfiguredCertificateStatus> Certificates,
+        IEnumerable<ProxyAcmeConfiguredCertificateStatus> Certificates,
         IReadOnlyDictionary<string, ProxyAcmeRuntimeCertificateStatus> RuntimeCertificates)
     {
         ArgumentNullException.ThrowIfNull(Certificates);
@@ -37,7 +37,7 @@ public sealed record ProxyAcmeConfiguredCertificateStatus
     public ProxyAcmeConfiguredCertificateStatus(
         string Id,
         bool Enabled,
-        IReadOnlyList<string> Domains,
+        IEnumerable<string> Domains,
         int RenewBeforeDays)
     {
         ArgumentNullException.ThrowIfNull(Domains);

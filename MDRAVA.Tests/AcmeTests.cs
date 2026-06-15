@@ -696,6 +696,8 @@ internal static class AcmeTests
         AssertEx.Equal(20, source.Certificates[0].RenewBeforeDays);
         AssertEx.Equal("manual-cert", source.Certificates[1].Id);
         AssertEx.Equal(null, source.Certificates[1].ActiveCertificate);
+        AssertEx.False(source.Certificates is AcmeRenewalCertificateSource[], "ACME renewal source mapper certificates should not expose a mutable array.");
+        AssertEx.False(source.Certificates[0].Domains is string[], "ACME renewal source mapper domains should not expose a mutable array.");
     }
 
     public static void AcmeRenewalConfigurationInputMapperConsumesSourceSetWithoutRuntimeConfiguration()

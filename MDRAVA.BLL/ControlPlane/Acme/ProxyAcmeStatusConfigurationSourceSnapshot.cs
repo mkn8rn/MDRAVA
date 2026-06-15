@@ -8,8 +8,8 @@ public sealed record ProxyAcmeStatusConfigurationSourceSnapshot
         bool Enabled,
         string DirectoryUrl,
         bool UseStaging,
-        IReadOnlyList<ProxyAcmeConfiguredCertificateStatus> Certificates,
-        IReadOnlyList<ProxyAcmeRuntimeCertificateSource> RuntimeCertificates)
+        IEnumerable<ProxyAcmeConfiguredCertificateStatus> Certificates,
+        IEnumerable<ProxyAcmeRuntimeCertificateSource> RuntimeCertificates)
     {
         ArgumentNullException.ThrowIfNull(Certificates);
         ArgumentNullException.ThrowIfNull(RuntimeCertificates);
@@ -55,15 +55,13 @@ public static class ProxyAcmeStatusConfigurationSourceMapper
                     certificate.Id,
                     certificate.Enabled,
                     certificate.Domains,
-                    certificate.RenewBeforeDays))
-                .ToArray(),
+                    certificate.RenewBeforeDays)),
             snapshot.Certificates
                 .Select(static certificate => new ProxyAcmeRuntimeCertificateSource(
                     certificate.Key,
                     certificate.Value.Id,
                     certificate.Value.Source,
                     new DateTimeOffset(certificate.Value.Certificate.NotBefore.ToUniversalTime()),
-                    new DateTimeOffset(certificate.Value.Certificate.NotAfter.ToUniversalTime())))
-                .ToArray());
+                    new DateTimeOffset(certificate.Value.Certificate.NotAfter.ToUniversalTime()))));
     }
 }

@@ -21,8 +21,7 @@ public static class AcmeRenewalConfigurationSourceMapper
                     certificate.Enabled,
                     certificate.Domains,
                     certificate.RenewBeforeDays,
-                    ReadActiveAcmeCertificate(runtimeCertificates, certificate.Id)))
-                .ToArray());
+                    ReadActiveAcmeCertificate(runtimeCertificates, certificate.Id))));
     }
 
     private static AcmeRenewalActiveCertificate? ReadActiveAcmeCertificate(

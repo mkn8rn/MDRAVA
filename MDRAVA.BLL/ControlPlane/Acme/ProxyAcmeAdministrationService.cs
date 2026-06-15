@@ -32,8 +32,7 @@ public sealed class ProxyAcmeAdministrationService
                 return AcmeCertificateLifecycleStatus.FromConfiguredCertificate(
                     certificate,
                     ToActiveCertificate(runtimeCertificate));
-            })
-            .ToArray();
+            });
 
         return AcmeStatus.FromSnapshot(snapshot, statuses);
     }

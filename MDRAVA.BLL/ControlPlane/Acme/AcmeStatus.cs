@@ -6,7 +6,7 @@ public sealed record AcmeStatus
         bool Enabled,
         string DirectoryUrl,
         bool UseStaging,
-        IReadOnlyList<AcmeCertificateLifecycleStatus> Certificates)
+        IEnumerable<AcmeCertificateLifecycleStatus> Certificates)
     {
         ArgumentNullException.ThrowIfNull(Certificates);
 
@@ -26,7 +26,7 @@ public sealed record AcmeStatus
 
     public static AcmeStatus FromSnapshot(
         ProxyAcmeStatusSnapshot snapshot,
-        IReadOnlyList<AcmeCertificateLifecycleStatus> certificates)
+        IEnumerable<AcmeCertificateLifecycleStatus> certificates)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         ArgumentNullException.ThrowIfNull(certificates);
