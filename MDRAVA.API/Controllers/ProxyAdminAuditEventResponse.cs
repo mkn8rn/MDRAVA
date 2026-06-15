@@ -16,7 +16,7 @@ public sealed record ProxyAdminAuditEventResponse(
     {
         ArgumentNullException.ThrowIfNull(events);
 
-        return events.Select(FromEvent).ToArray();
+        return ApiResponseList.Copy(events.Select(FromEvent));
     }
 
     private static ProxyAdminAuditEventResponse FromEvent(BusinessProxyAdminAuditEvent auditEvent)

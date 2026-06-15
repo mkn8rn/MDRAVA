@@ -284,6 +284,8 @@ internal static class AdminSecurityTests
         AssertEx.Equal("/admin/proxy/config/effective", recent[1].Path);
         AssertEx.False(recent.Any(static item => item.Path == "/admin/proxy/status"));
         AssertEx.False(recent is List<ProxyAdminAuditEvent>, "Admin audit recent entries should not expose a mutable list.");
+        var response = ProxyAdminAuditEventResponse.FromEvents(recent);
+        AssertEx.False(response is ProxyAdminAuditEventResponse[], "Admin audit API events should not expose a mutable array.");
     }
 
     public static async Task AdminAuditPathOmitsQuerySecrets()
