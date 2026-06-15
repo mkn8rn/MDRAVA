@@ -1,7 +1,7 @@
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
+using MDRAVA.BLL.ControlPlane.HealthChecks;
 using MDRAVA.BLL.ControlPlane.Status;
-using MDRAVA.INF.Proxy.Health;
 
 namespace MDRAVA.INF.Runtime;
 

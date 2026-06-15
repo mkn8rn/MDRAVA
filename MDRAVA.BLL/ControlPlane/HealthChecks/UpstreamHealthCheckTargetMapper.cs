@@ -1,8 +1,7 @@
 using MDRAVA.BLL.Configuration;
-using MDRAVA.BLL.ControlPlane.HealthChecks;
 using MDRAVA.BLL.ControlPlane.Upstreams;
 
-namespace MDRAVA.INF.Proxy.Health;
+namespace MDRAVA.BLL.ControlPlane.HealthChecks;
 
 public static class UpstreamHealthCheckTargetMapper
 {
