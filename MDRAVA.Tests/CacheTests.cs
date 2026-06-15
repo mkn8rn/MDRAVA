@@ -697,6 +697,8 @@ internal static class CacheTests
         AssertEx.Equal(false, status.Routes[1].Enabled);
         AssertEx.Equal(1, status.Routes[1].CurrentEntryCount);
         AssertEx.Equal(7L, status.Routes[1].CurrentBytes);
+        AssertEx.False(status.Rejections is ProxyCacheRejectionStatus[], "Cache status reader rejections should not expose a mutable array.");
+        AssertEx.False(status.Routes is ProxyCacheRouteStatus[], "Cache status reader routes should not expose a mutable array.");
     }
 
     public static void CacheStatusReaderReportsCountersWithoutActiveConfig()

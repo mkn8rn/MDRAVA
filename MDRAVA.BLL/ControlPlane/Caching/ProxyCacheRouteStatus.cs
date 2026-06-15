@@ -37,15 +37,25 @@ public sealed record ProxyCacheRouteStatus
         ArgumentNullException.ThrowIfNull(route);
         ArgumentNullException.ThrowIfNull(entries);
 
-        var routeEntries = entries
-            .Where(entry => string.Equals(entry.RouteName, route.RouteName, StringComparison.OrdinalIgnoreCase))
-            .ToArray();
+        var currentEntryCount = 0;
+        var currentBytes = 0L;
+        foreach (var entry in entries)
+        {
+            if (!string.Equals(entry.RouteName, route.RouteName, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            currentEntryCount++;
+            currentBytes += entry.SizeBytes;
+        }
+
         return new ProxyCacheRouteStatus(
             route.RouteName,
             route.Enabled,
             route.MaxEntryBytes,
             route.MaxTotalBytes,
-            routeEntries.Length,
-            routeEntries.Sum(static entry => entry.SizeBytes));
+            currentEntryCount,
+            currentBytes);
     }
 }

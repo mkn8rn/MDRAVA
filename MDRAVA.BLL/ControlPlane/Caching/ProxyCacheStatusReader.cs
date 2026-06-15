@@ -24,14 +24,15 @@ public sealed class ProxyCacheStatusReader : IProxyCacheStatusReader
         IReadOnlyList<ProxyCacheStatusRouteSource> routes,
         ProxyCacheRuntimeStatusSnapshot runtime)
     {
+        ArgumentNullException.ThrowIfNull(routes);
+        ArgumentNullException.ThrowIfNull(runtime);
+
         var routeStatuses = routes
-            .Select(route => ProxyCacheRouteStatus.FromRuntimeEntries(route, runtime.Entries))
-            .ToArray();
+            .Select(route => ProxyCacheRouteStatus.FromRuntimeEntries(route, runtime.Entries));
 
         var rejections = runtime.Rejections
             .OrderBy(static rejection => rejection.Reason, StringComparer.OrdinalIgnoreCase)
-            .Select(ProxyCacheRejectionStatus.FromRuntimeRejection)
-            .ToArray();
+            .Select(ProxyCacheRejectionStatus.FromRuntimeRejection);
 
         return ProxyCacheStatus.FromRuntimeSnapshot(
             runtime,

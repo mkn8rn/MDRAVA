@@ -12,8 +12,8 @@ public sealed record ProxyCacheStatus
         long storeRejectionCount,
         DateTimeOffset? lastClearedAtUtc,
         string? lastClearReason,
-        IReadOnlyList<ProxyCacheRejectionStatus> rejections,
-        IReadOnlyList<ProxyCacheRouteStatus> routes)
+        IEnumerable<ProxyCacheRejectionStatus> rejections,
+        IEnumerable<ProxyCacheRouteStatus> routes)
     {
         ArgumentNullException.ThrowIfNull(rejections);
         ArgumentNullException.ThrowIfNull(routes);
@@ -55,8 +55,8 @@ public sealed record ProxyCacheStatus
 
     public static ProxyCacheStatus FromRuntimeSnapshot(
         ProxyCacheRuntimeStatusSnapshot runtime,
-        IReadOnlyList<ProxyCacheRejectionStatus> rejections,
-        IReadOnlyList<ProxyCacheRouteStatus> routes)
+        IEnumerable<ProxyCacheRejectionStatus> rejections,
+        IEnumerable<ProxyCacheRouteStatus> routes)
     {
         ArgumentNullException.ThrowIfNull(runtime);
         ArgumentNullException.ThrowIfNull(rejections);
