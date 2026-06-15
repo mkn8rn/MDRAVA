@@ -41,7 +41,7 @@ public sealed record RuntimeListenerResponse(
     {
         ArgumentNullException.ThrowIfNull(listeners);
 
-        return listeners.Select(FromListener).ToArray();
+        return ApiResponseList.Copy(listeners.Select(FromListener));
     }
 
     private static RuntimeListenerResponse FromListener(BusinessRuntimeListenerProjection listener)

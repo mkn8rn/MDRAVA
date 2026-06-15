@@ -697,6 +697,9 @@ internal static class ConfigurationTests
         AssertEx.False(projection.Routes is RuntimeRouteProjection[]);
         var response = ProxyConfigurationResponse.FromProjection(projection);
         AssertEx.False(response.SourceFiles is string[], "Configuration API source files should not expose a mutable array.");
+        var listenerResponses = RuntimeListenerResponse.FromListeners(projection.Listeners);
+        AssertEx.False(listenerResponses is RuntimeListenerResponse[], "Configuration API listeners should not expose a mutable array.");
+        AssertEx.False(listenerResponses[0].SniCertificates is RuntimeSniCertificateBindingResponse[], "Configuration API listener SNI certificates should not expose a mutable array.");
     }
 
     public static void ConfigurationValidationResultNamesValidationOutcomes()

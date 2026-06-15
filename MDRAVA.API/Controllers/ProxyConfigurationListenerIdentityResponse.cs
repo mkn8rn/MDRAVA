@@ -41,7 +41,7 @@ public sealed record RuntimeSniCertificateBindingResponse(
     {
         ArgumentNullException.ThrowIfNull(bindings);
 
-        return bindings.Select(FromBinding).ToArray();
+        return ApiResponseList.Copy(bindings.Select(FromBinding));
     }
 
     private static RuntimeSniCertificateBindingResponse FromBinding(
