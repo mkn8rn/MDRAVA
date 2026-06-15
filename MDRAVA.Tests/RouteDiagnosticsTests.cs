@@ -790,6 +790,13 @@ internal static class RouteDiagnosticsTests
 
         AssertEx.Equal(1, lintSnapshot.SourceFiles.Count);
         AssertEx.Equal("site.json", lintSnapshot.SourceFiles[0]);
+        AssertEx.Equal("site.json", source.SourceFiles[0]);
+        AssertEx.Equal(AdminBindPolicy.DefaultAdminUrl, source.AdminUrls[0]);
+        AssertEx.Equal(1, source.Listeners.Count);
+        AssertEx.Equal(1, source.Routes.Count);
+        AssertEx.Equal("X-Tenant", source.Routes[0].CacheVaryByHeaders[0]);
+        AssertEx.Equal("GET", source.Routes[0].RetryMethods[0]);
+        AssertEx.Equal("local", source.Routes[0].Upstreams[0].Name);
         AssertEx.Equal(snapshot.AdminSecurity.RequireAuthentication, lintSnapshot.AdminSecurity.RequireAuthentication);
         AssertEx.Equal(AdminBindPolicy.DefaultAdminUrl, lintSnapshot.AdminSecurity.Urls[0]);
         AssertEx.Equal(snapshot.Metrics.PublicMetricsEnabled, lintSnapshot.Metrics.PublicMetricsEnabled);
@@ -802,6 +809,8 @@ internal static class RouteDiagnosticsTests
         AssertEx.False(source.SourceFiles is string[], "Config lint runtime source files should not expose a mutable array.");
         AssertEx.False(source.Listeners is ProxyConfigLintRuntimeListenerSource[], "Config lint runtime source listeners should not expose a mutable array.");
         AssertEx.False(source.Routes is ProxyConfigLintRuntimeRouteSource[], "Config lint runtime source routes should not expose a mutable array.");
+        AssertEx.False(source.Routes[0].CacheVaryByHeaders is string[], "Config lint runtime source vary headers should not expose a mutable array.");
+        AssertEx.False(source.Routes[0].Upstreams is ProxyConfigLintRuntimeUpstreamSource[], "Config lint runtime source upstreams should not expose a mutable array.");
         AssertEx.False(lintSnapshot.SourceFiles is string[], "Config lint snapshot source files should not expose a mutable array.");
         AssertEx.False(lintSnapshot.AdminSecurity.Urls is string[], "Config lint admin URLs should not expose a mutable array.");
         AssertEx.False(lintSnapshot.Routes is ProxyConfigLintRoute[], "Config lint routes should not expose a mutable array.");

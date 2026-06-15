@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.Http3;
 using MDRAVA.BLL.ControlPlane.Routing;
@@ -22,13 +21,13 @@ public sealed record ProxyConfigLintRuntimeConfigurationSource
         ArgumentNullException.ThrowIfNull(Listeners);
         ArgumentNullException.ThrowIfNull(Routes);
 
-        this.SourceFiles = Copy(SourceFiles);
-        this.AdminUrls = Copy(AdminUrls);
+        this.SourceFiles = ConfigLintList.Copy(SourceFiles);
+        this.AdminUrls = ConfigLintList.Copy(AdminUrls);
         this.AdminRequiresAuthentication = AdminRequiresAuthentication;
         this.PublicMetricsEnabled = PublicMetricsEnabled;
         this.Http3Support = Http3Support;
-        this.Listeners = Copy(Listeners);
-        this.Routes = Copy(Routes);
+        this.Listeners = ConfigLintList.Copy(Listeners);
+        this.Routes = ConfigLintList.Copy(Routes);
     }
 
     public IReadOnlyList<string> SourceFiles { get; }
@@ -45,10 +44,6 @@ public sealed record ProxyConfigLintRuntimeConfigurationSource
 
     public IReadOnlyList<ProxyConfigLintRuntimeRouteSource> Routes { get; }
 
-    private static ReadOnlyCollection<T> Copy<T>(IReadOnlyList<T> values)
-    {
-        return new ReadOnlyCollection<T>(values.ToArray());
-    }
 }
 
 public sealed record ProxyConfigLintRuntimeListenerSource(
@@ -96,11 +91,11 @@ public sealed record ProxyConfigLintRuntimeRouteSource
         this.CanonicalHostEnabled = CanonicalHostEnabled;
         this.CanonicalHostTargetHost = CanonicalHostTargetHost;
         this.CacheEnabled = CacheEnabled;
-        this.CacheVaryByHeaders = Copy(CacheVaryByHeaders);
+        this.CacheVaryByHeaders = ConfigLintList.Copy(CacheVaryByHeaders);
         this.RetryEnabled = RetryEnabled;
-        this.RetryMethods = Copy(RetryMethods);
+        this.RetryMethods = ConfigLintList.Copy(RetryMethods);
         this.HealthCheckEnabled = HealthCheckEnabled;
-        this.Upstreams = Copy(Upstreams);
+        this.Upstreams = ConfigLintList.Copy(Upstreams);
         this.StaticResponseBody = StaticResponseBody;
     }
 
@@ -134,10 +129,6 @@ public sealed record ProxyConfigLintRuntimeRouteSource
 
     public string StaticResponseBody { get; }
 
-    private static ReadOnlyCollection<T> Copy<T>(IReadOnlyList<T> values)
-    {
-        return new ReadOnlyCollection<T>(values.ToArray());
-    }
 }
 
 public sealed record ProxyConfigLintRuntimeUpstreamSource(
