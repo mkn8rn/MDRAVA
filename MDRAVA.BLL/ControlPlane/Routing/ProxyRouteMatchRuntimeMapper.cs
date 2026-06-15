@@ -1,10 +1,9 @@
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.Http1;
-using MDRAVA.BLL.ControlPlane.Routing;
 
-namespace MDRAVA.INF.Proxy;
+namespace MDRAVA.BLL.ControlPlane.Routing;
 
-internal static class ProxyRouteMatchRuntimeMapper
+public static class ProxyRouteMatchRuntimeMapper
 {
     public static IReadOnlyList<RouteMatchCandidate> ToCandidates(IReadOnlyList<RuntimeRoute> routes)
     {
