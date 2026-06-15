@@ -1,5 +1,5 @@
 using System.Net;
-using MDRAVA.INF.Proxy.RuntimeGuards;
+using MDRAVA.BLL.ControlPlane.RuntimeGuards;
 
 namespace MDRAVA.Tests;
 

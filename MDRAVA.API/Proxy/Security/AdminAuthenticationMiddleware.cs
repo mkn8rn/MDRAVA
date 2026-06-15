@@ -1,5 +1,5 @@
 using MDRAVA.BLL.ControlPlane.AdminAuthentication;
-using MDRAVA.INF.Proxy.RuntimeGuards;
+using MDRAVA.BLL.ControlPlane.RuntimeGuards;
 
 namespace MDRAVA.API.Proxy.Security;
 

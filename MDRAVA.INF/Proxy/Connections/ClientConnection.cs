@@ -24,7 +24,6 @@ using MDRAVA.INF.Proxy.Forwarding;
 using MDRAVA.INF.Proxy.Health;
 using MDRAVA.INF.Proxy.Http1;
 using MDRAVA.INF.Proxy.Http2;
-using MDRAVA.INF.Proxy.RuntimeGuards;
 using MDRAVA.INF.Proxy.Http3;
 using MDRAVA.INF.Observability;
 using MDRAVA.INF.Proxy.Tls;

@@ -1,7 +1,7 @@
 using System.Net;
 using MDRAVA.BLL.ControlPlane.Headers;
 
-namespace MDRAVA.INF.Proxy.RuntimeGuards;
+namespace MDRAVA.BLL.ControlPlane.RuntimeGuards;
 
 public static class ProxyClientAddressPolicy
 {

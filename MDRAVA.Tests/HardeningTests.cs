@@ -116,8 +116,8 @@ internal static class HardeningTests
         var metrics = new ProxyMetrics();
         var limiter = new ClientRateLimiter(metrics, clock);
 
-        var firstKey = MDRAVA.INF.Proxy.RuntimeGuards.ProxyClientAddressPolicy.NormalizeRequiredClientIp(IPAddress.Parse("127.0.0.1"));
-        var secondKey = MDRAVA.INF.Proxy.RuntimeGuards.ProxyClientAddressPolicy.NormalizeRequiredClientIp(IPAddress.Parse("::ffff:127.0.0.1"));
+        var firstKey = ProxyClientAddressPolicy.NormalizeRequiredClientIp(IPAddress.Parse("127.0.0.1"));
+        var secondKey = ProxyClientAddressPolicy.NormalizeRequiredClientIp(IPAddress.Parse("::ffff:127.0.0.1"));
 
         AssertAccepted(limiter.AcquireRequest(firstKey, 1));
         AssertRejected(limiter.AcquireRequest(secondKey, 1));
