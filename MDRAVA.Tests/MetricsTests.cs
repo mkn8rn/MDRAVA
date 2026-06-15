@@ -316,6 +316,13 @@ internal static class MetricsTests
         AssertEx.False(snapshot.Http3.ProtocolErrors is Dictionary<string, long>);
         AssertEx.False(snapshot.ConfigLint.Findings is ProxyConfigLintFindingMetricSnapshot[]);
         AssertEx.False(snapshot.RouteDiagnostics.DryRunFailures is ProxyRouteDryRunFailureSnapshot[]);
+        var response = ProxyMetricsSnapshotResponse.FromSnapshot(snapshot);
+        AssertEx.False(response.RequestsByRoute is ProxyRequestSeriesSnapshotResponse[], "Metrics API request series should not expose a mutable array.");
+        AssertEx.False(response.RetrySkipped is ProxyRetrySkippedSnapshotResponse[], "Metrics API retry skipped series should not expose a mutable array.");
+        AssertEx.False(response.UpstreamSelectionsByUpstream is ProxyUpstreamSelectionSnapshotResponse[], "Metrics API upstream selection series should not expose a mutable array.");
+        AssertEx.False(response.Http3RequestsByOutcome is ProxyHttp3RequestOutcomeSnapshotResponse[], "Metrics API HTTP/3 outcome series should not expose a mutable array.");
+        AssertEx.False(response.ConfigLintFindings is ProxyConfigLintFindingMetricSnapshotResponse[], "Metrics API config lint findings should not expose a mutable array.");
+        AssertEx.False(response.RouteMatchDryRunFailures is ProxyRouteDryRunFailureSnapshotResponse[], "Metrics API route dry-run failures should not expose a mutable array.");
     }
 
     public static void MetricsExportInputSourceReadsActiveRuntimeFacts()

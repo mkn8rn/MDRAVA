@@ -19,7 +19,7 @@ public sealed record ProxyRequestSeriesSnapshotResponse(
     {
         ArgumentNullException.ThrowIfNull(snapshots);
 
-        return snapshots.Select(FromSnapshot).ToArray();
+        return ApiResponseList.Copy(snapshots.Select(FromSnapshot));
     }
 
     private static ProxyRequestSeriesSnapshotResponse FromSnapshot(BusinessProxyRequestSeriesSnapshot snapshot)
@@ -44,7 +44,7 @@ public sealed record ProxyRetrySkippedSnapshotResponse(
     {
         ArgumentNullException.ThrowIfNull(snapshots);
 
-        return snapshots.Select(FromSnapshot).ToArray();
+        return ApiResponseList.Copy(snapshots.Select(FromSnapshot));
     }
 
     private static ProxyRetrySkippedSnapshotResponse FromSnapshot(BusinessProxyRetrySkippedSnapshot snapshot)
@@ -67,7 +67,7 @@ public sealed record ProxyUpstreamSelectionSnapshotResponse(
     {
         ArgumentNullException.ThrowIfNull(snapshots);
 
-        return snapshots.Select(FromSnapshot).ToArray();
+        return ApiResponseList.Copy(snapshots.Select(FromSnapshot));
     }
 
     private static ProxyUpstreamSelectionSnapshotResponse FromSnapshot(
@@ -95,7 +95,7 @@ public sealed record ProxyHttp3RequestOutcomeSnapshotResponse(
     {
         ArgumentNullException.ThrowIfNull(snapshots);
 
-        return snapshots.Select(FromSnapshot).ToArray();
+        return ApiResponseList.Copy(snapshots.Select(FromSnapshot));
     }
 
     private static ProxyHttp3RequestOutcomeSnapshotResponse FromSnapshot(
@@ -121,7 +121,7 @@ public sealed record ProxyConfigLintFindingMetricSnapshotResponse(
     {
         ArgumentNullException.ThrowIfNull(snapshots);
 
-        return snapshots.Select(FromSnapshot).ToArray();
+        return ApiResponseList.Copy(snapshots.Select(FromSnapshot));
     }
 
     private static ProxyConfigLintFindingMetricSnapshotResponse FromSnapshot(
@@ -145,7 +145,7 @@ public sealed record ProxyRouteDryRunFailureSnapshotResponse(
     {
         ArgumentNullException.ThrowIfNull(snapshots);
 
-        return snapshots.Select(FromSnapshot).ToArray();
+        return ApiResponseList.Copy(snapshots.Select(FromSnapshot));
     }
 
     private static ProxyRouteDryRunFailureSnapshotResponse FromSnapshot(
