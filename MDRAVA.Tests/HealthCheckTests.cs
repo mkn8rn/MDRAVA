@@ -66,6 +66,24 @@ internal static class HealthCheckTests
         }
     }
 
+    public static void RuntimeTimeoutsFactoryBuildsHealthCheckTimeouts()
+    {
+        var timeout = TimeSpan.FromSeconds(7);
+
+        var timeouts = RuntimeTimeoutsFactory.ForHealthCheck(timeout);
+
+        AssertEx.Equal(timeout, timeouts.ClientRequestHeadTimeout);
+        AssertEx.Equal(timeout, timeouts.ClientRequestBodyIdleTimeout);
+        AssertEx.Equal(timeout, timeouts.UpstreamConnectTimeout);
+        AssertEx.Equal(timeout, timeouts.UpstreamResponseHeadTimeout);
+        AssertEx.Equal(timeout, timeouts.UpstreamResponseBodyIdleTimeout);
+        AssertEx.Equal(timeout, timeouts.DownstreamWriteTimeout);
+        AssertEx.Equal(timeout, timeouts.TlsHandshakeTimeout);
+        AssertEx.Equal(timeout, timeouts.ClientKeepAliveIdleTimeout);
+        AssertEx.Equal(timeout, timeouts.UpstreamIdleConnectionLifetime);
+        AssertEx.Equal(timeout, timeouts.TunnelIdleTimeout);
+    }
+
     public static void HealthStateTransitionsToUnhealthyAfterThreshold()
     {
         var metrics = new ProxyMetrics();

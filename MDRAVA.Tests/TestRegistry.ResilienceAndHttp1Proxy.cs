@@ -132,6 +132,7 @@ internal static partial class TestRegistry
     Test("Health check 5xx response is unhealthy", HealthCheckTests.HealthCheck5xxIsUnhealthy, TestTaxonomy.HealthChecks, TestTaxonomy.SecurityNegativePaths),
     Test("Health check sample names statuses and explicit results", Sync(HealthCheckTests.HealthCheckSampleNamesStatusesAndExplicitResults), TestTaxonomy.HealthChecks),
     Test("Health check timeout is unhealthy", HealthCheckTests.HealthCheckTimeoutIsUnhealthy, TestTaxonomy.HealthChecks, TestTaxonomy.Limits, TestTaxonomy.SecurityNegativePaths),
+    Test("Runtime timeouts factory builds health check timeouts", Sync(HealthCheckTests.RuntimeTimeoutsFactoryBuildsHealthCheckTimeouts), TestTaxonomy.HealthChecks, TestTaxonomy.Limits, TestTaxonomy.Config),
     Test("Health state transitions to unhealthy after threshold", Sync(HealthCheckTests.HealthStateTransitionsToUnhealthyAfterThreshold), TestTaxonomy.HealthChecks, TestTaxonomy.SecurityNegativePaths),
     Test("Health state transitions to healthy after recovery threshold", Sync(HealthCheckTests.HealthStateTransitionsToHealthyAfterRecoveryThreshold), TestTaxonomy.HealthChecks),
     Test("Health check coordinator records due checks and metrics", HealthCheckTests.HealthCheckCoordinatorRunsDueChecksAndRecordsMetrics, TestTaxonomy.HealthChecks, TestTaxonomy.Metrics),

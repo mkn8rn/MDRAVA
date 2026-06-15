@@ -11,3 +11,21 @@ public sealed record RuntimeTimeouts(
     TimeSpan ClientKeepAliveIdleTimeout,
     TimeSpan UpstreamIdleConnectionLifetime,
     TimeSpan TunnelIdleTimeout);
+
+public static class RuntimeTimeoutsFactory
+{
+    public static RuntimeTimeouts ForHealthCheck(TimeSpan timeout)
+    {
+        return new RuntimeTimeouts(
+            timeout,
+            timeout,
+            timeout,
+            timeout,
+            timeout,
+            timeout,
+            timeout,
+            timeout,
+            timeout,
+            timeout);
+    }
+}

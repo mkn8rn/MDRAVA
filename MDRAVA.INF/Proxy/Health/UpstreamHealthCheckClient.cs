@@ -99,7 +99,7 @@ public sealed class UpstreamHealthCheckClient : IUpstreamHealthCheckClient
         var endpoint = target.TransportEndpoint;
         try
         {
-            var timeouts = HealthCheckTimeouts(target.Timeout);
+            var timeouts = RuntimeTimeoutsFactory.ForHealthCheck(target.Timeout);
             await using var http3 = await Http3UpstreamConnection.ConnectAsync(
                 endpoint,
                 timeouts,
@@ -139,7 +139,7 @@ public sealed class UpstreamHealthCheckClient : IUpstreamHealthCheckClient
         CancellationToken cancellationToken)
     {
         var endpoint = target.TransportEndpoint;
-        var timeouts = HealthCheckTimeouts(target.Timeout);
+        var timeouts = RuntimeTimeoutsFactory.ForHealthCheck(target.Timeout);
         var http2 = new Http2UpstreamConnection(stream, _metrics, maxFrameSize: 16 * 1024);
         await http2.InitializeAsync(timeouts, cancellationToken);
         await http2.SendHeadersAsync(
@@ -154,21 +154,6 @@ public sealed class UpstreamHealthCheckClient : IUpstreamHealthCheckClient
             cancellationToken);
         var response = await http2.ReadResponseHeadAsync(MaxHealthResponseHeadBytes, timeouts, cancellationToken);
         return HealthCheckSample.FromHttp2Status(response.StatusCode);
-    }
-
-    private static RuntimeTimeouts HealthCheckTimeouts(TimeSpan timeout)
-    {
-        return new RuntimeTimeouts(
-            timeout,
-            timeout,
-            timeout,
-            timeout,
-            timeout,
-            timeout,
-            timeout,
-            timeout,
-            timeout,
-            timeout);
     }
 
     private static async ValueTask<ReadOnlyMemory<byte>> ReadResponseHeadAsync(
