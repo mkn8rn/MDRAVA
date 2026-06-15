@@ -386,6 +386,8 @@ internal static class AcmeTests
         AssertEx.False(text.Contains("PRIVATE KEY", StringComparison.OrdinalIgnoreCase));
         AssertEx.False(text.Contains("current.pfx", StringComparison.OrdinalIgnoreCase));
         AssertEx.False(text.Contains(temp.Path, StringComparison.OrdinalIgnoreCase));
+        AssertEx.False(status.Certificates is AcmeCertificateLifecycleStatusResponse[], "ACME API status certificates should not expose a mutable array.");
+        AssertEx.False(status.Certificates[0].Domains is string[], "ACME API status domains should not expose a mutable array.");
     }
 
     public static void AcmeStatusSnapshotReaderProjectsSourceState()

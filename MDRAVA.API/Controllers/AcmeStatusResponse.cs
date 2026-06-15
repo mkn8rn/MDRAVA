@@ -42,7 +42,7 @@ public sealed record AcmeCertificateLifecycleStatusResponse(
     {
         ArgumentNullException.ThrowIfNull(statuses);
 
-        return statuses.Select(FromStatus).ToArray();
+        return ApiResponseList.Copy(statuses.Select(FromStatus));
     }
 
     private static AcmeCertificateLifecycleStatusResponse FromStatus(
@@ -53,7 +53,7 @@ public sealed record AcmeCertificateLifecycleStatusResponse(
         return new AcmeCertificateLifecycleStatusResponse(
             status.CertificateId,
             status.Enabled,
-            status.Domains.ToArray(),
+            ApiResponseList.Copy(status.Domains),
             status.Active,
             status.Source,
             status.NotBeforeUtc,
