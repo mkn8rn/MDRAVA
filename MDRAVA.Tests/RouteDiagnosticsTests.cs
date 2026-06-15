@@ -844,6 +844,10 @@ internal static class RouteDiagnosticsTests
     {
         var cacheMethods = new List<string> { "GET" };
         var retryMethods = new List<string> { "POST" };
+        var upstreams = new List<RuntimeUpstream>
+        {
+            new("api", "primary", "http", RuntimeUpstreamProtocol.Http1, "127.0.0.1", 18080, 1, RuntimeUpstreamTlsOptions.Default)
+        };
         var route = new RuntimeRoute(
             "api",
             "diag.test",
@@ -851,7 +855,7 @@ internal static class RouteDiagnosticsTests
             RuntimeRouteAction.Proxy,
             "round-robin",
             new RuntimeHealthCheckOptions(false, "/health", TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), 1, 1),
-            [],
+            upstreams,
             new RuntimeHttpsRedirectPolicy(false, 308, null),
             new RuntimeCanonicalHostPolicy(false, "", 308),
             RuntimeHeaderPolicy.Empty,
@@ -871,12 +875,19 @@ internal static class RouteDiagnosticsTests
 
         cacheMethods.Clear();
         retryMethods.Clear();
+        upstreams.Clear();
 
         AssertEx.True(readResult is ProxyRouteDiagnosticsConfigurationReadResult.AvailableResult);
         var snapshot = ((ProxyRouteDiagnosticsConfigurationReadResult.AvailableResult)readResult).Snapshot;
         var diagnosticRoute = snapshot.Routes[0];
+        AssertEx.False(snapshot.Listeners is IProxyRouteDiagnosticsListener[], "Route diagnostics listeners should not expose a mutable array.");
+        AssertEx.False(snapshot.Routes is IProxyRouteDiagnosticsRoute[], "Route diagnostics routes should not expose a mutable array.");
+        AssertEx.Equal("primary", diagnosticRoute.Upstreams[0].Name);
+        AssertEx.False(diagnosticRoute.Upstreams is IProxyRouteDiagnosticsUpstream[], "Route diagnostics upstreams should not expose a mutable array.");
         AssertEx.Equal("GET", diagnosticRoute.CacheMethods[0]);
+        AssertEx.False(diagnosticRoute.CacheMethods is string[], "Route diagnostics cache methods should not expose a mutable array.");
         AssertEx.Equal("POST", diagnosticRoute.RetryMethods[0]);
+        AssertEx.False(diagnosticRoute.RetryMethods is string[], "Route diagnostics retry methods should not expose a mutable array.");
     }
 
     public static void RouteDiagnosticsRuntimeConfigurationMapperReadsActiveSnapshot()

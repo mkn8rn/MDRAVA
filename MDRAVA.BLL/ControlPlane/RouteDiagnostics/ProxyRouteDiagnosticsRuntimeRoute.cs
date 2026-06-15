@@ -41,13 +41,12 @@ public sealed class ProxyRouteDiagnosticsRuntimeRoute
             runtimeRoute.PathRewrite.ReplacePrefix,
             runtimeRoute.PathRewrite.Replacement);
         MaxRequestBodyBytes = runtimeRoute.ResolvedOptions.MaxRequestBodyBytes;
-        Upstreams = runtimeRoute.Upstreams
-            .Select(static upstream => new ProxyRouteDiagnosticsRuntimeUpstream(upstream))
-            .ToArray();
+        Upstreams = RouteDiagnosticsList.Copy(runtimeRoute.Upstreams
+            .Select(static upstream => new ProxyRouteDiagnosticsRuntimeUpstream(upstream)));
         CacheEnabled = runtimeRoute.Cache.Enabled;
-        CacheMethods = runtimeRoute.Cache.Methods.ToArray();
+        CacheMethods = RouteDiagnosticsList.Copy(runtimeRoute.Cache.Methods);
         RetryEnabled = runtimeRoute.Retry.Enabled;
-        RetryMethods = runtimeRoute.Retry.RetryMethods.ToArray();
+        RetryMethods = RouteDiagnosticsList.Copy(runtimeRoute.Retry.RetryMethods);
     }
 
     public string SiteName { get; }

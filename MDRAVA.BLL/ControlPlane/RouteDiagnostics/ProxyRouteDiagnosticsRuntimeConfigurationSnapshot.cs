@@ -12,12 +12,10 @@ public sealed class ProxyRouteDiagnosticsRuntimeConfigurationSnapshot
         ArgumentNullException.ThrowIfNull(runtimeListeners);
         ArgumentNullException.ThrowIfNull(runtimeRoutes);
 
-        Listeners = runtimeListeners
-            .Select(static listener => new ProxyRouteDiagnosticsRuntimeListener(listener))
-            .ToArray();
-        Routes = runtimeRoutes
-            .Select(static route => new ProxyRouteDiagnosticsRuntimeRoute(route))
-            .ToArray();
+        Listeners = RouteDiagnosticsList.Copy(runtimeListeners
+            .Select(static listener => new ProxyRouteDiagnosticsRuntimeListener(listener)));
+        Routes = RouteDiagnosticsList.Copy(runtimeRoutes
+            .Select(static route => new ProxyRouteDiagnosticsRuntimeRoute(route)));
     }
 
     public IReadOnlyList<IProxyRouteDiagnosticsListener> Listeners { get; }
