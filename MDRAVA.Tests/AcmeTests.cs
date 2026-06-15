@@ -505,6 +505,44 @@ internal static class AcmeTests
         AssertEx.Equal(notAfter, certificate.NotAfterUtc);
     }
 
+    public static void AcmeStatusConfigurationSourceMapperReadsRuntimeConfiguration()
+    {
+        using var temp = TemporaryDirectory.Create();
+        using var certificate = X509CertificateLoader.LoadPkcs12(
+            TestCertificates.CreateSelfSignedPfxBytes("home.example.test"),
+            ReadOnlySpan<char>.Empty,
+            X509KeyStorageFlags.UserKeySet);
+        var store = CreateStore(temp.Path);
+        var snapshot = store.Snapshot.WithCertificates(
+            new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["home-acme"] = RuntimeCertificate("home-acme", certificate, "acme")
+            });
+
+        var source = ProxyAcmeStatusConfigurationSourceMapper.FromConfiguration(snapshot);
+
+        AssertEx.True(source.Enabled);
+        AssertEx.Equal(snapshot.Acme.DirectoryUrl, source.DirectoryUrl);
+        AssertEx.Equal(snapshot.Acme.UseStaging, source.UseStaging);
+        AssertEx.Equal(1, source.Certificates.Count);
+        AssertEx.Equal("home-acme", source.Certificates[0].Id);
+        AssertEx.Equal("home.example.test", source.Certificates[0].Domains[0]);
+        AssertEx.Equal(30, source.Certificates[0].RenewBeforeDays);
+        AssertEx.Equal(1, source.RuntimeCertificates.Count);
+        AssertEx.Equal("home-acme", source.RuntimeCertificates[0].Key);
+        AssertEx.Equal("home-acme", source.RuntimeCertificates[0].Id);
+        AssertEx.Equal("acme", source.RuntimeCertificates[0].Source);
+        AssertEx.Equal(
+            new DateTimeOffset(certificate.NotBefore.ToUniversalTime()),
+            source.RuntimeCertificates[0].NotBeforeUtc);
+        AssertEx.Equal(
+            new DateTimeOffset(certificate.NotAfter.ToUniversalTime()),
+            source.RuntimeCertificates[0].NotAfterUtc);
+        AssertEx.False(source.Certificates is ProxyAcmeConfiguredCertificateStatus[], "ACME status source certificates should not expose a mutable array.");
+        AssertEx.False(source.RuntimeCertificates is ProxyAcmeRuntimeCertificateSource[], "ACME runtime certificate sources should not expose a mutable array.");
+        AssertEx.False(source.Certificates[0].Domains is string[], "ACME status source domains should not expose a mutable array.");
+    }
+
     public static async Task AcmeRenewalAvoidsTightRetryLoopAfterFailure()
     {
         using var temp = TemporaryDirectory.Create();

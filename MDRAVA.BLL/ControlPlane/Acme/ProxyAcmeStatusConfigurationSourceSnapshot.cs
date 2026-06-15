@@ -1,3 +1,5 @@
+using MDRAVA.BLL.Configuration;
+
 namespace MDRAVA.BLL.ControlPlane.Acme;
 
 public sealed record ProxyAcmeStatusConfigurationSourceSnapshot
@@ -36,3 +38,32 @@ public sealed record ProxyAcmeRuntimeCertificateSource(
     string Source,
     DateTimeOffset NotBeforeUtc,
     DateTimeOffset NotAfterUtc);
+
+public static class ProxyAcmeStatusConfigurationSourceMapper
+{
+    public static ProxyAcmeStatusConfigurationSourceSnapshot FromConfiguration(
+        ProxyConfigurationSnapshot snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+
+        return new ProxyAcmeStatusConfigurationSourceSnapshot(
+            snapshot.Acme.Enabled,
+            snapshot.Acme.DirectoryUrl,
+            snapshot.Acme.UseStaging,
+            snapshot.Acme.Certificates
+                .Select(static certificate => new ProxyAcmeConfiguredCertificateStatus(
+                    certificate.Id,
+                    certificate.Enabled,
+                    certificate.Domains,
+                    certificate.RenewBeforeDays))
+                .ToArray(),
+            snapshot.Certificates
+                .Select(static certificate => new ProxyAcmeRuntimeCertificateSource(
+                    certificate.Key,
+                    certificate.Value.Id,
+                    certificate.Value.Source,
+                    new DateTimeOffset(certificate.Value.Certificate.NotBefore.ToUniversalTime()),
+                    new DateTimeOffset(certificate.Value.Certificate.NotAfter.ToUniversalTime())))
+                .ToArray());
+    }
+}

@@ -20,25 +20,7 @@ public sealed class ProxyAcmeStatusConfigurationSource : IProxyAcmeStatusConfigu
             return ProxyAcmeStatusConfigurationSourceReadResult.MissingConfiguration;
         }
 
-        var runtimeSnapshot = available.Snapshot;
-        return ProxyAcmeStatusConfigurationSourceReadResult.Available(new ProxyAcmeStatusConfigurationSourceSnapshot(
-            runtimeSnapshot.Acme.Enabled,
-            runtimeSnapshot.Acme.DirectoryUrl,
-            runtimeSnapshot.Acme.UseStaging,
-            runtimeSnapshot.Acme.Certificates
-                .Select(static certificate => new ProxyAcmeConfiguredCertificateStatus(
-                    certificate.Id,
-                    certificate.Enabled,
-                    certificate.Domains,
-                    certificate.RenewBeforeDays))
-                .ToArray(),
-            runtimeSnapshot.Certificates
-                .Select(static certificate => new ProxyAcmeRuntimeCertificateSource(
-                    certificate.Key,
-                    certificate.Value.Id,
-                    certificate.Value.Source,
-                    new DateTimeOffset(certificate.Value.Certificate.NotBefore.ToUniversalTime()),
-                    new DateTimeOffset(certificate.Value.Certificate.NotAfter.ToUniversalTime())))
-                .ToArray()));
+        return ProxyAcmeStatusConfigurationSourceReadResult.Available(
+            ProxyAcmeStatusConfigurationSourceMapper.FromConfiguration(available.Snapshot));
     }
 }
