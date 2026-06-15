@@ -9,7 +9,7 @@ public sealed record RuntimeListenerIdentity(
 {
     public string Key => Normalize(Name);
 
-    public string BindKey => $"{Normalize(Address)}|{Port}|{Transport.ToString().ToLowerInvariant()}";
+    public string BindKey => $"{Normalize(Address)}|{Port}|{RuntimeListenerTransportScheme.FromTransport(Transport)}";
 
     public static RuntimeListenerIdentity From(RuntimeListener listener)
     {

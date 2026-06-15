@@ -1076,7 +1076,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
                     "tcp",
                     _listener.Address,
                     _listener.Port,
-                    _listener.Transport.ToString().ToLowerInvariant(),
+                    RuntimeListenerTransportScheme.FromTransport(_listener.Transport),
                     identity.TlsEnabled,
                     _listener.Protocols.ToConfigText(),
                     _listener.Http3.ToStatus(),
