@@ -1,8 +1,25 @@
+using MDRAVA.BLL.Configuration;
+
 namespace MDRAVA.BLL.ControlPlane.Listeners;
 
 public sealed record TcpAlpnAdvertisementInput(bool Http1Enabled, bool Http2Enabled);
 
 public sealed record Http3AlpnAdvertisementInput(bool EnabledForTraffic);
+
+public static class ListenerProtocolAdvertisementInputMapper
+{
+    public static TcpAlpnAdvertisementInput FromTcpRuntimeProtocols(RuntimeListenerProtocols protocols)
+    {
+        return new TcpAlpnAdvertisementInput(
+            protocols.HasFlag(RuntimeListenerProtocols.Http1),
+            protocols.HasFlag(RuntimeListenerProtocols.Http2));
+    }
+
+    public static Http3AlpnAdvertisementInput FromHttp3RuntimeListener(RuntimeListener listener)
+    {
+        return new Http3AlpnAdvertisementInput(listener.Http3.EnabledForTraffic);
+    }
+}
 
 public static class ListenerProtocolAdvertisementPolicy
 {

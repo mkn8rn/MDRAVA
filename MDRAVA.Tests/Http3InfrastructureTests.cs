@@ -382,15 +382,16 @@ internal static class Http3InfrastructureTests
     {
         var listener = RuntimeListenerFor("http1AndHttp2AndHttp3");
         var protocols = listener.Protocols;
-        var tcpPolicy = ListenerProtocolAdvertisementPolicy.BuildTcpAlpnProtocolNames(
-            new TcpAlpnAdvertisementInput(
-                protocols.HasFlag(RuntimeListenerProtocols.Http1),
-                protocols.HasFlag(RuntimeListenerProtocols.Http2)));
-        var quicPolicy = ListenerProtocolAdvertisementPolicy.BuildHttp3AlpnProtocolNames(
-            new Http3AlpnAdvertisementInput(listener.Http3.EnabledForTraffic));
+        var tcpInput = ListenerProtocolAdvertisementInputMapper.FromTcpRuntimeProtocols(protocols);
+        var quicInput = ListenerProtocolAdvertisementInputMapper.FromHttp3RuntimeListener(listener);
+        var tcpPolicy = ListenerProtocolAdvertisementPolicy.BuildTcpAlpnProtocolNames(tcpInput);
+        var quicPolicy = ListenerProtocolAdvertisementPolicy.BuildHttp3AlpnProtocolNames(quicInput);
         var tcpAlpn = ListenerProtocolAdvertisement.BuildTcpAlpn(protocols);
         var quicAlpn = ListenerProtocolAdvertisement.BuildHttp3Alpn(listener);
 
+        AssertEx.True(tcpInput.Http1Enabled);
+        AssertEx.True(tcpInput.Http2Enabled);
+        AssertEx.True(quicInput.EnabledForTraffic);
         AssertEx.True(tcpPolicy.Contains(ListenerProtocolAdvertisementPolicy.Http2Alpn));
         AssertEx.True(tcpPolicy.Contains(ListenerProtocolAdvertisementPolicy.Http1Alpn));
         AssertEx.False(tcpPolicy.Contains(ListenerProtocolAdvertisementPolicy.Http3Alpn));
