@@ -21,7 +21,7 @@ public sealed class Http1RequestHead
         Version = version;
         Host = host;
         Framing = framing;
-        Headers = headers.ToArray();
+        Headers = ProxyHeaderFieldList.Copy(headers);
     }
 
     public string Method { get; }

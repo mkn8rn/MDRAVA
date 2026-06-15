@@ -17,7 +17,7 @@ public sealed class Http1ResponseHead
         StatusCode = statusCode;
         ReasonPhrase = reasonPhrase;
         Framing = framing;
-        Headers = headers.ToArray();
+        Headers = ProxyHeaderFieldList.Copy(headers);
     }
 
     public string Version { get; }

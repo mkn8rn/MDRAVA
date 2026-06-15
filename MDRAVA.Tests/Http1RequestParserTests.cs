@@ -66,8 +66,11 @@ internal static class Http1RequestParserTests
         diagnosticsHeaders.Clear();
 
         AssertEx.Equal("Host", requestHead.Headers[0].Name);
+        AssertEx.False(requestHead.Headers is ProxyHeaderField[], "HTTP/1 request headers should not expose a mutable array.");
         AssertEx.Equal("Content-Type", responseHead.Headers[0].Name);
+        AssertEx.False(responseHead.Headers is ProxyHeaderField[], "HTTP/1 response headers should not expose a mutable array.");
         AssertEx.Equal("X-Debug", diagnosticsHead.Headers[0].Name);
+        AssertEx.False(diagnosticsHead.Headers is ProxyHeaderField[], "Route diagnostics headers should not expose a mutable array.");
     }
 
     public static void RejectsMissingHost()
