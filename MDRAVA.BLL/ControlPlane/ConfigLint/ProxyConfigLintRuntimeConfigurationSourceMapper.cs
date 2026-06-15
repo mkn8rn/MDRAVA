@@ -7,13 +7,13 @@ namespace MDRAVA.BLL.ControlPlane.ConfigLint;
 public sealed record ProxyConfigLintRuntimeConfigurationSource
 {
     public ProxyConfigLintRuntimeConfigurationSource(
-        IReadOnlyList<string> SourceFiles,
-        IReadOnlyList<string> AdminUrls,
+        IEnumerable<string> SourceFiles,
+        IEnumerable<string> AdminUrls,
         bool AdminRequiresAuthentication,
         bool PublicMetricsEnabled,
         Http3SupportConfigurationSource Http3Support,
-        IReadOnlyList<ProxyConfigLintRuntimeListenerSource> Listeners,
-        IReadOnlyList<ProxyConfigLintRuntimeRouteSource> Routes)
+        IEnumerable<ProxyConfigLintRuntimeListenerSource> Listeners,
+        IEnumerable<ProxyConfigLintRuntimeRouteSource> Routes)
     {
         ArgumentNullException.ThrowIfNull(SourceFiles);
         ArgumentNullException.ThrowIfNull(AdminUrls);
@@ -71,11 +71,11 @@ public sealed record ProxyConfigLintRuntimeRouteSource
         bool CanonicalHostEnabled,
         string CanonicalHostTargetHost,
         bool CacheEnabled,
-        IReadOnlyList<string> CacheVaryByHeaders,
+        IEnumerable<string> CacheVaryByHeaders,
         bool RetryEnabled,
-        IReadOnlyList<string> RetryMethods,
+        IEnumerable<string> RetryMethods,
         bool HealthCheckEnabled,
-        IReadOnlyList<ProxyConfigLintRuntimeUpstreamSource> Upstreams,
+        IEnumerable<ProxyConfigLintRuntimeUpstreamSource> Upstreams,
         string StaticResponseBody)
     {
         ArgumentNullException.ThrowIfNull(CacheVaryByHeaders);
@@ -179,8 +179,7 @@ public static class ProxyConfigLintRuntimeConfigurationSourceMapper
                         listener.Http3AltSvc.MaxAgeSeconds,
                         listener.Port,
                         listener.QuicIdentity?.Key)),
-                    listener.QuicIdentity?.Key))
-                .ToArray(),
+                    listener.QuicIdentity?.Key)),
             routes
                 .Select(static route => new ProxyConfigLintRuntimeRouteSource(
                     route.Name,
@@ -202,10 +201,9 @@ public static class ProxyConfigLintRuntimeConfigurationSourceMapper
                             upstream.Scheme,
                             upstream.Protocol,
                             upstream.Tls.ValidateCertificate,
-                            upstream.CircuitBreaker.Enabled))
-                        .ToArray(),
+                            upstream.CircuitBreaker.Enabled)),
                     route.StaticResponse.Body))
-                .ToArray());
+                );
     }
 }
 
@@ -235,8 +233,7 @@ public static class ProxyConfigLintConfigurationSnapshotMapper
                     listener.Http3DisabledReason,
                     listener.Http3EnablementLevel,
                     listener.Http3AltSvcEnabled,
-                    listener.QuicIdentityKey))
-                .ToArray(),
+                    listener.QuicIdentityKey)),
             source.Routes
                 .Select(static route => new ProxyConfigLintRoute(
                     route.Name,
@@ -258,9 +255,8 @@ public static class ProxyConfigLintConfigurationSnapshotMapper
                             upstream.Scheme,
                             upstream.Protocol,
                             upstream.TlsValidateCertificate,
-                            upstream.CircuitBreakerEnabled))
-                        .ToArray(),
+                            upstream.CircuitBreakerEnabled)),
                     route.StaticResponseBody))
-                .ToArray());
+                );
     }
 }

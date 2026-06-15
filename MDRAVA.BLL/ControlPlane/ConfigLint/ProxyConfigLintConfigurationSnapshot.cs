@@ -3,12 +3,12 @@ namespace MDRAVA.BLL.ControlPlane.ConfigLint;
 public sealed record ProxyConfigLintConfigurationSnapshot
 {
     public ProxyConfigLintConfigurationSnapshot(
-        IReadOnlyList<string> SourceFiles,
+        IEnumerable<string> SourceFiles,
         ProxyConfigLintAdminSecurity AdminSecurity,
         ProxyConfigLintMetricsOptions Metrics,
         bool Http3QuicConnectionSupported,
-        IReadOnlyList<ProxyConfigLintListener> Listeners,
-        IReadOnlyList<ProxyConfigLintRoute> Routes)
+        IEnumerable<ProxyConfigLintListener> Listeners,
+        IEnumerable<ProxyConfigLintRoute> Routes)
     {
         ArgumentNullException.ThrowIfNull(SourceFiles);
         ArgumentNullException.ThrowIfNull(AdminSecurity);
@@ -40,7 +40,7 @@ public sealed record ProxyConfigLintConfigurationSnapshot
 public sealed record ProxyConfigLintAdminSecurity
 {
     public ProxyConfigLintAdminSecurity(
-        IReadOnlyList<string> Urls,
+        IEnumerable<string> Urls,
         bool RequireAuthentication)
     {
         ArgumentNullException.ThrowIfNull(Urls);
@@ -82,11 +82,11 @@ public sealed record ProxyConfigLintRoute
         bool CanonicalHostEnabled,
         string CanonicalHostTargetHost,
         bool CacheEnabled,
-        IReadOnlyList<string> CacheVaryByHeaders,
+        IEnumerable<string> CacheVaryByHeaders,
         bool RetryEnabled,
-        IReadOnlyList<string> RetryMethods,
+        IEnumerable<string> RetryMethods,
         bool HealthCheckEnabled,
-        IReadOnlyList<ProxyConfigLintUpstream> Upstreams,
+        IEnumerable<ProxyConfigLintUpstream> Upstreams,
         string StaticResponseBody)
     {
         ArgumentNullException.ThrowIfNull(CacheVaryByHeaders);

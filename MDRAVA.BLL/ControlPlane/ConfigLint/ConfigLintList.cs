@@ -4,7 +4,7 @@ namespace MDRAVA.BLL.ControlPlane.ConfigLint;
 
 internal static class ConfigLintList
 {
-    public static ReadOnlyCollection<T> Copy<T>(IReadOnlyList<T> values)
+    public static ReadOnlyCollection<T> Copy<T>(IEnumerable<T> values)
     {
         ArgumentNullException.ThrowIfNull(values);
 
