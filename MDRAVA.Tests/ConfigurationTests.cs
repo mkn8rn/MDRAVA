@@ -181,11 +181,17 @@ internal static class ConfigurationTests
 
     public static void ConfigurationManagementResultsCopyInputCollections()
     {
+        var discoveredFiles = new List<ProxyConfigurationFileDiscovery>
+        {
+            new("sites/home.json", "json", "loaded", null)
+        };
+        var createdPaths = new List<string> { "tests/config" };
+        var existingPaths = new List<string> { "tests/config/sites" };
         var discovery = new ProxyConfigurationDiscovery(
             new ProxyFilesystemLayout("tests", "tests/config", "tests/config/sites", "tests/logs", "tests/certs", "tests/state", "tests/config/proxy.json"),
-            [],
-            [],
-            []);
+            discoveredFiles,
+            createdPaths,
+            existingPaths);
         var sourceFiles = new List<string> { "sites/home.json" };
         var errors = new List<string> { "parse failed" };
         var fileErrors = new List<ProxyConfigurationFileError>
@@ -244,10 +250,19 @@ internal static class ConfigurationTests
             fileErrors,
             activeConfiguration: null);
 
+        discoveredFiles.Clear();
+        createdPaths.Clear();
+        existingPaths.Clear();
         sourceFiles.Clear();
         errors.Clear();
         fileErrors.Clear();
 
+        AssertEx.Equal("sites/home.json", discovery.Files[0].Path);
+        AssertEx.Equal("tests/config", discovery.CreatedPaths[0]);
+        AssertEx.Equal("tests/config/sites", discovery.ExistingPaths[0]);
+        AssertEx.False(discovery.Files is ProxyConfigurationFileDiscovery[], "Discovery files should not expose a mutable array.");
+        AssertEx.False(discovery.CreatedPaths is string[], "Discovery created paths should not expose a mutable array.");
+        AssertEx.False(discovery.ExistingPaths is string[], "Discovery existing paths should not expose a mutable array.");
         AssertEx.Equal("sites/home.json", valid.SourceFiles[0]);
         AssertEx.False(valid.SourceFiles is string[], "Validation source files should not expose a mutable array.");
         AssertEx.Equal("sites/home.json", invalid.SourceFiles[0]);
@@ -282,6 +297,10 @@ internal static class ConfigurationTests
         var reloadResponse = ProxyConfigurationReloadResponse.FromResult(apiReloadFailed);
         AssertEx.False(reloadResponse.Errors is string[], "Reload API errors should not expose a mutable array.");
         AssertEx.False(reloadResponse.FileErrors is ProxyConfigurationFileErrorResponse[], "Reload API file errors should not expose a mutable array.");
+        var discoveryResponse = ProxyConfigurationDiscoveryResponse.FromDiscovery(discovery);
+        AssertEx.False(discoveryResponse.Files is ProxyConfigurationFileDiscoveryResponse[], "Discovery API files should not expose a mutable array.");
+        AssertEx.False(discoveryResponse.CreatedPaths is string[], "Discovery API created paths should not expose a mutable array.");
+        AssertEx.False(discoveryResponse.ExistingPaths is string[], "Discovery API existing paths should not expose a mutable array.");
     }
 
     public static void RuntimeConfigurationPolicyRecordsCopyInputCollections()

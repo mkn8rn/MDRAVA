@@ -18,8 +18,8 @@ public sealed record ProxyConfigurationDiscoveryResponse(
         return new ProxyConfigurationDiscoveryResponse(
             ProxyFilesystemLayoutResponse.FromLayout(discovery.Layout),
             ProxyConfigurationFileDiscoveryResponse.FromFiles(discovery.Files),
-            discovery.CreatedPaths.ToArray(),
-            discovery.ExistingPaths.ToArray());
+            ApiResponseList.Copy(discovery.CreatedPaths),
+            ApiResponseList.Copy(discovery.ExistingPaths));
     }
 }
 
@@ -58,7 +58,7 @@ public sealed record ProxyConfigurationFileDiscoveryResponse(
     {
         ArgumentNullException.ThrowIfNull(files);
 
-        return files.Select(FromFile).ToArray();
+        return ApiResponseList.Copy(files.Select(FromFile));
     }
 
     private static ProxyConfigurationFileDiscoveryResponse FromFile(
