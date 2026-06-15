@@ -1,10 +1,9 @@
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.Http1;
-using MDRAVA.BLL.ControlPlane.Resilience;
 
-namespace MDRAVA.INF.Proxy;
+namespace MDRAVA.BLL.ControlPlane.Resilience;
 
-internal static class ProxyRetryRuntimeMapper
+public static class ProxyRetryRuntimeMapper
 {
     public static ProxyRetryAdmissionInput ToAdmissionInput(
         RuntimeRoute route,
