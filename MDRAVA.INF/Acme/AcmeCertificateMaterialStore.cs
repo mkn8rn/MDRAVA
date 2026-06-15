@@ -60,7 +60,8 @@ public static class AcmeCertificateMaterialStore
 
     public static RuntimeCertificate WriteAndLoad(AcmeCertificateMaterialWriteRequest request)
     {
-        if (request.PfxBytes.Length is 0 or > MaximumPfxBytes)
+        var pfxBytes = request.PfxBytes;
+        if (pfxBytes.Length is 0 or > MaximumPfxBytes)
         {
             throw new InvalidOperationException($"ACME certificate '{request.CertificateId}' PFX payload was empty or too large.");
         }
@@ -68,7 +69,7 @@ public static class AcmeCertificateMaterialStore
         var layout = EnsureLayout(request.DataDirectory, request.StoragePath);
         var pfxPath = GetPrivateKeyPfxPath(layout, request.CertificateId);
         var certificate = X509CertificateLoader.LoadPkcs12(
-            request.PfxBytes,
+            pfxBytes,
             ReadOnlySpan<char>.Empty,
             X509KeyStorageFlags.UserKeySet);
         if (!certificate.HasPrivateKey)
@@ -78,7 +79,7 @@ public static class AcmeCertificateMaterialStore
         }
 
         Directory.CreateDirectory(Path.GetDirectoryName(pfxPath)!);
-        File.WriteAllBytes(pfxPath, request.PfxBytes);
+        File.WriteAllBytes(pfxPath, pfxBytes);
 
         var certificatePemPath = GetCertificatePemPath(layout, request.CertificateId);
         Directory.CreateDirectory(Path.GetDirectoryName(certificatePemPath)!);

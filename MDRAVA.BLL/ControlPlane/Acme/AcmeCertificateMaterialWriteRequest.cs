@@ -2,6 +2,8 @@ namespace MDRAVA.BLL.ControlPlane.Acme;
 
 public sealed record AcmeCertificateMaterialWriteRequest
 {
+    private readonly byte[] _pfxBytes;
+
     public AcmeCertificateMaterialWriteRequest(
         string StoragePath,
         string CertificateId,
@@ -18,7 +20,7 @@ public sealed record AcmeCertificateMaterialWriteRequest
         this.Domains = AcmeList.Copy(Domains);
         this.DataDirectory = DataDirectory;
         this.WrittenAtUtc = WrittenAtUtc;
-        this.PfxBytes = PfxBytes.ToArray();
+        _pfxBytes = PfxBytes.ToArray();
     }
 
     public string StoragePath { get; }
@@ -31,5 +33,5 @@ public sealed record AcmeCertificateMaterialWriteRequest
 
     public DateTimeOffset WrittenAtUtc { get; }
 
-    public byte[] PfxBytes { get; }
+    public byte[] PfxBytes => _pfxBytes.ToArray();
 }

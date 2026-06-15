@@ -22,14 +22,16 @@ public abstract record AcmeCertificateIssueResult
 
     public sealed record IssuedResult : AcmeCertificateIssueResult
     {
+        private readonly byte[] _pfxBytes;
+
         public IssuedResult(byte[] pfxBytes)
         {
             ArgumentNullException.ThrowIfNull(pfxBytes);
 
-            PfxBytes = pfxBytes;
+            _pfxBytes = pfxBytes.ToArray();
         }
 
-        public byte[] PfxBytes { get; }
+        public byte[] PfxBytes => _pfxBytes.ToArray();
     }
 
     public sealed record FailedResult : AcmeCertificateIssueResult

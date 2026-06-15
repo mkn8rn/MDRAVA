@@ -143,9 +143,13 @@ internal static class AcmeTests
         var failed = AcmeCertificateIssueResult.Failed("issuer failed");
 
         AssertEx.True(issued is AcmeCertificateIssueResult.IssuedResult);
-        AssertEx.True(ReferenceEquals(
-            pfxBytes,
-            ((AcmeCertificateIssueResult.IssuedResult)issued).PfxBytes));
+        var issuedResult = (AcmeCertificateIssueResult.IssuedResult)issued;
+        AssertEx.False(ReferenceEquals(pfxBytes, issuedResult.PfxBytes));
+        pfxBytes[0] = 99;
+        AssertEx.Equal(1, issuedResult.PfxBytes[0]);
+        var returnedPfxBytes = issuedResult.PfxBytes;
+        returnedPfxBytes[0] = 88;
+        AssertEx.Equal(1, issuedResult.PfxBytes[0]);
         AssertEx.True(failed is AcmeCertificateIssueResult.FailedResult);
         AssertEx.Equal(
             "issuer failed",
@@ -210,6 +214,9 @@ internal static class AcmeTests
         AssertEx.Equal("home.example.test", issue.Domains[0]);
         AssertEx.Equal("ops@example.test", issue.ContactEmails[0]);
         AssertEx.Equal("home.example.test", write.Domains[0]);
+        AssertEx.Equal(1, write.PfxBytes[0]);
+        var returnedWritePfxBytes = write.PfxBytes;
+        returnedWritePfxBytes[0] = 88;
         AssertEx.Equal(1, write.PfxBytes[0]);
         AssertEx.Equal("home.example.test", lifecycle.Domains[0]);
         AssertEx.Equal("home-acme", status.Certificates[0].CertificateId);
