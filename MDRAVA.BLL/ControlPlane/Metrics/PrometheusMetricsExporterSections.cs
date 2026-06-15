@@ -54,7 +54,7 @@ public sealed partial class PrometheusMetricsExporter
                 new Label("upstream", upstream.UpstreamName),
                 new Label("scheme", upstream.Scheme),
                 new Label("protocol", upstream.Protocol),
-                new Label("state", upstream.HealthState.ToString()));
+                new Label("state", UpstreamHealthStateText.FromState(upstream.HealthState)));
         }
     }
 
