@@ -621,14 +621,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
                 continue;
             }
 
-            var status = handle.Snapshot();
-            changes.Add(new ProxyListenerReloadChange(
-                action,
-                status.Name,
-                status.Identity,
-                status.BindKey,
-                ProxyListenerStateText.FromState(status.State),
-                status.LastError));
+            changes.Add(ProxyListenerReloadChange.FromStatus(action, handle.Snapshot()));
         }
     }
 
@@ -645,14 +638,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
                 continue;
             }
 
-            var status = handle.Snapshot();
-            changes.Add(new ProxyListenerReloadChange(
-                action,
-                status.Name,
-                status.Identity,
-                status.BindKey,
-                ProxyListenerStateText.FromState(status.State),
-                status.LastError));
+            changes.Add(ProxyListenerReloadChange.FromStatus(action, handle.Snapshot()));
         }
     }
 

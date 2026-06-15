@@ -6,4 +6,19 @@ public sealed record ProxyListenerReloadChange(
     string Identity,
     string BindKey,
     string State,
-    string? Error = null);
+    string? Error = null)
+{
+    public static ProxyListenerReloadChange FromStatus(string action, ProxyListenerStatus status)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(action);
+        ArgumentNullException.ThrowIfNull(status);
+
+        return new ProxyListenerReloadChange(
+            action,
+            status.Name,
+            status.Identity,
+            status.BindKey,
+            ProxyListenerStateText.FromState(status.State),
+            status.LastError);
+    }
+}
