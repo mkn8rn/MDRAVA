@@ -605,6 +605,32 @@ internal static class ConfigurationTests
         AssertEx.False(snapshot.Certificates is Dictionary<string, RuntimeCertificate>);
         AssertEx.False(snapshot.Listeners is RuntimeListener[]);
         AssertEx.False(snapshot.Routes is RuntimeRoute[]);
+        var projection = ProxyConfigurationProjectionMapper.ToProjection(
+            snapshot,
+            new RuntimeHttp3SupportProjection(
+                "unknown",
+                QuicListenerSupported: false,
+                QuicConnectionSupported: false,
+                "disabled",
+                "disabled",
+                EnabledForTraffic: false,
+                QuicListenerReady: false,
+                AltSvcConfigured: false,
+                AltSvcActive: false,
+                AltSvcMaxAgeSeconds: null,
+                "not_configured",
+                UdpQuicListenerIdentityModeled: true,
+                "not_ready"));
+        AssertEx.Equal("sites/home.json", projection.SourceFiles[0]);
+        AssertEx.Equal("home-cert", projection.Certificates[0].Id);
+        AssertEx.Equal("web", projection.Listeners[0].Name);
+        AssertEx.Equal("home", projection.Routes[0].Name);
+        AssertEx.False(projection.SourceFiles is string[]);
+        AssertEx.False(projection.Certificates is RuntimeCertificateProjection[]);
+        AssertEx.False(projection.Listeners is RuntimeListenerProjection[]);
+        AssertEx.False(projection.Routes is RuntimeRouteProjection[]);
+        var response = ProxyConfigurationResponse.FromProjection(projection);
+        AssertEx.False(response.SourceFiles is string[], "Configuration API source files should not expose a mutable array.");
     }
 
     public static void ConfigurationValidationResultNamesValidationOutcomes()

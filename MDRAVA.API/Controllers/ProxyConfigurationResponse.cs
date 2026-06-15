@@ -32,7 +32,7 @@ public sealed record ProxyConfigurationResponse(
             projection.Version,
             projection.LoadedAtUtc,
             projection.SourceDirectory,
-            projection.SourceFiles.ToArray(),
+            ApiResponseList.Copy(projection.SourceFiles),
             ProxyConfigurationDiscoveryResponse.FromDiscovery(projection.Discovery),
             RuntimeAdminSecurityResponse.FromProjection(projection.AdminSecurity),
             RuntimeAcmeResponse.FromProjection(projection.Acme),
