@@ -173,8 +173,8 @@ internal static class RuntimePreflightTests
     public static void RuntimePreflightStatusBuilderBuildsStateAndBoundedReasons()
     {
         var generatedAtUtc = new DateTimeOffset(2026, 6, 12, 13, 0, 0, TimeSpan.Zero);
-        ProxyRuntimePreflightCheck[] checks =
-        [
+        var checks = new List<ProxyRuntimePreflightCheck>
+        {
             new ProxyRuntimePreflightCheck(
                 "config_directory",
                 "config",
@@ -202,12 +202,14 @@ internal static class RuntimePreflightTests
                 CanWrite: false,
                 ProxyStatusText.Warning,
                 "missing_directory")
-        ];
+        };
 
         var status = ProxyRuntimePreflightStatusBuilder.Build(
             generatedAtUtc,
-            checks,
+            checks.Select(static check => check),
             maxReasons: 1);
+
+        checks.Clear();
 
         AssertEx.Equal(ProxyStatusText.Failed, status.State);
         AssertEx.Equal(generatedAtUtc, status.GeneratedAtUtc);

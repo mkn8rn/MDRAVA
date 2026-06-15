@@ -6,7 +6,7 @@ public static class ProxyRuntimePreflightStatusBuilder
 {
     public static ProxyRuntimePreflightStatus Build(
         DateTimeOffset generatedAtUtc,
-        IReadOnlyList<ProxyRuntimePreflightCheck> checks,
+        IEnumerable<ProxyRuntimePreflightCheck> checks,
         int maxReasons)
     {
         return ProxyRuntimePreflightStatus.Completed(generatedAtUtc, checks, maxReasons);

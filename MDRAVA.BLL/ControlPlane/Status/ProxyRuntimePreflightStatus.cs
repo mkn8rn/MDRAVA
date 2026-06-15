@@ -30,24 +30,24 @@ public sealed record ProxyRuntimePreflightStatus
 
     public static ProxyRuntimePreflightStatus Completed(
         DateTimeOffset generatedAtUtc,
-        IReadOnlyList<ProxyRuntimePreflightCheck> checks,
+        IEnumerable<ProxyRuntimePreflightCheck> checks,
         int maxReasons)
     {
-        ArgumentNullException.ThrowIfNull(checks);
+        var ownedChecks = ProxyStatusList.Copy(checks);
         ArgumentOutOfRangeException.ThrowIfNegative(maxReasons);
 
-        var failed = checks.Any(static check => string.Equals(
+        var failed = ownedChecks.Any(static check => string.Equals(
             check.Severity,
             ProxyStatusText.Error,
             StringComparison.OrdinalIgnoreCase));
-        var degraded = checks.Any(static check => string.Equals(
+        var degraded = ownedChecks.Any(static check => string.Equals(
             check.Severity,
             ProxyStatusText.Warning,
             StringComparison.OrdinalIgnoreCase));
         var state = failed
             ? ProxyStatusText.Failed
             : degraded ? ProxyStatusText.Degraded : ProxyStatusText.Healthy;
-        var reasons = checks
+        var reasons = ownedChecks
             .Where(static check => !string.Equals(
                 check.Reason,
                 ProxyStatusText.Ok,
@@ -61,7 +61,7 @@ public sealed record ProxyRuntimePreflightStatus
             state,
             generatedAtUtc,
             reasons,
-            checks);
+            ownedChecks);
     }
 }
 
