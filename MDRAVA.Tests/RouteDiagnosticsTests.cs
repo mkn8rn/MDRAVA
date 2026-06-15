@@ -809,6 +809,27 @@ internal static class RouteDiagnosticsTests
         AssertEx.False(lintSnapshot.Routes[0].Upstreams is ProxyConfigLintUpstream[], "Config lint route upstreams should not expose a mutable array.");
     }
 
+    public static void ConfigLintRuntimeListenerStateMapperReadsListenerStatuses()
+    {
+        var listeners = new List<ProxyListenerStatus>
+        {
+            ListenerStatus("main|tcp", "tcp", ProxyListenerState.Active),
+            ListenerStatus("main|quic", "quic", ProxyListenerState.Failed)
+        };
+
+        var states = ProxyConfigLintRuntimeListenerStateMapper.FromListenerStatuses(listeners);
+
+        listeners.Clear();
+
+        AssertEx.Equal(2, states.Count);
+        AssertEx.Equal("main|tcp", states[0].Identity);
+        AssertEx.Equal("tcp", states[0].Kind);
+        AssertEx.True(states[0].Active);
+        AssertEx.Equal("main|quic", states[1].Identity);
+        AssertEx.Equal("quic", states[1].Kind);
+        AssertEx.False(states[1].Active);
+    }
+
     public static void RouteDiagnosticsRuntimeRouteCopiesPolicyMethodLists()
     {
         var cacheMethods = new List<string> { "GET" };
@@ -1632,6 +1653,41 @@ internal static class RouteDiagnosticsTests
             ["GET", "HEAD"],
             retryEnabled,
             ["GET", "HEAD"]);
+    }
+
+    private static ProxyListenerStatus ListenerStatus(
+        string identity,
+        string kind,
+        ProxyListenerState state)
+    {
+        return new ProxyListenerStatus(
+            "main",
+            identity,
+            $"{identity}|bind",
+            kind,
+            "127.0.0.1",
+            18080,
+            kind == "quic" ? "udp/quic" : "http",
+            TlsEnabled: false,
+            RuntimeListenerProtocols.Http1.ToConfigText(),
+            new ProxyListenerHttp3Status(
+                Configured: false,
+                DefaultEnabled: false,
+                EnablementLevel: "disabled",
+                EnabledForTraffic: false,
+                DisabledReason: "disabled",
+                AltSvcConfigured: false,
+                AltSvcMaxAgeSeconds: 0,
+                UdpQuicListenerIdentityModeled: false,
+                QuicIdentity: null),
+            Http2MaxConcurrentStreams: 100,
+            Http2MaxHeaderListBytes: 32768,
+            Http2MaxFrameSize: 16384,
+            state,
+            ActiveConnections: 0,
+            StartedAtUtc: null,
+            StoppedAtUtc: null,
+            LastError: state == ProxyListenerState.Failed ? "bind_failed" : null);
     }
 
     private sealed record FixedRouteDiagnosticsConfigurationSnapshot(
