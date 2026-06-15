@@ -38,6 +38,7 @@ internal static class ObservabilityTests
 
         AssertEx.Equal(3, recent.Count);
         AssertEx.Equal("request-9", recent[0].RequestId);
+        AssertEx.False(recent is ProxyRecentRequestDiagnosticEventResponse[], "Diagnostics API recent events should not expose a mutable array.");
     }
 
     public static void RequestDiagnosticsReaderReturnsRecentEventsFromSource()

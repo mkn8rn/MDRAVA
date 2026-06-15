@@ -33,7 +33,7 @@ public sealed record ProxyRecentRequestDiagnosticEventResponse(
     {
         ArgumentNullException.ThrowIfNull(events);
 
-        return events.Select(FromEvent).ToArray();
+        return ApiResponseList.Copy(events.Select(FromEvent));
     }
 
     private static ProxyRecentRequestDiagnosticEventResponse FromEvent(
