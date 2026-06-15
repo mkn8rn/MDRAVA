@@ -47,6 +47,6 @@ public sealed class AdminAuditStore : IProxyAdminAuditReader, IProxyAdminAuditRe
             }
         }
 
-        return results;
+        return results.AsReadOnly();
     }
 }

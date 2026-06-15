@@ -43,6 +43,6 @@ public sealed class RecentRequestDiagnosticsStore : IProxyRequestDiagnosticsSour
             }
         }
 
-        return results;
+        return results.AsReadOnly();
     }
 }

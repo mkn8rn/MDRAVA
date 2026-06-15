@@ -18,6 +18,7 @@ internal static class ObservabilityTests
         AssertEx.Equal(2, recent.Count);
         AssertEx.Equal("three", recent[0].RequestId);
         AssertEx.Equal("two", recent[1].RequestId);
+        AssertEx.False(recent is List<ProxyRecentRequestDiagnosticEvent>, "Recent diagnostics should not expose a mutable list.");
         AssertEx.Equal(1L, metrics.Snapshot().Diagnostics.RecentDiagnosticsOverwritten);
     }
 
