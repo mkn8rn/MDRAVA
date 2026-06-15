@@ -1,9 +1,8 @@
 using MDRAVA.BLL.Configuration;
-using MDRAVA.BLL.ControlPlane.Headers;
 
-namespace MDRAVA.INF.Proxy;
+namespace MDRAVA.BLL.ControlPlane.Headers;
 
-internal static class ProxyHeaderMutationRuntimeMapper
+public static class ProxyHeaderMutationRuntimeMapper
 {
     public static ProxyHeaderMutationPolicyInput ToPolicyInput(RuntimeHeaderPolicy policy)
     {
