@@ -627,7 +627,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
                 status.Name,
                 status.Identity,
                 status.BindKey,
-                status.State.ToString(),
+                ProxyListenerStateText.FromState(status.State),
                 status.LastError));
         }
     }
@@ -651,7 +651,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
                 status.Name,
                 status.Identity,
                 status.BindKey,
-                status.State.ToString(),
+                ProxyListenerStateText.FromState(status.State),
                 status.LastError));
         }
     }
