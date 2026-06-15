@@ -1,6 +1,4 @@
 using MDRAVA.BLL.ControlPlane.AdminAuthentication;
-using MDRAVA.BLL.ControlPlane.RuntimeGuards;
-
 namespace MDRAVA.API.Proxy.Security;
 
 public sealed class AdminAuthenticationMiddleware
@@ -24,13 +22,12 @@ public sealed class AdminAuthenticationMiddleware
             return;
         }
 
-        var input = new ProxyAdminRequestAuthenticationInput(
+        var input = ProxyAdminRequestAuthenticationInputMapper.FromRawRequestFacts(
             context.Request.Method,
-            context.Request.Path.HasValue ? context.Request.Path.Value! : "/",
-            ProxyClientAddressPolicy.NormalizeClientIp(context.Connection.RemoteIpAddress),
-            ProxyAdminPresentedCredentials.FromRawHeaders(
-                context.Request.Headers.Authorization.ToArray(),
-                context.Request.Headers[ProxyAdminAuthenticationPolicy.AdminApiKeyHeaderName].ToArray()));
+            context.Request.Path.Value,
+            context.Connection.RemoteIpAddress,
+            context.Request.Headers.Authorization.ToArray(),
+            context.Request.Headers[ProxyAdminAuthenticationPolicy.AdminApiKeyHeaderName].ToArray());
         var outcome = _authentication.Authenticate(input);
         if (!outcome.Allowed)
         {

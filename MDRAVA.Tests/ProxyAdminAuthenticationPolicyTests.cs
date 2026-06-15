@@ -1,7 +1,32 @@
+using System.Net;
+
 namespace MDRAVA.Tests;
 
 internal static class ProxyAdminAuthenticationPolicyTests
 {
+    public static void RequestInputMapperReadsRawRequestFacts()
+    {
+        var authorizationHeaders = new string?[] { null, "Bearer secret" };
+        var apiKeyHeaders = new[] { " api-secret " };
+
+        var input = ProxyAdminRequestAuthenticationInputMapper.FromRawRequestFacts(
+            "POST",
+            null,
+            IPAddress.Parse("::ffff:127.0.0.1"),
+            authorizationHeaders,
+            apiKeyHeaders);
+
+        authorizationHeaders[1] = "Bearer replacement";
+        apiKeyHeaders[0] = "replacement";
+
+        AssertEx.Equal("POST", input.Method);
+        AssertEx.Equal("/", input.Path);
+        AssertEx.Equal("127.0.0.1", input.RemoteClientAddress);
+        AssertEx.Equal(1, input.PresentedCredentials.AuthorizationHeaders.Count);
+        AssertEx.Equal("Bearer secret", input.PresentedCredentials.AuthorizationHeaders[0]);
+        AssertEx.Equal(" api-secret ", input.PresentedCredentials.ApiKeyHeaders[0]);
+    }
+
     public static void ClassifiesAdminAuthenticationAttempts()
     {
         var notRequired = Authenticate(

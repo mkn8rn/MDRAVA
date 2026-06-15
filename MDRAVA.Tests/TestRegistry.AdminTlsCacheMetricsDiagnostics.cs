@@ -14,6 +14,7 @@ internal static partial class TestRegistry
     Test("Known admin endpoint paths require authentication", AdminSecurityTests.KnownAdminEndpointPathsRequireAuthentication, TestTaxonomy.Routing, TestTaxonomy.Admin),
     Test("Known admin endpoint inventory matches controller routes", Sync(AdminSecurityTests.KnownAdminEndpointInventoryMatchesControllerRoutes), TestTaxonomy.Routing, TestTaxonomy.Admin),
     Test("Known admin endpoint paths accept bearer token and API key", AdminSecurityTests.KnownAdminEndpointPathsAcceptBearerAndApiKey, TestTaxonomy.Admin),
+    Test("Admin authentication request input mapper reads raw request facts", Sync(ProxyAdminAuthenticationPolicyTests.RequestInputMapperReadsRawRequestFacts), TestTaxonomy.Admin),
     Test("Admin authentication policy classifies attempts", Sync(ProxyAdminAuthenticationPolicyTests.ClassifiesAdminAuthenticationAttempts), TestTaxonomy.Admin, TestTaxonomy.SecurityNegativePaths),
     Test("Admin auth failure response and audit do not expose presented secrets", AdminSecurityTests.AdminAuthFailureResponseAndAuditDoNotExposePresentedSecrets, TestTaxonomy.Admin, TestTaxonomy.SecurityNegativePaths),
     Test("Admin audit capacity evicts oldest entries", Sync(AdminSecurityTests.AdminAuditCapacityEvictsOldestEntries), TestTaxonomy.Limits, TestTaxonomy.Admin),

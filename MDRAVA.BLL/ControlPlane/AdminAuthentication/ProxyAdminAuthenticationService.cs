@@ -1,4 +1,6 @@
 using MDRAVA.BLL.ControlPlane.AdminAudit;
+using MDRAVA.BLL.ControlPlane.RuntimeGuards;
+using System.Net;
 
 namespace MDRAVA.BLL.ControlPlane.AdminAuthentication;
 
@@ -117,6 +119,25 @@ public sealed record ProxyAdminRequestAuthenticationInput(
     string Path,
     string? RemoteClientAddress,
     ProxyAdminPresentedCredentials PresentedCredentials);
+
+public static class ProxyAdminRequestAuthenticationInputMapper
+{
+    public static ProxyAdminRequestAuthenticationInput FromRawRequestFacts(
+        string method,
+        string? path,
+        IPAddress? remoteClientAddress,
+        IEnumerable<string?> authorizationHeaders,
+        IEnumerable<string?> apiKeyHeaders)
+    {
+        return new ProxyAdminRequestAuthenticationInput(
+            method,
+            string.IsNullOrEmpty(path) ? "/" : path,
+            ProxyClientAddressPolicy.NormalizeClientIp(remoteClientAddress),
+            ProxyAdminPresentedCredentials.FromRawHeaders(
+                authorizationHeaders,
+                apiKeyHeaders));
+    }
+}
 
 public sealed record ProxyAdminAuthenticationOutcome(
     bool Allowed,
