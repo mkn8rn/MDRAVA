@@ -29,7 +29,13 @@ public sealed class ProxyConfigLintActiveConfigurationSource
         var runtimeSnapshot = available.Snapshot;
         return ProxyConfigLintActiveConfigurationReadResult.Available(
             ProxyConfigLintConfigurationSnapshotMapper.ToLintSnapshot(
-                ProxyConfigLintRuntimeConfigurationSourceMapper.FromConfiguration(runtimeSnapshot),
+                ProxyConfigLintRuntimeConfigurationSourceMapper.FromConfiguration(
+                    runtimeSnapshot.SourceFiles,
+                    runtimeSnapshot.AdminSecurity.Urls,
+                    runtimeSnapshot.AdminSecurity.RequireAuthentication,
+                    runtimeSnapshot.Metrics.PublicMetricsEnabled,
+                    runtimeSnapshot.Listeners,
+                    runtimeSnapshot.Routes),
                 _http3PlatformSupportSource.Read()));
     }
 }

@@ -85,7 +85,13 @@ public sealed class ProxyConfigLintSubmittedConfigurationSource
 
         return ProxyConfigLintSubmittedConfigurationResult.Loaded(
             ProxyConfigLintConfigurationSnapshotMapper.ToLintSnapshot(
-                ProxyConfigLintRuntimeConfigurationSourceMapper.FromConfiguration(snapshot),
+                ProxyConfigLintRuntimeConfigurationSourceMapper.FromConfiguration(
+                    snapshot.SourceFiles,
+                    snapshot.AdminSecurity.Urls,
+                    snapshot.AdminSecurity.RequireAuthentication,
+                    snapshot.Metrics.PublicMetricsEnabled,
+                    snapshot.Listeners,
+                    snapshot.Routes),
                 _http3PlatformSupportSource.Read()),
             validationErrors);
     }

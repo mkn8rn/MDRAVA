@@ -1,9 +1,8 @@
 using System.Collections.ObjectModel;
 using MDRAVA.BLL.Configuration;
-using MDRAVA.BLL.ControlPlane.ConfigLint;
 using MDRAVA.BLL.ControlPlane.Http3;
 
-namespace MDRAVA.INF.Proxy.ConfigLint;
+namespace MDRAVA.BLL.ControlPlane.ConfigLint;
 
 public sealed record ProxyConfigLintRuntimeConfigurationSource
 {
@@ -150,17 +149,27 @@ public sealed record ProxyConfigLintRuntimeUpstreamSource(
 public static class ProxyConfigLintRuntimeConfigurationSourceMapper
 {
     public static ProxyConfigLintRuntimeConfigurationSource FromConfiguration(
-        ProxyConfigurationSnapshot snapshot)
+        IReadOnlyList<string> sourceFiles,
+        IReadOnlyList<string> adminUrls,
+        bool adminRequiresAuthentication,
+        bool publicMetricsEnabled,
+        IReadOnlyList<RuntimeListener> listeners,
+        IReadOnlyList<RuntimeRoute> routes)
     {
+        ArgumentNullException.ThrowIfNull(sourceFiles);
+        ArgumentNullException.ThrowIfNull(adminUrls);
+        ArgumentNullException.ThrowIfNull(listeners);
+        ArgumentNullException.ThrowIfNull(routes);
+
         return new ProxyConfigLintRuntimeConfigurationSource(
-            snapshot.SourceFiles,
-            snapshot.AdminSecurity.Urls,
-            snapshot.AdminSecurity.RequireAuthentication,
-            snapshot.Metrics.PublicMetricsEnabled,
+            sourceFiles,
+            adminUrls,
+            adminRequiresAuthentication,
+            publicMetricsEnabled,
             ProxyHttp3SupportConfigurationSourceMapper.FromConfiguration(
-                snapshot.Listeners,
-                snapshot.Routes),
-            snapshot.Listeners
+                listeners,
+                routes),
+            listeners
                 .Select(static listener => new ProxyConfigLintRuntimeListenerSource(
                     listener.Name,
                     listener.Address,
@@ -180,7 +189,7 @@ public static class ProxyConfigLintRuntimeConfigurationSourceMapper
                         listener.QuicIdentity?.Key)),
                     listener.QuicIdentity?.Key))
                 .ToArray(),
-            snapshot.Routes
+            routes
                 .Select(static route => new ProxyConfigLintRuntimeRouteSource(
                     route.Name,
                     route.SiteName,
