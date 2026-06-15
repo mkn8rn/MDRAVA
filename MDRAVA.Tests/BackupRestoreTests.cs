@@ -1,4 +1,5 @@
 using System.Text.Json;
+using MDRAVA.API.Controllers;
 using MDRAVA.BLL.Configuration;
 using MDRAVA.INF.Configuration.Loading;
 using MDRAVA.INF.Configuration.Paths;
@@ -321,6 +322,11 @@ internal static class BackupRestoreTests
         AssertEx.False(manifest.Warnings is ProxyBackupWarning[]);
         AssertEx.False(restoreValidation.Errors is ProxyRestoreValidationFinding[]);
         AssertEx.False(restoreValidation.Warnings is ProxyRestoreValidationFinding[]);
+        var response = ProxyBackupManifestResponse.FromManifest(manifest);
+        AssertEx.False(response.Directories is ProxyBackupDirectoryStatusResponse[], "Backup manifest API directories should not expose a mutable array.");
+        AssertEx.False(response.Entries is ProxyBackupManifestEntryResponse[], "Backup manifest API entries should not expose a mutable array.");
+        AssertEx.False(response.Counts is ProxyBackupManifestCountResponse[], "Backup manifest API counts should not expose a mutable array.");
+        AssertEx.False(response.Warnings is ProxyBackupWarningResponse[], "Backup manifest API warnings should not expose a mutable array.");
     }
 
     public static void BackupPathSafetyRejectsTraversalOutsideDataDirectory()

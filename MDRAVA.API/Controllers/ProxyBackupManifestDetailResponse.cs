@@ -16,7 +16,7 @@ public sealed record ProxyBackupDirectoryStatusResponse(
     {
         ArgumentNullException.ThrowIfNull(statuses);
 
-        return statuses.Select(FromStatus).ToArray();
+        return ApiResponseList.Copy(statuses.Select(FromStatus));
     }
 
     private static ProxyBackupDirectoryStatusResponse FromStatus(BusinessProxyBackupDirectoryStatus status)
@@ -44,7 +44,7 @@ public sealed record ProxyBackupManifestEntryResponse(
     {
         ArgumentNullException.ThrowIfNull(entries);
 
-        return entries.Select(FromEntry).ToArray();
+        return ApiResponseList.Copy(entries.Select(FromEntry));
     }
 
     private static ProxyBackupManifestEntryResponse FromEntry(BusinessProxyBackupManifestEntry entry)
@@ -72,7 +72,7 @@ public sealed record ProxyBackupManifestCountResponse(
     {
         ArgumentNullException.ThrowIfNull(counts);
 
-        return counts.Select(FromCount).ToArray();
+        return ApiResponseList.Copy(counts.Select(FromCount));
     }
 
     private static ProxyBackupManifestCountResponse FromCount(BusinessProxyBackupManifestCount count)
@@ -97,7 +97,7 @@ public sealed record ProxyBackupWarningResponse(
     {
         ArgumentNullException.ThrowIfNull(warnings);
 
-        return warnings.Select(FromWarning).ToArray();
+        return ApiResponseList.Copy(warnings.Select(FromWarning));
     }
 
     private static ProxyBackupWarningResponse FromWarning(BusinessProxyBackupWarning warning)
