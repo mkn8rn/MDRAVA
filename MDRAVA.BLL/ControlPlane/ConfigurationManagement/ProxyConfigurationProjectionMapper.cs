@@ -241,7 +241,13 @@ public static class ProxyConfigurationProjectionMapper
                         route.Retry.RetryBackoff)))
                 .ToArray()))
         {
-            Metrics = snapshot.Metrics,
+            Metrics = new RuntimeMetricsProjection(
+                snapshot.Metrics.Enabled,
+                snapshot.Metrics.EndpointPath,
+                snapshot.Metrics.ProtectedByAdminAuth,
+                snapshot.Metrics.IncludePerRouteLabels,
+                snapshot.Metrics.IncludePerUpstreamLabels,
+                snapshot.Metrics.PublicMetricsEnabled),
             Http3 = http3
         };
     }

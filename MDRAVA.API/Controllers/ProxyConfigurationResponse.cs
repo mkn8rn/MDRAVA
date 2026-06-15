@@ -45,7 +45,7 @@ public sealed record ProxyConfigurationResponse(
             RuntimeListenerResponse.FromListeners(projection.Listeners),
             RuntimeRouteResponse.FromRoutes(projection.Routes))
         {
-            Metrics = RuntimeMetricsResponse.FromOptions(projection.Metrics),
+            Metrics = RuntimeMetricsResponse.FromProjection(projection.Metrics),
             Http3 = RuntimeHttp3SupportResponse.FromProjection(projection.Http3)
         };
     }

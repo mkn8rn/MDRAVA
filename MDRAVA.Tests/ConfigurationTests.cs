@@ -1181,6 +1181,9 @@ internal static class ConfigurationTests
         object forwardedHeaders = projection.ForwardedHeaders;
         AssertEx.True(forwardedHeaders is RuntimeForwardedHeadersProjection);
         AssertEx.False(forwardedHeaders is RuntimeForwardedHeadersOptions);
+        object metrics = projection.Metrics;
+        AssertEx.True(metrics is RuntimeMetricsProjection);
+        AssertEx.False(metrics is RuntimeMetricsOptions);
     }
 
     public static async Task ActiveInspectionProjectionUsesListenerReadModels()

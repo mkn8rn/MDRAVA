@@ -1,5 +1,5 @@
 using BusinessRuntimeLogPersistenceProjection = MDRAVA.BLL.Configuration.RuntimeLogPersistenceProjection;
-using BusinessRuntimeMetricsOptions = MDRAVA.BLL.Configuration.RuntimeMetricsOptions;
+using BusinessRuntimeMetricsProjection = MDRAVA.BLL.Configuration.RuntimeMetricsProjection;
 using BusinessRuntimeObservabilityProjection = MDRAVA.BLL.Configuration.RuntimeObservabilityProjection;
 
 namespace MDRAVA.API.Controllers;
@@ -46,16 +46,16 @@ public sealed record RuntimeMetricsResponse(
     bool IncludePerUpstreamLabels,
     bool PublicMetricsEnabled)
 {
-    public static RuntimeMetricsResponse FromOptions(BusinessRuntimeMetricsOptions options)
+    public static RuntimeMetricsResponse FromProjection(BusinessRuntimeMetricsProjection projection)
     {
-        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(projection);
 
         return new RuntimeMetricsResponse(
-            options.Enabled,
-            options.EndpointPath,
-            options.ProtectedByAdminAuth,
-            options.IncludePerRouteLabels,
-            options.IncludePerUpstreamLabels,
-            options.PublicMetricsEnabled);
+            projection.Enabled,
+            projection.EndpointPath,
+            projection.ProtectedByAdminAuth,
+            projection.IncludePerRouteLabels,
+            projection.IncludePerUpstreamLabels,
+            projection.PublicMetricsEnabled);
     }
 }

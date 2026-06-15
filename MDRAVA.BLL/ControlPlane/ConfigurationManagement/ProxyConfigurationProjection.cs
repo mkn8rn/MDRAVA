@@ -20,7 +20,7 @@ public sealed record ProxyConfigurationProjection(
     IReadOnlyList<RuntimeListenerProjection> Listeners,
     IReadOnlyList<RuntimeRouteProjection> Routes)
 {
-    public RuntimeMetricsOptions Metrics { get; init; } = RuntimeMetricsOptions.Default;
+    public RuntimeMetricsProjection Metrics { get; init; } = RuntimeMetricsProjection.Default;
 
     public RuntimeHttp3SupportProjection Http3 { get; init; } = new(
         "unknown",
