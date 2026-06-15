@@ -1,9 +1,8 @@
 using MDRAVA.BLL.Configuration;
-using MDRAVA.BLL.ControlPlane.Http3;
 
-namespace MDRAVA.INF.Proxy;
+namespace MDRAVA.BLL.ControlPlane.Http3;
 
-internal static class ProxyHttp3RequestTranslationRuntimeMapper
+public static class ProxyHttp3RequestTranslationRuntimeMapper
 {
     public static Http3RequestTranslationListenerInput ToListenerInput(RuntimeListener listener)
     {
