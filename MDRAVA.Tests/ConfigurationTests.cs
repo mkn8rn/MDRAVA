@@ -555,6 +555,13 @@ internal static class ConfigurationTests
         var retryResponse = RuntimeRetryPolicyResponse.FromProjection(retryProjection);
         AssertEx.False(retryResponse.RetryOnStatusCodes is int[], "Retry API status codes should not expose a mutable array.");
         AssertEx.False(retryResponse.RetryMethods is string[], "Retry API methods should not expose a mutable array.");
+        var acmeResponse = RuntimeAcmeResponse.FromProjection(acmeProjection);
+        AssertEx.False(acmeResponse.ContactEmails is string[], "ACME API contact emails should not expose a mutable array.");
+        AssertEx.False(acmeResponse.Certificates is RuntimeAcmeCertificateResponse[], "ACME API certificates should not expose a mutable array.");
+        AssertEx.False(acmeResponse.Certificates[0].Domains is string[], "ACME API certificate domains should not expose a mutable array.");
+        var certificateResponses = RuntimeCertificateResponse.FromCertificates([certificateProjection]);
+        AssertEx.False(certificateResponses is RuntimeCertificateResponse[], "Configuration API certificates should not expose a mutable array.");
+        AssertEx.False(certificateResponses[0].Domains is string[], "Configuration API certificate domains should not expose a mutable array.");
     }
 
     public static void RuntimeConfigurationGraphRecordsCopyInputCollections()

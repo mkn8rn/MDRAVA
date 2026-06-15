@@ -24,13 +24,13 @@ public sealed record RuntimeAcmeResponse(
             projection.Enabled,
             projection.UseStaging,
             projection.DirectoryUrl,
-            projection.ContactEmails.ToArray(),
+            ApiResponseList.Copy(projection.ContactEmails),
             projection.TermsAccepted,
             projection.StoragePath,
             projection.RenewBeforeDays,
             projection.CheckIntervalMinutes,
             projection.RetryAfterMinutes,
-            projection.Certificates.Select(RuntimeAcmeCertificateResponse.FromProjection).ToArray());
+            ApiResponseList.Copy(projection.Certificates.Select(RuntimeAcmeCertificateResponse.FromProjection)));
     }
 }
 
@@ -47,7 +47,7 @@ public sealed record RuntimeAcmeCertificateResponse(
         return new RuntimeAcmeCertificateResponse(
             projection.Id,
             projection.Enabled,
-            projection.Domains.ToArray(),
+            ApiResponseList.Copy(projection.Domains),
             projection.RenewBeforeDays);
     }
 }
@@ -69,7 +69,7 @@ public sealed record RuntimeCertificateResponse(
     {
         ArgumentNullException.ThrowIfNull(certificates);
 
-        return certificates.Select(FromCertificate).ToArray();
+        return ApiResponseList.Copy(certificates.Select(FromCertificate));
     }
 
     private static RuntimeCertificateResponse FromCertificate(BusinessRuntimeCertificateProjection certificate)
@@ -81,7 +81,7 @@ public sealed record RuntimeCertificateResponse(
             certificate.Path,
             certificate.Format,
             certificate.Source,
-            certificate.Domains.ToArray(),
+            ApiResponseList.Copy(certificate.Domains),
             certificate.HasConfiguredPassword,
             certificate.Subject,
             certificate.Thumbprint,
