@@ -16,7 +16,7 @@ public sealed record RuntimeAdminSecurityResponse(
         ArgumentNullException.ThrowIfNull(projection);
 
         return new RuntimeAdminSecurityResponse(
-            projection.Urls.ToArray(),
+            ApiResponseList.Copy(projection.Urls),
             projection.RequireAuthentication,
             projection.HasConfiguredToken,
             projection.Token,

@@ -377,6 +377,9 @@ internal static class ConfigurationTests
         var forwardedHeaders = new RuntimeForwardedHeadersOptions(
             Enabled: true,
             TrustedProxies: trustedProxies);
+        var forwardedHeadersProjection = new RuntimeForwardedHeadersProjection(
+            Enabled: true,
+            TrustedProxies: trustedProxies);
         var cache = new RuntimeCachePolicy(
             Enabled: true,
             MaxEntryBytes: 1024,
@@ -456,6 +459,7 @@ internal static class ConfigurationTests
         AssertEx.Equal("http://127.0.0.1:18081", admin.Urls[0]);
         AssertEx.Equal("http://127.0.0.1:18082", adminProjection.Urls[0]);
         AssertEx.Equal("127.0.0.1", forwardedHeaders.TrustedProxies[0]);
+        AssertEx.Equal("127.0.0.1", forwardedHeadersProjection.TrustedProxies[0]);
         AssertEx.Equal("X-Tenant", cache.VaryByHeaders[0]);
         AssertEx.Equal(200, cache.CacheableStatusCodes[0]);
         AssertEx.Equal("GET", cache.Methods[0]);
@@ -477,6 +481,7 @@ internal static class ConfigurationTests
         AssertEx.False(admin.Urls is string[]);
         AssertEx.False(adminProjection.Urls is string[]);
         AssertEx.False(forwardedHeaders.TrustedProxies is string[]);
+        AssertEx.False(forwardedHeadersProjection.TrustedProxies is string[]);
         AssertEx.False(cache.VaryByHeaders is string[]);
         AssertEx.False(cache.CacheableStatusCodes is int[]);
         AssertEx.False(cache.Methods is string[]);
@@ -489,6 +494,10 @@ internal static class ConfigurationTests
         AssertEx.False(headerPolicy.RemoveResponseHeaders is string[]);
         AssertEx.False(retry.RetryOnStatusCodes is int[]);
         AssertEx.False(retry.RetryMethods is string[]);
+        var adminResponse = RuntimeAdminSecurityResponse.FromProjection(adminProjection);
+        AssertEx.False(adminResponse.Urls is string[], "Admin security API URLs should not expose a mutable array.");
+        var forwardedHeadersResponse = RuntimeForwardedHeadersResponse.FromProjection(forwardedHeadersProjection);
+        AssertEx.False(forwardedHeadersResponse.TrustedProxies is string[], "Forwarded headers API trusted proxies should not expose a mutable array.");
     }
 
     public static void RuntimeConfigurationGraphRecordsCopyInputCollections()

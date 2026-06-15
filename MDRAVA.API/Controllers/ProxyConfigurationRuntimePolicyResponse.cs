@@ -89,6 +89,8 @@ public sealed record RuntimeForwardedHeadersResponse(
     {
         ArgumentNullException.ThrowIfNull(projection);
 
-        return new RuntimeForwardedHeadersResponse(projection.Enabled, projection.TrustedProxies.ToArray());
+        return new RuntimeForwardedHeadersResponse(
+            projection.Enabled,
+            ApiResponseList.Copy(projection.TrustedProxies));
     }
 }
