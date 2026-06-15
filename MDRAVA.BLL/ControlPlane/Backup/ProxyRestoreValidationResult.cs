@@ -7,8 +7,8 @@ public abstract record ProxyRestoreValidationResult
         int? activeConfigVersion,
         ProxyRestoreConfigurationValidationResult configValidation,
         ProxyBackupManifest manifest,
-        IReadOnlyList<ProxyRestoreValidationFinding> errors,
-        IReadOnlyList<ProxyRestoreValidationFinding> warnings)
+        IEnumerable<ProxyRestoreValidationFinding> errors,
+        IEnumerable<ProxyRestoreValidationFinding> warnings)
     {
         ArgumentNullException.ThrowIfNull(configValidation);
         ArgumentNullException.ThrowIfNull(manifest);
@@ -40,25 +40,25 @@ public abstract record ProxyRestoreValidationResult
         int? activeConfigVersion,
         ProxyRestoreConfigurationValidationResult configValidation,
         ProxyBackupManifest manifest,
-        IReadOnlyList<ProxyRestoreValidationFinding> errors,
-        IReadOnlyList<ProxyRestoreValidationFinding> warnings)
+        IEnumerable<ProxyRestoreValidationFinding> errors,
+        IEnumerable<ProxyRestoreValidationFinding> warnings)
     {
-        ArgumentNullException.ThrowIfNull(errors);
+        var ownedErrors = BackupList.Copy(errors);
 
-        return configValidation is ProxyRestoreConfigurationValidationResult.ValidResult && errors.Count == 0
+        return configValidation is ProxyRestoreConfigurationValidationResult.ValidResult && ownedErrors.Count == 0
             ? new AcceptedResult(
                 generatedAtUtc,
                 activeConfigVersion,
                 configValidation,
                 manifest,
-                errors,
+                ownedErrors,
                 warnings)
             : new RejectedResult(
                 generatedAtUtc,
                 activeConfigVersion,
                 configValidation,
                 manifest,
-                errors,
+                ownedErrors,
                 warnings);
     }
 
@@ -69,8 +69,8 @@ public abstract record ProxyRestoreValidationResult
             int? activeConfigVersion,
             ProxyRestoreConfigurationValidationResult configValidation,
             ProxyBackupManifest manifest,
-            IReadOnlyList<ProxyRestoreValidationFinding> errors,
-            IReadOnlyList<ProxyRestoreValidationFinding> warnings)
+            IEnumerable<ProxyRestoreValidationFinding> errors,
+            IEnumerable<ProxyRestoreValidationFinding> warnings)
             : base(generatedAtUtc, activeConfigVersion, configValidation, manifest, errors, warnings)
         {
         }
@@ -83,8 +83,8 @@ public abstract record ProxyRestoreValidationResult
             int? activeConfigVersion,
             ProxyRestoreConfigurationValidationResult configValidation,
             ProxyBackupManifest manifest,
-            IReadOnlyList<ProxyRestoreValidationFinding> errors,
-            IReadOnlyList<ProxyRestoreValidationFinding> warnings)
+            IEnumerable<ProxyRestoreValidationFinding> errors,
+            IEnumerable<ProxyRestoreValidationFinding> warnings)
             : base(generatedAtUtc, activeConfigVersion, configValidation, manifest, errors, warnings)
         {
         }

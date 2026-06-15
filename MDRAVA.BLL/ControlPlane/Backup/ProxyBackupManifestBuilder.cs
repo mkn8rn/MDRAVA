@@ -4,9 +4,9 @@ public static class ProxyBackupManifestBuilder
 {
     public static ProxyBackupManifest Build(
         DateTimeOffset generatedAtUtc,
-        IReadOnlyList<ProxyBackupDirectoryStatus> directories,
-        IReadOnlyList<ProxyBackupManifestEntry> entries,
-        IReadOnlyList<ProxyBackupWarning> warnings,
+        IEnumerable<ProxyBackupDirectoryStatus> directories,
+        IEnumerable<ProxyBackupManifestEntry> entries,
+        IEnumerable<ProxyBackupWarning> warnings,
         int maxEntries,
         int maxWarnings)
     {
@@ -40,10 +40,10 @@ public static class ProxyBackupManifestBuilder
 
         return new ProxyBackupManifest(
             generatedAtUtc,
-            directories.ToArray(),
+            directories,
             boundedEntries,
             counts,
-            boundedWarnings.Take(maxWarnings).ToArray(),
+            boundedWarnings.Take(maxWarnings),
             truncated);
     }
 }

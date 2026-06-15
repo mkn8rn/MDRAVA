@@ -4,8 +4,8 @@ public sealed record ProxyBackupFileSystemScanResult
 {
     private ProxyBackupFileSystemScanResult(
         bool rootExists,
-        IReadOnlyList<ProxyBackupFileSystemEntry> files,
-        IReadOnlyList<ProxyBackupFileSystemWarning> warnings)
+        IEnumerable<ProxyBackupFileSystemEntry> files,
+        IEnumerable<ProxyBackupFileSystemWarning> warnings)
     {
         RootExists = rootExists;
         Files = BackupList.Copy(files);
@@ -27,8 +27,8 @@ public sealed record ProxyBackupFileSystemScanResult
     }
 
     public static ProxyBackupFileSystemScanResult Scanned(
-        IReadOnlyList<ProxyBackupFileSystemEntry> files,
-        IReadOnlyList<ProxyBackupFileSystemWarning> warnings)
+        IEnumerable<ProxyBackupFileSystemEntry> files,
+        IEnumerable<ProxyBackupFileSystemWarning> warnings)
     {
         return new ProxyBackupFileSystemScanResult(
             rootExists: true,

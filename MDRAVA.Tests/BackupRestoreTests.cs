@@ -278,18 +278,20 @@ internal static class BackupRestoreTests
             manifestWarnings,
             Truncated: false);
 
-        var scan = ProxyBackupFileSystemScanResult.Scanned(scanFiles, scanWarnings);
+        var scan = ProxyBackupFileSystemScanResult.Scanned(
+            scanFiles.Select(static item => item),
+            scanWarnings.Select(static item => item));
         var configValidation = ProxyRestoreConfigurationValidationResult.Completed(
-            configErrors,
-            configFileErrors,
+            configErrors.Select(static item => item),
+            configFileErrors.Select(static item => item),
             wouldBeVersion: null);
         var restoreValidation = ProxyRestoreValidationResult.Completed(
             generatedAtUtc,
             activeConfigVersion: 3,
             configValidation,
             manifest,
-            restoreErrors,
-            restoreWarnings);
+            restoreErrors.Select(static item => item),
+            restoreWarnings.Select(static item => item));
 
         scanFiles.Clear();
         scanWarnings.Clear();

@@ -7,8 +7,8 @@ public static class ProxyRestoreValidationResultBuilder
         int? activeConfigVersion,
         ProxyRestoreConfigurationValidationResult configValidation,
         ProxyBackupManifest manifest,
-        IReadOnlyList<ProxyRestoreValidationFinding> errors,
-        IReadOnlyList<ProxyRestoreValidationFinding> warnings,
+        IEnumerable<ProxyRestoreValidationFinding> errors,
+        IEnumerable<ProxyRestoreValidationFinding> warnings,
         int maxFindings)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(maxFindings);
@@ -17,7 +17,7 @@ public static class ProxyRestoreValidationResultBuilder
             activeConfigVersion,
             configValidation,
             manifest,
-            errors.Take(maxFindings).ToArray(),
-            warnings.Take(maxFindings).ToArray());
+            errors.Take(maxFindings),
+            warnings.Take(maxFindings));
     }
 }

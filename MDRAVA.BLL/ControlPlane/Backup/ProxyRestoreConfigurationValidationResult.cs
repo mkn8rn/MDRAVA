@@ -15,16 +15,16 @@ public abstract record ProxyRestoreConfigurationValidationResult
     public abstract int? WouldBeVersion { get; }
 
     public static ProxyRestoreConfigurationValidationResult Completed(
-        IReadOnlyList<string> errors,
-        IReadOnlyList<ProxyConfigurationFileError> fileErrors,
+        IEnumerable<string> errors,
+        IEnumerable<ProxyConfigurationFileError> fileErrors,
         int? wouldBeVersion)
     {
-        ArgumentNullException.ThrowIfNull(errors);
-        ArgumentNullException.ThrowIfNull(fileErrors);
+        var ownedErrors = BackupList.Copy(errors);
+        var ownedFileErrors = BackupList.Copy(fileErrors);
 
-        return errors.Count == 0 && fileErrors.Count == 0
+        return ownedErrors.Count == 0 && ownedFileErrors.Count == 0
             ? new ValidResult(wouldBeVersion)
-            : new InvalidResult(errors, fileErrors, wouldBeVersion);
+            : new InvalidResult(ownedErrors, ownedFileErrors, wouldBeVersion);
     }
 
     public sealed record ValidResult : ProxyRestoreConfigurationValidationResult
@@ -45,19 +45,20 @@ public abstract record ProxyRestoreConfigurationValidationResult
     public sealed record InvalidResult : ProxyRestoreConfigurationValidationResult
     {
         public InvalidResult(
-            IReadOnlyList<string> errors,
-            IReadOnlyList<ProxyConfigurationFileError> fileErrors,
+            IEnumerable<string> errors,
+            IEnumerable<ProxyConfigurationFileError> fileErrors,
             int? wouldBeVersion)
         {
-            ArgumentNullException.ThrowIfNull(errors);
-            ArgumentNullException.ThrowIfNull(fileErrors);
-            if (errors.Count == 0 && fileErrors.Count == 0)
+            var ownedErrors = BackupList.Copy(errors);
+            var ownedFileErrors = BackupList.Copy(fileErrors);
+
+            if (ownedErrors.Count == 0 && ownedFileErrors.Count == 0)
             {
                 throw new ArgumentException("Invalid restore configuration validation requires at least one error.");
             }
 
-            Errors = BackupList.Copy(errors);
-            FileErrors = BackupList.Copy(fileErrors);
+            Errors = ownedErrors;
+            FileErrors = ownedFileErrors;
             WouldBeVersion = wouldBeVersion;
         }
 

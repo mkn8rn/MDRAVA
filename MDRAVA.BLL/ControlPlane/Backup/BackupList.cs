@@ -4,7 +4,7 @@ namespace MDRAVA.BLL.ControlPlane.Backup;
 
 internal static class BackupList
 {
-    public static ReadOnlyCollection<T> Copy<T>(IReadOnlyList<T> values)
+    public static ReadOnlyCollection<T> Copy<T>(IEnumerable<T> values)
     {
         ArgumentNullException.ThrowIfNull(values);
         return new ReadOnlyCollection<T>(values.ToArray());

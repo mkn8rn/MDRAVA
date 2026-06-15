@@ -4,10 +4,10 @@ public sealed record ProxyBackupManifest
 {
     public ProxyBackupManifest(
         DateTimeOffset GeneratedAtUtc,
-        IReadOnlyList<ProxyBackupDirectoryStatus> Directories,
-        IReadOnlyList<ProxyBackupManifestEntry> Entries,
-        IReadOnlyList<ProxyBackupManifestCount> Counts,
-        IReadOnlyList<ProxyBackupWarning> Warnings,
+        IEnumerable<ProxyBackupDirectoryStatus> Directories,
+        IEnumerable<ProxyBackupManifestEntry> Entries,
+        IEnumerable<ProxyBackupManifestCount> Counts,
+        IEnumerable<ProxyBackupWarning> Warnings,
         bool Truncated)
     {
         this.GeneratedAtUtc = GeneratedAtUtc;
