@@ -170,8 +170,10 @@ internal static class ConfigurationTests
         AssertEx.Equal(1, result.Changes.Count);
         AssertEx.Equal("changed", result.Changes[0].Action);
         AssertEx.Equal("main", result.Changes[0].Name);
+        AssertEx.False(result.Changes is ProxyListenerReloadChange[], "Listener reload changes should not expose a mutable array.");
         AssertEx.Equal(1, result.Errors.Count);
         AssertEx.Equal("bind failed", result.Errors[0]);
+        AssertEx.False(result.Errors is string[], "Listener reload errors should not expose a mutable array.");
     }
 
     public static void ConfigurationManagementResultsCopyInputCollections()

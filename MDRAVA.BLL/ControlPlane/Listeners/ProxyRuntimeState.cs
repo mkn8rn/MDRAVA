@@ -54,7 +54,7 @@ public sealed class ProxyRuntimeState : IProxyStatusRuntimeStateSource, IHttp3Al
     {
         lock (_gate)
         {
-            return ProxyRuntimeSnapshotList.Copy(_listeners);
+            return ProxyListenerList.Copy(_listeners);
         }
     }
 

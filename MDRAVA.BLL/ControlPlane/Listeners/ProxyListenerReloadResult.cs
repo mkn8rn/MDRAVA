@@ -16,8 +16,8 @@ public abstract partial record ProxyListenerReloadResult
         Removed = removed;
         Changed = changed;
         Unchanged = unchanged;
-        Changes = changes.ToArray();
-        Errors = errors.ToArray();
+        Changes = ProxyListenerList.Copy(changes);
+        Errors = ProxyListenerList.Copy(errors);
     }
 
     public DateTimeOffset AttemptedAtUtc { get; }
