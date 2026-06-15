@@ -75,19 +75,97 @@ public static class AdminBindPolicy
 
 }
 
-public sealed record AdminBindPolicyInput(
-    IReadOnlyList<AdminBindCandidate> Candidates,
-    AdminStartupSecurityOptions StartupSecurity);
+public static class AdminBindPolicyInputMapper
+{
+    public const string OperationalConfigSource = "proxy-operational-config";
 
-public sealed record AdminBindCandidate(
-    IReadOnlyList<string> Urls,
-    string Source,
-    bool ApplyToWebHost);
+    public static AdminBindPolicyInput FromStartupConfiguration(
+        AdminStartupSecurityOptions startupSecurity,
+        IReadOnlyList<string> mdravaAdminUrls,
+        string mdravaAdminUrlsSource,
+        IReadOnlyList<string> aspNetCoreUrls,
+        string aspNetCoreUrlsSource)
+    {
+        return new AdminBindPolicyInput(
+            [
+                new AdminBindCandidate(
+                    startupSecurity.Urls,
+                    OperationalConfigSource,
+                    ApplyToWebHost: true),
+                new AdminBindCandidate(
+                    mdravaAdminUrls,
+                    mdravaAdminUrlsSource,
+                    ApplyToWebHost: true),
+                new AdminBindCandidate(
+                    aspNetCoreUrls,
+                    aspNetCoreUrlsSource,
+                    ApplyToWebHost: false)
+            ],
+            startupSecurity);
+    }
+}
 
-public sealed record AdminBindResolution(
-    IReadOnlyList<string> Urls,
-    string Source,
-    bool ApplyToWebHost,
-    bool IsLocalOnly,
-    bool RequireAuthentication,
-    bool HasConfiguredToken);
+public sealed record AdminBindPolicyInput
+{
+    public AdminBindPolicyInput(
+        IReadOnlyList<AdminBindCandidate> Candidates,
+        AdminStartupSecurityOptions StartupSecurity)
+    {
+        this.Candidates = RuntimeList.Copy(Candidates);
+        this.StartupSecurity = StartupSecurity;
+    }
+
+    public IReadOnlyList<AdminBindCandidate> Candidates { get; }
+
+    public AdminStartupSecurityOptions StartupSecurity { get; init; }
+}
+
+public sealed record AdminBindCandidate
+{
+    public AdminBindCandidate(
+        IReadOnlyList<string> Urls,
+        string Source,
+        bool ApplyToWebHost)
+    {
+        this.Urls = RuntimeList.Copy(Urls);
+        this.Source = Source;
+        this.ApplyToWebHost = ApplyToWebHost;
+    }
+
+    public IReadOnlyList<string> Urls { get; }
+
+    public string Source { get; init; }
+
+    public bool ApplyToWebHost { get; init; }
+}
+
+public sealed record AdminBindResolution
+{
+    public AdminBindResolution(
+        IReadOnlyList<string> Urls,
+        string Source,
+        bool ApplyToWebHost,
+        bool IsLocalOnly,
+        bool RequireAuthentication,
+        bool HasConfiguredToken)
+    {
+        this.Urls = RuntimeList.Copy(Urls);
+        this.Source = Source;
+        this.ApplyToWebHost = ApplyToWebHost;
+        this.IsLocalOnly = IsLocalOnly;
+        this.RequireAuthentication = RequireAuthentication;
+        this.HasConfiguredToken = HasConfiguredToken;
+    }
+
+    public IReadOnlyList<string> Urls { get; }
+
+    public string Source { get; init; }
+
+    public bool ApplyToWebHost { get; init; }
+
+    public bool IsLocalOnly { get; init; }
+
+    public bool RequireAuthentication { get; init; }
+
+    public bool HasConfiguredToken { get; init; }
+}

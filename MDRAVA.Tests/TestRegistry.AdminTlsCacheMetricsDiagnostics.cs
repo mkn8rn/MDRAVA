@@ -5,6 +5,7 @@ internal static partial class TestRegistry
     private static TestCase[] AdminTlsCacheMetricsDiagnostics() =>
     [
     Test("Default admin bind is localhost-only", Sync(AdminSecurityTests.DefaultAdminBindIsLocalhostOnly), TestTaxonomy.Headers, TestTaxonomy.Admin),
+    Test("Admin bind input mapper builds ordered candidates", Sync(AdminSecurityTests.AdminBindInputMapperBuildsOrderedCandidates), TestTaxonomy.Config, TestTaxonomy.Admin),
     Test("Non-local admin bind without auth is rejected", Sync(AdminSecurityTests.NonLocalAdminBindWithoutAuthIsRejected), TestTaxonomy.Admin, TestTaxonomy.SecurityNegativePaths),
     Test("Operational config rejects non-local admin URL without auth", Sync(AdminSecurityTests.OperationalConfigRejectsNonLocalAdminUrlWithoutAuth), TestTaxonomy.Admin, TestTaxonomy.SecurityNegativePaths),
     Test("Protected admin endpoint rejects missing auth", AdminSecurityTests.ProtectedEndpointRejectsMissingAuth, TestTaxonomy.Admin, TestTaxonomy.SecurityNegativePaths),

@@ -31,22 +31,12 @@ public static class AdminBindWebHostConfigurator
         AdminStartupSecurityOptions startupSecurity)
     {
         return AdminBindPolicy.Resolve(
-            new AdminBindPolicyInput(
-                [
-                    new AdminBindCandidate(
-                        startupSecurity.Urls,
-                        "proxy-operational-config",
-                        ApplyToWebHost: true),
-                    new AdminBindCandidate(
-                        ReadConfiguredUrls(configuration, MdravaAdminUrlsConfigurationKey),
-                        MdravaAdminUrlsConfigurationKey,
-                        ApplyToWebHost: true),
-                    new AdminBindCandidate(
-                        ReadConfiguredUrls(configuration, AspNetCoreUrlsConfigurationKey),
-                        AspNetCoreUrlsConfigurationKey,
-                        ApplyToWebHost: false)
-                ],
-                startupSecurity),
+            AdminBindPolicyInputMapper.FromStartupConfiguration(
+                startupSecurity,
+                ReadConfiguredUrls(configuration, MdravaAdminUrlsConfigurationKey),
+                MdravaAdminUrlsConfigurationKey,
+                ReadConfiguredUrls(configuration, AspNetCoreUrlsConfigurationKey),
+                AspNetCoreUrlsConfigurationKey),
             new ProxyAdminUrlPolicy());
     }
 

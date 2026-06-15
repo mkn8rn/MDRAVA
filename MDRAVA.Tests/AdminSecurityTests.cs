@@ -49,6 +49,36 @@ internal static class AdminSecurityTests
         AssertEx.True(resolution.ApplyToWebHost);
     }
 
+    public static void AdminBindInputMapperBuildsOrderedCandidates()
+    {
+        var startupUrls = new List<string> { "http://localhost:6001" };
+        var mdravaUrls = new List<string> { "http://localhost:6002" };
+        var aspNetCoreUrls = new List<string> { "http://localhost:6003" };
+        var startupSecurity = new AdminStartupSecurityOptions(startupUrls, false, false);
+
+        var input = AdminBindPolicyInputMapper.FromStartupConfiguration(
+            startupSecurity,
+            mdravaUrls,
+            AdminBindWebHostConfigurator.MdravaAdminUrlsConfigurationKey,
+            aspNetCoreUrls,
+            AdminBindWebHostConfigurator.AspNetCoreUrlsConfigurationKey);
+
+        startupUrls[0] = "http://localhost:7001";
+        mdravaUrls[0] = "http://localhost:7002";
+        aspNetCoreUrls[0] = "http://localhost:7003";
+
+        AssertEx.Equal(3, input.Candidates.Count);
+        AssertEx.Equal(AdminBindPolicyInputMapper.OperationalConfigSource, input.Candidates[0].Source);
+        AssertEx.Equal("http://localhost:6001", input.Candidates[0].Urls[0]);
+        AssertEx.True(input.Candidates[0].ApplyToWebHost);
+        AssertEx.Equal(AdminBindWebHostConfigurator.MdravaAdminUrlsConfigurationKey, input.Candidates[1].Source);
+        AssertEx.Equal("http://localhost:6002", input.Candidates[1].Urls[0]);
+        AssertEx.True(input.Candidates[1].ApplyToWebHost);
+        AssertEx.Equal(AdminBindWebHostConfigurator.AspNetCoreUrlsConfigurationKey, input.Candidates[2].Source);
+        AssertEx.Equal("http://localhost:6003", input.Candidates[2].Urls[0]);
+        AssertEx.False(input.Candidates[2].ApplyToWebHost);
+    }
+
     public static void NonLocalAdminBindWithoutAuthIsRejected()
     {
         var configuration = new ConfigurationBuilder()
