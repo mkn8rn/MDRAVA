@@ -1,4 +1,5 @@
 using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
+using MDRAVA.BLL.ControlPlane.Http3;
 
 namespace MDRAVA.INF.Configuration;
 
@@ -22,7 +23,10 @@ public sealed class ProxyConfigurationReadProjectionSource
             ? ProxyConfigurationReadProjectionResult<ProxyConfigurationProjection>.Available(
                 ProxyConfigurationProjectionMapper.ToProjection(
                     available.Snapshot,
-                    _http3ProjectionSource.Project(available.Snapshot)))
+                    _http3ProjectionSource.Project(
+                        ProxyHttp3SupportConfigurationSourceMapper.FromConfiguration(
+                            available.Snapshot.Listeners,
+                            available.Snapshot.Routes))))
             : ProxyConfigurationReadProjectionResult<ProxyConfigurationProjection>.MissingConfiguration;
     }
 }

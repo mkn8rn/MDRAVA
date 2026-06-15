@@ -1,5 +1,6 @@
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.Caching;
+using MDRAVA.BLL.ControlPlane.Http3;
 using MDRAVA.BLL.ControlPlane.Listeners;
 
 namespace MDRAVA.BLL.ControlPlane.ConfigurationManagement;
@@ -134,6 +135,9 @@ public sealed class ProxyConfigurationReloadService
     {
         return ProxyConfigurationProjectionMapper.ToProjection(
             snapshot,
-            _http3ProjectionSource.Project(snapshot));
+            _http3ProjectionSource.Project(
+                ProxyHttp3SupportConfigurationSourceMapper.FromConfiguration(
+                    snapshot.Listeners,
+                    snapshot.Routes)));
     }
 }

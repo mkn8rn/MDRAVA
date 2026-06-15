@@ -2,7 +2,6 @@ using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.HealthChecks;
 using MDRAVA.BLL.ControlPlane.Http3;
 using MDRAVA.BLL.ControlPlane.Status;
-using MDRAVA.INF.Proxy.Http3;
 
 namespace MDRAVA.INF.Proxy.Status;
 

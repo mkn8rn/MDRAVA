@@ -15,7 +15,10 @@ internal static class TestHttp3PlatformSupport
 
     public static RuntimeHttp3SupportProjection Project(ProxyConfigurationSnapshot snapshot)
     {
-        return ProjectionSource.Project(snapshot);
+        return ProjectionSource.Project(
+            ProxyHttp3SupportConfigurationSourceMapper.FromConfiguration(
+                snapshot.Listeners,
+                snapshot.Routes));
     }
 
     private sealed class FixedRuntimeHttp3PlatformSupportSource : IRuntimeHttp3PlatformSupportSource
