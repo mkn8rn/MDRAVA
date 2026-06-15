@@ -54,7 +54,7 @@ public sealed record ProxyRestoreValidationFindingResponse(
     {
         ArgumentNullException.ThrowIfNull(findings);
 
-        return findings.Select(FromFinding).ToArray();
+        return ApiResponseList.Copy(findings.Select(FromFinding));
     }
 
     private static ProxyRestoreValidationFindingResponse FromFinding(

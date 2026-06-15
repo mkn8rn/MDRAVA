@@ -327,6 +327,9 @@ internal static class BackupRestoreTests
         AssertEx.False(response.Entries is ProxyBackupManifestEntryResponse[], "Backup manifest API entries should not expose a mutable array.");
         AssertEx.False(response.Counts is ProxyBackupManifestCountResponse[], "Backup manifest API counts should not expose a mutable array.");
         AssertEx.False(response.Warnings is ProxyBackupWarningResponse[], "Backup manifest API warnings should not expose a mutable array.");
+        var validationResponse = ProxyRestoreValidationResponseBody.FromResult(restoreValidation);
+        AssertEx.False(validationResponse.Errors is ProxyRestoreValidationFindingResponse[], "Restore validation API errors should not expose a mutable array.");
+        AssertEx.False(validationResponse.Warnings is ProxyRestoreValidationFindingResponse[], "Restore validation API warnings should not expose a mutable array.");
     }
 
     public static void BackupPathSafetyRejectsTraversalOutsideDataDirectory()
