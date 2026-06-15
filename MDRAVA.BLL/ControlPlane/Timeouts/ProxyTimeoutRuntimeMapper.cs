@@ -1,9 +1,8 @@
 using MDRAVA.BLL.Configuration;
-using MDRAVA.BLL.ControlPlane.Timeouts;
 
-namespace MDRAVA.INF.Proxy;
+namespace MDRAVA.BLL.ControlPlane.Timeouts;
 
-internal static class ProxyTimeoutRuntimeMapper
+public static class ProxyTimeoutRuntimeMapper
 {
     public static ProxyRouteTimeoutPolicyInput ToPolicyInput(RuntimeRoute route)
     {
