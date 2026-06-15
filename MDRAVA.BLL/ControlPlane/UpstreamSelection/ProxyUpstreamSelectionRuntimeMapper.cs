@@ -1,9 +1,8 @@
 using MDRAVA.BLL.Configuration;
-using MDRAVA.BLL.ControlPlane.UpstreamSelection;
 
-namespace MDRAVA.INF.Proxy;
+namespace MDRAVA.BLL.ControlPlane.UpstreamSelection;
 
-internal static class ProxyUpstreamSelectionRuntimeMapper
+public static class ProxyUpstreamSelectionRuntimeMapper
 {
     public static UpstreamSelectionRoute ToSelectionRoute(RuntimeRoute route)
     {
