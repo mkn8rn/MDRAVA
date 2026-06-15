@@ -1,9 +1,8 @@
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.HealthChecks;
 using MDRAVA.BLL.ControlPlane.Http3;
-using MDRAVA.BLL.ControlPlane.Status;
 
-namespace MDRAVA.INF.Proxy.Status;
+namespace MDRAVA.BLL.ControlPlane.Status;
 
 public static class ProxyStatusConfigurationSourceMapper
 {
