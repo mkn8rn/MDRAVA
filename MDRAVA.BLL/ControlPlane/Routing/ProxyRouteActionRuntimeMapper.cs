@@ -20,7 +20,7 @@ public static class ProxyRouteActionRuntimeMapper
                 route.CanonicalHost.Enabled,
                 route.CanonicalHost.TargetHost,
                 route.CanonicalHost.StatusCode,
-                listener.Transport == RuntimeListenerTransport.Https ? "https" : "http",
+                RuntimeListenerTransportScheme.FromTransport(listener.Transport),
                 requestHead.Host,
                 requestHead.Target),
             new ProxyRouteMaintenanceActionInput(

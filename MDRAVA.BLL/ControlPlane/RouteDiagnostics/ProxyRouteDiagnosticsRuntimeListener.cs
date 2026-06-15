@@ -8,7 +8,7 @@ public sealed class ProxyRouteDiagnosticsRuntimeListener
     public ProxyRouteDiagnosticsRuntimeListener(RuntimeListener runtimeListener)
     {
         Name = runtimeListener.Name;
-        Transport = runtimeListener.Transport == RuntimeListenerTransport.Https ? "https" : "http";
+        Transport = RuntimeListenerTransportScheme.FromTransport(runtimeListener.Transport);
         Address = runtimeListener.Address;
         Port = runtimeListener.Port;
         Enabled = runtimeListener.Enabled;

@@ -9,7 +9,7 @@ public static class ProxyCacheRuntimeMapper
         return new ProxyCacheRequestScope(
             route.Name,
             route.Host,
-            listener.Transport == RuntimeListenerTransport.Https ? "https" : "http",
+            RuntimeListenerTransportScheme.FromTransport(listener.Transport),
             ToPolicyFacts(route.Cache));
     }
 
