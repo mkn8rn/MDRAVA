@@ -29,7 +29,7 @@ public sealed record RuntimeUpstreamResponse(
     {
         ArgumentNullException.ThrowIfNull(upstreams);
 
-        return upstreams.Select(FromUpstream).ToArray();
+        return ApiResponseList.Copy(upstreams.Select(FromUpstream));
     }
 
     private static RuntimeUpstreamResponse FromUpstream(BusinessRuntimeUpstreamProjection upstream)
@@ -85,6 +85,6 @@ public sealed record RuntimeCircuitBreakerResponse(
             projection.SamplingWindow,
             projection.OpenDuration,
             projection.HalfOpenMaxAttempts,
-            projection.FailureStatusCodes.ToArray());
+            ApiResponseList.Copy(projection.FailureStatusCodes));
     }
 }

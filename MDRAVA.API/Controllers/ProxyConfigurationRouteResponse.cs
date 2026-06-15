@@ -31,7 +31,7 @@ public sealed record RuntimeRouteResponse(
     {
         ArgumentNullException.ThrowIfNull(routes);
 
-        return routes.Select(FromRoute).ToArray();
+        return ApiResponseList.Copy(routes.Select(FromRoute));
     }
 
     private static RuntimeRouteResponse FromRoute(BusinessRuntimeRouteProjection route)
