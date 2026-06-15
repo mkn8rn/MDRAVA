@@ -54,7 +54,8 @@ public static class FramedUpstreamResponsePolicy
             var contentLengthAnalysis = Http1RequestParser.AnalyzeContentLength(contentLengthValues);
             if (contentLengthAnalysis is Http1ContentLengthAnalysisResult.Rejected rejectedContentLength)
             {
-                return UpstreamResponseFramingDecision.Reject(rejectedContentLength.Error.ToString());
+                return UpstreamResponseFramingDecision.Reject(
+                    Http1ParseErrorText.FromError(rejectedContentLength.Error));
             }
 
             var contentLength = ((Http1ContentLengthAnalysisResult.Accepted)contentLengthAnalysis).ContentLength;

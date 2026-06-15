@@ -46,7 +46,7 @@ internal static class FramedUpstreamResponsePolicyTests
             200,
             [new ProxyHeaderField("content-length", "-1")],
             ResponseEndedWithHead: false));
-        AssertEx.Equal(Http1ParseError.InvalidContentLength.ToString(), invalidContentLength);
+        AssertEx.Equal(Http1ParseErrorText.FromError(Http1ParseError.InvalidContentLength), invalidContentLength);
 
         var conflictingContentLength = Reject("GET", new FramedUpstreamResponseTranslationInput(
             200,
@@ -55,7 +55,7 @@ internal static class FramedUpstreamResponsePolicyTests
                 new ProxyHeaderField("content-length", "5")
             ],
             ResponseEndedWithHead: false));
-        AssertEx.Equal(Http1ParseError.ConflictingContentLength.ToString(), conflictingContentLength);
+        AssertEx.Equal(Http1ParseErrorText.FromError(Http1ParseError.ConflictingContentLength), conflictingContentLength);
     }
 
     private static Http1ResponseHead Build(
