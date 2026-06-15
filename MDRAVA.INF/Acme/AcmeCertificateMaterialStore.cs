@@ -44,14 +44,10 @@ public static class AcmeCertificateMaterialStore
                     continue;
                 }
 
-                certificates[certificateOptions.Id] = new RuntimeCertificate(
+                certificates[certificateOptions.Id] = RuntimeCertificateFactory.Acme(
                     certificateOptions.Id,
-                    $"acme://{certificateOptions.Id}",
-                    "pfx",
-                    false,
                     certificate,
-                    "acme",
-                    certificateOptions.Domains.ToArray());
+                    certificateOptions.Domains);
             }
             catch (CryptographicException exception)
             {
@@ -99,14 +95,10 @@ public static class AcmeCertificateMaterialStore
             certificate.Thumbprint);
         File.WriteAllText(metadataPath, JsonSerializer.Serialize(metadata, SiteConfigurationParser.WriteJsonOptions));
 
-        return new RuntimeCertificate(
+        return RuntimeCertificateFactory.Acme(
             request.CertificateId,
-            $"acme://{request.CertificateId}",
-            "pfx",
-            false,
             certificate,
-            "acme",
-            request.Domains.ToArray());
+            request.Domains);
     }
 
     public static AcmeCertificateStorageLayout EnsureLayout(string dataDirectory, string storagePath)

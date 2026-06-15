@@ -4,6 +4,36 @@ namespace MDRAVA.Tests;
 
 internal static class TlsCertificateSelectorTests
 {
+    public static void RuntimeCertificateFactoryBuildsManualAndAcmeCertificates()
+    {
+        using var manualCertificate = Certificate("manual.test");
+        using var acmeCertificate = Certificate("acme.test");
+        var domains = new List<string> { "acme.test" };
+
+        var manual = RuntimeCertificateFactory.ManualPfx(
+            "manual",
+            "certs/manual.pfx",
+            hasConfiguredPassword: true,
+            manualCertificate);
+        var acme = RuntimeCertificateFactory.Acme("acme", acmeCertificate, domains);
+
+        domains[0] = "replacement.test";
+        domains.Clear();
+
+        AssertEx.Equal("manual", manual.Id);
+        AssertEx.Equal("certs/manual.pfx", manual.Path);
+        AssertEx.Equal(RuntimeCertificateFactory.PfxFormat, manual.Format);
+        AssertEx.True(manual.HasConfiguredPassword);
+        AssertEx.Equal(RuntimeCertificateFactory.ManualPfxSource, manual.Source);
+        AssertEx.Equal(0, manual.Domains.Count);
+        AssertEx.Equal("acme", acme.Id);
+        AssertEx.Equal("acme://acme", acme.Path);
+        AssertEx.Equal(RuntimeCertificateFactory.PfxFormat, acme.Format);
+        AssertEx.False(acme.HasConfiguredPassword);
+        AssertEx.Equal(RuntimeCertificateFactory.AcmeSource, acme.Source);
+        AssertEx.Equal("acme.test", acme.Domains[0]);
+    }
+
     public static void SelectionInputReadsRuntimeConfiguration()
     {
         using var defaultCertificate = Certificate("default.test");

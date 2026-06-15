@@ -277,14 +277,11 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
 
                 certificates.Add(
                     certificateOptions.Id,
-                    new RuntimeCertificate(
+                    RuntimeCertificateFactory.ManualPfx(
                         certificateOptions.Id,
                         certificatePath,
-                        "pfx",
                         hasConfiguredPassword,
-                        certificate,
-                        "manualPfx",
-                        []));
+                        certificate));
             }
             catch (CryptographicException exception)
             {
