@@ -197,6 +197,7 @@ internal static class OperatorStatusTests
 
         var readListeners = runtime.ReadRuntimeListeners();
         AssertEx.Equal(1, readListeners.Count);
+        AssertEx.False(readListeners is ProxyListenerStatus[], "Runtime listener reads should not expose a mutable array.");
         if (readListeners is ProxyListenerStatus[] readArray)
         {
             readArray[0] = failed;
@@ -207,6 +208,7 @@ internal static class OperatorStatusTests
         AssertEx.Equal(ProxyListenerState.Active, afterReadMutation.Listeners[0].State);
 
         var snapshotListeners = afterReadMutation.Listeners;
+        AssertEx.False(snapshotListeners is ProxyListenerStatus[], "Runtime snapshot listeners should not expose a mutable array.");
         if (snapshotListeners is ProxyListenerStatus[] snapshotArray)
         {
             snapshotArray[0] = failed;
