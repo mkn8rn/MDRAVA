@@ -13,11 +13,13 @@ public sealed record ProxyConfigLintRuntimeConfigurationSource
         IReadOnlyList<string> AdminUrls,
         bool AdminRequiresAuthentication,
         bool PublicMetricsEnabled,
-        IReadOnlyList<RuntimeListener> Listeners,
-        IReadOnlyList<RuntimeRoute> Routes)
+        Http3SupportConfigurationSource Http3Support,
+        IReadOnlyList<ProxyConfigLintRuntimeListenerSource> Listeners,
+        IReadOnlyList<ProxyConfigLintRuntimeRouteSource> Routes)
     {
         ArgumentNullException.ThrowIfNull(SourceFiles);
         ArgumentNullException.ThrowIfNull(AdminUrls);
+        ArgumentNullException.ThrowIfNull(Http3Support);
         ArgumentNullException.ThrowIfNull(Listeners);
         ArgumentNullException.ThrowIfNull(Routes);
 
@@ -25,6 +27,7 @@ public sealed record ProxyConfigLintRuntimeConfigurationSource
         this.AdminUrls = Copy(AdminUrls);
         this.AdminRequiresAuthentication = AdminRequiresAuthentication;
         this.PublicMetricsEnabled = PublicMetricsEnabled;
+        this.Http3Support = Http3Support;
         this.Listeners = Copy(Listeners);
         this.Routes = Copy(Routes);
     }
@@ -37,15 +40,113 @@ public sealed record ProxyConfigLintRuntimeConfigurationSource
 
     public bool PublicMetricsEnabled { get; }
 
-    public IReadOnlyList<RuntimeListener> Listeners { get; }
+    public Http3SupportConfigurationSource Http3Support { get; }
 
-    public IReadOnlyList<RuntimeRoute> Routes { get; }
+    public IReadOnlyList<ProxyConfigLintRuntimeListenerSource> Listeners { get; }
+
+    public IReadOnlyList<ProxyConfigLintRuntimeRouteSource> Routes { get; }
 
     private static ReadOnlyCollection<T> Copy<T>(IReadOnlyList<T> values)
     {
         return new ReadOnlyCollection<T>(values.ToArray());
     }
 }
+
+public sealed record ProxyConfigLintRuntimeListenerSource(
+    string Name,
+    string Address,
+    int Port,
+    bool Enabled,
+    string Transport,
+    bool Http3Configured,
+    bool Http3EnabledForTraffic,
+    string Http3DisabledReason,
+    string Http3EnablementLevel,
+    bool Http3AltSvcEnabled,
+    string? QuicIdentityKey);
+
+public sealed record ProxyConfigLintRuntimeRouteSource
+{
+    public ProxyConfigLintRuntimeRouteSource(
+        string Name,
+        string SiteName,
+        string Host,
+        string PathPrefix,
+        string Action,
+        bool HttpsRedirectEnabled,
+        bool CanonicalHostEnabled,
+        string CanonicalHostTargetHost,
+        bool CacheEnabled,
+        IReadOnlyList<string> CacheVaryByHeaders,
+        bool RetryEnabled,
+        IReadOnlyList<string> RetryMethods,
+        bool HealthCheckEnabled,
+        IReadOnlyList<ProxyConfigLintRuntimeUpstreamSource> Upstreams,
+        string StaticResponseBody)
+    {
+        ArgumentNullException.ThrowIfNull(CacheVaryByHeaders);
+        ArgumentNullException.ThrowIfNull(RetryMethods);
+        ArgumentNullException.ThrowIfNull(Upstreams);
+
+        this.Name = Name;
+        this.SiteName = SiteName;
+        this.Host = Host;
+        this.PathPrefix = PathPrefix;
+        this.Action = Action;
+        this.HttpsRedirectEnabled = HttpsRedirectEnabled;
+        this.CanonicalHostEnabled = CanonicalHostEnabled;
+        this.CanonicalHostTargetHost = CanonicalHostTargetHost;
+        this.CacheEnabled = CacheEnabled;
+        this.CacheVaryByHeaders = Copy(CacheVaryByHeaders);
+        this.RetryEnabled = RetryEnabled;
+        this.RetryMethods = Copy(RetryMethods);
+        this.HealthCheckEnabled = HealthCheckEnabled;
+        this.Upstreams = Copy(Upstreams);
+        this.StaticResponseBody = StaticResponseBody;
+    }
+
+    public string Name { get; }
+
+    public string SiteName { get; }
+
+    public string Host { get; }
+
+    public string PathPrefix { get; }
+
+    public string Action { get; }
+
+    public bool HttpsRedirectEnabled { get; }
+
+    public bool CanonicalHostEnabled { get; }
+
+    public string CanonicalHostTargetHost { get; }
+
+    public bool CacheEnabled { get; }
+
+    public IReadOnlyList<string> CacheVaryByHeaders { get; }
+
+    public bool RetryEnabled { get; }
+
+    public IReadOnlyList<string> RetryMethods { get; }
+
+    public bool HealthCheckEnabled { get; }
+
+    public IReadOnlyList<ProxyConfigLintRuntimeUpstreamSource> Upstreams { get; }
+
+    public string StaticResponseBody { get; }
+
+    private static ReadOnlyCollection<T> Copy<T>(IReadOnlyList<T> values)
+    {
+        return new ReadOnlyCollection<T>(values.ToArray());
+    }
+}
+
+public sealed record ProxyConfigLintRuntimeUpstreamSource(
+    string Name,
+    string Scheme,
+    string Protocol,
+    bool TlsValidateCertificate,
+    bool CircuitBreakerEnabled);
 
 public static class ProxyConfigLintRuntimeConfigurationSourceMapper
 {
@@ -57,29 +158,11 @@ public static class ProxyConfigLintRuntimeConfigurationSourceMapper
             snapshot.AdminSecurity.Urls,
             snapshot.AdminSecurity.RequireAuthentication,
             snapshot.Metrics.PublicMetricsEnabled,
-            snapshot.Listeners,
-            snapshot.Routes);
-    }
-}
-
-public static class ProxyConfigLintConfigurationSnapshotMapper
-{
-    public static ProxyConfigLintConfigurationSnapshot ToLintSnapshot(
-        ProxyConfigLintRuntimeConfigurationSource source,
-        RuntimeHttp3PlatformSupport platformSupport)
-    {
-        var http3 = Http3RuntimeSupport.ProjectConfiguration(
-            ProxyHttp3SupportConfigurationSourceMapper.FromConfiguration(source.Listeners, source.Routes),
-            platformSupport);
-        return new ProxyConfigLintConfigurationSnapshot(
-            source.SourceFiles,
-            new ProxyConfigLintAdminSecurity(
-                source.AdminUrls,
-                source.AdminRequiresAuthentication),
-            new ProxyConfigLintMetricsOptions(source.PublicMetricsEnabled),
-            http3.QuicConnectionSupported,
-            source.Listeners
-                .Select(static listener => new ProxyConfigLintListener(
+            ProxyHttp3SupportConfigurationSourceMapper.FromConfiguration(
+                snapshot.Listeners,
+                snapshot.Routes),
+            snapshot.Listeners
+                .Select(static listener => new ProxyConfigLintRuntimeListenerSource(
                     listener.Name,
                     listener.Address,
                     listener.Port,
@@ -98,8 +181,8 @@ public static class ProxyConfigLintConfigurationSnapshotMapper
                         listener.QuicIdentity?.Key)),
                     listener.QuicIdentity?.Key))
                 .ToArray(),
-            source.Routes
-                .Select(static route => new ProxyConfigLintRoute(
+            snapshot.Routes
+                .Select(static route => new ProxyConfigLintRuntimeRouteSource(
                     route.Name,
                     route.SiteName,
                     route.Host,
@@ -114,7 +197,7 @@ public static class ProxyConfigLintConfigurationSnapshotMapper
                     route.Retry.RetryMethods,
                     route.HealthCheck.Enabled,
                     route.Upstreams
-                        .Select(static upstream => new ProxyConfigLintUpstream(
+                        .Select(static upstream => new ProxyConfigLintRuntimeUpstreamSource(
                             upstream.Name,
                             upstream.Scheme,
                             upstream.Protocol,
@@ -122,6 +205,62 @@ public static class ProxyConfigLintConfigurationSnapshotMapper
                             upstream.CircuitBreaker.Enabled))
                         .ToArray(),
                     route.StaticResponse.Body))
+                .ToArray());
+    }
+}
+
+public static class ProxyConfigLintConfigurationSnapshotMapper
+{
+    public static ProxyConfigLintConfigurationSnapshot ToLintSnapshot(
+        ProxyConfigLintRuntimeConfigurationSource source,
+        RuntimeHttp3PlatformSupport platformSupport)
+    {
+        var http3 = Http3RuntimeSupport.ProjectConfiguration(source.Http3Support, platformSupport);
+        return new ProxyConfigLintConfigurationSnapshot(
+            source.SourceFiles,
+            new ProxyConfigLintAdminSecurity(
+                source.AdminUrls,
+                source.AdminRequiresAuthentication),
+            new ProxyConfigLintMetricsOptions(source.PublicMetricsEnabled),
+            http3.QuicConnectionSupported,
+            source.Listeners
+                .Select(static listener => new ProxyConfigLintListener(
+                    listener.Name,
+                    listener.Address,
+                    listener.Port,
+                    listener.Enabled,
+                    listener.Transport,
+                    listener.Http3Configured,
+                    listener.Http3EnabledForTraffic,
+                    listener.Http3DisabledReason,
+                    listener.Http3EnablementLevel,
+                    listener.Http3AltSvcEnabled,
+                    listener.QuicIdentityKey))
+                .ToArray(),
+            source.Routes
+                .Select(static route => new ProxyConfigLintRoute(
+                    route.Name,
+                    route.SiteName,
+                    route.Host,
+                    route.PathPrefix,
+                    route.Action,
+                    route.HttpsRedirectEnabled,
+                    route.CanonicalHostEnabled,
+                    route.CanonicalHostTargetHost,
+                    route.CacheEnabled,
+                    route.CacheVaryByHeaders,
+                    route.RetryEnabled,
+                    route.RetryMethods,
+                    route.HealthCheckEnabled,
+                    route.Upstreams
+                        .Select(static upstream => new ProxyConfigLintUpstream(
+                            upstream.Name,
+                            upstream.Scheme,
+                            upstream.Protocol,
+                            upstream.TlsValidateCertificate,
+                            upstream.CircuitBreakerEnabled))
+                        .ToArray(),
+                    route.StaticResponseBody))
                 .ToArray());
     }
 }

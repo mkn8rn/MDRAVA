@@ -708,48 +708,66 @@ internal static class RouteDiagnosticsTests
         var snapshot = Snapshot(BaseOptions([ProxyRoute("api", "diag.test", "/api")]));
         var sourceFiles = new List<string> { "site.json" };
         var adminUrls = new List<string> { AdminBindPolicy.DefaultAdminUrl };
-        var listeners = new List<RuntimeListener> { snapshot.Listeners[0] };
-        var cacheVaryByHeaders = new List<string> { "X-Tenant" };
-        var retryMethods = new List<string> { "GET" };
-        var upstreams = new List<RuntimeUpstream>
+        var listeners = new List<ProxyConfigLintRuntimeListenerSource>
         {
             new(
-                "api",
+                snapshot.Listeners[0].Name,
+                snapshot.Listeners[0].Address,
+                snapshot.Listeners[0].Port,
+                snapshot.Listeners[0].Enabled,
+                snapshot.Listeners[0].Transport.ToString(),
+                snapshot.Listeners[0].Http3.Configured,
+                snapshot.Listeners[0].Http3.EnabledForTraffic,
+                snapshot.Listeners[0].Http3.DisabledReason,
+                snapshot.Listeners[0].Http3.EnablementLevel,
+                false,
+                snapshot.Listeners[0].QuicIdentity?.Key)
+        };
+        var cacheVaryByHeaders = new List<string> { "X-Tenant" };
+        var retryMethods = new List<string> { "GET" };
+        var upstreams = new List<ProxyConfigLintRuntimeUpstreamSource>
+        {
+            new(
                 "local",
                 "http",
                 RuntimeUpstreamProtocol.Http1,
-                "127.0.0.1",
-                5000,
-                1,
-                RuntimeUpstreamTlsOptions.Default)
+                true,
+                false)
         };
-        var route = new RuntimeRoute(
+        var route = new ProxyConfigLintRuntimeRouteSource(
             "api",
+            "diag",
             "diag.test",
             "/api",
-            RuntimeRouteAction.Proxy,
-            "round-robin",
-            new RuntimeHealthCheckOptions(false, "/health", TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), 1, 1),
+            RuntimeRouteAction.Proxy.ToString(),
+            false,
+            false,
+            "",
+            true,
+            cacheVaryByHeaders,
+            true,
+            retryMethods,
+            false,
             upstreams,
-            new RuntimeHttpsRedirectPolicy(false, 308, null),
-            new RuntimeCanonicalHostPolicy(false, "", 308),
-            RuntimeHeaderPolicy.Empty,
-            new RuntimePathRewritePolicy("", "", ""),
-            new RuntimeRedirectPolicy(308, "", "", true),
-            new RuntimeStaticResponse(200, "text/plain; charset=utf-8", ""),
-            new RuntimeMaintenancePolicy(false, null, "text/plain; charset=utf-8", "Service Unavailable"),
-            new RuntimeCachePolicy(true, 1024, 4096, TimeSpan.FromSeconds(60), true, cacheVaryByHeaders, [200], ["GET"]),
-            new RuntimeRouteResolvedOptions(104857600, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30), true))
-        {
-            SiteName = "diag",
-            Retry = new RuntimeRetryPolicy(true, 2, null, true, false, [], retryMethods, TimeSpan.Zero)
-        };
-        var routes = new List<RuntimeRoute> { route };
+            "");
+        var routes = new List<ProxyConfigLintRuntimeRouteSource> { route };
+        var http3Support = new Http3SupportConfigurationSource(
+            [
+                new Http3SupportListenerSource(
+                    snapshot.Listeners[0].Http3.Configured,
+                    snapshot.Listeners[0].Http3.EnabledForTraffic,
+                    snapshot.Listeners[0].Http3.EnablementLevel,
+                    false,
+                    86400,
+                    snapshot.Listeners[0].QuicIdentity?.Key)
+            ],
+            UpstreamHttp3Configured: false);
         var source = new ProxyConfigLintRuntimeConfigurationSource(
             sourceFiles,
             adminUrls,
             snapshot.AdminSecurity.RequireAuthentication,
             snapshot.Metrics.PublicMetricsEnabled,
+            http3Support,
             listeners,
             routes);
 
@@ -782,6 +800,8 @@ internal static class RouteDiagnosticsTests
         AssertEx.Equal("GET", lintSnapshot.Routes[0].RetryMethods[0]);
         AssertEx.Equal("local", lintSnapshot.Routes[0].Upstreams[0].Name);
         AssertEx.False(source.SourceFiles is string[], "Config lint runtime source files should not expose a mutable array.");
+        AssertEx.False(source.Listeners is ProxyConfigLintRuntimeListenerSource[], "Config lint runtime source listeners should not expose a mutable array.");
+        AssertEx.False(source.Routes is ProxyConfigLintRuntimeRouteSource[], "Config lint runtime source routes should not expose a mutable array.");
         AssertEx.False(lintSnapshot.SourceFiles is string[], "Config lint snapshot source files should not expose a mutable array.");
         AssertEx.False(lintSnapshot.AdminSecurity.Urls is string[], "Config lint admin URLs should not expose a mutable array.");
         AssertEx.False(lintSnapshot.Routes is ProxyConfigLintRoute[], "Config lint routes should not expose a mutable array.");
