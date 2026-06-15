@@ -15,8 +15,8 @@ public abstract partial record ConfigLintResult
 
         LintedAtUtc = lintedAtUtc;
         Summary = summary;
-        Findings = findings.ToArray();
-        ValidationErrors = validationErrors.ToArray();
+        Findings = ConfigLintList.Copy(findings);
+        ValidationErrors = ConfigLintList.Copy(validationErrors);
     }
 
     public DateTimeOffset LintedAtUtc { get; }

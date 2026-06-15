@@ -1053,9 +1053,12 @@ internal static class RouteDiagnosticsTests
 
         AssertEx.Equal("route_shadowed", result.Findings[0].Code);
         AssertEx.Equal("lint-input", result.ValidationErrors[0].Path);
+        AssertEx.False(result.Findings is ConfigLintFinding[], "Config lint findings should not expose a mutable array.");
+        AssertEx.False(result.ValidationErrors is ProxyConfigurationFileError[], "Config lint validation errors should not expose a mutable array.");
         AssertEx.True(submitted is ProxyConfigLintSubmittedConfigurationResult.LoadedResult);
         var loaded = (ProxyConfigLintSubmittedConfigurationResult.LoadedResult)submitted;
         AssertEx.Equal("lint-input", loaded.ValidationErrors[0].Path);
+        AssertEx.False(loaded.ValidationErrors is ProxyConfigurationFileError[], "Submitted config lint validation errors should not expose a mutable array.");
     }
 
     public static void ConfigLintServiceShapesSubmittedSourceFindings()

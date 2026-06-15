@@ -14,7 +14,7 @@ public abstract partial record ProxyConfigLintSubmittedConfigurationResult
             ArgumentNullException.ThrowIfNull(validationErrors);
 
             Snapshot = snapshot;
-            ValidationErrors = validationErrors.ToArray();
+            ValidationErrors = ConfigLintList.Copy(validationErrors);
         }
 
         public ProxyConfigLintConfigurationSnapshot Snapshot { get; }
