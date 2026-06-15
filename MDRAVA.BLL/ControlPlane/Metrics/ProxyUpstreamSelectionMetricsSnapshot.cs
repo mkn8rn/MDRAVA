@@ -1,9 +1,16 @@
 namespace MDRAVA.BLL.ControlPlane.Metrics;
 
-public sealed record ProxyUpstreamSelectionMetricsSnapshot(
-    long Total,
-    IReadOnlyList<ProxyUpstreamSelectionSnapshot> ByUpstream)
+public sealed record ProxyUpstreamSelectionMetricsSnapshot
 {
-    public IReadOnlyList<ProxyUpstreamSelectionSnapshot> ByUpstream { get; } =
-        MetricsList.Copy(ByUpstream);
+    public ProxyUpstreamSelectionMetricsSnapshot(
+        long Total,
+        IEnumerable<ProxyUpstreamSelectionSnapshot> ByUpstream)
+    {
+        this.Total = Total;
+        this.ByUpstream = MetricsList.Copy(ByUpstream);
+    }
+
+    public long Total { get; }
+
+    public IReadOnlyList<ProxyUpstreamSelectionSnapshot> ByUpstream { get; }
 }

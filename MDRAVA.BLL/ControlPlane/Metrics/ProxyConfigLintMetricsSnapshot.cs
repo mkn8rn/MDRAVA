@@ -2,10 +2,17 @@ using MDRAVA.BLL.ControlPlane.ConfigLint;
 
 namespace MDRAVA.BLL.ControlPlane.Metrics;
 
-public sealed record ProxyConfigLintMetricsSnapshot(
-    long Runs,
-    IReadOnlyList<ProxyConfigLintFindingMetricSnapshot> Findings)
+public sealed record ProxyConfigLintMetricsSnapshot
 {
-    public IReadOnlyList<ProxyConfigLintFindingMetricSnapshot> Findings { get; } =
-        MetricsList.Copy(Findings);
+    public ProxyConfigLintMetricsSnapshot(
+        long Runs,
+        IEnumerable<ProxyConfigLintFindingMetricSnapshot> Findings)
+    {
+        this.Runs = Runs;
+        this.Findings = MetricsList.Copy(Findings);
+    }
+
+    public long Runs { get; }
+
+    public IReadOnlyList<ProxyConfigLintFindingMetricSnapshot> Findings { get; }
 }

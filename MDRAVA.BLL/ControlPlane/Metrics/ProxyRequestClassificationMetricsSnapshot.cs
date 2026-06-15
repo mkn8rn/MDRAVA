@@ -1,12 +1,16 @@
 namespace MDRAVA.BLL.ControlPlane.Metrics;
 
-public sealed record ProxyRequestClassificationMetricsSnapshot(
-    IReadOnlyDictionary<string, long> FailuresByKind,
-    IReadOnlyList<ProxyRequestSeriesSnapshot> ByRoute)
+public sealed record ProxyRequestClassificationMetricsSnapshot
 {
-    public IReadOnlyDictionary<string, long> FailuresByKind { get; } =
-        MetricsList.CopyDictionary(FailuresByKind, StringComparer.Ordinal);
+    public ProxyRequestClassificationMetricsSnapshot(
+        IReadOnlyDictionary<string, long> FailuresByKind,
+        IEnumerable<ProxyRequestSeriesSnapshot> ByRoute)
+    {
+        this.FailuresByKind = MetricsList.CopyDictionary(FailuresByKind, StringComparer.Ordinal);
+        this.ByRoute = MetricsList.Copy(ByRoute);
+    }
 
-    public IReadOnlyList<ProxyRequestSeriesSnapshot> ByRoute { get; } =
-        MetricsList.Copy(ByRoute);
+    public IReadOnlyDictionary<string, long> FailuresByKind { get; }
+
+    public IReadOnlyList<ProxyRequestSeriesSnapshot> ByRoute { get; }
 }

@@ -23,7 +23,7 @@ public sealed partial class ProxyMetrics
         return failuresByKind;
     }
 
-    private ProxyRequestSeriesSnapshot[] ReadRequestsByRoute()
+    private IEnumerable<ProxyRequestSeriesSnapshot> ReadRequestsByRoute()
     {
         return _requestsByRoute
             .Select(static pair => new ProxyRequestSeriesSnapshot(
@@ -35,19 +35,17 @@ public sealed partial class ProxyMetrics
             .OrderBy(static item => item.Site, StringComparer.Ordinal)
             .ThenBy(static item => item.Route, StringComparer.Ordinal)
             .ThenBy(static item => item.Action, StringComparer.Ordinal)
-            .ThenBy(static item => item.StatusClass, StringComparer.Ordinal)
-            .ToArray();
+            .ThenBy(static item => item.StatusClass, StringComparer.Ordinal);
     }
 
-    private ProxyRetrySkippedSnapshot[] ReadRetrySkipped()
+    private IEnumerable<ProxyRetrySkippedSnapshot> ReadRetrySkipped()
     {
         return _retrySkippedByReason
             .Select(static pair => new ProxyRetrySkippedSnapshot(pair.Key, Interlocked.Read(ref pair.Value.Count)))
-            .OrderBy(static item => item.Reason, StringComparer.Ordinal)
-            .ToArray();
+            .OrderBy(static item => item.Reason, StringComparer.Ordinal);
     }
 
-    private ProxyUpstreamSelectionSnapshot[] ReadUpstreamSelectionsByUpstream()
+    private IEnumerable<ProxyUpstreamSelectionSnapshot> ReadUpstreamSelectionsByUpstream()
     {
         return _upstreamSelectionsByUpstream
             .Select(static pair => new ProxyUpstreamSelectionSnapshot(
@@ -58,8 +56,7 @@ public sealed partial class ProxyMetrics
                 Interlocked.Read(ref pair.Value.Count)))
             .OrderBy(static item => item.Route, StringComparer.Ordinal)
             .ThenBy(static item => item.Upstream, StringComparer.Ordinal)
-            .ThenBy(static item => item.Scheme, StringComparer.Ordinal)
-            .ToArray();
+            .ThenBy(static item => item.Scheme, StringComparer.Ordinal);
     }
 
     private IReadOnlyDictionary<string, long> ReadHttp2ProtocolErrors()
@@ -74,7 +71,7 @@ public sealed partial class ProxyMetrics
             .ToDictionary(static pair => pair.Key, static pair => Interlocked.Read(ref pair.Value.Count), StringComparer.Ordinal);
     }
 
-    private ProxyHttp3RequestOutcomeSnapshot[] ReadHttp3RequestsByOutcome()
+    private IEnumerable<ProxyHttp3RequestOutcomeSnapshot> ReadHttp3RequestsByOutcome()
     {
         return _http3RequestsByOutcome
             .Select(static pair => new ProxyHttp3RequestOutcomeSnapshot(
@@ -84,8 +81,7 @@ public sealed partial class ProxyMetrics
                 Interlocked.Read(ref pair.Value.Count)))
             .OrderBy(static item => item.Method, StringComparer.Ordinal)
             .ThenBy(static item => item.Outcome, StringComparer.Ordinal)
-            .ThenBy(static item => item.StatusClass, StringComparer.Ordinal)
-            .ToArray();
+            .ThenBy(static item => item.StatusClass, StringComparer.Ordinal);
     }
 
     private IReadOnlyDictionary<string, long> ReadHttp3RejectedRequests()
@@ -100,7 +96,7 @@ public sealed partial class ProxyMetrics
             .ToDictionary(static pair => pair.Key, static pair => Interlocked.Read(ref pair.Value.Count), StringComparer.Ordinal);
     }
 
-    private ProxyConfigLintFindingMetricSnapshot[] ReadConfigLintFindings()
+    private IEnumerable<ProxyConfigLintFindingMetricSnapshot> ReadConfigLintFindings()
     {
         return _configLintFindings
             .Select(static pair => new ProxyConfigLintFindingMetricSnapshot(
@@ -108,15 +104,13 @@ public sealed partial class ProxyMetrics
                 pair.Key.Code,
                 Interlocked.Read(ref pair.Value.Count)))
             .OrderBy(static item => item.Severity, StringComparer.Ordinal)
-            .ThenBy(static item => item.Code, StringComparer.Ordinal)
-            .ToArray();
+            .ThenBy(static item => item.Code, StringComparer.Ordinal);
     }
 
-    private ProxyRouteDryRunFailureSnapshot[] ReadRouteMatchDryRunFailures()
+    private IEnumerable<ProxyRouteDryRunFailureSnapshot> ReadRouteMatchDryRunFailures()
     {
         return _routeMatchDryRunFailures
             .Select(static pair => new ProxyRouteDryRunFailureSnapshot(pair.Key, Interlocked.Read(ref pair.Value.Count)))
-            .OrderBy(static item => item.Reason, StringComparer.Ordinal)
-            .ToArray();
+            .OrderBy(static item => item.Reason, StringComparer.Ordinal);
     }
 }

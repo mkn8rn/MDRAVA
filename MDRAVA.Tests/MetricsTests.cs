@@ -189,7 +189,7 @@ internal static class MetricsTests
                 RelayFailures: 0),
             UpstreamSelections: new ProxyUpstreamSelectionMetricsSnapshot(
                 Total: 0,
-                ByUpstream: upstreamSelections),
+                ByUpstream: upstreamSelections.Select(static item => item)),
             Health: new ProxyHealthMetricsSnapshot(
                 NoHealthyUpstreamFailures: 0,
                 ChecksAttempted: 0,
@@ -202,7 +202,7 @@ internal static class MetricsTests
                 RecentDiagnosticsOverwritten: 0),
             RequestClassifications: new ProxyRequestClassificationMetricsSnapshot(
                 FailuresByKind: requestFailures,
-                ByRoute: requestsByRoute),
+                ByRoute: requestsByRoute.Select(static item => item)),
             ConfigReloads: new ProxyConfigReloadMetricsSnapshot(
                 Successes: 0,
                 Failures: 0),
@@ -216,7 +216,7 @@ internal static class MetricsTests
             Resilience: new ProxyResilienceMetricsSnapshot(
                 RetryAttempts: 0,
                 RetryExhausted: 0,
-                RetrySkipped: retrySkipped,
+                RetrySkipped: retrySkipped.Select(static item => item),
                 CircuitOpened: 0,
                 CircuitHalfOpened: 0,
                 CircuitClosed: 0,
@@ -269,7 +269,7 @@ internal static class MetricsTests
                 ResponseStreamResets: 0,
                 AltSvcEmitted: 0,
                 AltSvcSuppressed: 0,
-                RequestsByOutcome: http3RequestsByOutcome,
+                RequestsByOutcome: http3RequestsByOutcome.Select(static item => item),
                 RejectedRequests: http3RejectedRequests,
                 ProtocolErrors: http3ProtocolErrors,
                 QuicListenerStartSuccesses: 0,
@@ -277,10 +277,10 @@ internal static class MetricsTests
                 ActiveQuicListeners: 0),
             ConfigLint: new ProxyConfigLintMetricsSnapshot(
                 Runs: 0,
-                Findings: configLintFindings),
+                Findings: configLintFindings.Select(static item => item)),
             RouteDiagnostics: new ProxyRouteDiagnosticsMetricsSnapshot(
                 DryRuns: 0,
-                DryRunFailures: routeMatchFailures));
+                DryRunFailures: routeMatchFailures.Select(static item => item)));
 
         requestFailures.Clear();
         requestsByRoute.Clear();
