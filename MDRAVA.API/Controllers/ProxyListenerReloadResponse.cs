@@ -37,7 +37,7 @@ public sealed record ProxyListenerReloadResponse(
             Changed: result.Changed,
             Unchanged: result.Unchanged,
             Changes: ProxyListenerReloadChangeResponse.FromChanges(result.Changes),
-            Errors: result.Errors.ToArray());
+            Errors: ApiResponseList.Copy(result.Errors));
     }
 }
 
@@ -54,7 +54,7 @@ public sealed record ProxyListenerReloadChangeResponse(
     {
         ArgumentNullException.ThrowIfNull(changes);
 
-        return changes.Select(FromChange).ToArray();
+        return ApiResponseList.Copy(changes.Select(FromChange));
     }
 
     private static ProxyListenerReloadChangeResponse FromChange(BusinessProxyListenerReloadChange change)

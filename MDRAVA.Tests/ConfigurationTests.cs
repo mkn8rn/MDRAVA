@@ -174,6 +174,9 @@ internal static class ConfigurationTests
         AssertEx.Equal(1, result.Errors.Count);
         AssertEx.Equal("bind failed", result.Errors[0]);
         AssertEx.False(result.Errors is string[], "Listener reload errors should not expose a mutable array.");
+        var response = ProxyListenerReloadResponse.FromResult(result);
+        AssertEx.False(response.Changes is ProxyListenerReloadChangeResponse[], "Listener reload API changes should not expose a mutable array.");
+        AssertEx.False(response.Errors is string[], "Listener reload API errors should not expose a mutable array.");
     }
 
     public static void ConfigurationManagementResultsCopyInputCollections()

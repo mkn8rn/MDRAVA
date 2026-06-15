@@ -27,7 +27,7 @@ public sealed record ProxyListenerStatusResponse(
     {
         ArgumentNullException.ThrowIfNull(statuses);
 
-        return statuses.Select(FromStatus).ToArray();
+        return ApiResponseList.Copy(statuses.Select(FromStatus));
     }
 
     private static ProxyListenerStatusResponse FromStatus(BusinessProxyListenerStatus status)
