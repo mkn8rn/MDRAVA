@@ -92,7 +92,7 @@ public sealed record RouteMatchDryRunFindingResponse(
     {
         ArgumentNullException.ThrowIfNull(findings);
 
-        return findings.Select(FromFinding).ToArray();
+        return ApiResponseList.Copy(findings.Select(FromFinding));
     }
 
     private static RouteMatchDryRunFindingResponse FromFinding(BusinessRouteMatchDryRunFinding finding)

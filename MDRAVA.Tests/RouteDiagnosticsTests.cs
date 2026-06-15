@@ -1180,6 +1180,7 @@ internal static class RouteDiagnosticsTests
         AssertEx.False(result.Succeeded);
         AssertEx.True(result.Findings.Any(static finding =>
             finding.Code == "missing_request" && finding.Severity == "error"));
+        AssertEx.False(result.Findings is RouteMatchDryRunFindingResponse[], "Route diagnostics API findings should not expose a mutable array.");
     }
 
     public static void RouteDiagnosticsRequestReaderAcceptsNormalizedInput()
