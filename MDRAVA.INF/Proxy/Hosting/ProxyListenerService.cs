@@ -510,7 +510,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
             key,
             listener.Address,
             listener.Port,
-            listener.Transport.ToString());
+            RuntimeListenerTransportText.FromTransport(listener.Transport));
     }
 
     private static Dictionary<string, ProxyQuicListenerReloadTarget> ToQuicReloadTargets(
@@ -543,7 +543,7 @@ public sealed class ProxyListenerService : BackgroundService, IProxyListenerRelo
             key,
             listener.Address,
             listener.Port,
-            listener.Transport.ToString(),
+            RuntimeListenerTransportText.FromTransport(listener.Transport),
             listener.Http3Enablement.ToConfigText(),
             failed);
     }

@@ -6,7 +6,7 @@ public static class ProxyRequestContextRuntimeMapper
 {
     public static string ToTransport(RuntimeListener listener)
     {
-        return listener.Transport.ToString();
+        return RuntimeListenerTransportText.FromTransport(listener.Transport);
     }
 
     public static ProxyRequestRoute ToRequestRoute(RuntimeRoute route)

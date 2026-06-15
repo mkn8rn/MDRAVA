@@ -175,7 +175,7 @@ public static class ProxyConfigLintRuntimeConfigurationSourceMapper
                     listener.Address,
                     listener.Port,
                     listener.Enabled,
-                    listener.Transport.ToString(),
+                    RuntimeListenerTransportText.FromTransport(listener.Transport),
                     listener.Http3.Configured,
                     listener.Http3.EnabledForTraffic,
                     listener.Http3.DisabledReason,
