@@ -3,7 +3,6 @@ using System.Text.Json;
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.ConfigLint;
 using MDRAVA.BLL.ControlPlane.Http3;
-using MDRAVA.INF.Proxy.ConfigLint;
 using YamlDotNet.Core;
 
 namespace MDRAVA.INF.Configuration.Loading;
@@ -68,36 +67,24 @@ public sealed class ProxyConfigLintSubmittedConfigurationSource
             .ToArray();
 
         var operationalOptions = new ProxyOperationalOptions();
-        var snapshot = ProxyConfigurationRuntimeMapper.ToRuntimeSnapshot(
-            options,
-            operationalOptions,
-            ProxyAdminSecurityTokenPolicy.Resolve(operationalOptions.Admin, static _ => null),
-            new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),
-            version: 0,
-            loadedAtUtc: loadedAtUtc,
-            sourceDirectory: "submitted",
-            sourceFiles: ["lint-input"],
-            discovery: new ProxyConfigurationDiscovery(
-                new ProxyFilesystemLayout("", "", "", "", "", "", ""),
-                [new ProxyConfigurationFileDiscovery("lint-input", FormatName(format), "submitted", "Submitted lint input.")],
-                [],
-                []));
+        var adminSecurity = ProxyConfigurationRuntimeMapper.ToRuntimeAdminSecurityOptions(
+            operationalOptions.Admin,
+            ProxyAdminSecurityTokenPolicy.Resolve(operationalOptions.Admin, static _ => null));
+        var metrics = ProxyConfigurationRuntimeMapper.ToRuntimeMetricsOptions(operationalOptions.Metrics);
+        var listeners = ProxyConfigurationRuntimeMapper.ToRuntimeListeners(options.Listeners);
+        var routes = ProxyConfigurationRuntimeMapper.ToRuntimeRoutes(options.Routes, operationalOptions);
 
         return ProxyConfigLintSubmittedConfigurationResult.Loaded(
             ProxyConfigLintConfigurationSnapshotMapper.ToLintSnapshot(
                 ProxyConfigLintRuntimeConfigurationSourceMapper.FromConfiguration(
-                    snapshot.SourceFiles,
-                    snapshot.AdminSecurity.Urls,
-                    snapshot.AdminSecurity.RequireAuthentication,
-                    snapshot.Metrics.PublicMetricsEnabled,
-                    snapshot.Listeners,
-                    snapshot.Routes),
+                    ["lint-input"],
+                    adminSecurity.Urls,
+                    adminSecurity.RequireAuthentication,
+                    metrics.PublicMetricsEnabled,
+                    listeners,
+                    routes),
                 _http3PlatformSupportSource.Read()),
             validationErrors);
     }
 
-    private static string FormatName(ProxyConfigurationNormalizeFormat format)
-    {
-        return format == ProxyConfigurationNormalizeFormat.Yaml ? "yaml" : "json";
-    }
 }

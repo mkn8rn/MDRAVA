@@ -13,44 +13,9 @@ public static partial class ProxyConfigurationRuntimeMapper
         IReadOnlyList<string> sourceFiles,
         ProxyConfigurationDiscovery discovery)
     {
-        var listeners = options.Listeners
-            .Select(static listener =>
-            {
-                var http3Compatibility = RuntimeHttp3Compatibility.From(listener);
-                return new RuntimeListener(
-                    listener.Name,
-                    listener.Address,
-                    listener.Port,
-                    listener.Enabled,
-                    ParseTransport(listener.Transport),
-                    string.IsNullOrWhiteSpace(listener.DefaultCertificateId) ? null : listener.DefaultCertificateId,
-                    listener.SniCertificates
-                        .Select(static binding => new RuntimeSniCertificateBinding(
-                            binding.HostName,
-                            binding.CertificateId))
-                        .ToArray(),
-                    listener.Backlog,
-                    listener.MaxRequestHeadBytes,
-                    listener.MaxResponseHeadBytes,
-                    listener.MaxChunkLineBytes,
-                    listener.ForwardingBufferBytes)
-                {
-                    Protocols = http3Compatibility.Protocols,
-                    Http3Enablement = http3Compatibility.EffectiveEnablement,
-                    Http3AltSvc = new RuntimeHttp3AltSvcOptions(
-                        listener.Http3AltSvcEnabled,
-                        listener.Http3AltSvcMaxAgeSeconds),
-                    Http2Limits = new RuntimeHttp2Limits(
-                        listener.Http2MaxConcurrentStreams,
-                        listener.Http2MaxHeaderListBytes,
-                        listener.Http2MaxFrameSize)
-                };
-            })
-            .ToArray();
+        var listeners = ToRuntimeListeners(options.Listeners);
 
-        var routes = options.Routes
-            .Select(route => ToRuntimeRoute(route, operationalOptions))
-            .ToArray();
+        var routes = ToRuntimeRoutes(options.Routes, operationalOptions);
 
         var timeouts = new RuntimeTimeouts(
             TimeSpan.FromMilliseconds(operationalOptions.Timeouts.ClientRequestHeadTimeoutMs),
@@ -105,6 +70,58 @@ public static partial class ProxyConfigurationRuntimeMapper
         {
             Metrics = metrics
         };
+    }
+
+    public static IReadOnlyList<RuntimeListener> ToRuntimeListeners(IReadOnlyList<ListenerOptions> listeners)
+    {
+        ArgumentNullException.ThrowIfNull(listeners);
+
+        return listeners
+            .Select(static listener =>
+            {
+                var http3Compatibility = RuntimeHttp3Compatibility.From(listener);
+                return new RuntimeListener(
+                    listener.Name,
+                    listener.Address,
+                    listener.Port,
+                    listener.Enabled,
+                    ParseTransport(listener.Transport),
+                    string.IsNullOrWhiteSpace(listener.DefaultCertificateId) ? null : listener.DefaultCertificateId,
+                    listener.SniCertificates
+                        .Select(static binding => new RuntimeSniCertificateBinding(
+                            binding.HostName,
+                            binding.CertificateId))
+                        .ToArray(),
+                    listener.Backlog,
+                    listener.MaxRequestHeadBytes,
+                    listener.MaxResponseHeadBytes,
+                    listener.MaxChunkLineBytes,
+                    listener.ForwardingBufferBytes)
+                {
+                    Protocols = http3Compatibility.Protocols,
+                    Http3Enablement = http3Compatibility.EffectiveEnablement,
+                    Http3AltSvc = new RuntimeHttp3AltSvcOptions(
+                        listener.Http3AltSvcEnabled,
+                        listener.Http3AltSvcMaxAgeSeconds),
+                    Http2Limits = new RuntimeHttp2Limits(
+                        listener.Http2MaxConcurrentStreams,
+                        listener.Http2MaxHeaderListBytes,
+                        listener.Http2MaxFrameSize)
+                };
+            })
+            .ToArray();
+    }
+
+    public static IReadOnlyList<RuntimeRoute> ToRuntimeRoutes(
+        IReadOnlyList<ProxyRouteOptions> routes,
+        ProxyOperationalOptions operationalOptions)
+    {
+        ArgumentNullException.ThrowIfNull(routes);
+        ArgumentNullException.ThrowIfNull(operationalOptions);
+
+        return routes
+            .Select(route => ToRuntimeRoute(route, operationalOptions))
+            .ToArray();
     }
 
     public static RuntimeAdminSecurityOptions ToRuntimeAdminSecurityOptions(
