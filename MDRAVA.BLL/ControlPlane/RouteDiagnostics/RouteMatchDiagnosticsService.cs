@@ -89,14 +89,14 @@ public sealed partial class RouteMatchDiagnosticsService : IProxyRouteDiagnostic
         {
             wouldProxy = false;
             noMatchReason = "request_body_too_large";
-            requestInput.Findings.Add(new RouteMatchDryRunFinding("warning", "request_body_too_large", "The request body would exceed the matched route body limit."));
+            requestInput.AddFinding(new RouteMatchDryRunFinding("warning", "request_body_too_large", "The request body would exceed the matched route body limit."));
         }
 
         var upstream = wouldProxy ? SelectDiagnosticUpstream(route) : null;
         if (wouldProxy && upstream is null)
         {
             noMatchReason = "no_configured_upstream";
-            requestInput.Findings.Add(new RouteMatchDryRunFinding("warning", "no_configured_upstream", "The matched proxy route has no configured upstream candidate."));
+            requestInput.AddFinding(new RouteMatchDryRunFinding("warning", "no_configured_upstream", "The matched proxy route has no configured upstream candidate."));
         }
 
         return Complete(RouteMatchDryRunResult.MatchedRoute(

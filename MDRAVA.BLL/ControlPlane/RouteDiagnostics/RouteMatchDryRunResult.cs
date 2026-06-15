@@ -18,7 +18,7 @@ public abstract partial record RouteMatchDryRunResult
         Cache = cache;
         Retry = retry;
         CircuitBreaker = circuitBreaker;
-        Findings = findings;
+        Findings = new List<RouteMatchDryRunFinding>(findings).AsReadOnly();
     }
 
     public DateTimeOffset EvaluatedAtUtc { get; }

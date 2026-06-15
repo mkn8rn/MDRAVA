@@ -520,6 +520,7 @@ internal static class RouteDiagnosticsTests
 
         AssertEx.Equal("authorization", result.Cache.Reason);
         AssertEx.True(result.Findings.Any(static finding => finding.Code == "sensitive_header_redacted"));
+        AssertEx.False(result.Findings is List<RouteMatchDryRunFinding>, "Route diagnostics result findings should not expose a mutable list.");
         AssertEx.False(result.ToString()!.Contains("secret-token", StringComparison.Ordinal));
     }
 
@@ -1192,6 +1193,7 @@ internal static class RouteDiagnosticsTests
         AssertEx.Equal("/api?id=1", accepted.Input.Target);
         AssertEx.Equal("diag.test", accepted.Input.RequestHead.Host);
         AssertEx.True(accepted.Input.Findings.Any(static finding => finding.Code == "sensitive_header_redacted"));
+        AssertEx.False(accepted.Input.Findings is List<RouteMatchDryRunFinding>, "Route diagnostics request findings should not expose a mutable list.");
     }
 
     public static void RouteDiagnosticsRequestReaderRejectsInvalidScheme()
