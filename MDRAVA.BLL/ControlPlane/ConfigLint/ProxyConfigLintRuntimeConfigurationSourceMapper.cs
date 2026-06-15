@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.Http3;
+using MDRAVA.BLL.ControlPlane.Routing;
 
 namespace MDRAVA.BLL.ControlPlane.ConfigLint;
 
@@ -195,7 +196,7 @@ public static class ProxyConfigLintRuntimeConfigurationSourceMapper
                     route.SiteName,
                     route.Host,
                     route.PathPrefix,
-                    route.Action.ToString(),
+                    ProxyRouteActionKindMapper.FromRuntimeActionText(route.Action),
                     route.HttpsRedirect.Enabled,
                     route.CanonicalHost.Enabled,
                     route.CanonicalHost.TargetHost,

@@ -1,4 +1,5 @@
 using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane.Routing;
 
 namespace MDRAVA.BLL.ControlPlane.RouteDiagnostics;
 
@@ -11,7 +12,7 @@ public sealed class ProxyRouteDiagnosticsRuntimeRoute
         Name = runtimeRoute.Name;
         Host = runtimeRoute.Host;
         PathPrefix = runtimeRoute.PathPrefix;
-        Action = runtimeRoute.Action.ToString();
+        Action = ProxyRouteActionKindMapper.FromRuntimeActionText(runtimeRoute.Action);
         MaintenanceEnabled = runtimeRoute.Maintenance.Enabled;
         Maintenance = new ProxyRouteDiagnosticsMaintenancePolicy(
             runtimeRoute.Maintenance.Enabled,
