@@ -82,7 +82,7 @@ public sealed class ConfigLintService : IProxyConfigLintOperations
             loaded.ValidationErrors,
             _sourceNameFormatter)];
 
-        findings.AddRange(Analyze(loaded.Snapshot, activeRuntime: false, sourceName: "lint-input"));
+        findings.AddRange(Analyze(loaded.Snapshot, activeRuntime: false, sourceName: SiteConfigurationSource.LintInputPath));
         return BuildResult(now, findings, loaded.ValidationErrors);
     }
 

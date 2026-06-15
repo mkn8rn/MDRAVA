@@ -1,3 +1,4 @@
+using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 
 namespace MDRAVA.BLL.ControlPlane.ConfigLint;
@@ -13,20 +14,35 @@ public static class ConfigLintSubmittedRequestReader
         if (request is null)
         {
             return ConfigLintSubmittedRequestDecision.Rejected(
-                ConfigLintFindingFactory.Error("missing_request", "A lint request body is required.", "lint-input", null, "Submit config text with an explicit format."));
+                ConfigLintFindingFactory.Error(
+                    "missing_request",
+                    "A lint request body is required.",
+                    SiteConfigurationSource.LintInputPath,
+                    null,
+                    "Submit config text with an explicit format."));
         }
 
         var formatDecision = ParseFormat(request.Format);
         if (formatDecision is ConfigLintSubmittedFormatDecision.RejectedDecision)
         {
             return ConfigLintSubmittedRequestDecision.Rejected(
-                ConfigLintFindingFactory.Error("invalid_format", "Format must be 'json' or 'yaml'.", "lint-input", "format", "Set format to 'json', 'yaml', or 'yml'."));
+                ConfigLintFindingFactory.Error(
+                    "invalid_format",
+                    "Format must be 'json' or 'yaml'.",
+                    SiteConfigurationSource.LintInputPath,
+                    "format",
+                    "Set format to 'json', 'yaml', or 'yml'."));
         }
 
         if (string.IsNullOrWhiteSpace(request.Text))
         {
             return ConfigLintSubmittedRequestDecision.Rejected(
-                ConfigLintFindingFactory.Error("empty_config", "Submitted config text is required.", "lint-input", "text", "Submit one site configuration object."));
+                ConfigLintFindingFactory.Error(
+                    "empty_config",
+                    "Submitted config text is required.",
+                    SiteConfigurationSource.LintInputPath,
+                    "text",
+                    "Submit one site configuration object."));
         }
 
         var format = ((ConfigLintSubmittedFormatDecision.AcceptedDecision)formatDecision).Format;

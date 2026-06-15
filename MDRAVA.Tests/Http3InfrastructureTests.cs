@@ -129,7 +129,7 @@ internal static class Http3InfrastructureTests
 
         var aggregated = SiteOptionsAggregator.ToProxyOptions(
             [
-                new SiteConfigurationSource(
+                SiteConfigurationSource.FromFile(
                     "stable",
                     new SiteOptions
                     {
@@ -149,7 +149,7 @@ internal static class Http3InfrastructureTests
                             listener
                         ]
                     }),
-                new SiteConfigurationSource(
+                SiteConfigurationSource.FromFile(
                     "stable2",
                     new SiteOptions
                     {

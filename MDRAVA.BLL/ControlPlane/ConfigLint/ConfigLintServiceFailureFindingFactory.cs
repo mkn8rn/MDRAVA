@@ -1,3 +1,5 @@
+using MDRAVA.BLL.Configuration;
+
 namespace MDRAVA.BLL.ControlPlane.ConfigLint;
 
 public static class ConfigLintServiceFailureFindingFactory
@@ -17,7 +19,7 @@ public static class ConfigLintServiceFailureFindingFactory
         return ConfigLintFindingFactory.Error(
             "empty_config",
             "Submitted config did not contain a site object.",
-            "lint-input",
+            SiteConfigurationSource.LintInputPath,
             null,
             "Submit one site configuration object.");
     }

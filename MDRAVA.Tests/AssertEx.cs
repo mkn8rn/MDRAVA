@@ -37,6 +37,21 @@ internal static class AssertEx
         return value;
     }
 
+    public static void Throws<TException>(Action action)
+        where TException : Exception
+    {
+        try
+        {
+            action();
+        }
+        catch (TException)
+        {
+            return;
+        }
+
+        throw new InvalidOperationException($"Expected exception of type {typeof(TException).Name}.");
+    }
+
     public static async Task ThrowsAsync<TException>(Func<Task> action)
         where TException : Exception
     {

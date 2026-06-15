@@ -98,7 +98,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
             var site = await ReadSiteAsync(siteFile, format, discoveredFiles, errors, cancellationToken);
             if (site is not null)
             {
-                sites.Add(new SiteConfigurationSource(siteFile, site));
+                sites.Add(SiteConfigurationSource.FromFile(siteFile, site));
             }
         }
 

@@ -9,6 +9,7 @@ internal static partial class TestRegistry
     Test("Infrastructure source does not reference API layer", Sync(ArchitectureBoundaryTests.InfrastructureSourceDoesNotReferenceApiLayer), TestTaxonomy.Config),
     Test("Configuration file error names global and path errors", Sync(ConfigurationTests.ConfigurationFileErrorNamesGlobalAndPathErrors), TestTaxonomy.Config),
     Test("Normalize site parse result names parsed and failed states", Sync(ConfigurationTests.NormalizeSiteParseResultNamesParsedAndFailedStates), TestTaxonomy.Config),
+    Test("Site configuration source factories own paths and validate inputs", Sync(ConfigurationTests.SiteConfigurationSourceFactoriesOwnPathsAndValidateInputs), TestTaxonomy.Config),
     Test("Configuration normalize result names normalized and failed outcomes", Sync(ConfigurationTests.ConfigurationNormalizeResultNamesNormalizedAndFailedOutcomes), TestTaxonomy.Config),
     Test("Configuration reload result names reload outcomes", Sync(ConfigurationTests.ConfigurationReloadResultNamesReloadOutcomes), TestTaxonomy.Config),
     Test("Listener reload result copies changes and errors", Sync(ConfigurationTests.ListenerReloadResultCopiesChangesAndErrors), TestTaxonomy.Config),

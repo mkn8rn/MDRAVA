@@ -1,3 +1,5 @@
+using MDRAVA.BLL.Configuration;
+
 namespace MDRAVA.BLL.ControlPlane.ConfigLint;
 
 public static class ConfigLintSubmittedFailureMapper
@@ -6,9 +8,24 @@ public static class ConfigLintSubmittedFailureMapper
     {
         return failure.Kind switch
         {
-            ProxyConfigLintSubmittedConfigurationFailureKind.JsonParseError => ConfigLintFindingFactory.Error("parse_error", $"JSON is invalid: {SafeMessage(failure.Message)}", "lint-input", null, "Fix the JSON syntax and retry linting."),
-            ProxyConfigLintSubmittedConfigurationFailureKind.YamlParseError => ConfigLintFindingFactory.Error("parse_error", $"YAML is invalid: {SafeMessage(failure.Message)}", "lint-input", null, "Fix the YAML syntax and retry linting."),
-            _ => ConfigLintFindingFactory.Error("empty_config", "Submitted config did not contain a site object.", "lint-input", null, "Submit one site configuration object.")
+            ProxyConfigLintSubmittedConfigurationFailureKind.JsonParseError => ConfigLintFindingFactory.Error(
+                "parse_error",
+                $"JSON is invalid: {SafeMessage(failure.Message)}",
+                SiteConfigurationSource.LintInputPath,
+                null,
+                "Fix the JSON syntax and retry linting."),
+            ProxyConfigLintSubmittedConfigurationFailureKind.YamlParseError => ConfigLintFindingFactory.Error(
+                "parse_error",
+                $"YAML is invalid: {SafeMessage(failure.Message)}",
+                SiteConfigurationSource.LintInputPath,
+                null,
+                "Fix the YAML syntax and retry linting."),
+            _ => ConfigLintFindingFactory.Error(
+                "empty_config",
+                "Submitted config did not contain a site object.",
+                SiteConfigurationSource.LintInputPath,
+                null,
+                "Submit one site configuration object.")
         };
     }
 

@@ -35,6 +35,25 @@ internal static class ConfigurationTests
         AssertEx.Equal("parse failed", ((ProxyConfigurationNormalizeSiteParseResult.FailedResult)failed).Error);
     }
 
+    public static void SiteConfigurationSourceFactoriesOwnPathsAndValidateInputs()
+    {
+        var site = new SiteOptions { Name = "main" };
+        var file = SiteConfigurationSource.FromFile("sites/main.json", site);
+        var normalize = SiteConfigurationSource.FromNormalizeInput(site);
+        var lint = SiteConfigurationSource.FromLintInput(site);
+
+        AssertEx.Equal("sites/main.json", file.Path);
+        AssertEx.Equal(site, file.Site);
+        AssertEx.Equal(SiteConfigurationSource.NormalizeInputPath, normalize.Path);
+        AssertEx.Equal(site, normalize.Site);
+        AssertEx.Equal(SiteConfigurationSource.LintInputPath, lint.Path);
+        AssertEx.Equal(site, lint.Site);
+        AssertEx.Throws<ArgumentException>(() => SiteConfigurationSource.FromFile(" ", site));
+        AssertEx.Throws<ArgumentNullException>(() => SiteConfigurationSource.FromFile("sites/main.json", null!));
+        AssertEx.Throws<ArgumentNullException>(() => SiteConfigurationSource.FromNormalizeInput(null!));
+        AssertEx.Throws<ArgumentNullException>(() => SiteConfigurationSource.FromLintInput(null!));
+    }
+
     public static void ConfigurationNormalizeResultNamesNormalizedAndFailedOutcomes()
     {
         var normalized = ProxyConfigurationNormalizeResult.Normalized("json", "{}");

@@ -50,7 +50,7 @@ public sealed class ProxyConfigurationNormalizer
 
         var parsedSite = (ProxyConfigurationNormalizeSiteParseResult.ParsedResult)parsed;
         var options = SiteOptionsAggregator.ToProxyOptions(
-            [new SiteConfigurationSource("normalize-input", parsedSite.Site)]);
+            [SiteConfigurationSource.FromNormalizeInput(parsedSite.Site)]);
         var validationFailures = ProxyOptionsValidationRules.Validate(options, _endpointAddressPolicy, _urlSyntaxPolicy);
         if (validationFailures.Count > 0)
         {

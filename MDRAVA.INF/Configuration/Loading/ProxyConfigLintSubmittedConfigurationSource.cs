@@ -61,9 +61,10 @@ public sealed class ProxyConfigLintSubmittedConfigurationSource
                 "Submitted config did not contain a site object.");
         }
 
-        var options = SiteOptionsAggregator.ToProxyOptions([new SiteConfigurationSource("lint-input", site)]);
+        var source = SiteConfigurationSource.FromLintInput(site);
+        var options = SiteOptionsAggregator.ToProxyOptions([source]);
         var validationErrors = ProxyOptionsValidationRules.Validate(options, _endpointAddressPolicy, _urlSyntaxPolicy)
-            .Select(static failure => ProxyConfigurationFileError.ForPath("lint-input", failure))
+            .Select(failure => ProxyConfigurationFileError.ForPath(source.Path, failure))
             .ToArray();
 
         var operationalOptions = new ProxyOperationalOptions();
@@ -77,7 +78,7 @@ public sealed class ProxyConfigLintSubmittedConfigurationSource
         return ProxyConfigLintSubmittedConfigurationResult.Loaded(
             ProxyConfigLintConfigurationSnapshotMapper.ToLintSnapshot(
                 ProxyConfigLintRuntimeConfigurationSourceMapper.FromConfiguration(
-                    ["lint-input"],
+                    [source.Path],
                     adminSecurity.Urls,
                     adminSecurity.RequireAuthentication,
                     metrics.PublicMetricsEnabled,
