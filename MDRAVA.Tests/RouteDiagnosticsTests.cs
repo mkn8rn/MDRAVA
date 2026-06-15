@@ -869,6 +869,51 @@ internal static class RouteDiagnosticsTests
         AssertEx.Equal("POST", diagnosticRoute.RetryMethods[0]);
     }
 
+    public static void RouteDiagnosticsRuntimeConfigurationMapperReadsActiveSnapshot()
+    {
+        var listener = new RuntimeListener(
+            "main",
+            "127.0.0.1",
+            8080,
+            true,
+            RuntimeListenerTransport.Http,
+            null,
+            [],
+            512,
+            32768,
+            32768,
+            8192,
+            8192);
+        var route = new RuntimeRoute(
+            "api",
+            "diag.test",
+            "/api",
+            RuntimeRouteAction.Proxy,
+            "round-robin",
+            new RuntimeHealthCheckOptions(false, "/health", TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), 1, 1),
+            [],
+            new RuntimeHttpsRedirectPolicy(false, 308, null),
+            new RuntimeCanonicalHostPolicy(false, "", 308),
+            RuntimeHeaderPolicy.Empty,
+            new RuntimePathRewritePolicy("", "", ""),
+            new RuntimeRedirectPolicy(308, "", "", true),
+            new RuntimeStaticResponse(200, "text/plain; charset=utf-8", ""),
+            new RuntimeMaintenancePolicy(false, null, "text/plain; charset=utf-8", "Service Unavailable"),
+            RuntimeCachePolicy.Disabled,
+            new RuntimeRouteResolvedOptions(104857600, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30), true));
+        var runtimeSnapshot = RuntimeSnapshot([route], [listener]);
+
+        var diagnosticsSnapshot = ProxyRouteDiagnosticsRuntimeConfigurationSnapshotMapper
+            .FromConfiguration(runtimeSnapshot);
+
+        AssertEx.Equal(1, diagnosticsSnapshot.Listeners.Count);
+        AssertEx.Equal("main", diagnosticsSnapshot.Listeners[0].Name);
+        AssertEx.Equal("http", diagnosticsSnapshot.Listeners[0].Transport);
+        AssertEx.Equal(1, diagnosticsSnapshot.Routes.Count);
+        AssertEx.Equal("api", diagnosticsSnapshot.Routes[0].Name);
+        AssertEx.Equal("diag.test", diagnosticsSnapshot.Routes[0].Host);
+    }
+
     public static void LintHandlesJsonAndYamlSubmittedConfigWithoutApplying()
     {
         var service = CreateLintService(BaseOptions([ProxyRoute("active", "active.test", "/")]), out var store);
@@ -1329,7 +1374,9 @@ internal static class RouteDiagnosticsTests
                 []));
     }
 
-    private static ProxyConfigurationSnapshot RuntimeSnapshot(IReadOnlyList<RuntimeRoute> routes)
+    private static ProxyConfigurationSnapshot RuntimeSnapshot(
+        IReadOnlyList<RuntimeRoute> routes,
+        IReadOnlyList<RuntimeListener>? listeners = null)
     {
         return new ProxyConfigurationSnapshot(
             1,
@@ -1359,7 +1406,7 @@ internal static class RouteDiagnosticsTests
             new RuntimeLimits(4096, 128, 240, 30, 32768, 128, 8192, 104857600, 8192, TimeSpan.FromSeconds(15)),
             new RuntimeForwardedHeadersOptions(true, []),
             new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),
-            [],
+            listeners ?? [],
             routes);
     }
 

@@ -24,3 +24,14 @@ public sealed class ProxyRouteDiagnosticsRuntimeConfigurationSnapshot
 
     public IReadOnlyList<IProxyRouteDiagnosticsRoute> Routes { get; }
 }
+
+public static class ProxyRouteDiagnosticsRuntimeConfigurationSnapshotMapper
+{
+    public static ProxyRouteDiagnosticsRuntimeConfigurationSnapshot FromConfiguration(
+        ProxyConfigurationSnapshot snapshot)
+    {
+        return new ProxyRouteDiagnosticsRuntimeConfigurationSnapshot(
+            snapshot.Listeners,
+            snapshot.Routes);
+    }
+}
