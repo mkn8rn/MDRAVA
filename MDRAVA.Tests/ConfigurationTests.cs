@@ -330,6 +330,8 @@ internal static class ConfigurationTests
         var removeRequestHeaders = new List<string> { "X-Remove-Request" };
         var setResponseHeaders = new List<ProxyHeaderField> { new("X-Frame-Options", "DENY") };
         var removeResponseHeaders = new List<string> { "Server" };
+        var setRequestHeaderProjections = new List<RuntimeHeaderFieldProjection> { new("X-Trace", "enabled") };
+        var setResponseHeaderProjections = new List<RuntimeHeaderFieldProjection> { new("X-Frame-Options", "DENY") };
         var retryStatusCodes = new List<int> { 502 };
         var retryMethods = new List<string> { "GET" };
 
@@ -420,6 +422,11 @@ internal static class ConfigurationTests
             removeRequestHeaders,
             setResponseHeaders,
             removeResponseHeaders);
+        var headerPolicyProjection = new RuntimeHeaderPolicyProjection(
+            setRequestHeaderProjections,
+            removeRequestHeaders,
+            setResponseHeaderProjections,
+            removeResponseHeaders);
         var retry = new RuntimeRetryPolicy(
             Enabled: true,
             MaxAttempts: 2,
@@ -449,6 +456,8 @@ internal static class ConfigurationTests
         removeRequestHeaders.Clear();
         setResponseHeaders.Clear();
         removeResponseHeaders.Clear();
+        setRequestHeaderProjections.Clear();
+        setResponseHeaderProjections.Clear();
         retryStatusCodes.Clear();
         retryMethods.Clear();
 
@@ -470,6 +479,10 @@ internal static class ConfigurationTests
         AssertEx.Equal("X-Remove-Request", headerPolicy.RemoveRequestHeaders[0]);
         AssertEx.Equal("X-Frame-Options", headerPolicy.SetResponseHeaders[0].Name);
         AssertEx.Equal("Server", headerPolicy.RemoveResponseHeaders[0]);
+        AssertEx.Equal("X-Trace", headerPolicyProjection.SetRequestHeaders[0].Name);
+        AssertEx.Equal("X-Remove-Request", headerPolicyProjection.RemoveRequestHeaders[0]);
+        AssertEx.Equal("X-Frame-Options", headerPolicyProjection.SetResponseHeaders[0].Name);
+        AssertEx.Equal("Server", headerPolicyProjection.RemoveResponseHeaders[0]);
         AssertEx.Equal(502, retry.RetryOnStatusCodes[0]);
         AssertEx.Equal("GET", retry.RetryMethods[0]);
         AssertEx.False(acme.ContactEmails is string[]);
@@ -492,12 +505,21 @@ internal static class ConfigurationTests
         AssertEx.False(headerPolicy.RemoveRequestHeaders is string[]);
         AssertEx.False(headerPolicy.SetResponseHeaders is ProxyHeaderField[]);
         AssertEx.False(headerPolicy.RemoveResponseHeaders is string[]);
+        AssertEx.False(headerPolicyProjection.SetRequestHeaders is RuntimeHeaderFieldProjection[]);
+        AssertEx.False(headerPolicyProjection.RemoveRequestHeaders is string[]);
+        AssertEx.False(headerPolicyProjection.SetResponseHeaders is RuntimeHeaderFieldProjection[]);
+        AssertEx.False(headerPolicyProjection.RemoveResponseHeaders is string[]);
         AssertEx.False(retry.RetryOnStatusCodes is int[]);
         AssertEx.False(retry.RetryMethods is string[]);
         var adminResponse = RuntimeAdminSecurityResponse.FromProjection(adminProjection);
         AssertEx.False(adminResponse.Urls is string[], "Admin security API URLs should not expose a mutable array.");
         var forwardedHeadersResponse = RuntimeForwardedHeadersResponse.FromProjection(forwardedHeadersProjection);
         AssertEx.False(forwardedHeadersResponse.TrustedProxies is string[], "Forwarded headers API trusted proxies should not expose a mutable array.");
+        var headerPolicyResponse = RuntimeHeaderPolicyResponse.FromProjection(headerPolicyProjection);
+        AssertEx.False(headerPolicyResponse.SetRequestHeaders is RuntimeHeaderFieldResponse[], "Header policy API set request headers should not expose a mutable array.");
+        AssertEx.False(headerPolicyResponse.RemoveRequestHeaders is string[], "Header policy API remove request headers should not expose a mutable array.");
+        AssertEx.False(headerPolicyResponse.SetResponseHeaders is RuntimeHeaderFieldResponse[], "Header policy API set response headers should not expose a mutable array.");
+        AssertEx.False(headerPolicyResponse.RemoveResponseHeaders is string[], "Header policy API remove response headers should not expose a mutable array.");
     }
 
     public static void RuntimeConfigurationGraphRecordsCopyInputCollections()

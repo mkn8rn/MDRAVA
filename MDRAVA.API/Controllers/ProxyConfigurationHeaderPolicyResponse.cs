@@ -15,9 +15,9 @@ public sealed record RuntimeHeaderPolicyResponse(
 
         return new RuntimeHeaderPolicyResponse(
             RuntimeHeaderFieldResponse.FromFields(projection.SetRequestHeaders),
-            projection.RemoveRequestHeaders.ToArray(),
+            ApiResponseList.Copy(projection.RemoveRequestHeaders),
             RuntimeHeaderFieldResponse.FromFields(projection.SetResponseHeaders),
-            projection.RemoveResponseHeaders.ToArray());
+            ApiResponseList.Copy(projection.RemoveResponseHeaders));
     }
 }
 
@@ -28,7 +28,7 @@ public sealed record RuntimeHeaderFieldResponse(string Name, string Value)
     {
         ArgumentNullException.ThrowIfNull(fields);
 
-        return fields.Select(FromField).ToArray();
+        return ApiResponseList.Copy(fields.Select(FromField));
     }
 
     private static RuntimeHeaderFieldResponse FromField(BusinessRuntimeHeaderFieldProjection field)
