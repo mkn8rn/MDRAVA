@@ -591,10 +591,16 @@ internal static class OperatorStatusTests
         AssertEx.Throws<ArgumentNullException>(() => ProxyUpstreamStatusResponse.FromStatuses(null!));
         var response = ProxyStatusResponse.FromBusinessResponse(status);
         AssertEx.Equal("primary", response.Upstreams[0].UpstreamName);
+        AssertEx.Equal(RuntimeUpstreamProtocol.Http1, response.Upstreams[0].Protocol);
+        AssertEx.Equal(1, response.Upstreams[0].Weight);
+        AssertEx.NotNull(response.Upstreams[0].CircuitBreaker);
         AssertEx.False(response.Upstreams is List<ProxyUpstreamStatusResponse>, "Status API upstreams should not expose a mutable list.");
         AssertEx.False(response.Upstreams is ProxyUpstreamStatusResponse[], "Status API upstreams should not expose a mutable array.");
         var apiUpstreams = new List<ProxyUpstreamStatusResponse> { response.Upstreams[0] };
         var apiListeners = new List<ProxyListenerStatusResponse> { response.Listeners[0] };
+        var apiUpstreamReplacement = CreateUpstreamStatusResponse(
+            response.Upstreams[0],
+            upstreamName: "api-replacement");
         var directResponse = new ProxyStatusResponse(
             listenerLive: true,
             listenerName: "main",
@@ -621,7 +627,7 @@ internal static class OperatorStatusTests
             subsystems: response.Subsystems,
             runtimePreflight: response.RuntimePreflight);
 
-        apiUpstreams[0] = apiUpstreams[0] with { UpstreamName = "api-replacement" };
+        apiUpstreams[0] = apiUpstreamReplacement;
         apiListeners[0] = apiListeners[0] with { State = ProxyListenerStateResponse.Failed };
         apiUpstreams.Clear();
         apiListeners.Clear();
@@ -701,6 +707,42 @@ internal static class OperatorStatusTests
             readiness: response.Readiness,
             subsystems: response.Subsystems,
             runtimePreflight: response.RuntimePreflight));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyUpstreamStatusResponse(
+            routeName: "main",
+            upstreamName: "primary",
+            endpoint: "https://primary.internal",
+            scheme: "https",
+            tlsCertificateValidationEnabled: true,
+            sniHost: "primary.internal",
+            healthCheckEnabled: true,
+            healthState: UpstreamHealthStateResponse.Healthy,
+            lastHealthCheckResult: "status_200",
+            lastHealthCheckAtUtc: DateTimeOffset.UnixEpoch,
+            consecutiveSuccesses: 2,
+            consecutiveFailures: 0,
+            selectedRequests: 11,
+            requestFailures: 0,
+            protocol: null!,
+            weight: 1,
+            circuitBreaker: CircuitBreakerStatusResponse.Disabled));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyUpstreamStatusResponse(
+            routeName: "main",
+            upstreamName: "primary",
+            endpoint: "https://primary.internal",
+            scheme: "https",
+            tlsCertificateValidationEnabled: true,
+            sniHost: "primary.internal",
+            healthCheckEnabled: true,
+            healthState: UpstreamHealthStateResponse.Healthy,
+            lastHealthCheckResult: "status_200",
+            lastHealthCheckAtUtc: DateTimeOffset.UnixEpoch,
+            consecutiveSuccesses: 2,
+            consecutiveFailures: 0,
+            selectedRequests: 11,
+            requestFailures: 0,
+            protocol: RuntimeUpstreamProtocol.Http1,
+            weight: 1,
+            circuitBreaker: null!));
         AssertEx.Equal("primary", directResponse.Upstreams[0].UpstreamName);
         AssertEx.Equal(ProxyListenerStateResponse.Active, directResponse.Listeners[0].State);
         AssertEx.False(directResponse.Upstreams is ProxyUpstreamStatusResponse[], "Direct status API upstreams should not expose a mutable array.");
@@ -2274,6 +2316,30 @@ internal static class OperatorStatusTests
         string? upstreamName = null)
     {
         return new ProxyUpstreamStatus(
+            source.RouteName,
+            upstreamName ?? source.UpstreamName,
+            source.Endpoint,
+            source.Scheme,
+            source.TlsCertificateValidationEnabled,
+            source.SniHost,
+            source.HealthCheckEnabled,
+            source.HealthState,
+            source.LastHealthCheckResult,
+            source.LastHealthCheckAtUtc,
+            source.ConsecutiveSuccesses,
+            source.ConsecutiveFailures,
+            source.SelectedRequests,
+            source.RequestFailures,
+            source.Protocol,
+            source.Weight,
+            source.CircuitBreaker);
+    }
+
+    private static ProxyUpstreamStatusResponse CreateUpstreamStatusResponse(
+        ProxyUpstreamStatusResponse source,
+        string? upstreamName = null)
+    {
+        return new ProxyUpstreamStatusResponse(
             source.RouteName,
             upstreamName ?? source.UpstreamName,
             source.Endpoint,
