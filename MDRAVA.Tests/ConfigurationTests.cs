@@ -1584,22 +1584,23 @@ internal static class ConfigurationTests
         AssertEx.False(snapshot.Certificates is Dictionary<string, RuntimeCertificate>);
         AssertEx.False(snapshot.Listeners is RuntimeListener[]);
         AssertEx.False(snapshot.Routes is RuntimeRoute[]);
+        var http3Projection = new RuntimeHttp3SupportProjection(
+            "unknown",
+            QuicListenerSupported: false,
+            QuicConnectionSupported: false,
+            "disabled",
+            "disabled",
+            EnabledForTraffic: false,
+            QuicListenerReady: false,
+            AltSvcConfigured: false,
+            AltSvcActive: false,
+            AltSvcMaxAgeSeconds: null,
+            "not_configured",
+            UdpQuicListenerIdentityModeled: true,
+            "not_ready");
         var projection = ProxyConfigurationProjectionMapper.ToProjection(
             snapshot,
-            new RuntimeHttp3SupportProjection(
-                "unknown",
-                QuicListenerSupported: false,
-                QuicConnectionSupported: false,
-                "disabled",
-                "disabled",
-                EnabledForTraffic: false,
-                QuicListenerReady: false,
-                AltSvcConfigured: false,
-                AltSvcActive: false,
-                AltSvcMaxAgeSeconds: null,
-                "not_configured",
-                UdpQuicListenerIdentityModeled: true,
-                "not_ready"));
+            http3Projection);
         AssertEx.Equal("sites/home.json", projection.SourceFiles[0]);
         AssertEx.Equal("home-cert", projection.Certificates[0].Id);
         AssertEx.Equal("web", projection.Listeners[0].Name);
@@ -1610,6 +1611,55 @@ internal static class ConfigurationTests
         AssertEx.False(projection.Routes is RuntimeRouteProjection[]);
         AssertEx.True(projection.Metrics.Enabled);
         AssertEx.Equal("not_ready", projection.Http3.ReadinessConclusion);
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyConfigurationProjectionMapper.ToProjection(null!, http3Projection));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyConfigurationProjectionMapper.ToProjection(snapshot, null!));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyConfigurationProjectionMapper.ToProjection(
+                SnapshotWith(acme: new RuntimeAcmeOptions(
+                    false,
+                    true,
+                    "",
+                    [],
+                    false,
+                    "acme",
+                    30,
+                    720,
+                    60,
+                    [null!])),
+                http3Projection));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyConfigurationProjectionMapper.ToProjection(
+                SnapshotWith(certificates: new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["broken-cert"] = null!
+                }),
+                http3Projection));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyConfigurationProjectionMapper.ToProjection(
+                SnapshotWith(listeners: [null!]),
+                http3Projection));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyConfigurationProjectionMapper.ToProjection(
+                SnapshotWith(listeners: [listener.WithSniCertificates([null!])]),
+                http3Projection));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyConfigurationProjectionMapper.ToProjection(
+                SnapshotWith(routes: [null!]),
+                http3Projection));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyConfigurationProjectionMapper.ToProjection(
+                SnapshotWith(routes: [route.WithUpstreams([null!])]),
+                http3Projection));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyConfigurationProjectionMapper.ToProjection(
+                SnapshotWith(routes: [RouteWithHeaderPolicy(new RuntimeHeaderPolicy([null!], [], [], []))]),
+                http3Projection));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyConfigurationProjectionMapper.ToProjection(
+                SnapshotWith(routes: [RouteWithHeaderPolicy(new RuntimeHeaderPolicy([], [], [null!], []))]),
+                http3Projection));
         var directProjectionSourceFiles = new List<string> { projection.SourceFiles[0] };
         var directProjectionCertificates = new List<RuntimeCertificateProjection> { projection.Certificates[0] };
         var directProjectionListeners = new List<RuntimeListenerProjection> { projection.Listeners[0] };
@@ -1910,6 +1960,54 @@ internal static class ConfigurationTests
                 certificates,
                 listeners,
                 routes);
+        }
+
+        ProxyConfigurationSnapshot SnapshotWith(
+            RuntimeAcmeOptions? acme = null,
+            IReadOnlyDictionary<string, RuntimeCertificate>? certificates = null,
+            IReadOnlyList<RuntimeListener>? listeners = null,
+            IReadOnlyList<RuntimeRoute>? routes = null)
+        {
+            return new ProxyConfigurationSnapshot(
+                snapshot.Version,
+                snapshot.LoadedAtUtc,
+                snapshot.SourceDirectory,
+                snapshot.SourceFiles,
+                snapshot.Discovery,
+                snapshot.AdminSecurity,
+                acme ?? snapshot.Acme,
+                snapshot.Timeouts,
+                snapshot.ConnectionLimits,
+                snapshot.Observability,
+                snapshot.Limits,
+                snapshot.ForwardedHeaders,
+                certificates ?? snapshot.Certificates,
+                listeners ?? snapshot.Listeners,
+                routes ?? snapshot.Routes,
+                snapshot.Metrics);
+        }
+
+        RuntimeRoute RouteWithHeaderPolicy(RuntimeHeaderPolicy headerPolicy)
+        {
+            return new RuntimeRoute(
+                route.Name,
+                route.Host,
+                route.PathPrefix,
+                route.Action,
+                route.LoadBalancingPolicy,
+                route.HealthCheck,
+                route.Upstreams,
+                route.HttpsRedirect,
+                route.CanonicalHost,
+                headerPolicy,
+                route.PathRewrite,
+                route.Redirect,
+                route.StaticResponse,
+                route.Maintenance,
+                route.Cache,
+                route.ResolvedOptions,
+                route.SiteName,
+                route.Retry);
         }
 
         var listenerResponses = RuntimeListenerResponse.FromListeners(projection.Listeners);
