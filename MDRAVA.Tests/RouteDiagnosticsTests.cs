@@ -1432,6 +1432,39 @@ internal static class RouteDiagnosticsTests
         var result = (RouteMatchDryRunResponse)AssertEx.NotNull(ok.Value);
         AssertEx.True(result.Succeeded);
         AssertEx.Equal("active", AssertEx.NotNull(result.Route).Name);
+        var headers = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Authorization"] = "secret-token"
+        };
+        var apiRequest = new ProxyRouteMatchDryRunRequest(
+            "http",
+            "active.test",
+            8080,
+            "GET",
+            "/",
+            "",
+            headers,
+            null,
+            null);
+
+        headers["Authorization"] = "replacement";
+        headers.Clear();
+        var bllRequest = apiRequest.ToRouteMatchDryRunRequest();
+        var missingHeadersRequest = new ProxyRouteMatchDryRunRequest(
+            "http",
+            "active.test",
+            8080,
+            "GET",
+            "/",
+            "",
+            null,
+            null,
+            null).ToRouteMatchDryRunRequest();
+
+        AssertEx.Equal("secret-token", AssertEx.NotNull(apiRequest.Headers)["Authorization"]);
+        AssertEx.Equal("secret-token", bllRequest.Headers["Authorization"]);
+        AssertEx.Equal(0, missingHeadersRequest.Headers.Count);
+        AssertEx.False(apiRequest.Headers is Dictionary<string, string?>, "Route diagnostics API dry-run request headers should not expose a mutable dictionary.");
     }
 
     public static async Task DiagnosticEndpointsRequireAdminAuth()
