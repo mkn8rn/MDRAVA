@@ -8,6 +8,9 @@ public static class AdminBindPolicy
         AdminBindPolicyInput input,
         IProxyAdminUrlPolicy adminUrlPolicy)
     {
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(adminUrlPolicy);
+
         foreach (var candidate in input.Candidates)
         {
             if (candidate.Urls.Count == 0)
@@ -86,6 +89,8 @@ public static class AdminBindPolicyInputMapper
         IReadOnlyList<string> aspNetCoreUrls,
         string aspNetCoreUrlsSource)
     {
+        ArgumentNullException.ThrowIfNull(startupSecurity);
+
         return new AdminBindPolicyInput(
             [
                 new AdminBindCandidate(
@@ -112,6 +117,8 @@ public sealed record AdminBindPolicyInput
         AdminStartupSecurityOptions StartupSecurity)
     {
         this.Candidates = RuntimeList.Copy(Candidates);
+        ArgumentNullException.ThrowIfNull(StartupSecurity);
+
         this.StartupSecurity = StartupSecurity;
     }
 

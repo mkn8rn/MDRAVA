@@ -67,6 +67,8 @@ internal static class AdminSecurityTests
         mdravaUrls[0] = "http://localhost:7002";
         aspNetCoreUrls[0] = "http://localhost:7003";
 
+        AssertEx.Equal("http://localhost:6001", startupSecurity.Urls[0]);
+        AssertEx.False(startupSecurity.Urls is string[], "Admin startup security URLs should not expose a mutable array.");
         AssertEx.Equal(3, input.Candidates.Count);
         AssertEx.Equal(AdminBindPolicyInputMapper.OperationalConfigSource, input.Candidates[0].Source);
         AssertEx.Equal("http://localhost:6001", input.Candidates[0].Urls[0]);
@@ -77,6 +79,23 @@ internal static class AdminSecurityTests
         AssertEx.Equal(AdminBindWebHostConfigurator.AspNetCoreUrlsConfigurationKey, input.Candidates[2].Source);
         AssertEx.Equal("http://localhost:6003", input.Candidates[2].Urls[0]);
         AssertEx.False(input.Candidates[2].ApplyToWebHost);
+    }
+
+    public static void AdminBindRejectsNullInputs()
+    {
+        var startupSecurity = new AdminStartupSecurityOptions([], false, false);
+        var input = new AdminBindPolicyInput([], startupSecurity);
+
+        AssertEx.Throws<ArgumentNullException>(() => new AdminStartupSecurityOptions(null!, false, false));
+        AssertEx.Throws<ArgumentNullException>(() => new AdminBindPolicyInput([], null!));
+        AssertEx.Throws<ArgumentNullException>(() => AdminBindPolicy.Resolve(null!, new ProxyAdminUrlPolicy()));
+        AssertEx.Throws<ArgumentNullException>(() => AdminBindPolicy.Resolve(input, null!));
+        AssertEx.Throws<ArgumentNullException>(() => AdminBindPolicyInputMapper.FromStartupConfiguration(
+            null!,
+            [],
+            AdminBindWebHostConfigurator.MdravaAdminUrlsConfigurationKey,
+            [],
+            AdminBindWebHostConfigurator.AspNetCoreUrlsConfigurationKey));
     }
 
     public static void NonLocalAdminBindWithoutAuthIsRejected()

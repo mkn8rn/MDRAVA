@@ -6,6 +6,7 @@ internal static partial class TestRegistry
     [
     Test("Default admin bind is localhost-only", Sync(AdminSecurityTests.DefaultAdminBindIsLocalhostOnly), TestTaxonomy.Headers, TestTaxonomy.Admin),
     Test("Admin bind input mapper builds ordered candidates", Sync(AdminSecurityTests.AdminBindInputMapperBuildsOrderedCandidates), TestTaxonomy.Config, TestTaxonomy.Admin),
+    Test("Admin bind rejects null inputs", Sync(AdminSecurityTests.AdminBindRejectsNullInputs), TestTaxonomy.Config, TestTaxonomy.Admin, TestTaxonomy.SecurityNegativePaths),
     Test("Non-local admin bind without auth is rejected", Sync(AdminSecurityTests.NonLocalAdminBindWithoutAuthIsRejected), TestTaxonomy.Admin, TestTaxonomy.SecurityNegativePaths),
     Test("Operational config rejects non-local admin URL without auth", Sync(AdminSecurityTests.OperationalConfigRejectsNonLocalAdminUrlWithoutAuth), TestTaxonomy.Admin, TestTaxonomy.SecurityNegativePaths),
     Test("Protected admin endpoint rejects missing auth", AdminSecurityTests.ProtectedEndpointRejectsMissingAuth, TestTaxonomy.Admin, TestTaxonomy.SecurityNegativePaths),
