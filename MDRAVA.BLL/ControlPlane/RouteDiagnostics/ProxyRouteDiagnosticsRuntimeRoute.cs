@@ -8,6 +8,8 @@ public sealed class ProxyRouteDiagnosticsRuntimeRoute
 {
     public ProxyRouteDiagnosticsRuntimeRoute(RuntimeRoute runtimeRoute)
     {
+        ArgumentNullException.ThrowIfNull(runtimeRoute);
+
         SiteName = runtimeRoute.SiteName;
         Name = runtimeRoute.Name;
         Host = runtimeRoute.Host;
@@ -41,8 +43,7 @@ public sealed class ProxyRouteDiagnosticsRuntimeRoute
             runtimeRoute.PathRewrite.ReplacePrefix,
             runtimeRoute.PathRewrite.Replacement);
         MaxRequestBodyBytes = runtimeRoute.ResolvedOptions.MaxRequestBodyBytes;
-        Upstreams = RouteDiagnosticsList.Copy(runtimeRoute.Upstreams
-            .Select(static upstream => new ProxyRouteDiagnosticsRuntimeUpstream(upstream)));
+        Upstreams = RouteDiagnosticsList.Copy(runtimeRoute.Upstreams.Select(ToUpstream));
         CacheEnabled = runtimeRoute.Cache.Enabled;
         CacheMethods = RouteDiagnosticsList.Copy(runtimeRoute.Cache.Methods);
         RetryEnabled = runtimeRoute.Retry.Enabled;
@@ -84,4 +85,11 @@ public sealed class ProxyRouteDiagnosticsRuntimeRoute
     public bool RetryEnabled { get; }
 
     public IReadOnlyList<string> RetryMethods { get; }
+
+    private static ProxyRouteDiagnosticsRuntimeUpstream ToUpstream(RuntimeUpstream upstream)
+    {
+        ArgumentNullException.ThrowIfNull(upstream);
+
+        return new ProxyRouteDiagnosticsRuntimeUpstream(upstream);
+    }
 }

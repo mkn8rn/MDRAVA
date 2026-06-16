@@ -7,6 +7,8 @@ public sealed class ProxyRouteDiagnosticsRuntimeListener
 {
     public ProxyRouteDiagnosticsRuntimeListener(RuntimeListener runtimeListener)
     {
+        ArgumentNullException.ThrowIfNull(runtimeListener);
+
         Name = runtimeListener.Name;
         Transport = RuntimeListenerTransportScheme.FromTransport(runtimeListener.Transport);
         Address = runtimeListener.Address;

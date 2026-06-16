@@ -1078,6 +1078,24 @@ internal static class RouteDiagnosticsTests
         AssertEx.Equal(1, diagnosticsSnapshot.Routes.Count);
         AssertEx.Equal("api", diagnosticsSnapshot.Routes[0].Name);
         AssertEx.Equal("diag.test", diagnosticsSnapshot.Routes[0].Host);
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyRouteDiagnosticsRuntimeConfigurationSnapshotMapper.FromSources(null!, [route]));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyRouteDiagnosticsRuntimeConfigurationSnapshotMapper.FromSources([listener], null!));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyRouteDiagnosticsRuntimeConfigurationSnapshotMapper.FromSources([null!], [route]));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyRouteDiagnosticsRuntimeConfigurationSnapshotMapper.FromSources([listener], [null!]));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyRouteDiagnosticsRuntimeConfigurationSnapshotMapper.FromSources(
+                [listener],
+                [route.WithUpstreams([null!])]));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            new ProxyRouteDiagnosticsRuntimeListener(null!));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            new ProxyRouteDiagnosticsRuntimeRoute(null!));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            new ProxyRouteDiagnosticsRuntimeUpstream(null!));
 
         var listenerSources = new List<RuntimeListener> { listener };
         var routeSources = new List<RuntimeRoute> { route };

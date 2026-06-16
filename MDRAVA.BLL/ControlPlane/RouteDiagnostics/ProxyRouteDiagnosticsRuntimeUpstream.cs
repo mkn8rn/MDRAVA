@@ -7,6 +7,8 @@ public sealed class ProxyRouteDiagnosticsRuntimeUpstream
 {
     public ProxyRouteDiagnosticsRuntimeUpstream(RuntimeUpstream runtimeUpstream)
     {
+        ArgumentNullException.ThrowIfNull(runtimeUpstream);
+
         Name = runtimeUpstream.Name;
         Scheme = runtimeUpstream.Scheme;
         Protocol = runtimeUpstream.Protocol;
