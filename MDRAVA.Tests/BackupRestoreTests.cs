@@ -324,6 +324,37 @@ internal static class BackupRestoreTests
         AssertEx.False(manifest.Warnings is ProxyBackupWarning[]);
         AssertEx.False(restoreValidation.Errors is ProxyRestoreValidationFinding[]);
         AssertEx.False(restoreValidation.Warnings is ProxyRestoreValidationFinding[]);
+        AssertEx.Throws<ArgumentNullException>(() => ProxyBackupFileSystemScanResult.Scanned([null!], []));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyBackupFileSystemScanResult.Scanned([], [null!]));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyBackupManifest(
+            generatedAtUtc,
+            [null!],
+            [],
+            [],
+            [],
+            Truncated: false));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyRestoreConfigurationValidationResult.Completed(
+            [null!],
+            [],
+            wouldBeVersion: null));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyRestoreConfigurationValidationResult.Completed(
+            [],
+            [null!],
+            wouldBeVersion: null));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyRestoreValidationResult.Completed(
+            generatedAtUtc,
+            activeConfigVersion: 3,
+            configValidation,
+            manifest,
+            [null!],
+            []));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyRestoreValidationResult.Completed(
+            generatedAtUtc,
+            activeConfigVersion: 3,
+            configValidation,
+            manifest,
+            restoreErrors,
+            [null!]));
         var response = ProxyBackupManifestResponse.FromManifest(manifest);
         AssertEx.False(response.Directories is ProxyBackupDirectoryStatusResponse[], "Backup manifest API directories should not expose a mutable array.");
         AssertEx.False(response.Entries is ProxyBackupManifestEntryResponse[], "Backup manifest API entries should not expose a mutable array.");
