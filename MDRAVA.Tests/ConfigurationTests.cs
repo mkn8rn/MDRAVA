@@ -587,6 +587,29 @@ internal static class ConfigurationTests
         AssertEx.False(retryProjection.RetryMethods is string[]);
         var adminResponse = RuntimeAdminSecurityResponse.FromProjection(adminProjection);
         AssertEx.False(adminResponse.Urls is string[], "Admin security API URLs should not expose a mutable array.");
+        var adminResponseUrls = new List<string> { adminResponse.Urls[0] };
+        var directAdminResponse = new RuntimeAdminSecurityResponse(
+            urls: adminResponseUrls,
+            requireAuthentication: true,
+            hasConfiguredToken: true,
+            token: null,
+            tokenEnvironmentVariable: "MDRAVA_ADMIN_TOKEN",
+            tokenSource: "configured",
+            recentAuditCapacity: 64);
+
+        adminResponseUrls[0] = "http://127.0.0.1:19999";
+        adminResponseUrls.Clear();
+
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeAdminSecurityResponse(
+            urls: null!,
+            requireAuthentication: true,
+            hasConfiguredToken: true,
+            token: null,
+            tokenEnvironmentVariable: "MDRAVA_ADMIN_TOKEN",
+            tokenSource: "configured",
+            recentAuditCapacity: 64));
+        AssertEx.Equal("http://127.0.0.1:18082", directAdminResponse.Urls[0]);
+        AssertEx.False(directAdminResponse.Urls is string[], "Direct admin security API URLs should not expose a mutable array.");
         var forwardedHeadersResponse = RuntimeForwardedHeadersResponse.FromProjection(forwardedHeadersProjection);
         AssertEx.False(forwardedHeadersResponse.TrustedProxies is string[], "Forwarded headers API trusted proxies should not expose a mutable array.");
         var headerPolicyResponse = RuntimeHeaderPolicyResponse.FromProjection(headerPolicyProjection);

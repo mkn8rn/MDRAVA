@@ -2,26 +2,51 @@ using BusinessRuntimeAdminSecurityProjection = MDRAVA.BLL.Configuration.RuntimeA
 
 namespace MDRAVA.API.Controllers;
 
-public sealed record RuntimeAdminSecurityResponse(
-    IReadOnlyList<string> Urls,
-    bool RequireAuthentication,
-    bool HasConfiguredToken,
-    string? Token,
-    string TokenEnvironmentVariable,
-    string TokenSource,
-    int RecentAuditCapacity)
+public sealed record RuntimeAdminSecurityResponse
 {
+    public RuntimeAdminSecurityResponse(
+        IReadOnlyList<string> urls,
+        bool requireAuthentication,
+        bool hasConfiguredToken,
+        string? token,
+        string tokenEnvironmentVariable,
+        string tokenSource,
+        int recentAuditCapacity)
+    {
+        Urls = ApiResponseList.Copy(urls);
+        RequireAuthentication = requireAuthentication;
+        HasConfiguredToken = hasConfiguredToken;
+        Token = token;
+        TokenEnvironmentVariable = tokenEnvironmentVariable;
+        TokenSource = tokenSource;
+        RecentAuditCapacity = recentAuditCapacity;
+    }
+
+    public IReadOnlyList<string> Urls { get; }
+
+    public bool RequireAuthentication { get; }
+
+    public bool HasConfiguredToken { get; }
+
+    public string? Token { get; }
+
+    public string TokenEnvironmentVariable { get; }
+
+    public string TokenSource { get; }
+
+    public int RecentAuditCapacity { get; }
+
     public static RuntimeAdminSecurityResponse FromProjection(BusinessRuntimeAdminSecurityProjection projection)
     {
         ArgumentNullException.ThrowIfNull(projection);
 
         return new RuntimeAdminSecurityResponse(
-            ApiResponseList.Copy(projection.Urls),
-            projection.RequireAuthentication,
-            projection.HasConfiguredToken,
-            projection.Token,
-            projection.TokenEnvironmentVariable,
-            projection.TokenSource,
-            projection.RecentAuditCapacity);
+            urls: projection.Urls,
+            requireAuthentication: projection.RequireAuthentication,
+            hasConfiguredToken: projection.HasConfiguredToken,
+            token: projection.Token,
+            tokenEnvironmentVariable: projection.TokenEnvironmentVariable,
+            tokenSource: projection.TokenSource,
+            recentAuditCapacity: projection.RecentAuditCapacity);
     }
 }
