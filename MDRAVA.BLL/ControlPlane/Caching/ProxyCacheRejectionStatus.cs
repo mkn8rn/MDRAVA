@@ -14,12 +14,12 @@ public sealed record ProxyCacheRejectionStatus
 
     public long Count { get; }
 
-    public static ProxyCacheRejectionStatus FromRuntimeRejection(
-        ProxyCacheRuntimeRejectionSnapshot rejection)
+    public static ProxyCacheRejectionStatus FromSources(
+        string reason,
+        long count)
     {
-        ArgumentNullException.ThrowIfNull(rejection);
         return new ProxyCacheRejectionStatus(
-            rejection.Reason,
-            rejection.Count);
+            reason,
+            count);
     }
 }

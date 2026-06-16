@@ -28,11 +28,35 @@ public sealed class ProxyCacheStatusReader : IProxyCacheStatusReader
         ArgumentNullException.ThrowIfNull(runtime);
 
         var routeStatuses = routes
-            .Select(route => ProxyCacheRouteStatus.FromRuntimeEntries(route, runtime.Entries));
+            .Select(route =>
+            {
+                var currentEntryCount = 0;
+                var currentBytes = 0L;
+                foreach (var entry in runtime.Entries)
+                {
+                    if (!string.Equals(entry.RouteName, route.RouteName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    currentEntryCount++;
+                    currentBytes += entry.SizeBytes;
+                }
+
+                return ProxyCacheRouteStatus.FromSources(
+                    route.RouteName,
+                    route.Enabled,
+                    route.MaxEntryBytes,
+                    route.MaxTotalBytes,
+                    currentEntryCount,
+                    currentBytes);
+            });
 
         var rejections = runtime.Rejections
             .OrderBy(static rejection => rejection.Reason, StringComparer.OrdinalIgnoreCase)
-            .Select(ProxyCacheRejectionStatus.FromRuntimeRejection);
+            .Select(static rejection => ProxyCacheRejectionStatus.FromSources(
+                rejection.Reason,
+                rejection.Count));
 
         return ProxyCacheStatus.FromSources(
             runtime.EntryCount,

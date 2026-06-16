@@ -30,31 +30,19 @@ public sealed record ProxyCacheRouteStatus
 
     public long CurrentBytes { get; }
 
-    public static ProxyCacheRouteStatus FromRuntimeEntries(
-        ProxyCacheStatusRouteSource route,
-        IReadOnlyList<ProxyCacheRuntimeEntrySnapshot> entries)
+    public static ProxyCacheRouteStatus FromSources(
+        string routeName,
+        bool enabled,
+        long maxEntryBytes,
+        long maxTotalBytes,
+        int currentEntryCount,
+        long currentBytes)
     {
-        ArgumentNullException.ThrowIfNull(route);
-        ArgumentNullException.ThrowIfNull(entries);
-
-        var currentEntryCount = 0;
-        var currentBytes = 0L;
-        foreach (var entry in entries)
-        {
-            if (!string.Equals(entry.RouteName, route.RouteName, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            currentEntryCount++;
-            currentBytes += entry.SizeBytes;
-        }
-
         return new ProxyCacheRouteStatus(
-            route.RouteName,
-            route.Enabled,
-            route.MaxEntryBytes,
-            route.MaxTotalBytes,
+            routeName,
+            enabled,
+            maxEntryBytes,
+            maxTotalBytes,
             currentEntryCount,
             currentBytes);
     }

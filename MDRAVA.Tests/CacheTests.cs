@@ -346,13 +346,17 @@ internal static class CacheTests
         };
         var rejections = new List<ProxyCacheRejectionStatus>
         {
-            ProxyCacheRejectionStatus.FromRuntimeRejection(new ProxyCacheRuntimeRejectionSnapshot("authorization", 1))
+            ProxyCacheRejectionStatus.FromSources("authorization", 1)
         };
         var routes = new List<ProxyCacheRouteStatus>
         {
-            ProxyCacheRouteStatus.FromRuntimeEntries(
-                new ProxyCacheStatusRouteSource("api", true, 1024, 4096),
-                [new ProxyCacheRuntimeEntrySnapshot("api", 11)])
+            ProxyCacheRouteStatus.FromSources(
+                "api",
+                enabled: true,
+                maxEntryBytes: 1024,
+                maxTotalBytes: 4096,
+                currentEntryCount: 1,
+                currentBytes: 11)
         };
         var runtime = new ProxyCacheRuntimeStatusSnapshot(
             EntryCount: 1,
