@@ -3,40 +3,102 @@ using BusinessAcmeStatus = MDRAVA.BLL.ControlPlane.Acme.AcmeStatus;
 
 namespace MDRAVA.API.Controllers;
 
-public sealed record AcmeStatusResponse(
-    bool Enabled,
-    string DirectoryUrl,
-    bool UseStaging,
-    IReadOnlyList<AcmeCertificateLifecycleStatusResponse> Certificates)
+public sealed record AcmeStatusResponse
 {
+    public AcmeStatusResponse(
+        bool enabled,
+        string directoryUrl,
+        bool useStaging,
+        IReadOnlyList<AcmeCertificateLifecycleStatusResponse> certificates)
+    {
+        Enabled = enabled;
+        DirectoryUrl = directoryUrl;
+        UseStaging = useStaging;
+        Certificates = ApiResponseList.Copy(certificates);
+    }
+
+    public bool Enabled { get; }
+
+    public string DirectoryUrl { get; }
+
+    public bool UseStaging { get; }
+
+    public IReadOnlyList<AcmeCertificateLifecycleStatusResponse> Certificates { get; }
+
     public static AcmeStatusResponse FromStatus(BusinessAcmeStatus status)
     {
         ArgumentNullException.ThrowIfNull(status);
 
         return new AcmeStatusResponse(
-            Enabled: status.Enabled,
-            DirectoryUrl: status.DirectoryUrl,
-            UseStaging: status.UseStaging,
-            Certificates: AcmeCertificateLifecycleStatusResponse.FromStatuses(status.Certificates));
+            enabled: status.Enabled,
+            directoryUrl: status.DirectoryUrl,
+            useStaging: status.UseStaging,
+            certificates: AcmeCertificateLifecycleStatusResponse.FromStatuses(status.Certificates));
     }
 }
 
-public sealed record AcmeCertificateLifecycleStatusResponse(
-    string CertificateId,
-    bool Enabled,
-    IReadOnlyList<string> Domains,
-    bool Active,
-    string Source,
-    DateTimeOffset? NotBeforeUtc,
-    DateTimeOffset? NotAfterUtc,
-    DateTimeOffset? RenewalDueAtUtc,
-    DateTimeOffset? LastAttemptAtUtc,
-    DateTimeOffset? LastSucceededAtUtc,
-    DateTimeOffset? LastFailedAtUtc,
-    DateTimeOffset? NextAttemptNotBeforeUtc,
-    string LastResult,
-    string? ErrorSummary)
+public sealed record AcmeCertificateLifecycleStatusResponse
 {
+    public AcmeCertificateLifecycleStatusResponse(
+        string certificateId,
+        bool enabled,
+        IReadOnlyList<string> domains,
+        bool active,
+        string source,
+        DateTimeOffset? notBeforeUtc,
+        DateTimeOffset? notAfterUtc,
+        DateTimeOffset? renewalDueAtUtc,
+        DateTimeOffset? lastAttemptAtUtc,
+        DateTimeOffset? lastSucceededAtUtc,
+        DateTimeOffset? lastFailedAtUtc,
+        DateTimeOffset? nextAttemptNotBeforeUtc,
+        string lastResult,
+        string? errorSummary)
+    {
+        CertificateId = certificateId;
+        Enabled = enabled;
+        Domains = ApiResponseList.Copy(domains);
+        Active = active;
+        Source = source;
+        NotBeforeUtc = notBeforeUtc;
+        NotAfterUtc = notAfterUtc;
+        RenewalDueAtUtc = renewalDueAtUtc;
+        LastAttemptAtUtc = lastAttemptAtUtc;
+        LastSucceededAtUtc = lastSucceededAtUtc;
+        LastFailedAtUtc = lastFailedAtUtc;
+        NextAttemptNotBeforeUtc = nextAttemptNotBeforeUtc;
+        LastResult = lastResult;
+        ErrorSummary = errorSummary;
+    }
+
+    public string CertificateId { get; }
+
+    public bool Enabled { get; }
+
+    public IReadOnlyList<string> Domains { get; }
+
+    public bool Active { get; }
+
+    public string Source { get; }
+
+    public DateTimeOffset? NotBeforeUtc { get; }
+
+    public DateTimeOffset? NotAfterUtc { get; }
+
+    public DateTimeOffset? RenewalDueAtUtc { get; }
+
+    public DateTimeOffset? LastAttemptAtUtc { get; }
+
+    public DateTimeOffset? LastSucceededAtUtc { get; }
+
+    public DateTimeOffset? LastFailedAtUtc { get; }
+
+    public DateTimeOffset? NextAttemptNotBeforeUtc { get; }
+
+    public string LastResult { get; }
+
+    public string? ErrorSummary { get; }
+
     public static IReadOnlyList<AcmeCertificateLifecycleStatusResponse> FromStatuses(
         IReadOnlyList<BusinessAcmeCertificateLifecycleStatus> statuses)
     {
@@ -51,19 +113,19 @@ public sealed record AcmeCertificateLifecycleStatusResponse(
         ArgumentNullException.ThrowIfNull(status);
 
         return new AcmeCertificateLifecycleStatusResponse(
-            status.CertificateId,
-            status.Enabled,
-            ApiResponseList.Copy(status.Domains),
-            status.Active,
-            status.Source,
-            status.NotBeforeUtc,
-            status.NotAfterUtc,
-            status.RenewalDueAtUtc,
-            status.LastAttemptAtUtc,
-            status.LastSucceededAtUtc,
-            status.LastFailedAtUtc,
-            status.NextAttemptNotBeforeUtc,
-            status.LastResult,
-            status.ErrorSummary);
+            certificateId: status.CertificateId,
+            enabled: status.Enabled,
+            domains: status.Domains,
+            active: status.Active,
+            source: status.Source,
+            notBeforeUtc: status.NotBeforeUtc,
+            notAfterUtc: status.NotAfterUtc,
+            renewalDueAtUtc: status.RenewalDueAtUtc,
+            lastAttemptAtUtc: status.LastAttemptAtUtc,
+            lastSucceededAtUtc: status.LastSucceededAtUtc,
+            lastFailedAtUtc: status.LastFailedAtUtc,
+            nextAttemptNotBeforeUtc: status.NextAttemptNotBeforeUtc,
+            lastResult: status.LastResult,
+            errorSummary: status.ErrorSummary);
     }
 }

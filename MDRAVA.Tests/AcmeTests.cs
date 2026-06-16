@@ -220,10 +220,82 @@ internal static class AcmeTests
         AssertEx.Equal(1, write.PfxBytes[0]);
         AssertEx.Equal("home.example.test", lifecycle.Domains[0]);
         AssertEx.Equal("home-acme", status.Certificates[0].CertificateId);
+        var apiStatus = AcmeStatusResponse.FromStatus(status);
+        AssertEx.Equal("home-acme", apiStatus.Certificates[0].CertificateId);
+        AssertEx.Equal("home.example.test", apiStatus.Certificates[0].Domains[0]);
+        var responseDomains = new List<string> { "home.example.test" };
+        var responseLifecycle = new AcmeCertificateLifecycleStatusResponse(
+            certificateId: "home-acme",
+            enabled: true,
+            domains: responseDomains,
+            active: true,
+            source: "acme",
+            notBeforeUtc: DateTimeOffset.UnixEpoch,
+            notAfterUtc: DateTimeOffset.UnixEpoch.AddDays(30),
+            renewalDueAtUtc: DateTimeOffset.UnixEpoch.AddDays(20),
+            lastAttemptAtUtc: null,
+            lastSucceededAtUtc: DateTimeOffset.UnixEpoch,
+            lastFailedAtUtc: null,
+            nextAttemptNotBeforeUtc: null,
+            lastResult: "loaded",
+            errorSummary: null);
+        var responseCertificates = new List<AcmeCertificateLifecycleStatusResponse> { responseLifecycle };
+        var directStatus = new AcmeStatusResponse(
+            enabled: true,
+            directoryUrl: "https://acme.example.test/directory",
+            useStaging: false,
+            certificates: responseCertificates);
+
+        responseDomains[0] = "response-replacement.example.test";
+        responseCertificates[0] = new AcmeCertificateLifecycleStatusResponse(
+            certificateId: "replacement",
+            enabled: true,
+            domains: ["replacement.example.test"],
+            active: true,
+            source: "acme",
+            notBeforeUtc: DateTimeOffset.UnixEpoch,
+            notAfterUtc: DateTimeOffset.UnixEpoch.AddDays(30),
+            renewalDueAtUtc: DateTimeOffset.UnixEpoch.AddDays(20),
+            lastAttemptAtUtc: null,
+            lastSucceededAtUtc: DateTimeOffset.UnixEpoch,
+            lastFailedAtUtc: null,
+            nextAttemptNotBeforeUtc: null,
+            lastResult: "loaded",
+            errorSummary: null);
+        responseDomains.Clear();
+        responseCertificates.Clear();
+
+        AssertEx.Throws<ArgumentNullException>(() => new AcmeCertificateLifecycleStatusResponse(
+            certificateId: "home-acme",
+            enabled: true,
+            domains: null!,
+            active: true,
+            source: "acme",
+            notBeforeUtc: DateTimeOffset.UnixEpoch,
+            notAfterUtc: DateTimeOffset.UnixEpoch.AddDays(30),
+            renewalDueAtUtc: DateTimeOffset.UnixEpoch.AddDays(20),
+            lastAttemptAtUtc: null,
+            lastSucceededAtUtc: DateTimeOffset.UnixEpoch,
+            lastFailedAtUtc: null,
+            nextAttemptNotBeforeUtc: null,
+            lastResult: "loaded",
+            errorSummary: null));
+        AssertEx.Throws<ArgumentNullException>(() => new AcmeStatusResponse(
+            enabled: true,
+            directoryUrl: "https://acme.example.test/directory",
+            useStaging: false,
+            certificates: null!));
+        AssertEx.Equal("home.example.test", responseLifecycle.Domains[0]);
+        AssertEx.Equal("home-acme", directStatus.Certificates[0].CertificateId);
+        AssertEx.Equal("home.example.test", directStatus.Certificates[0].Domains[0]);
         AssertEx.False(issue.Domains is string[], "ACME issue domains should not expose a mutable array.");
         AssertEx.False(write.Domains is string[], "ACME material domains should not expose a mutable array.");
         AssertEx.False(lifecycle.Domains is string[], "ACME lifecycle domains should not expose a mutable array.");
         AssertEx.False(status.Certificates is AcmeCertificateLifecycleStatus[], "ACME status certificates should not expose a mutable array.");
+        AssertEx.False(apiStatus.Certificates is AcmeCertificateLifecycleStatusResponse[], "ACME API status certificates should not expose a mutable array.");
+        AssertEx.False(apiStatus.Certificates[0].Domains is string[], "ACME API status domains should not expose a mutable array.");
+        AssertEx.False(responseLifecycle.Domains is string[], "Direct ACME API lifecycle domains should not expose a mutable array.");
+        AssertEx.False(directStatus.Certificates is AcmeCertificateLifecycleStatusResponse[], "Direct ACME API status certificates should not expose a mutable array.");
     }
 
     public static void AcmeLifecycleStatusConsumesActiveCertificateDates()
