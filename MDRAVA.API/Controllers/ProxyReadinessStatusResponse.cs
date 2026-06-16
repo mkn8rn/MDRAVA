@@ -14,7 +14,7 @@ public sealed record ProxyReadinessStatusResponse(
 
         return new ProxyReadinessStatusResponse(
             status.State,
-            status.Reasons,
+            ApiResponseList.Copy(status.Reasons),
             status.GeneratedAtUtc,
             status.ConfigGeneration);
     }

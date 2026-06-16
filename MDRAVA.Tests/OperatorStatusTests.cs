@@ -724,6 +724,10 @@ internal static class OperatorStatusTests
             DateTimeOffset.UnixEpoch,
             configGeneration: 42);
         AssertEx.False(readiness.Reasons is string[], "Readiness status reasons should not expose a mutable array.");
+        var readinessResponse = ProxyReadinessStatusResponse.FromStatus(readiness);
+        AssertEx.Equal("runtime_preflight_degraded", readinessResponse.Reasons[0]);
+        AssertEx.False(ReferenceEquals(readiness.Reasons, readinessResponse.Reasons), "Readiness API reasons should not reuse the BLL reasons collection.");
+        AssertEx.False(readinessResponse.Reasons is string[], "Readiness API reasons should not expose a mutable array.");
     }
 
     public static void StatusReadinessSourceMapperConsumesRuntimeSummaryWithoutRuntimeSnapshot()
