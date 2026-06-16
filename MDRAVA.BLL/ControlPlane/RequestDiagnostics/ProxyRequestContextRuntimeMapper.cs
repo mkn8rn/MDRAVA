@@ -6,11 +6,15 @@ public static class ProxyRequestContextRuntimeMapper
 {
     public static string ToTransport(RuntimeListener listener)
     {
+        ArgumentNullException.ThrowIfNull(listener);
+
         return RuntimeListenerTransportText.FromTransport(listener.Transport);
     }
 
     public static ProxyRequestRoute ToRequestRoute(RuntimeRoute route)
     {
+        ArgumentNullException.ThrowIfNull(route);
+
         return new ProxyRequestRoute(
             route.Name,
             route.SiteName,
@@ -20,6 +24,8 @@ public static class ProxyRequestContextRuntimeMapper
 
     public static ProxyRequestUpstream ToRequestUpstream(RuntimeUpstream upstream)
     {
+        ArgumentNullException.ThrowIfNull(upstream);
+
         return new ProxyRequestUpstream(
             upstream.Name,
             upstream.Endpoint);

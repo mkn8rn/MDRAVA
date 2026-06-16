@@ -11,17 +11,29 @@ public static class ProxyRouteMatchRuntimeMapper
         ArgumentNullException.ThrowIfNull(routes);
 
         return new ReadOnlyCollection<RouteMatchCandidate>(routes
-            .Select(static route => new RouteMatchCandidate(route.Host, route.PathPrefix))
+            .Select(ToCandidate)
             .ToArray());
     }
 
     public static RouteMatchRequest ToRequest(Http1RequestHead requestHead)
     {
+        ArgumentNullException.ThrowIfNull(requestHead);
+
         return new RouteMatchRequest(requestHead.Host, requestHead.Path);
     }
 
     public static RuntimeRoute SelectRoute(IReadOnlyList<RuntimeRoute> routes, RouteMatch match)
     {
+        ArgumentNullException.ThrowIfNull(routes);
+        ArgumentNullException.ThrowIfNull(match);
+
         return routes[match.RouteIndex];
+    }
+
+    private static RouteMatchCandidate ToCandidate(RuntimeRoute route)
+    {
+        ArgumentNullException.ThrowIfNull(route);
+
+        return new RouteMatchCandidate(route.Host, route.PathPrefix);
     }
 }

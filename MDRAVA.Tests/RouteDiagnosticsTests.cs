@@ -111,6 +111,23 @@ internal static class RouteDiagnosticsTests
             () => ProxyRouteActionRuntimeMapper.ToPolicyInput(route, requestHead, null!, false));
     }
 
+    public static void RequestContextRuntimeMapperRejectsNullInputs()
+    {
+        var snapshot = Snapshot(BaseOptions([ProxyRoute("api", "diag.test", "/api")]));
+        var route = snapshot.Routes[0];
+        var upstream = route.Upstreams[0];
+
+        AssertEx.Throws<ArgumentNullException>(
+            () => ProxyRequestContextRuntimeMapper.ToTransport(null!));
+        AssertEx.Throws<ArgumentNullException>(
+            () => ProxyRequestContextRuntimeMapper.ToRequestRoute(null!));
+        AssertEx.Throws<ArgumentNullException>(
+            () => ProxyRequestContextRuntimeMapper.ToRequestUpstream(null!));
+
+        AssertEx.Equal("api", ProxyRequestContextRuntimeMapper.ToRequestRoute(route).Name);
+        AssertEx.Equal("local", ProxyRequestContextRuntimeMapper.ToRequestUpstream(upstream).Name);
+    }
+
     public static void DryRunCanSelectHttp3ProtocolListener()
     {
         var options = new ProxyOptions

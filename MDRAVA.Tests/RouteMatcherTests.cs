@@ -155,6 +155,33 @@ internal static class RouteMatcherTests
         AssertEx.False(candidates is RouteMatchCandidate[], "Route match candidates should not expose a mutable array.");
     }
 
+    public static void RouteMatchRuntimeMapperRejectsNullInputs()
+    {
+        var routes = Snapshot(new ProxyOptions
+        {
+            Routes =
+            [
+                Route("api", "example.test", "/api", "api-upstream", 5001)
+            ]
+        }).Routes;
+        var request = Request("GET", "/api/users", "example.test");
+        var match = new RouteMatch(0);
+
+        AssertEx.Throws<ArgumentNullException>(
+            () => ProxyRouteMatchRuntimeMapper.ToCandidates(null!));
+        AssertEx.Throws<ArgumentNullException>(
+            () => ProxyRouteMatchRuntimeMapper.ToCandidates([null!]));
+        AssertEx.Throws<ArgumentNullException>(
+            () => ProxyRouteMatchRuntimeMapper.ToRequest(null!));
+        AssertEx.Throws<ArgumentNullException>(
+            () => ProxyRouteMatchRuntimeMapper.SelectRoute(null!, match));
+        AssertEx.Throws<ArgumentNullException>(
+            () => ProxyRouteMatchRuntimeMapper.SelectRoute(routes, null!));
+
+        AssertEx.Equal("example.test", ProxyRouteMatchRuntimeMapper.ToRequest(request).Host);
+        AssertEx.Equal("api", ProxyRouteMatchRuntimeMapper.SelectRoute(routes, match).Name);
+    }
+
     private static RouteMatch? Match(
         SingleUpstreamRouteMatcher matcher,
         IReadOnlyList<RuntimeRoute> routes,

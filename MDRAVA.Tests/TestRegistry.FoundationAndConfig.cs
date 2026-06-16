@@ -91,6 +91,7 @@ internal static partial class TestRegistry
     Test("SingleUpstreamRouteMatcher port-specific host route beats host fallback", Sync(RouteMatcherTests.PortSpecificHostRouteBeatsHostFallbackWhenAuthorityIncludesPort), TestTaxonomy.Routing, TestTaxonomy.Headers),
     Test("SingleUpstreamRouteMatcher specific route path beats catch-all fallback", Sync(RouteMatcherTests.SpecificRoutePathBeatsCatchAllFallbackWhenBothCouldMatch), TestTaxonomy.Routing),
     Test("SingleUpstreamRouteMatcher reads runtime routes without configuration snapshot", Sync(RouteMatcherTests.MatchesRuntimeRoutesWithoutConfigurationSnapshot), TestTaxonomy.Routing, TestTaxonomy.Config),
+    Test("Route match runtime mapper rejects null inputs", Sync(RouteMatcherTests.RouteMatchRuntimeMapperRejectsNullInputs), TestTaxonomy.Routing, TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
     Test("Data directory uses configured override", Sync(ConfigurationTests.DataDirectoryUsesConfiguredOverride), TestTaxonomy.Config),
     Test("Data directory uses environment override", Sync(ConfigurationTests.DataDirectoryUsesEnvironmentOverride), TestTaxonomy.Config),
     Test("Data directory defaults under local application data when available", Sync(ConfigurationTests.DataDirectoryDefaultsUnderLocalApplicationDataWhenAvailable), TestTaxonomy.Config),
