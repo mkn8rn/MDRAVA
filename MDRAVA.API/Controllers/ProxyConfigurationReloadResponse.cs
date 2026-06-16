@@ -5,19 +5,58 @@ using BusinessProxyConfigurationReloadResult =
 
 namespace MDRAVA.API.Controllers;
 
-public sealed record ProxyConfigurationReloadResponse(
-    bool Succeeded,
-    string SourceDirectory,
-    DateTimeOffset AttemptedAtUtc,
-    int? ActiveVersion,
-    DateTimeOffset? LoadedAtUtc,
-    DateTimeOffset? LastSuccessfulLoadAtUtc,
-    ProxyConfigurationDiscoveryResponse Discovery,
-    IReadOnlyList<string> Errors,
-    IReadOnlyList<ProxyConfigurationFileErrorResponse> FileErrors,
-    ProxyConfigurationResponse? ActiveConfiguration,
-    ProxyListenerReloadResponse? ListenerReload)
+public sealed record ProxyConfigurationReloadResponse
 {
+    public ProxyConfigurationReloadResponse(
+        bool succeeded,
+        string sourceDirectory,
+        DateTimeOffset attemptedAtUtc,
+        int? activeVersion,
+        DateTimeOffset? loadedAtUtc,
+        DateTimeOffset? lastSuccessfulLoadAtUtc,
+        ProxyConfigurationDiscoveryResponse discovery,
+        IReadOnlyList<string> errors,
+        IReadOnlyList<ProxyConfigurationFileErrorResponse> fileErrors,
+        ProxyConfigurationResponse? activeConfiguration,
+        ProxyListenerReloadResponse? listenerReload)
+    {
+        ArgumentNullException.ThrowIfNull(discovery);
+
+        Succeeded = succeeded;
+        SourceDirectory = sourceDirectory;
+        AttemptedAtUtc = attemptedAtUtc;
+        ActiveVersion = activeVersion;
+        LoadedAtUtc = loadedAtUtc;
+        LastSuccessfulLoadAtUtc = lastSuccessfulLoadAtUtc;
+        Discovery = discovery;
+        Errors = ApiResponseList.Copy(errors);
+        FileErrors = ApiResponseList.Copy(fileErrors);
+        ActiveConfiguration = activeConfiguration;
+        ListenerReload = listenerReload;
+    }
+
+    public bool Succeeded { get; }
+
+    public string SourceDirectory { get; }
+
+    public DateTimeOffset AttemptedAtUtc { get; }
+
+    public int? ActiveVersion { get; }
+
+    public DateTimeOffset? LoadedAtUtc { get; }
+
+    public DateTimeOffset? LastSuccessfulLoadAtUtc { get; }
+
+    public ProxyConfigurationDiscoveryResponse Discovery { get; }
+
+    public IReadOnlyList<string> Errors { get; }
+
+    public IReadOnlyList<ProxyConfigurationFileErrorResponse> FileErrors { get; }
+
+    public ProxyConfigurationResponse? ActiveConfiguration { get; }
+
+    public ProxyListenerReloadResponse? ListenerReload { get; }
+
     public static ProxyConfigurationReloadResponse FromResult(BusinessProxyConfigurationReloadResult result)
     {
         ArgumentNullException.ThrowIfNull(result);
@@ -55,18 +94,18 @@ public sealed record ProxyConfigurationReloadResponse(
         ArgumentNullException.ThrowIfNull(result);
 
         return new ProxyConfigurationReloadResponse(
-            Succeeded: succeeded,
-            SourceDirectory: result.SourceDirectory,
-            AttemptedAtUtc: result.AttemptedAtUtc,
-            ActiveVersion: result.ActiveVersion,
-            LoadedAtUtc: result.LoadedAtUtc,
-            LastSuccessfulLoadAtUtc: result.LastSuccessfulLoadAtUtc,
-            Discovery: ProxyConfigurationDiscoveryResponse.FromDiscovery(result.Discovery),
-            Errors: ApiResponseList.Copy(result.Errors),
-            FileErrors: ProxyConfigurationFileErrorResponse.FromErrors(result.FileErrors),
-            ActiveConfiguration: activeConfiguration is null
+            succeeded: succeeded,
+            sourceDirectory: result.SourceDirectory,
+            attemptedAtUtc: result.AttemptedAtUtc,
+            activeVersion: result.ActiveVersion,
+            loadedAtUtc: result.LoadedAtUtc,
+            lastSuccessfulLoadAtUtc: result.LastSuccessfulLoadAtUtc,
+            discovery: ProxyConfigurationDiscoveryResponse.FromDiscovery(result.Discovery),
+            errors: result.Errors,
+            fileErrors: ProxyConfigurationFileErrorResponse.FromErrors(result.FileErrors),
+            activeConfiguration: activeConfiguration is null
                 ? null
                 : ProxyConfigurationResponse.FromProjection(activeConfiguration),
-            ListenerReload: listenerReload);
+            listenerReload: listenerReload);
     }
 }

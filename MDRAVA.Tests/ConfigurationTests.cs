@@ -415,6 +415,66 @@ internal static class ConfigurationTests
         var reloadResponse = ProxyConfigurationReloadResponse.FromResult(apiReloadFailed);
         AssertEx.False(reloadResponse.Errors is string[], "Reload API errors should not expose a mutable array.");
         AssertEx.False(reloadResponse.FileErrors is ProxyConfigurationFileErrorResponse[], "Reload API file errors should not expose a mutable array.");
+        var reloadResponseErrors = new List<string> { reloadResponse.Errors[0] };
+        var reloadResponseFileErrors = new List<ProxyConfigurationFileErrorResponse> { reloadResponse.FileErrors[0] };
+        var directReloadResponse = new ProxyConfigurationReloadResponse(
+            succeeded: false,
+            sourceDirectory: reloadResponse.SourceDirectory,
+            attemptedAtUtc: reloadResponse.AttemptedAtUtc,
+            activeVersion: reloadResponse.ActiveVersion,
+            loadedAtUtc: reloadResponse.LoadedAtUtc,
+            lastSuccessfulLoadAtUtc: reloadResponse.LastSuccessfulLoadAtUtc,
+            discovery: reloadResponse.Discovery,
+            errors: reloadResponseErrors,
+            fileErrors: reloadResponseFileErrors,
+            activeConfiguration: reloadResponse.ActiveConfiguration,
+            listenerReload: reloadResponse.ListenerReload);
+
+        reloadResponseErrors[0] = "replacement error";
+        reloadResponseFileErrors[0] = reloadResponseFileErrors[0] with { Path = "sites/replacement.json" };
+        reloadResponseErrors.Clear();
+        reloadResponseFileErrors.Clear();
+
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyConfigurationReloadResponse(
+            succeeded: false,
+            sourceDirectory: reloadResponse.SourceDirectory,
+            attemptedAtUtc: reloadResponse.AttemptedAtUtc,
+            activeVersion: reloadResponse.ActiveVersion,
+            loadedAtUtc: reloadResponse.LoadedAtUtc,
+            lastSuccessfulLoadAtUtc: reloadResponse.LastSuccessfulLoadAtUtc,
+            discovery: null!,
+            errors: [],
+            fileErrors: [],
+            activeConfiguration: null,
+            listenerReload: null));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyConfigurationReloadResponse(
+            succeeded: false,
+            sourceDirectory: reloadResponse.SourceDirectory,
+            attemptedAtUtc: reloadResponse.AttemptedAtUtc,
+            activeVersion: reloadResponse.ActiveVersion,
+            loadedAtUtc: reloadResponse.LoadedAtUtc,
+            lastSuccessfulLoadAtUtc: reloadResponse.LastSuccessfulLoadAtUtc,
+            discovery: reloadResponse.Discovery,
+            errors: null!,
+            fileErrors: [],
+            activeConfiguration: null,
+            listenerReload: null));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyConfigurationReloadResponse(
+            succeeded: false,
+            sourceDirectory: reloadResponse.SourceDirectory,
+            attemptedAtUtc: reloadResponse.AttemptedAtUtc,
+            activeVersion: reloadResponse.ActiveVersion,
+            loadedAtUtc: reloadResponse.LoadedAtUtc,
+            lastSuccessfulLoadAtUtc: reloadResponse.LastSuccessfulLoadAtUtc,
+            discovery: reloadResponse.Discovery,
+            errors: [],
+            fileErrors: null!,
+            activeConfiguration: null,
+            listenerReload: null));
+        AssertEx.Equal("parse failed", directReloadResponse.Errors[0]);
+        AssertEx.Equal("sites/home.json", directReloadResponse.FileErrors[0].Path);
+        AssertEx.False(directReloadResponse.Errors is string[], "Direct reload API errors should not expose a mutable array.");
+        AssertEx.False(directReloadResponse.FileErrors is ProxyConfigurationFileErrorResponse[], "Direct reload API file errors should not expose a mutable array.");
         var discoveryResponse = ProxyConfigurationDiscoveryResponse.FromDiscovery(discovery);
         AssertEx.False(discoveryResponse.Files is ProxyConfigurationFileDiscoveryResponse[], "Discovery API files should not expose a mutable array.");
         AssertEx.False(discoveryResponse.CreatedPaths is string[], "Discovery API created paths should not expose a mutable array.");
