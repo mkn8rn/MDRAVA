@@ -35,13 +35,15 @@ public abstract partial record ConfigLintResult
         ArgumentNullException.ThrowIfNull(findings);
         ArgumentNullException.ThrowIfNull(validationErrors);
 
+        var copiedFindings = ConfigLintList.Copy(findings);
+        var copiedValidationErrors = ConfigLintList.Copy(validationErrors);
         var summary = new ConfigLintSummary(
-            findings.Count(static finding => string.Equals(finding.Severity, "info", StringComparison.OrdinalIgnoreCase)),
-            findings.Count(static finding => string.Equals(finding.Severity, "warning", StringComparison.OrdinalIgnoreCase)),
-            findings.Count(static finding => string.Equals(finding.Severity, "error", StringComparison.OrdinalIgnoreCase)));
+            copiedFindings.Count(static finding => string.Equals(finding.Severity, "info", StringComparison.OrdinalIgnoreCase)),
+            copiedFindings.Count(static finding => string.Equals(finding.Severity, "warning", StringComparison.OrdinalIgnoreCase)),
+            copiedFindings.Count(static finding => string.Equals(finding.Severity, "error", StringComparison.OrdinalIgnoreCase)));
 
         return summary.Error == 0
-            ? new AcceptedResult(lintedAtUtc, summary, findings, validationErrors)
-            : new RejectedResult(lintedAtUtc, summary, findings, validationErrors);
+            ? new AcceptedResult(lintedAtUtc, summary, copiedFindings, copiedValidationErrors)
+            : new RejectedResult(lintedAtUtc, summary, copiedFindings, copiedValidationErrors);
     }
 }

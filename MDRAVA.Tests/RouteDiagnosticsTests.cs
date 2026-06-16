@@ -1260,6 +1260,23 @@ internal static class RouteDiagnosticsTests
         var loaded = (ProxyConfigLintSubmittedConfigurationResult.LoadedResult)submitted;
         AssertEx.Equal("lint-input", loaded.ValidationErrors[0].Path);
         AssertEx.False(loaded.ValidationErrors is ProxyConfigurationFileError[], "Submitted config lint validation errors should not expose a mutable array.");
+        AssertEx.Throws<ArgumentNullException>(() => ConfigLintResult.Completed(lintedAtUtc, [null!], []));
+        AssertEx.Throws<ArgumentNullException>(() => ConfigLintResult.Completed(lintedAtUtc, [], [null!]));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyConfigLintSubmittedConfigurationResult.Loaded(snapshot, [null!]));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyConfigLintConfigurationSnapshot(
+            [null!],
+            new ProxyConfigLintAdminSecurity([AdminBindPolicy.DefaultAdminUrl], true),
+            new ProxyConfigLintMetricsOptions(false),
+            true,
+            [],
+            []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyConfigLintConfigurationSnapshot(
+            ["submitted.json"],
+            new ProxyConfigLintAdminSecurity([AdminBindPolicy.DefaultAdminUrl], true),
+            new ProxyConfigLintMetricsOptions(false),
+            true,
+            [],
+            [null!]));
     }
 
     public static void ConfigLintServiceShapesSubmittedSourceFindings()
