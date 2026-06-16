@@ -1375,6 +1375,71 @@ internal static class ConfigurationTests
         AssertEx.False(routeResponses is RuntimeRouteResponse[], "Configuration API routes should not expose a mutable array.");
         AssertEx.False(routeResponses[0].Upstreams is RuntimeUpstreamResponse[], "Configuration API route upstreams should not expose a mutable array.");
         AssertEx.False(routeResponses[0].Upstreams[0].CircuitBreaker.FailureStatusCodes is int[], "Configuration API circuit breaker status codes should not expose a mutable array.");
+        var failureStatusCodes = new List<int> { 503 };
+        var directCircuitBreakerResponse = new RuntimeCircuitBreakerResponse(
+            enabled: true,
+            failureThreshold: 3,
+            samplingWindow: TimeSpan.FromSeconds(30),
+            openDuration: TimeSpan.FromSeconds(10),
+            halfOpenMaxAttempts: 1,
+            failureStatusCodes: failureStatusCodes);
+        var directUpstreamResponse = new RuntimeUpstreamResponse(
+            routeName: "home",
+            name: "local",
+            scheme: "http",
+            protocol: "http1",
+            address: "127.0.0.1",
+            port: 5000,
+            weight: 1,
+            tls: new RuntimeUpstreamTlsResponse(false, null),
+            endpoint: "127.0.0.1:5000",
+            uriEndpoint: "http://127.0.0.1:5000",
+            effectiveSniHost: "",
+            identity: "home/local",
+            circuitBreaker: directCircuitBreakerResponse);
+
+        failureStatusCodes[0] = 502;
+        failureStatusCodes.Clear();
+
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeCircuitBreakerResponse(
+            enabled: true,
+            failureThreshold: 3,
+            samplingWindow: TimeSpan.FromSeconds(30),
+            openDuration: TimeSpan.FromSeconds(10),
+            halfOpenMaxAttempts: 1,
+            failureStatusCodes: null!));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeUpstreamResponse(
+            routeName: "home",
+            name: "local",
+            scheme: "http",
+            protocol: "http1",
+            address: "127.0.0.1",
+            port: 5000,
+            weight: 1,
+            tls: null!,
+            endpoint: "127.0.0.1:5000",
+            uriEndpoint: "http://127.0.0.1:5000",
+            effectiveSniHost: "",
+            identity: "home/local",
+            circuitBreaker: directCircuitBreakerResponse));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeUpstreamResponse(
+            routeName: "home",
+            name: "local",
+            scheme: "http",
+            protocol: "http1",
+            address: "127.0.0.1",
+            port: 5000,
+            weight: 1,
+            tls: new RuntimeUpstreamTlsResponse(false, null),
+            endpoint: "127.0.0.1:5000",
+            uriEndpoint: "http://127.0.0.1:5000",
+            effectiveSniHost: "",
+            identity: "home/local",
+            circuitBreaker: null!));
+        AssertEx.Equal(503, directCircuitBreakerResponse.FailureStatusCodes[0]);
+        AssertEx.Equal(503, directUpstreamResponse.CircuitBreaker.FailureStatusCodes[0]);
+        AssertEx.Equal("home/local", directUpstreamResponse.Identity);
+        AssertEx.False(directCircuitBreakerResponse.FailureStatusCodes is int[], "Direct configuration API circuit breaker status codes should not expose a mutable array.");
     }
 
     public static void ConfigurationValidationResultNamesValidationOutcomes()
