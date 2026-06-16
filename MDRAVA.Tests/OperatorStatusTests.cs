@@ -1484,6 +1484,46 @@ internal static class OperatorStatusTests
         AssertEx.Equal(1, subsystems.Limits.ActiveConnections);
     }
 
+    public static void SubsystemSummarySourceMappersCopyProjectedLists()
+    {
+        var listener = Listener();
+        var activeListener = ListenerStatus(listener, ProxyListenerState.Active);
+        var upstream = new ProxyUpstreamStatus(
+            RouteName: "main",
+            UpstreamName: "primary",
+            Endpoint: "https://primary.internal",
+            Scheme: "https",
+            TlsCertificateValidationEnabled: true,
+            SniHost: "primary.internal",
+            HealthCheckEnabled: true,
+            HealthState: UpstreamHealthState.Healthy,
+            LastHealthCheckResult: "status_200",
+            LastHealthCheckAtUtc: DateTimeOffset.UnixEpoch,
+            ConsecutiveSuccesses: 2,
+            ConsecutiveFailures: 0,
+            SelectedRequests: 11,
+            RequestFailures: 0);
+        var listenerStatuses = new List<ProxyListenerStatus> { activeListener };
+        var upstreamStatuses = new List<ProxyUpstreamStatus> { upstream };
+
+        var runtimeListeners = ProxyRuntimeListenerSummarySourceMapper.FromSources(listenerStatuses);
+        var upstreams = ProxyUpstreamSummarySourceMapper.FromStatusResponses(upstreamStatuses);
+
+        listenerStatuses.Clear();
+        upstreamStatuses.Clear();
+
+        AssertEx.Equal(1, runtimeListeners.Count);
+        AssertEx.False(runtimeListeners[0].IsQuic);
+        AssertEx.Equal(ProxyListenerState.Active, runtimeListeners[0].State);
+        AssertEx.False(runtimeListeners is ProxyRuntimeListenerSummarySource[], "Subsystem runtime listener sources should not expose a mutable array.");
+        AssertEx.Equal(1, upstreams.Count);
+        AssertEx.Equal(UpstreamHealthState.Healthy, upstreams[0].HealthState);
+        AssertEx.True(upstreams[0].HealthCheckEnabled);
+        AssertEx.False(upstreams is ProxyUpstreamSummarySource[], "Subsystem upstream sources should not expose a mutable array.");
+        AssertEx.Throws<ArgumentNullException>(() => ProxyRuntimeListenerSummarySourceMapper.FromSources(null!));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyUpstreamSummarySourceMapper.FromStatusResponses(null!));
+    }
+
     public static void SubsystemSummaryBuilderCountsNarrowListenerRouteAndUpstreamSources()
     {
         ProxyConfiguredListenerSummarySource[] configuredListeners =
