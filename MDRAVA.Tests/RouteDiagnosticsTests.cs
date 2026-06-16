@@ -1203,6 +1203,45 @@ internal static class RouteDiagnosticsTests
         AssertEx.True(result.Findings[0].Message.Contains("request body is required", StringComparison.Ordinal));
         AssertEx.False(result.Findings is ConfigLintFindingResponse[], "Config lint API findings should not expose a mutable array.");
         AssertEx.False(result.ValidationErrors is ProxyConfigurationFileErrorResponse[], "Config lint API validation errors should not expose a mutable array.");
+        var responseFindings = new List<ConfigLintFindingResponse> { result.Findings[0] };
+        var responseValidationErrors = new List<ProxyConfigurationFileErrorResponse>
+        {
+            new("submitted.json", "parse failed")
+        };
+        var directResponse = new ConfigLintResponse(
+            succeeded: false,
+            lintedAtUtc: result.LintedAtUtc,
+            summary: result.Summary,
+            findings: responseFindings,
+            validationErrors: responseValidationErrors);
+
+        responseFindings[0] = responseFindings[0] with { Code = "replacement" };
+        responseValidationErrors[0] = responseValidationErrors[0] with { Path = "replacement.json" };
+        responseFindings.Clear();
+        responseValidationErrors.Clear();
+
+        AssertEx.Throws<ArgumentNullException>(() => new ConfigLintResponse(
+            succeeded: false,
+            lintedAtUtc: result.LintedAtUtc,
+            summary: null!,
+            findings: [],
+            validationErrors: []));
+        AssertEx.Throws<ArgumentNullException>(() => new ConfigLintResponse(
+            succeeded: false,
+            lintedAtUtc: result.LintedAtUtc,
+            summary: result.Summary,
+            findings: null!,
+            validationErrors: []));
+        AssertEx.Throws<ArgumentNullException>(() => new ConfigLintResponse(
+            succeeded: false,
+            lintedAtUtc: result.LintedAtUtc,
+            summary: result.Summary,
+            findings: [],
+            validationErrors: null!));
+        AssertEx.Equal("missing_request", directResponse.Findings[0].Code);
+        AssertEx.Equal("submitted.json", directResponse.ValidationErrors[0].Path);
+        AssertEx.False(directResponse.Findings is ConfigLintFindingResponse[], "Direct config lint API findings should not expose a mutable array.");
+        AssertEx.False(directResponse.ValidationErrors is ProxyConfigurationFileErrorResponse[], "Direct config lint API validation errors should not expose a mutable array.");
     }
 
     public static void ConfigLintControllerRejectsIncompleteSubmittedRequestFields()
