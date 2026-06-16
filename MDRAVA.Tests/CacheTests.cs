@@ -425,6 +425,54 @@ internal static class CacheTests
         var statusResponse = ProxyCacheStatusResponse.FromStatus(status);
         AssertEx.False(statusResponse.Rejections is ProxyCacheRejectionStatusResponse[], "Cache API rejections should not expose a mutable array.");
         AssertEx.False(statusResponse.Routes is ProxyCacheRouteStatusResponse[], "Cache API routes should not expose a mutable array.");
+        var responseRejections = new List<ProxyCacheRejectionStatusResponse> { statusResponse.Rejections[0] };
+        var responseRoutes = new List<ProxyCacheRouteStatusResponse> { statusResponse.Routes[0] };
+        var directStatusResponse = new ProxyCacheStatusResponse(
+            entryCount: statusResponse.EntryCount,
+            approximateBytes: statusResponse.ApproximateBytes,
+            hitCount: statusResponse.HitCount,
+            missCount: statusResponse.MissCount,
+            storeCount: statusResponse.StoreCount,
+            evictionCount: statusResponse.EvictionCount,
+            storeRejectionCount: statusResponse.StoreRejectionCount,
+            lastClearedAtUtc: statusResponse.LastClearedAtUtc,
+            lastClearReason: statusResponse.LastClearReason,
+            rejections: responseRejections,
+            routes: responseRoutes);
+
+        responseRejections[0] = responseRejections[0] with { Reason = "replacement" };
+        responseRoutes[0] = responseRoutes[0] with { RouteName = "replacement" };
+        responseRejections.Clear();
+        responseRoutes.Clear();
+
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyCacheStatusResponse(
+            entryCount: 0,
+            approximateBytes: 0,
+            hitCount: 0,
+            missCount: 0,
+            storeCount: 0,
+            evictionCount: 0,
+            storeRejectionCount: 0,
+            lastClearedAtUtc: null,
+            lastClearReason: null,
+            rejections: null!,
+            routes: []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyCacheStatusResponse(
+            entryCount: 0,
+            approximateBytes: 0,
+            hitCount: 0,
+            missCount: 0,
+            storeCount: 0,
+            evictionCount: 0,
+            storeRejectionCount: 0,
+            lastClearedAtUtc: null,
+            lastClearReason: null,
+            rejections: [],
+            routes: null!));
+        AssertEx.Equal("authorization", directStatusResponse.Rejections[0].Reason);
+        AssertEx.Equal("api", directStatusResponse.Routes[0].RouteName);
+        AssertEx.False(directStatusResponse.Rejections is ProxyCacheRejectionStatusResponse[], "Direct cache API rejections should not expose a mutable array.");
+        AssertEx.False(directStatusResponse.Routes is ProxyCacheRouteStatusResponse[], "Direct cache API routes should not expose a mutable array.");
     }
 
     public static async Task OversizedResponseIsStreamedButNotCached()
