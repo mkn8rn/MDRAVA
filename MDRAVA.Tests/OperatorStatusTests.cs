@@ -1404,6 +1404,32 @@ internal static class OperatorStatusTests
             string.Join(",", protocols.UnsupportedHttp3Features));
     }
 
+    public static void StatusProtocolSubsystemSummaryOwnsUnsupportedFeatureList()
+    {
+        var unsupportedFeatures = new List<string> { "datagrams", "webtransport" };
+        var protocols = new ProxyProtocolSubsystemSummary(
+            clientHttp1Enabled: true,
+            clientHttp2Enabled: true,
+            clientHttp3Enabled: false,
+            clientHttp3Ready: false,
+            upstreamHttp3Configured: true,
+            unsupportedHttp3Features: unsupportedFeatures);
+
+        unsupportedFeatures.Clear();
+
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyProtocolSubsystemSummary(
+            clientHttp1Enabled: true,
+            clientHttp2Enabled: true,
+            clientHttp3Enabled: false,
+            clientHttp3Ready: false,
+            upstreamHttp3Configured: true,
+            unsupportedHttp3Features: null!));
+        AssertEx.Equal(2, protocols.UnsupportedHttp3Features.Count);
+        AssertEx.Equal("datagrams", protocols.UnsupportedHttp3Features[0]);
+        AssertEx.Equal("webtransport", protocols.UnsupportedHttp3Features[1]);
+        AssertEx.False(protocols.UnsupportedHttp3Features is string[], "Protocol subsystem summary should not expose a mutable array.");
+    }
+
     public static void StatusReadinessReportsCertificateIssueSummaryWithoutSecrets()
     {
         const string missingCertificateId = "public-cert";
