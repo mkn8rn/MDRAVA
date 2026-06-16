@@ -316,6 +316,48 @@ internal static class MetricsTests
         AssertEx.False(snapshot.Http3.ProtocolErrors is Dictionary<string, long>);
         AssertEx.False(snapshot.ConfigLint.Findings is ProxyConfigLintFindingMetricSnapshot[]);
         AssertEx.False(snapshot.RouteDiagnostics.DryRunFailures is ProxyRouteDryRunFailureSnapshot[]);
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRequestClassificationMetricsSnapshot(
+            requestFailures,
+            [null!]));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyResilienceMetricsSnapshot(
+            RetryAttempts: 0,
+            RetryExhausted: 0,
+            RetrySkipped: [null!],
+            CircuitOpened: 0,
+            CircuitHalfOpened: 0,
+            CircuitClosed: 0,
+            CircuitRejections: 0,
+            NoAvailableUpstreamFailures: 0));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyUpstreamSelectionMetricsSnapshot(
+            Total: 0,
+            ByUpstream: [null!]));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyHttp3MetricsSnapshot(
+            AcceptedConnections: 0,
+            ActiveConnections: 0,
+            Requests: 0,
+            ProxiedRequests: 0,
+            GeneratedResponses: 0,
+            ActiveStreams: 0,
+            StreamResets: 0,
+            StreamedResponses: 0,
+            ActiveResponseStreams: 0,
+            ResponseBytesSent: 0,
+            RequestBodyBytesReceived: 0,
+            ResponseStreamResets: 0,
+            AltSvcEmitted: 0,
+            AltSvcSuppressed: 0,
+            RequestsByOutcome: [null!],
+            RejectedRequests: new Dictionary<string, long>(StringComparer.Ordinal),
+            ProtocolErrors: new Dictionary<string, long>(StringComparer.Ordinal),
+            QuicListenerStartSuccesses: 0,
+            QuicListenerStartFailures: 0,
+            ActiveQuicListeners: 0));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyConfigLintMetricsSnapshot(
+            Runs: 0,
+            Findings: [null!]));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRouteDiagnosticsMetricsSnapshot(
+            DryRuns: 0,
+            DryRunFailures: [null!]));
         var response = ProxyMetricsSnapshotResponse.FromSnapshot(snapshot);
         AssertEx.False(response.RequestFailuresByKind is Dictionary<string, long>, "Metrics API request failures should not expose a mutable dictionary.");
         AssertEx.False(response.RequestsByRoute is ProxyRequestSeriesSnapshotResponse[], "Metrics API request series should not expose a mutable array.");
