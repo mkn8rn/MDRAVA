@@ -146,11 +146,13 @@ internal static class RouteMatcherTests
         }).Routes;
         var request = Request("GET", "/api/users", "example.test");
 
-        var match = AssertEx.NotNull(Match(matcher, routes, request));
-        var route = routes[match.RouteIndex];
+        var candidates = ProxyRouteMatchRuntimeMapper.ToCandidates(routes.Select(static route => route));
+        var match = AssertEx.NotNull(matcher.Match(candidates, ProxyRouteMatchRuntimeMapper.ToRequest(request)));
+        var route = ProxyRouteMatchRuntimeMapper.SelectRoute(routes, match);
 
         AssertEx.Equal("api", route.Name);
         AssertEx.Equal("api-upstream", route.Upstreams[0].Name);
+        AssertEx.False(candidates is RouteMatchCandidate[], "Route match candidates should not expose a mutable array.");
     }
 
     private static RouteMatch? Match(
@@ -159,8 +161,8 @@ internal static class RouteMatcherTests
         Http1RequestHead request)
     {
         return matcher.Match(
-            routes.Select(static route => new RouteMatchCandidate(route.Host, route.PathPrefix)).ToArray(),
-            new RouteMatchRequest(request.Host, request.Path));
+            ProxyRouteMatchRuntimeMapper.ToCandidates(routes),
+            ProxyRouteMatchRuntimeMapper.ToRequest(request));
     }
 
     private static ProxyRouteOptions Route(

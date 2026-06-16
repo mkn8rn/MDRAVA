@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using MDRAVA.BLL.Configuration;
 using MDRAVA.BLL.ControlPlane.Http1;
 
@@ -5,11 +6,13 @@ namespace MDRAVA.BLL.ControlPlane.Routing;
 
 public static class ProxyRouteMatchRuntimeMapper
 {
-    public static IReadOnlyList<RouteMatchCandidate> ToCandidates(IReadOnlyList<RuntimeRoute> routes)
+    public static IReadOnlyList<RouteMatchCandidate> ToCandidates(IEnumerable<RuntimeRoute> routes)
     {
-        return routes
+        ArgumentNullException.ThrowIfNull(routes);
+
+        return new ReadOnlyCollection<RouteMatchCandidate>(routes
             .Select(static route => new RouteMatchCandidate(route.Host, route.PathPrefix))
-            .ToArray();
+            .ToArray());
     }
 
     public static RouteMatchRequest ToRequest(Http1RequestHead requestHead)
