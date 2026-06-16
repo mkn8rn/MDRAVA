@@ -613,6 +613,14 @@ internal static class AcmeTests
         AssertEx.Equal(17, input.CheckIntervalMinutes);
     }
 
+    public static void AcmeRenewalScheduleRejectsNullInputs()
+    {
+        var policy = new AcmeRenewalSchedulePolicy();
+
+        AssertEx.Throws<ArgumentNullException>(() => AcmeRenewalScheduleInputMapper.FromSource(null!));
+        AssertEx.Throws<ArgumentNullException>(() => policy.ResolveDelay(null!));
+    }
+
     public static void AcmeRenewalScheduleSourceReadsNarrowActiveInput()
     {
         using var temp = TemporaryDirectory.Create();

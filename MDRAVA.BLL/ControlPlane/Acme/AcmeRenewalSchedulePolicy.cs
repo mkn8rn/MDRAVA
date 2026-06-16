@@ -48,6 +48,8 @@ public static class AcmeRenewalScheduleInputMapper
 {
     public static AcmeRenewalScheduleInput FromSource(AcmeRenewalScheduleSource source)
     {
+        ArgumentNullException.ThrowIfNull(source);
+
         return new AcmeRenewalScheduleInput(
             source.Enabled,
             source.CheckIntervalMinutes);
@@ -58,6 +60,8 @@ public sealed class AcmeRenewalSchedulePolicy
 {
     public TimeSpan ResolveDelay(AcmeRenewalScheduleInputReadResult input)
     {
+        ArgumentNullException.ThrowIfNull(input);
+
         if (input is AcmeRenewalScheduleInputReadResult.AvailableResult { Input.Enabled: true } available)
         {
             return TimeSpan.FromMinutes(Math.Clamp(available.Input.CheckIntervalMinutes, 5, 1440));
