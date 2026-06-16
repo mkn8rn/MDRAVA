@@ -77,7 +77,7 @@ public static class Http3RuntimeSupport
         ArgumentNullException.ThrowIfNull(platformSupport);
         ArgumentNullException.ThrowIfNull(runtimeListeners);
 
-        return ProjectCore(source, platformSupport, runtimeListeners, hasRuntimeState: true);
+        return ProjectCore(source, platformSupport, Http3List.Copy(runtimeListeners), hasRuntimeState: true);
     }
 
     private static RuntimeHttp3SupportProjection ProjectCore(
