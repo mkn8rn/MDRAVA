@@ -18,15 +18,15 @@ public sealed record RuntimeCircuitBreakerProjection
         this.FailureStatusCodes = RuntimeList.Copy(FailureStatusCodes);
     }
 
-    public bool Enabled { get; init; }
+    public bool Enabled { get; }
 
-    public int FailureThreshold { get; init; }
+    public int FailureThreshold { get; }
 
-    public TimeSpan SamplingWindow { get; init; }
+    public TimeSpan SamplingWindow { get; }
 
-    public TimeSpan OpenDuration { get; init; }
+    public TimeSpan OpenDuration { get; }
 
-    public int HalfOpenMaxAttempts { get; init; }
+    public int HalfOpenMaxAttempts { get; }
 
     public IReadOnlyList<int> FailureStatusCodes { get; }
 }

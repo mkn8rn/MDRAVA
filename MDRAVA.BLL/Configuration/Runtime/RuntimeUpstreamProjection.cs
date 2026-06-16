@@ -17,6 +17,9 @@ public sealed record RuntimeUpstreamProjection
         string Identity,
         RuntimeCircuitBreakerProjection CircuitBreaker)
     {
+        ArgumentNullException.ThrowIfNull(Tls);
+        ArgumentNullException.ThrowIfNull(CircuitBreaker);
+
         this.RouteName = RouteName;
         this.Name = Name;
         this.Scheme = Scheme;
@@ -32,29 +35,29 @@ public sealed record RuntimeUpstreamProjection
         this.CircuitBreaker = CircuitBreaker;
     }
 
-    public string RouteName { get; init; }
+    public string RouteName { get; }
 
-    public string Name { get; init; }
+    public string Name { get; }
 
-    public string Scheme { get; init; }
+    public string Scheme { get; }
 
-    public string Protocol { get; init; }
+    public string Protocol { get; }
 
-    public string Address { get; init; }
+    public string Address { get; }
 
-    public int Port { get; init; }
+    public int Port { get; }
 
-    public int Weight { get; init; }
+    public int Weight { get; }
 
-    public RuntimeUpstreamTlsProjection Tls { get; init; }
+    public RuntimeUpstreamTlsProjection Tls { get; }
 
-    public string Endpoint { get; init; }
+    public string Endpoint { get; }
 
-    public string UriEndpoint { get; init; }
+    public string UriEndpoint { get; }
 
-    public string EffectiveSniHost { get; init; }
+    public string EffectiveSniHost { get; }
 
-    public string Identity { get; init; }
+    public string Identity { get; }
 
-    public RuntimeCircuitBreakerProjection CircuitBreaker { get; init; }
+    public RuntimeCircuitBreakerProjection CircuitBreaker { get; }
 }

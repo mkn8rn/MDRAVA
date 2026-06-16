@@ -2435,6 +2435,71 @@ internal static class ConfigurationTests
         AssertEx.False(routeCollection is RuntimeRouteProjection[]);
         AssertEx.False(upstreamCollection is RuntimeUpstream[]);
         AssertEx.False(upstreamCollection is RuntimeUpstreamProjection[]);
+        var failureStatusCodes = new List<int> { 503 };
+        var directCircuitBreaker = new RuntimeCircuitBreakerProjection(
+            Enabled: true,
+            FailureThreshold: 2,
+            SamplingWindow: TimeSpan.FromSeconds(30),
+            OpenDuration: TimeSpan.FromSeconds(10),
+            HalfOpenMaxAttempts: 1,
+            FailureStatusCodes: failureStatusCodes);
+        var directUpstream = new RuntimeUpstreamProjection(
+            RouteName: "home",
+            Name: "local-test",
+            Scheme: "http",
+            Protocol: "http1",
+            Address: "127.0.0.1",
+            Port: 15000,
+            Weight: 1,
+            Tls: new RuntimeUpstreamTlsProjection(false, null),
+            Endpoint: "127.0.0.1:15000",
+            UriEndpoint: "http://127.0.0.1:15000",
+            EffectiveSniHost: "",
+            Identity: "home/local-test",
+            CircuitBreaker: directCircuitBreaker);
+
+        failureStatusCodes[0] = 502;
+        failureStatusCodes.Clear();
+
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeCircuitBreakerProjection(
+            Enabled: true,
+            FailureThreshold: 2,
+            SamplingWindow: TimeSpan.FromSeconds(30),
+            OpenDuration: TimeSpan.FromSeconds(10),
+            HalfOpenMaxAttempts: 1,
+            FailureStatusCodes: null!));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeUpstreamProjection(
+            RouteName: "home",
+            Name: "local-test",
+            Scheme: "http",
+            Protocol: "http1",
+            Address: "127.0.0.1",
+            Port: 15000,
+            Weight: 1,
+            Tls: null!,
+            Endpoint: "127.0.0.1:15000",
+            UriEndpoint: "http://127.0.0.1:15000",
+            EffectiveSniHost: "",
+            Identity: "home/local-test",
+            CircuitBreaker: directCircuitBreaker));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeUpstreamProjection(
+            RouteName: "home",
+            Name: "local-test",
+            Scheme: "http",
+            Protocol: "http1",
+            Address: "127.0.0.1",
+            Port: 15000,
+            Weight: 1,
+            Tls: new RuntimeUpstreamTlsProjection(false, null),
+            Endpoint: "127.0.0.1:15000",
+            UriEndpoint: "http://127.0.0.1:15000",
+            EffectiveSniHost: "",
+            Identity: "home/local-test",
+            CircuitBreaker: null!));
+        AssertEx.Equal(503, directCircuitBreaker.FailureStatusCodes[0]);
+        AssertEx.Equal(503, directUpstream.CircuitBreaker.FailureStatusCodes[0]);
+        AssertEx.Equal("home/local-test", directUpstream.Identity);
+        AssertEx.False(directCircuitBreaker.FailureStatusCodes is int[]);
     }
 
     public static async Task ConfigReloadControllerReturnsConfigurationResponse()
