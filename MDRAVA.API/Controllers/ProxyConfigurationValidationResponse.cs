@@ -3,18 +3,54 @@ using BusinessProxyConfigurationValidationResult =
 
 namespace MDRAVA.API.Controllers;
 
-public sealed record ProxyConfigurationValidationResponse(
-    bool Succeeded,
-    string SourceDirectory,
-    DateTimeOffset AttemptedAtUtc,
-    int? ActiveVersion,
-    DateTimeOffset? LastSuccessfulLoadAtUtc,
-    int? WouldBeVersion,
-    IReadOnlyList<string> SourceFiles,
-    ProxyConfigurationDiscoveryResponse Discovery,
-    IReadOnlyList<string> Errors,
-    IReadOnlyList<ProxyConfigurationFileErrorResponse> FileErrors)
+public sealed record ProxyConfigurationValidationResponse
 {
+    public ProxyConfigurationValidationResponse(
+        bool succeeded,
+        string sourceDirectory,
+        DateTimeOffset attemptedAtUtc,
+        int? activeVersion,
+        DateTimeOffset? lastSuccessfulLoadAtUtc,
+        int? wouldBeVersion,
+        IReadOnlyList<string> sourceFiles,
+        ProxyConfigurationDiscoveryResponse discovery,
+        IReadOnlyList<string> errors,
+        IReadOnlyList<ProxyConfigurationFileErrorResponse> fileErrors)
+    {
+        ArgumentNullException.ThrowIfNull(discovery);
+
+        Succeeded = succeeded;
+        SourceDirectory = sourceDirectory;
+        AttemptedAtUtc = attemptedAtUtc;
+        ActiveVersion = activeVersion;
+        LastSuccessfulLoadAtUtc = lastSuccessfulLoadAtUtc;
+        WouldBeVersion = wouldBeVersion;
+        SourceFiles = ApiResponseList.Copy(sourceFiles);
+        Discovery = discovery;
+        Errors = ApiResponseList.Copy(errors);
+        FileErrors = ApiResponseList.Copy(fileErrors);
+    }
+
+    public bool Succeeded { get; }
+
+    public string SourceDirectory { get; }
+
+    public DateTimeOffset AttemptedAtUtc { get; }
+
+    public int? ActiveVersion { get; }
+
+    public DateTimeOffset? LastSuccessfulLoadAtUtc { get; }
+
+    public int? WouldBeVersion { get; }
+
+    public IReadOnlyList<string> SourceFiles { get; }
+
+    public ProxyConfigurationDiscoveryResponse Discovery { get; }
+
+    public IReadOnlyList<string> Errors { get; }
+
+    public IReadOnlyList<ProxyConfigurationFileErrorResponse> FileErrors { get; }
+
     public static ProxyConfigurationValidationResponse FromResult(BusinessProxyConfigurationValidationResult result)
     {
         ArgumentNullException.ThrowIfNull(result);
@@ -34,15 +70,15 @@ public sealed record ProxyConfigurationValidationResponse(
         ArgumentNullException.ThrowIfNull(result);
 
         return new ProxyConfigurationValidationResponse(
-            Succeeded: succeeded,
-            SourceDirectory: result.SourceDirectory,
-            AttemptedAtUtc: result.AttemptedAtUtc,
-            ActiveVersion: result.ActiveVersion,
-            LastSuccessfulLoadAtUtc: result.LastSuccessfulLoadAtUtc,
-            WouldBeVersion: result.WouldBeVersion,
-            SourceFiles: ApiResponseList.Copy(result.SourceFiles),
-            Discovery: ProxyConfigurationDiscoveryResponse.FromDiscovery(result.Discovery),
-            Errors: ApiResponseList.Copy(result.Errors),
-            FileErrors: ProxyConfigurationFileErrorResponse.FromErrors(result.FileErrors));
+            succeeded: succeeded,
+            sourceDirectory: result.SourceDirectory,
+            attemptedAtUtc: result.AttemptedAtUtc,
+            activeVersion: result.ActiveVersion,
+            lastSuccessfulLoadAtUtc: result.LastSuccessfulLoadAtUtc,
+            wouldBeVersion: result.WouldBeVersion,
+            sourceFiles: result.SourceFiles,
+            discovery: ProxyConfigurationDiscoveryResponse.FromDiscovery(result.Discovery),
+            errors: result.Errors,
+            fileErrors: ProxyConfigurationFileErrorResponse.FromErrors(result.FileErrors));
     }
 }

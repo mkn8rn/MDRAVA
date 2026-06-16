@@ -340,6 +340,78 @@ internal static class ConfigurationTests
         AssertEx.False(validationResponse.SourceFiles is string[], "Validation API source files should not expose a mutable array.");
         AssertEx.False(validationResponse.Errors is string[], "Validation API errors should not expose a mutable array.");
         AssertEx.False(validationResponse.FileErrors is ProxyConfigurationFileErrorResponse[], "Validation API file errors should not expose a mutable array.");
+        var validationResponseSourceFiles = new List<string> { validationResponse.SourceFiles[0] };
+        var validationResponseErrors = new List<string> { validationResponse.Errors[0] };
+        var validationResponseFileErrors = new List<ProxyConfigurationFileErrorResponse> { validationResponse.FileErrors[0] };
+        var directValidationResponse = new ProxyConfigurationValidationResponse(
+            succeeded: false,
+            sourceDirectory: validationResponse.SourceDirectory,
+            attemptedAtUtc: validationResponse.AttemptedAtUtc,
+            activeVersion: validationResponse.ActiveVersion,
+            lastSuccessfulLoadAtUtc: validationResponse.LastSuccessfulLoadAtUtc,
+            wouldBeVersion: validationResponse.WouldBeVersion,
+            sourceFiles: validationResponseSourceFiles,
+            discovery: validationResponse.Discovery,
+            errors: validationResponseErrors,
+            fileErrors: validationResponseFileErrors);
+
+        validationResponseSourceFiles[0] = "sites/replacement.json";
+        validationResponseErrors[0] = "replacement error";
+        validationResponseFileErrors[0] = validationResponseFileErrors[0] with { Path = "sites/replacement.json" };
+        validationResponseSourceFiles.Clear();
+        validationResponseErrors.Clear();
+        validationResponseFileErrors.Clear();
+
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyConfigurationValidationResponse(
+            succeeded: false,
+            sourceDirectory: validationResponse.SourceDirectory,
+            attemptedAtUtc: validationResponse.AttemptedAtUtc,
+            activeVersion: validationResponse.ActiveVersion,
+            lastSuccessfulLoadAtUtc: validationResponse.LastSuccessfulLoadAtUtc,
+            wouldBeVersion: validationResponse.WouldBeVersion,
+            sourceFiles: null!,
+            discovery: validationResponse.Discovery,
+            errors: [],
+            fileErrors: []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyConfigurationValidationResponse(
+            succeeded: false,
+            sourceDirectory: validationResponse.SourceDirectory,
+            attemptedAtUtc: validationResponse.AttemptedAtUtc,
+            activeVersion: validationResponse.ActiveVersion,
+            lastSuccessfulLoadAtUtc: validationResponse.LastSuccessfulLoadAtUtc,
+            wouldBeVersion: validationResponse.WouldBeVersion,
+            sourceFiles: [],
+            discovery: null!,
+            errors: [],
+            fileErrors: []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyConfigurationValidationResponse(
+            succeeded: false,
+            sourceDirectory: validationResponse.SourceDirectory,
+            attemptedAtUtc: validationResponse.AttemptedAtUtc,
+            activeVersion: validationResponse.ActiveVersion,
+            lastSuccessfulLoadAtUtc: validationResponse.LastSuccessfulLoadAtUtc,
+            wouldBeVersion: validationResponse.WouldBeVersion,
+            sourceFiles: [],
+            discovery: validationResponse.Discovery,
+            errors: null!,
+            fileErrors: []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyConfigurationValidationResponse(
+            succeeded: false,
+            sourceDirectory: validationResponse.SourceDirectory,
+            attemptedAtUtc: validationResponse.AttemptedAtUtc,
+            activeVersion: validationResponse.ActiveVersion,
+            lastSuccessfulLoadAtUtc: validationResponse.LastSuccessfulLoadAtUtc,
+            wouldBeVersion: validationResponse.WouldBeVersion,
+            sourceFiles: [],
+            discovery: validationResponse.Discovery,
+            errors: [],
+            fileErrors: null!));
+        AssertEx.Equal("sites/home.json", directValidationResponse.SourceFiles[0]);
+        AssertEx.Equal("parse failed", directValidationResponse.Errors[0]);
+        AssertEx.Equal("sites/home.json", directValidationResponse.FileErrors[0].Path);
+        AssertEx.False(directValidationResponse.SourceFiles is string[], "Direct validation API source files should not expose a mutable array.");
+        AssertEx.False(directValidationResponse.Errors is string[], "Direct validation API errors should not expose a mutable array.");
+        AssertEx.False(directValidationResponse.FileErrors is ProxyConfigurationFileErrorResponse[], "Direct validation API file errors should not expose a mutable array.");
         var reloadResponse = ProxyConfigurationReloadResponse.FromResult(apiReloadFailed);
         AssertEx.False(reloadResponse.Errors is string[], "Reload API errors should not expose a mutable array.");
         AssertEx.False(reloadResponse.FileErrors is ProxyConfigurationFileErrorResponse[], "Reload API file errors should not expose a mutable array.");
