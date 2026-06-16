@@ -11,6 +11,10 @@ public static class ProxyRouteActionRuntimeMapper
         RuntimeListener listener,
         bool isUpgradeRequest)
     {
+        ArgumentNullException.ThrowIfNull(route);
+        ArgumentNullException.ThrowIfNull(requestHead);
+        ArgumentNullException.ThrowIfNull(listener);
+
         return new ProxyRouteActionInput(
             ProxyRouteActionKindMapper.FromRuntimeAction(route.Action),
             new ProxyRoutePolicyRedirectInput(

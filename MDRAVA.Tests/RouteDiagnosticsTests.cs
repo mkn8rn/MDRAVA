@@ -94,6 +94,23 @@ internal static class RouteDiagnosticsTests
         AssertEx.Equal("/api/users?id=1", Matched(result).RewrittenTarget);
     }
 
+    public static void RoutingRuntimeMappersRejectNullInputs()
+    {
+        var snapshot = Snapshot(BaseOptions([ProxyRoute("api", "diag.test", "/api")]));
+        var route = snapshot.Routes[0];
+        var listener = snapshot.Listeners[0];
+        var requestHead = Request("GET", "/api/users", "/api/users", "diag.test");
+
+        AssertEx.Throws<ArgumentNullException>(
+            () => ProxyPathRewriteRuntimeMapper.ToPolicyInput(null!));
+        AssertEx.Throws<ArgumentNullException>(
+            () => ProxyRouteActionRuntimeMapper.ToPolicyInput(null!, requestHead, listener, false));
+        AssertEx.Throws<ArgumentNullException>(
+            () => ProxyRouteActionRuntimeMapper.ToPolicyInput(route, null!, listener, false));
+        AssertEx.Throws<ArgumentNullException>(
+            () => ProxyRouteActionRuntimeMapper.ToPolicyInput(route, requestHead, null!, false));
+    }
+
     public static void DryRunCanSelectHttp3ProtocolListener()
     {
         var options = new ProxyOptions

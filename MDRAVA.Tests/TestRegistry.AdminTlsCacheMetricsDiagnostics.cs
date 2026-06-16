@@ -136,6 +136,7 @@ internal static partial class TestRegistry
     Test("Route dry-run has no upstream I/O or retry circuit cache mutation", Sync(RouteDiagnosticsTests.DryRunDoesNotPerformUpstreamIoOrMutateRetryCircuitOrCacheState), TestTaxonomy.Routing, TestTaxonomy.Caching, TestTaxonomy.RetryCircuit),
     Test("Route dry-run reports no-match reason", Sync(RouteDiagnosticsTests.DryRunReportsNoMatchReason), TestTaxonomy.Routing),
     Test("Route dry-run reports path rewrite result", Sync(RouteDiagnosticsTests.DryRunReportsPathRewriteResult), TestTaxonomy.Routing),
+    Test("Routing runtime mappers reject null inputs", Sync(RouteDiagnosticsTests.RoutingRuntimeMappersRejectNullInputs), TestTaxonomy.Routing, TestTaxonomy.SecurityNegativePaths),
     Test("Route dry-run can select HTTP/3 protocol listener", Sync(RouteDiagnosticsTests.DryRunCanSelectHttp3ProtocolListener), TestTaxonomy.Http3, TestTaxonomy.Routing),
     Test("Route diagnostics listener selector reads listeners without configuration snapshot", Sync(RouteDiagnosticsTests.ListenerSelectorReadsListenersWithoutConfigurationSnapshot), TestTaxonomy.Routing, TestTaxonomy.Config),
     Test("Route diagnostics runtime configuration mapper reads runtime facts without snapshot", Sync(RouteDiagnosticsTests.RouteDiagnosticsRuntimeConfigurationMapperReadsRuntimeFactsWithoutSnapshot), TestTaxonomy.Routing, TestTaxonomy.Config),

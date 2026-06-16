@@ -6,6 +6,8 @@ public static class ProxyPathRewriteRuntimeMapper
 {
     public static PathRewritePolicyInput ToPolicyInput(RuntimeRoute route)
     {
+        ArgumentNullException.ThrowIfNull(route);
+
         return new PathRewritePolicyInput(
             route.PathRewrite.StripPrefix,
             route.PathRewrite.ReplacePrefix,
