@@ -34,7 +34,7 @@ public static class ProxyStatusConfigurationSourceMapper
                 routeSources.Count),
             upstreamHealthSources,
             ProxyHttp3SupportConfigurationSourceMapper.FromSources(listenerSources, routeSources),
-            ProxyStatusReadinessConfigurationSourceMapper.FromConfiguration(
+            ProxyStatusReadinessConfigurationSourceMapper.FromSources(
                 version,
                 loadedAtUtc,
                 listenerSources,
@@ -47,7 +47,7 @@ public static class ProxyStatusConfigurationSourceMapper
 
 public static class ProxyStatusReadinessConfigurationSourceMapper
 {
-    public static ProxyStatusReadinessConfigurationSourceSet FromConfiguration(
+    public static ProxyStatusReadinessConfigurationSourceSet FromSources(
         int version,
         DateTimeOffset loadedAtUtc,
         IEnumerable<RuntimeListener> listeners,
@@ -71,11 +71,11 @@ public static class ProxyStatusReadinessConfigurationSourceMapper
             loadedAtUtc,
             ProxyConfiguredListenerSummarySourceMapper.FromListeners(listenerSources),
             ProxyRouteSummarySourceMapper.FromRoutes(routeSources),
-            ProxyCertificateSummarySourceMapper.FromConfiguration(
+            ProxyCertificateSummarySourceMapper.FromSources(
                 listenerSources,
                 certificates),
-            ProxyAcmeSummaryConfigurationSourceMapper.FromConfiguration(acme),
-            ProxyLimitConfigurationSummarySourceMapper.FromConfiguration(limits));
+            ProxyAcmeSummaryConfigurationSourceMapper.FromSource(acme),
+            ProxyLimitConfigurationSummarySourceMapper.FromSource(limits));
     }
 }
 
@@ -108,7 +108,7 @@ public static class ProxyRouteSummarySourceMapper
 
 public static class ProxyCertificateSummarySourceMapper
 {
-    public static ProxyCertificateSummarySource FromConfiguration(
+    public static ProxyCertificateSummarySource FromSources(
         IEnumerable<RuntimeListener> listeners,
         IEnumerable<RuntimeCertificate> certificates)
     {
@@ -142,8 +142,10 @@ public static class ProxyCertificateSummarySourceMapper
 
 public static class ProxyAcmeSummaryConfigurationSourceMapper
 {
-    public static ProxyAcmeSummaryConfigurationSource FromConfiguration(RuntimeAcmeOptions acme)
+    public static ProxyAcmeSummaryConfigurationSource FromSource(RuntimeAcmeOptions acme)
     {
+        ArgumentNullException.ThrowIfNull(acme);
+
         return new ProxyAcmeSummaryConfigurationSource(
             acme.Enabled,
             acme.Certificates.Count(static certificate => certificate.Enabled));
@@ -152,8 +154,10 @@ public static class ProxyAcmeSummaryConfigurationSourceMapper
 
 public static class ProxyLimitConfigurationSummarySourceMapper
 {
-    public static ProxyLimitConfigurationSummarySource FromConfiguration(RuntimeLimits limits)
+    public static ProxyLimitConfigurationSummarySource FromSource(RuntimeLimits limits)
     {
+        ArgumentNullException.ThrowIfNull(limits);
+
         return new ProxyLimitConfigurationSummarySource(
             limits.MaxActiveClientConnections,
             limits.MaxConcurrentTlsHandshakes,

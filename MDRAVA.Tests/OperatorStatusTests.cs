@@ -323,7 +323,7 @@ internal static class OperatorStatusTests
         var preflight = ProxyRuntimePreflightStatus.Unknown;
         var readiness = ProxyStatusReadinessInputMapper.FromSources(
             ProxyStatusReadinessSourceMapper.FromSources(
-                ProxyStatusReadinessConfigurationSourceMapper.FromConfiguration(
+                ProxyStatusReadinessConfigurationSourceMapper.FromSources(
                     snapshot.Version,
                     snapshot.LoadedAtUtc,
                     snapshot.Listeners,
@@ -801,7 +801,7 @@ internal static class OperatorStatusTests
         var routeSources = new List<RuntimeRoute> { route };
         var certificateSources = new List<RuntimeCertificate> { runtimeCertificate };
 
-        var source = ProxyStatusReadinessConfigurationSourceMapper.FromConfiguration(
+        var source = ProxyStatusReadinessConfigurationSourceMapper.FromSources(
             version: 24,
             DateTimeOffset.UnixEpoch.AddMinutes(24),
             listenerSources.Select(static source => source),
@@ -942,7 +942,7 @@ internal static class OperatorStatusTests
                 new RuntimeAcmeCertificateOptions("second", false, ["second.example.test"], 30)
             ]);
 
-        var source = ProxyAcmeSummaryConfigurationSourceMapper.FromConfiguration(acme);
+        var source = ProxyAcmeSummaryConfigurationSourceMapper.FromSource(acme);
 
         AssertEx.True(source.Enabled);
         AssertEx.Equal(1, source.ConfiguredCertificates);
@@ -969,7 +969,7 @@ internal static class OperatorStatusTests
             ["default"] = runtimeCertificate
         };
 
-        var source = ProxyCertificateSummarySourceMapper.FromConfiguration(
+        var source = ProxyCertificateSummarySourceMapper.FromSources(
             listenerSources.Select(static source => source),
             certificateSources.Values.Select(static source => source));
 
@@ -1001,7 +1001,7 @@ internal static class OperatorStatusTests
             MaxPathBytes: 8192,
             ShutdownGracePeriod: TimeSpan.FromSeconds(15));
 
-        var source = ProxyLimitConfigurationSummarySourceMapper.FromConfiguration(limits);
+        var source = ProxyLimitConfigurationSummarySourceMapper.FromSource(limits);
 
         AssertEx.Equal(123, source.MaxActiveClientConnections);
         AssertEx.Equal(7, source.MaxConcurrentTlsHandshakes);
