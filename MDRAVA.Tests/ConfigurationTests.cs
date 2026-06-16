@@ -766,6 +766,9 @@ internal static class ConfigurationTests
         AssertEx.Equal("GET", cacheProjection.Methods[0]);
         AssertEx.Equal("home.test", runtimeCertificate.Domains[0]);
         AssertEx.Equal("api.home.test", certificateProjection.Domains[0]);
+        AssertEx.Equal("api-cert", certificateProjection.Id);
+        AssertEx.Equal("manual", certificateProjection.Source);
+        AssertEx.Equal(DateTime.UnixEpoch.AddDays(30), certificateProjection.NotAfter);
         AssertEx.Equal(503, circuitBreaker.FailureStatusCodes[0]);
         AssertEx.Equal("X-Trace", headerPolicy.SetRequestHeaders[0].Name);
         AssertEx.Equal("X-Remove-Request", headerPolicy.RemoveRequestHeaders[0]);
@@ -839,6 +842,61 @@ internal static class ConfigurationTests
             true,
             null!,
             14));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeCertificateProjection(
+            null!,
+            "certs/api.pfx",
+            "pfx",
+            "manual",
+            [],
+            HasConfiguredPassword: false,
+            Subject: null,
+            Thumbprint: null,
+            NotBefore: DateTime.UnixEpoch,
+            NotAfter: DateTime.UnixEpoch.AddDays(30)));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeCertificateProjection(
+            "api-cert",
+            null!,
+            "pfx",
+            "manual",
+            [],
+            HasConfiguredPassword: false,
+            Subject: null,
+            Thumbprint: null,
+            NotBefore: DateTime.UnixEpoch,
+            NotAfter: DateTime.UnixEpoch.AddDays(30)));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeCertificateProjection(
+            "api-cert",
+            "certs/api.pfx",
+            null!,
+            "manual",
+            [],
+            HasConfiguredPassword: false,
+            Subject: null,
+            Thumbprint: null,
+            NotBefore: DateTime.UnixEpoch,
+            NotAfter: DateTime.UnixEpoch.AddDays(30)));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeCertificateProjection(
+            "api-cert",
+            "certs/api.pfx",
+            "pfx",
+            null!,
+            [],
+            HasConfiguredPassword: false,
+            Subject: null,
+            Thumbprint: null,
+            NotBefore: DateTime.UnixEpoch,
+            NotAfter: DateTime.UnixEpoch.AddDays(30)));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeCertificateProjection(
+            "api-cert",
+            "certs/api.pfx",
+            "pfx",
+            "manual",
+            null!,
+            HasConfiguredPassword: false,
+            Subject: null,
+            Thumbprint: null,
+            NotBefore: DateTime.UnixEpoch,
+            NotAfter: DateTime.UnixEpoch.AddDays(30)));
         AssertEx.False(admin.Urls is string[]);
         AssertEx.False(adminProjection.Urls is string[]);
         AssertEx.False(forwardedHeaders.TrustedProxies is string[]);

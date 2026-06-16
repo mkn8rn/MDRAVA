@@ -14,6 +14,11 @@ public sealed record RuntimeCertificateProjection
         DateTime NotBefore,
         DateTime NotAfter)
     {
+        ArgumentNullException.ThrowIfNull(Id);
+        ArgumentNullException.ThrowIfNull(Path);
+        ArgumentNullException.ThrowIfNull(Format);
+        ArgumentNullException.ThrowIfNull(Source);
+
         this.Id = Id;
         this.Path = Path;
         this.Format = Format;
@@ -26,23 +31,23 @@ public sealed record RuntimeCertificateProjection
         this.NotAfter = NotAfter;
     }
 
-    public string Id { get; init; }
+    public string Id { get; }
 
-    public string Path { get; init; }
+    public string Path { get; }
 
-    public string Format { get; init; }
+    public string Format { get; }
 
-    public string Source { get; init; }
+    public string Source { get; }
 
     public IReadOnlyList<string> Domains { get; }
 
-    public bool HasConfiguredPassword { get; init; }
+    public bool HasConfiguredPassword { get; }
 
-    public string? Subject { get; init; }
+    public string? Subject { get; }
 
-    public string? Thumbprint { get; init; }
+    public string? Thumbprint { get; }
 
-    public DateTime NotBefore { get; init; }
+    public DateTime NotBefore { get; }
 
-    public DateTime NotAfter { get; init; }
+    public DateTime NotAfter { get; }
 }
