@@ -14,6 +14,7 @@ internal static partial class TestRegistry
     Test("Configuration normalize result names normalized and failed outcomes", Sync(ConfigurationTests.ConfigurationNormalizeResultNamesNormalizedAndFailedOutcomes), TestTaxonomy.Config),
     Test("Configuration reload result names reload outcomes", Sync(ConfigurationTests.ConfigurationReloadResultNamesReloadOutcomes), TestTaxonomy.Config),
     Test("Listener reload result copies changes and errors", Sync(ConfigurationTests.ListenerReloadResultCopiesChangesAndErrors), TestTaxonomy.Config),
+    Test("API result response mappers reject null results", Sync(ConfigurationTests.ApiResultResponseMappersRejectNullResults), TestTaxonomy.Config),
     Test("Configuration management results copy input collections", Sync(ConfigurationTests.ConfigurationManagementResultsCopyInputCollections), TestTaxonomy.Config),
     Test("Runtime configuration policy records copy input collections", Sync(ConfigurationTests.RuntimeConfigurationPolicyRecordsCopyInputCollections), TestTaxonomy.Config),
     Test("Runtime configuration graph records copy input collections", Sync(ConfigurationTests.RuntimeConfigurationGraphRecordsCopyInputCollections), TestTaxonomy.Config),

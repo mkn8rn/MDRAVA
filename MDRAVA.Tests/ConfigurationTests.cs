@@ -179,6 +179,12 @@ internal static class ConfigurationTests
         AssertEx.False(response.Errors is string[], "Listener reload API errors should not expose a mutable array.");
     }
 
+    public static void ApiResultResponseMappersRejectNullResults()
+    {
+        AssertEx.Throws<ArgumentNullException>(() => ProxyListenerReloadResponse.FromResult(null!));
+        AssertEx.Throws<ArgumentNullException>(() => ConfigLintResponse.FromResult(null!));
+    }
+
     public static void ConfigurationManagementResultsCopyInputCollections()
     {
         var discoveredFiles = new List<ProxyConfigurationFileDiscovery>

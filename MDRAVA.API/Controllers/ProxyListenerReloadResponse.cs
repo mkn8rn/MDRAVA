@@ -15,6 +15,8 @@ public sealed record ProxyListenerReloadResponse(
 {
     public static ProxyListenerReloadResponse FromResult(BusinessProxyListenerReloadResult result)
     {
+        ArgumentNullException.ThrowIfNull(result);
+
         return result switch
         {
             BusinessProxyListenerReloadResult.AppliedResult applied => FromResult(applied, succeeded: true),

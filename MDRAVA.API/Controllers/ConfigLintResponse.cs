@@ -12,6 +12,8 @@ public sealed record ConfigLintResponse(
 {
     public static ConfigLintResponse FromResult(BusinessConfigLintResult result)
     {
+        ArgumentNullException.ThrowIfNull(result);
+
         return result switch
         {
             BusinessConfigLintResult.AcceptedResult accepted => FromResult(accepted, succeeded: true),
