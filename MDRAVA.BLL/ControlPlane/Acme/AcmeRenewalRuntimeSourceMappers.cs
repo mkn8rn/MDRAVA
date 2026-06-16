@@ -4,10 +4,18 @@ namespace MDRAVA.BLL.ControlPlane.Acme;
 
 public static class AcmeRenewalConfigurationSourceMapper
 {
-    public static AcmeRenewalConfigurationSourceSet FromRuntimeConfiguration(
+    public static AcmeRenewalConfigurationSourceSet FromSources(
         RuntimeAcmeOptions acme,
-        IReadOnlyDictionary<string, RuntimeCertificate> runtimeCertificates)
+        IEnumerable<KeyValuePair<string, RuntimeCertificate>> runtimeCertificates)
     {
+        ArgumentNullException.ThrowIfNull(acme);
+        ArgumentNullException.ThrowIfNull(runtimeCertificates);
+
+        var activeCertificates = runtimeCertificates.ToDictionary(
+            static certificate => certificate.Key,
+            static certificate => certificate.Value,
+            StringComparer.OrdinalIgnoreCase);
+
         return new AcmeRenewalConfigurationSourceSet(
             acme.Enabled,
             acme.StoragePath,
@@ -21,7 +29,7 @@ public static class AcmeRenewalConfigurationSourceMapper
                     certificate.Enabled,
                     certificate.Domains,
                     certificate.RenewBeforeDays,
-                    ReadActiveAcmeCertificate(runtimeCertificates, certificate.Id))));
+                    ReadActiveAcmeCertificate(activeCertificates, certificate.Id))));
     }
 
     private static AcmeRenewalActiveCertificate? ReadActiveAcmeCertificate(

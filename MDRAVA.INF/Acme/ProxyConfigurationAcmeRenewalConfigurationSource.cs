@@ -23,7 +23,7 @@ public sealed class ProxyConfigurationAcmeRenewalConfigurationSource : IAcmeRene
         var snapshot = available.Snapshot;
         return AcmeRenewalConfigurationInputReadResult.Available(
             AcmeRenewalConfigurationInputMapper.FromSources(
-                AcmeRenewalConfigurationSourceMapper.FromRuntimeConfiguration(
+                AcmeRenewalConfigurationSourceMapper.FromSources(
                     snapshot.Acme,
                     snapshot.Certificates)));
     }

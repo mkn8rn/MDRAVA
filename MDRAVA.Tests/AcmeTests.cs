@@ -681,9 +681,11 @@ internal static class AcmeTests
             ["manual-cert"] = RuntimeCertificate("manual-cert", certificate, "manualPfx")
         };
 
-        var source = AcmeRenewalConfigurationSourceMapper.FromRuntimeConfiguration(
+        var source = AcmeRenewalConfigurationSourceMapper.FromSources(
             acme,
-            runtimeCertificates);
+            runtimeCertificates.Select(static certificate => certificate));
+
+        runtimeCertificates.Clear();
 
         AssertEx.True(source.Enabled);
         AssertEx.Equal("acme", source.StoragePath);
