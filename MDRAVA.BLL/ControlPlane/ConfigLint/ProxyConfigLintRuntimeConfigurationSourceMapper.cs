@@ -140,7 +140,7 @@ public sealed record ProxyConfigLintRuntimeUpstreamSource(
 
 public static class ProxyConfigLintRuntimeConfigurationSourceMapper
 {
-    public static ProxyConfigLintRuntimeConfigurationSource FromConfiguration(
+    public static ProxyConfigLintRuntimeConfigurationSource FromSources(
         IEnumerable<string> sourceFiles,
         IEnumerable<string> adminUrls,
         bool adminRequiresAuthentication,

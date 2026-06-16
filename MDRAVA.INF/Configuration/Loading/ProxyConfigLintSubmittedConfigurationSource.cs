@@ -77,7 +77,7 @@ public sealed class ProxyConfigLintSubmittedConfigurationSource
 
         return ProxyConfigLintSubmittedConfigurationResult.Loaded(
             ProxyConfigLintConfigurationSnapshotMapper.ToLintSnapshot(
-                ProxyConfigLintRuntimeConfigurationSourceMapper.FromConfiguration(
+                ProxyConfigLintRuntimeConfigurationSourceMapper.FromSources(
                     [source.Path],
                     adminSecurity.Urls,
                     adminSecurity.RequireAuthentication,

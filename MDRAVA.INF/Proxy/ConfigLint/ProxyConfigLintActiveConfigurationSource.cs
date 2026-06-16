@@ -29,7 +29,7 @@ public sealed class ProxyConfigLintActiveConfigurationSource
         var runtimeSnapshot = available.Snapshot;
         return ProxyConfigLintActiveConfigurationReadResult.Available(
             ProxyConfigLintConfigurationSnapshotMapper.ToLintSnapshot(
-                ProxyConfigLintRuntimeConfigurationSourceMapper.FromConfiguration(
+                ProxyConfigLintRuntimeConfigurationSourceMapper.FromSources(
                     runtimeSnapshot.SourceFiles,
                     runtimeSnapshot.AdminSecurity.Urls,
                     runtimeSnapshot.AdminSecurity.RequireAuthentication,

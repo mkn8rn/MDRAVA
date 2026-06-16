@@ -773,7 +773,7 @@ internal static class RouteDiagnosticsTests
             routes);
         var mappedSourceFiles = new List<string> { "mapped.json" };
         var mappedAdminUrls = new List<string> { AdminBindPolicy.DefaultAdminUrl };
-        var mappedSource = ProxyConfigLintRuntimeConfigurationSourceMapper.FromConfiguration(
+        var mappedSource = ProxyConfigLintRuntimeConfigurationSourceMapper.FromSources(
             mappedSourceFiles.Select(static sourceFile => sourceFile),
             mappedAdminUrls.Select(static adminUrl => adminUrl),
             snapshot.AdminSecurity.RequireAuthentication,
