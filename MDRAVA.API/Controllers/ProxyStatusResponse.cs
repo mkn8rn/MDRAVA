@@ -2,24 +2,75 @@ using BusinessProxyStatus = MDRAVA.BLL.ControlPlane.Status.ProxyStatus;
 
 namespace MDRAVA.API.Controllers;
 
-public sealed record ProxyStatusResponse(
-    bool ListenerLive,
-    string? ListenerName,
-    string? Endpoint,
-    DateTimeOffset? StartedAt,
-    DateTimeOffset? StoppedAt,
-    string? LastError,
-    bool IsShuttingDown,
-    DateTimeOffset? ShutdownStartedAtUtc,
-    DateTimeOffset? ShutdownDeadlineUtc,
-    int? ConfigVersion,
-    DateTimeOffset? ConfigLoadedAtUtc,
-    int ConfiguredListeners,
-    int ConfiguredRoutes,
-    ProxyMetricsSnapshotResponse Metrics,
-    IReadOnlyList<ProxyUpstreamStatusResponse> Upstreams)
+public sealed record ProxyStatusResponse
 {
-    public IReadOnlyList<ProxyListenerStatusResponse> Listeners { get; init; } = [];
+    public ProxyStatusResponse(
+        bool listenerLive,
+        string? listenerName,
+        string? endpoint,
+        DateTimeOffset? startedAt,
+        DateTimeOffset? stoppedAt,
+        string? lastError,
+        bool isShuttingDown,
+        DateTimeOffset? shutdownStartedAtUtc,
+        DateTimeOffset? shutdownDeadlineUtc,
+        int? configVersion,
+        DateTimeOffset? configLoadedAtUtc,
+        int configuredListeners,
+        int configuredRoutes,
+        ProxyMetricsSnapshotResponse metrics,
+        IReadOnlyList<ProxyUpstreamStatusResponse> upstreams,
+        IReadOnlyList<ProxyListenerStatusResponse> listeners)
+    {
+        ListenerLive = listenerLive;
+        ListenerName = listenerName;
+        Endpoint = endpoint;
+        StartedAt = startedAt;
+        StoppedAt = stoppedAt;
+        LastError = lastError;
+        IsShuttingDown = isShuttingDown;
+        ShutdownStartedAtUtc = shutdownStartedAtUtc;
+        ShutdownDeadlineUtc = shutdownDeadlineUtc;
+        ConfigVersion = configVersion;
+        ConfigLoadedAtUtc = configLoadedAtUtc;
+        ConfiguredListeners = configuredListeners;
+        ConfiguredRoutes = configuredRoutes;
+        Metrics = metrics;
+        Upstreams = ApiResponseList.Copy(upstreams);
+        Listeners = ApiResponseList.Copy(listeners);
+    }
+
+    public bool ListenerLive { get; }
+
+    public string? ListenerName { get; }
+
+    public string? Endpoint { get; }
+
+    public DateTimeOffset? StartedAt { get; }
+
+    public DateTimeOffset? StoppedAt { get; }
+
+    public string? LastError { get; }
+
+    public bool IsShuttingDown { get; }
+
+    public DateTimeOffset? ShutdownStartedAtUtc { get; }
+
+    public DateTimeOffset? ShutdownDeadlineUtc { get; }
+
+    public int? ConfigVersion { get; }
+
+    public DateTimeOffset? ConfigLoadedAtUtc { get; }
+
+    public int ConfiguredListeners { get; }
+
+    public int ConfiguredRoutes { get; }
+
+    public ProxyMetricsSnapshotResponse Metrics { get; }
+
+    public IReadOnlyList<ProxyUpstreamStatusResponse> Upstreams { get; }
+
+    public IReadOnlyList<ProxyListenerStatusResponse> Listeners { get; }
 
     public ProxyListenerReloadResponse? LastListenerReload { get; init; }
 
@@ -42,23 +93,23 @@ public sealed record ProxyStatusResponse(
         ArgumentNullException.ThrowIfNull(response);
 
         return new ProxyStatusResponse(
-            ListenerLive: response.ListenerLive,
-            ListenerName: response.ListenerName,
-            Endpoint: response.Endpoint,
-            StartedAt: response.StartedAt,
-            StoppedAt: response.StoppedAt,
-            LastError: response.LastError,
-            IsShuttingDown: response.IsShuttingDown,
-            ShutdownStartedAtUtc: response.ShutdownStartedAtUtc,
-            ShutdownDeadlineUtc: response.ShutdownDeadlineUtc,
-            ConfigVersion: response.ConfigVersion,
-            ConfigLoadedAtUtc: response.ConfigLoadedAtUtc,
-            ConfiguredListeners: response.ConfiguredListeners,
-            ConfiguredRoutes: response.ConfiguredRoutes,
-            Metrics: ProxyMetricsSnapshotResponse.FromSnapshot(response.Metrics),
-            Upstreams: ProxyUpstreamStatusResponse.FromStatuses(response.Upstreams))
+            listenerLive: response.ListenerLive,
+            listenerName: response.ListenerName,
+            endpoint: response.Endpoint,
+            startedAt: response.StartedAt,
+            stoppedAt: response.StoppedAt,
+            lastError: response.LastError,
+            isShuttingDown: response.IsShuttingDown,
+            shutdownStartedAtUtc: response.ShutdownStartedAtUtc,
+            shutdownDeadlineUtc: response.ShutdownDeadlineUtc,
+            configVersion: response.ConfigVersion,
+            configLoadedAtUtc: response.ConfigLoadedAtUtc,
+            configuredListeners: response.ConfiguredListeners,
+            configuredRoutes: response.ConfiguredRoutes,
+            metrics: ProxyMetricsSnapshotResponse.FromSnapshot(response.Metrics),
+            upstreams: ProxyUpstreamStatusResponse.FromStatuses(response.Upstreams),
+            listeners: ProxyListenerStatusResponse.FromStatuses(response.Listeners))
         {
-            Listeners = ProxyListenerStatusResponse.FromStatuses(response.Listeners),
             LastListenerReload = response.LastListenerReload is null
                 ? null
                 : ProxyListenerReloadResponse.FromResult(response.LastListenerReload),

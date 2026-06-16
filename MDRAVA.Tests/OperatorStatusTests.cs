@@ -450,6 +450,69 @@ internal static class OperatorStatusTests
         AssertEx.Equal("primary", response.Upstreams[0].UpstreamName);
         AssertEx.False(response.Upstreams is List<ProxyUpstreamStatusResponse>, "Status API upstreams should not expose a mutable list.");
         AssertEx.False(response.Upstreams is ProxyUpstreamStatusResponse[], "Status API upstreams should not expose a mutable array.");
+        var apiUpstreams = new List<ProxyUpstreamStatusResponse> { response.Upstreams[0] };
+        var apiListeners = new List<ProxyListenerStatusResponse> { response.Listeners[0] };
+        var directResponse = new ProxyStatusResponse(
+            listenerLive: true,
+            listenerName: "main",
+            endpoint: "127.0.0.1:18080",
+            startedAt: DateTimeOffset.UnixEpoch,
+            stoppedAt: null,
+            lastError: null,
+            isShuttingDown: false,
+            shutdownStartedAtUtc: null,
+            shutdownDeadlineUtc: null,
+            configVersion: 7,
+            configLoadedAtUtc: DateTimeOffset.UnixEpoch,
+            configuredListeners: 1,
+            configuredRoutes: 1,
+            metrics: response.Metrics,
+            upstreams: apiUpstreams,
+            listeners: apiListeners);
+
+        apiUpstreams[0] = apiUpstreams[0] with { UpstreamName = "api-replacement" };
+        apiListeners[0] = apiListeners[0] with { State = ProxyListenerStateResponse.Failed };
+        apiUpstreams.Clear();
+        apiListeners.Clear();
+
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyStatusResponse(
+            listenerLive: true,
+            listenerName: "main",
+            endpoint: "127.0.0.1:18080",
+            startedAt: DateTimeOffset.UnixEpoch,
+            stoppedAt: null,
+            lastError: null,
+            isShuttingDown: false,
+            shutdownStartedAtUtc: null,
+            shutdownDeadlineUtc: null,
+            configVersion: 7,
+            configLoadedAtUtc: DateTimeOffset.UnixEpoch,
+            configuredListeners: 1,
+            configuredRoutes: 1,
+            metrics: response.Metrics,
+            upstreams: null!,
+            listeners: []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyStatusResponse(
+            listenerLive: true,
+            listenerName: "main",
+            endpoint: "127.0.0.1:18080",
+            startedAt: DateTimeOffset.UnixEpoch,
+            stoppedAt: null,
+            lastError: null,
+            isShuttingDown: false,
+            shutdownStartedAtUtc: null,
+            shutdownDeadlineUtc: null,
+            configVersion: 7,
+            configLoadedAtUtc: DateTimeOffset.UnixEpoch,
+            configuredListeners: 1,
+            configuredRoutes: 1,
+            metrics: response.Metrics,
+            upstreams: [],
+            listeners: null!));
+        AssertEx.Equal("primary", directResponse.Upstreams[0].UpstreamName);
+        AssertEx.Equal(ProxyListenerStateResponse.Active, directResponse.Listeners[0].State);
+        AssertEx.False(directResponse.Upstreams is ProxyUpstreamStatusResponse[], "Direct status API upstreams should not expose a mutable array.");
+        AssertEx.False(directResponse.Listeners is ProxyListenerStatusResponse[], "Direct status API listeners should not expose a mutable array.");
     }
 
     public static void StatusInputCopiesRuntimeUpstreamAndAcmeLists()
