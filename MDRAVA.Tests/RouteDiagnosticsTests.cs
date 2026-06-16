@@ -1235,6 +1235,11 @@ internal static class RouteDiagnosticsTests
     public static void RouteDiagnosticsRequestReaderAcceptsNormalizedInput()
     {
         var evaluatedAt = new DateTimeOffset(2026, 6, 13, 10, 0, 0, TimeSpan.Zero);
+        var headers = new Dictionary<string, string?>
+        {
+            ["Authorization"] = "secret",
+            ["X-Test"] = "value"
+        };
         var request = new RouteMatchDryRunRequest(
             "HTTPS",
             " diag.test ",
@@ -1242,14 +1247,12 @@ internal static class RouteDiagnosticsTests
             "post",
             "/api",
             "id=1",
-            new Dictionary<string, string?>
-            {
-                ["Authorization"] = "secret",
-                ["X-Test"] = "value"
-            },
+            headers,
             "127.0.0.1",
             "tls",
             "HTTP3");
+
+        headers.Clear();
 
         var decision = ProxyRouteDiagnosticsRequestReader.Read(
             request,
@@ -1264,6 +1267,17 @@ internal static class RouteDiagnosticsTests
         AssertEx.Equal("diag.test", accepted.Input.RequestHead.Host);
         AssertEx.True(accepted.Input.Findings.Any(static finding => finding.Code == "sensitive_header_redacted"));
         AssertEx.False(accepted.Input.Findings is List<RouteMatchDryRunFinding>, "Route diagnostics request findings should not expose a mutable list.");
+        AssertEx.False(request.Headers is Dictionary<string, string?>, "Route diagnostics dry-run request headers should not expose a mutable dictionary.");
+        AssertEx.Throws<ArgumentNullException>(() => new RouteMatchDryRunRequest(
+            "http",
+            "diag.test",
+            null,
+            "GET",
+            "/",
+            "",
+            null!,
+            null,
+            null));
     }
 
     public static void RouteDiagnosticsRequestReaderRejectsInvalidScheme()
