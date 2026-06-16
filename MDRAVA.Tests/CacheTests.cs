@@ -819,6 +819,19 @@ internal static class CacheTests
             () => ProxyCacheStatusRouteSourceMapper.ToRouteSources(null!));
     }
 
+    public static void CacheRuntimeMapperRejectsNullInputs()
+    {
+        var route = Route(CachePolicy());
+        var listener = Listener();
+
+        AssertEx.Throws<ArgumentNullException>(
+            () => ProxyCacheRuntimeMapper.ToRequestScope(null!, listener));
+        AssertEx.Throws<ArgumentNullException>(
+            () => ProxyCacheRuntimeMapper.ToRequestScope(route, null!));
+        AssertEx.Throws<ArgumentNullException>(
+            () => ProxyCacheRuntimeMapper.ToPolicyFacts(null!));
+    }
+
     public static void CacheAdministrationClearReturnsPostClearStatus()
     {
         var clearedAtUtc = new DateTimeOffset(2026, 6, 7, 10, 0, 0, TimeSpan.Zero);

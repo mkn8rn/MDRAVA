@@ -6,6 +6,9 @@ public static class ProxyCacheRuntimeMapper
 {
     public static ProxyCacheRequestScope ToRequestScope(RuntimeRoute route, RuntimeListener listener)
     {
+        ArgumentNullException.ThrowIfNull(route);
+        ArgumentNullException.ThrowIfNull(listener);
+
         return new ProxyCacheRequestScope(
             route.Name,
             route.Host,
@@ -15,6 +18,8 @@ public static class ProxyCacheRuntimeMapper
 
     public static ProxyCachePolicyFacts ToPolicyFacts(RuntimeCachePolicy policy)
     {
+        ArgumentNullException.ThrowIfNull(policy);
+
         return new ProxyCachePolicyFacts(
             policy.Enabled,
             policy.MaxEntryBytes,
