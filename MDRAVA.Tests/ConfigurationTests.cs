@@ -127,6 +127,10 @@ internal static class ConfigurationTests
                         Enabled = true,
                         RetryOnStatusCodes = routeRetryStatusCodes
                     }
+                },
+                new ProxyRouteOptions
+                {
+                    Name = "fallback"
                 }
             ]
         };
@@ -147,7 +151,7 @@ internal static class ConfigurationTests
         AssertEx.Equal(1, aggregated.Listeners.Count);
         AssertEx.Equal(1, aggregated.Listeners[0].SniCertificates.Count);
         AssertEx.Equal("home.test", aggregated.Listeners[0].SniCertificates[0].HostName);
-        AssertEx.Equal(1, aggregated.Routes.Count);
+        AssertEx.Equal(2, aggregated.Routes.Count);
         AssertEx.Equal(1, aggregated.Routes[0].Upstreams.Count);
         AssertEx.Equal(1, aggregated.Routes[0].Upstreams[0].CircuitBreaker.FailureStatusCodes.Count);
         AssertEx.Equal(503, aggregated.Routes[0].Upstreams[0].CircuitBreaker.FailureStatusCodes[0]);
@@ -163,6 +167,10 @@ internal static class ConfigurationTests
         AssertEx.Equal("HEAD", aggregated.Routes[0].Cache.Methods[0]);
         AssertEx.Equal(1, aggregated.Routes[0].Retry.RetryOnStatusCodes.Count);
         AssertEx.Equal(504, aggregated.Routes[0].Retry.RetryOnStatusCodes[0]);
+        AssertEx.Equal(1, aggregated.Routes[1].Cache.Methods.Count);
+        AssertEx.Equal("GET", aggregated.Routes[1].Cache.Methods[0]);
+        AssertEx.Equal(1, aggregated.Routes[1].Retry.RetryOnStatusCodes.Count);
+        AssertEx.Equal(502, aggregated.Routes[1].Retry.RetryOnStatusCodes[0]);
     }
 
     public static void SiteOptionsAggregatorCopiesMergedListenerSniEntries()
