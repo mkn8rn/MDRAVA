@@ -141,17 +141,20 @@ public sealed record ProxyConfigLintRuntimeUpstreamSource(
 public static class ProxyConfigLintRuntimeConfigurationSourceMapper
 {
     public static ProxyConfigLintRuntimeConfigurationSource FromConfiguration(
-        IReadOnlyList<string> sourceFiles,
-        IReadOnlyList<string> adminUrls,
+        IEnumerable<string> sourceFiles,
+        IEnumerable<string> adminUrls,
         bool adminRequiresAuthentication,
         bool publicMetricsEnabled,
-        IReadOnlyList<RuntimeListener> listeners,
-        IReadOnlyList<RuntimeRoute> routes)
+        IEnumerable<RuntimeListener> listeners,
+        IEnumerable<RuntimeRoute> routes)
     {
         ArgumentNullException.ThrowIfNull(sourceFiles);
         ArgumentNullException.ThrowIfNull(adminUrls);
         ArgumentNullException.ThrowIfNull(listeners);
         ArgumentNullException.ThrowIfNull(routes);
+
+        var listenerSources = ConfigLintList.Copy(listeners);
+        var routeSources = ConfigLintList.Copy(routes);
 
         return new ProxyConfigLintRuntimeConfigurationSource(
             sourceFiles,
@@ -159,9 +162,9 @@ public static class ProxyConfigLintRuntimeConfigurationSourceMapper
             adminRequiresAuthentication,
             publicMetricsEnabled,
             ProxyHttp3SupportConfigurationSourceMapper.FromConfiguration(
-                listeners,
-                routes),
-            listeners
+                listenerSources,
+                routeSources),
+            listenerSources
                 .Select(static listener => new ProxyConfigLintRuntimeListenerSource(
                     listener.Name,
                     listener.Address,
@@ -180,7 +183,7 @@ public static class ProxyConfigLintRuntimeConfigurationSourceMapper
                         listener.Port,
                         listener.QuicIdentity?.Key)),
                     listener.QuicIdentity?.Key)),
-            routes
+            routeSources
                 .Select(static route => new ProxyConfigLintRuntimeRouteSource(
                     route.Name,
                     route.SiteName,

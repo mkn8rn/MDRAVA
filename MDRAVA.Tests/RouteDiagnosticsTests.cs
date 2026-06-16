@@ -771,11 +771,22 @@ internal static class RouteDiagnosticsTests
             http3Support,
             listeners,
             routes);
+        var mappedSourceFiles = new List<string> { "mapped.json" };
+        var mappedAdminUrls = new List<string> { AdminBindPolicy.DefaultAdminUrl };
+        var mappedSource = ProxyConfigLintRuntimeConfigurationSourceMapper.FromConfiguration(
+            mappedSourceFiles.Select(static sourceFile => sourceFile),
+            mappedAdminUrls.Select(static adminUrl => adminUrl),
+            snapshot.AdminSecurity.RequireAuthentication,
+            snapshot.Metrics.PublicMetricsEnabled,
+            snapshot.Listeners.Select(static listener => listener),
+            snapshot.Routes.Select(static route => route));
 
         var lintSnapshot = ProxyConfigLintConfigurationSnapshotMapper.ToLintSnapshot(
             source,
             TestHttp3PlatformSupport.Supported);
 
+        mappedSourceFiles.Clear();
+        mappedAdminUrls.Clear();
         sourceFiles[0] = "replacement.json";
         adminUrls[0] = "http://0.0.0.0:9999";
         listeners.Clear();
@@ -795,6 +806,13 @@ internal static class RouteDiagnosticsTests
         AssertEx.Equal(AdminBindPolicy.DefaultAdminUrl, source.AdminUrls[0]);
         AssertEx.Equal(1, source.Listeners.Count);
         AssertEx.Equal(1, source.Routes.Count);
+        AssertEx.Equal("mapped.json", mappedSource.SourceFiles[0]);
+        AssertEx.Equal(AdminBindPolicy.DefaultAdminUrl, mappedSource.AdminUrls[0]);
+        AssertEx.Equal(1, mappedSource.Listeners.Count);
+        AssertEx.Equal(1, mappedSource.Routes.Count);
+        AssertEx.False(mappedSource.SourceFiles is string[], "Mapped config lint runtime source files should not expose a mutable array.");
+        AssertEx.False(mappedSource.Listeners is ProxyConfigLintRuntimeListenerSource[], "Mapped config lint runtime source listeners should not expose a mutable array.");
+        AssertEx.False(mappedSource.Routes is ProxyConfigLintRuntimeRouteSource[], "Mapped config lint runtime source routes should not expose a mutable array.");
         AssertEx.Equal("X-Tenant", source.Routes[0].CacheVaryByHeaders[0]);
         AssertEx.Equal("GET", source.Routes[0].RetryMethods[0]);
         AssertEx.Equal("local", source.Routes[0].Upstreams[0].Name);
