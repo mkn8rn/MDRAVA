@@ -186,6 +186,8 @@ public static class AcmeRenewalConfigurationInputMapper
     public static AcmeRenewalConfigurationInput FromSources(
         AcmeRenewalConfigurationSourceSet source)
     {
+        ArgumentNullException.ThrowIfNull(source);
+
         return new AcmeRenewalConfigurationInput(
             source.Enabled,
             source.StoragePath,

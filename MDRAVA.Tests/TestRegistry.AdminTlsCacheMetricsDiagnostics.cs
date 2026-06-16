@@ -54,6 +54,7 @@ internal static partial class TestRegistry
     Test("ACME renewal configuration source projects renewal input", Sync(AcmeTests.AcmeRenewalConfigurationSourceProjectsRenewalInput), TestTaxonomy.Tls, TestTaxonomy.Config),
     Test("ACME renewal configuration source mapper attaches only ACME active certificates", Sync(AcmeTests.AcmeRenewalConfigurationSourceMapperAttachesOnlyAcmeActiveCertificates), TestTaxonomy.Tls, TestTaxonomy.Config),
     Test("ACME renewal configuration input mapper consumes source set without runtime configuration", Sync(AcmeTests.AcmeRenewalConfigurationInputMapperConsumesSourceSetWithoutRuntimeConfiguration), TestTaxonomy.Tls, TestTaxonomy.Config),
+    Test("ACME renewal configuration input mapper rejects null source set", Sync(AcmeTests.AcmeRenewalConfigurationInputMapperRejectsNullSourceSet), TestTaxonomy.Tls, TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
     Test("Existing HTTP upstream config remains valid", UpstreamTlsTests.ExistingHttpUpstreamConfigRemainsValid, TestTaxonomy.UpstreamHttp1, TestTaxonomy.Tls),
     Test("HTTPS upstream config parses and validates", UpstreamTlsTests.HttpsUpstreamConfigParsesAndValidates, TestTaxonomy.UpstreamHttp1, TestTaxonomy.Tls),
     Test("Unsupported upstream scheme is rejected", UpstreamTlsTests.UnsupportedUpstreamSchemeIsRejected, TestTaxonomy.UpstreamHttp1, TestTaxonomy.Tls, TestTaxonomy.SecurityNegativePaths),

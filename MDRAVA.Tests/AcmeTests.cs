@@ -924,6 +924,12 @@ internal static class AcmeTests
         AssertEx.False(input.Certificates[0].Domains is string[], "ACME renewal input domains should not expose a mutable array.");
     }
 
+    public static void AcmeRenewalConfigurationInputMapperRejectsNullSourceSet()
+    {
+        AssertEx.Throws<ArgumentNullException>(
+            () => AcmeRenewalConfigurationInputMapper.FromSources(null!));
+    }
+
     private static Http1RequestHead Request(string method, string path)
     {
         return new Http1RequestHead(
