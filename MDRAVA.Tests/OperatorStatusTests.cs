@@ -791,6 +791,23 @@ internal static class OperatorStatusTests
         AssertEx.Equal("runtime_preflight_degraded", readinessResponse.Reasons[0]);
         AssertEx.False(ReferenceEquals(readiness.Reasons, readinessResponse.Reasons), "Readiness API reasons should not reuse the BLL reasons collection.");
         AssertEx.False(readinessResponse.Reasons is string[], "Readiness API reasons should not expose a mutable array.");
+        var responseReasons = new List<string> { readinessResponse.Reasons[0] };
+        var directReadinessResponse = new ProxyReadinessStatusResponse(
+            state: ProxyStatusText.Degraded,
+            reasons: responseReasons,
+            generatedAtUtc: DateTimeOffset.UnixEpoch,
+            configGeneration: 42);
+
+        responseReasons[0] = "replacement_reason";
+        responseReasons.Clear();
+
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyReadinessStatusResponse(
+            state: ProxyStatusText.Degraded,
+            reasons: null!,
+            generatedAtUtc: DateTimeOffset.UnixEpoch,
+            configGeneration: 42));
+        AssertEx.Equal("runtime_preflight_degraded", directReadinessResponse.Reasons[0]);
+        AssertEx.False(directReadinessResponse.Reasons is string[], "Direct readiness API reasons should not expose a mutable array.");
     }
 
     public static void StatusReadinessSourceMapperConsumesRuntimeSummaryWithoutRuntimeSnapshot()
