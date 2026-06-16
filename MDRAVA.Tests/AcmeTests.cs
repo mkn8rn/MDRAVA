@@ -239,6 +239,45 @@ internal static class AcmeTests
         AssertEx.Equal("loaded", lifecycle.LastResult);
         AssertEx.Equal("home.example.test", lifecycle.Domains[0]);
         AssertEx.Equal("home-acme", status.Certificates[0].CertificateId);
+        AssertEx.Throws<ArgumentNullException>(() => new AcmeCertificateIssueRequest(
+            CertificateId: "home-acme",
+            Domains: [null!],
+            DirectoryUrl: "https://acme.example.test/directory",
+            ContactEmails: ["ops@example.test"],
+            TermsAccepted: true));
+        AssertEx.Throws<ArgumentNullException>(() => new AcmeCertificateIssueRequest(
+            CertificateId: "home-acme",
+            Domains: ["home.example.test"],
+            DirectoryUrl: "https://acme.example.test/directory",
+            ContactEmails: [null!],
+            TermsAccepted: true));
+        AssertEx.Throws<ArgumentNullException>(() => new AcmeCertificateMaterialWriteRequest(
+            StoragePath: "acme",
+            CertificateId: "home-acme",
+            Domains: [null!],
+            DataDirectory: "data",
+            WrittenAtUtc: DateTimeOffset.UnixEpoch,
+            PfxBytes: [1]));
+        AssertEx.Throws<ArgumentNullException>(() => new AcmeCertificateLifecycleStatus(
+            CertificateId: "home-acme",
+            Enabled: true,
+            Domains: [null!],
+            Active: true,
+            Source: "acme",
+            NotBeforeUtc: DateTimeOffset.UnixEpoch,
+            NotAfterUtc: DateTimeOffset.UnixEpoch.AddDays(30),
+            RenewalDueAtUtc: DateTimeOffset.UnixEpoch.AddDays(20),
+            LastAttemptAtUtc: null,
+            LastSucceededAtUtc: DateTimeOffset.UnixEpoch,
+            LastFailedAtUtc: null,
+            NextAttemptNotBeforeUtc: null,
+            LastResult: "loaded",
+            ErrorSummary: null));
+        AssertEx.Throws<ArgumentNullException>(() => AcmeStatus.FromSources(
+            enabled: true,
+            directoryUrl: "https://acme.example.test/directory",
+            useStaging: false,
+            certificates: [null!]));
         var apiStatus = AcmeStatusResponse.FromStatus(status);
         AssertEx.Equal("home-acme", apiStatus.Certificates[0].CertificateId);
         AssertEx.Equal("home.example.test", apiStatus.Certificates[0].Domains[0]);
