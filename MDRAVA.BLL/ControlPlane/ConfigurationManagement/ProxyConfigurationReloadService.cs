@@ -136,7 +136,7 @@ public sealed class ProxyConfigurationReloadService
         return ProxyConfigurationProjectionMapper.ToProjection(
             snapshot,
             _http3ProjectionSource.Project(
-                ProxyHttp3SupportConfigurationSourceMapper.FromConfiguration(
+                ProxyHttp3SupportConfigurationSourceMapper.FromSources(
                     snapshot.Listeners,
                     snapshot.Routes)));
     }

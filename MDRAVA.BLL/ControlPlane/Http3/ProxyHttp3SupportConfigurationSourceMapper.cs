@@ -4,10 +4,13 @@ namespace MDRAVA.BLL.ControlPlane.Http3;
 
 public static class ProxyHttp3SupportConfigurationSourceMapper
 {
-    public static Http3SupportConfigurationSource FromConfiguration(
+    public static Http3SupportConfigurationSource FromSources(
         IEnumerable<RuntimeListener> listeners,
         IEnumerable<RuntimeRoute> routes)
     {
+        ArgumentNullException.ThrowIfNull(listeners);
+        ArgumentNullException.ThrowIfNull(routes);
+
         return new Http3SupportConfigurationSource(
             listeners
                 .Select(static listener => new Http3SupportListenerSource(

@@ -24,7 +24,7 @@ public sealed class ProxyConfigurationReadProjectionSource
                 ProxyConfigurationProjectionMapper.ToProjection(
                     available.Snapshot,
                     _http3ProjectionSource.Project(
-                        ProxyHttp3SupportConfigurationSourceMapper.FromConfiguration(
+                        ProxyHttp3SupportConfigurationSourceMapper.FromSources(
                             available.Snapshot.Listeners,
                             available.Snapshot.Routes))))
             : ProxyConfigurationReadProjectionResult<ProxyConfigurationProjection>.MissingConfiguration;

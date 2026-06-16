@@ -161,7 +161,7 @@ public static class ProxyConfigLintRuntimeConfigurationSourceMapper
             adminUrls,
             adminRequiresAuthentication,
             publicMetricsEnabled,
-            ProxyHttp3SupportConfigurationSourceMapper.FromConfiguration(
+            ProxyHttp3SupportConfigurationSourceMapper.FromSources(
                 listenerSources,
                 routeSources),
             listenerSources

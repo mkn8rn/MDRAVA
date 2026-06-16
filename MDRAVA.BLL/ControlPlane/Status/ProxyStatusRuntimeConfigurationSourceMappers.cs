@@ -33,7 +33,7 @@ public static class ProxyStatusConfigurationSourceMapper
                 listenerSources.Count,
                 routeSources.Count),
             upstreamHealthSources,
-            ProxyHttp3SupportConfigurationSourceMapper.FromConfiguration(listenerSources, routeSources),
+            ProxyHttp3SupportConfigurationSourceMapper.FromSources(listenerSources, routeSources),
             ProxyStatusReadinessConfigurationSourceMapper.FromConfiguration(
                 version,
                 loadedAtUtc,
