@@ -22,15 +22,15 @@ public sealed record RuntimeAdminSecurityOptions
 
     public IReadOnlyList<string> Urls { get; }
 
-    public bool RequireAuthentication { get; init; }
+    public bool RequireAuthentication { get; }
 
-    public bool HasConfiguredToken { get; init; }
+    public bool HasConfiguredToken { get; }
 
-    public string? Token { get; init; }
+    public string? Token { get; }
 
-    public string TokenEnvironmentVariable { get; init; }
+    public string TokenEnvironmentVariable { get; }
 
-    public string TokenSource { get; init; }
+    public string TokenSource { get; }
 
-    public int RecentAuditCapacity { get; init; }
+    public int RecentAuditCapacity { get; }
 }
