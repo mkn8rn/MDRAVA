@@ -6,6 +6,8 @@ public static class ProxyCacheStatusRouteSourceMapper
 {
     public static IReadOnlyList<ProxyCacheStatusRouteSource> ToRouteSources(IEnumerable<RuntimeRoute> routes)
     {
+        ArgumentNullException.ThrowIfNull(routes);
+
         return CacheList.Copy(routes
             .Select(static route => new ProxyCacheStatusRouteSource(
                 route.Name,

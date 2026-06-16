@@ -813,6 +813,12 @@ internal static class CacheTests
         AssertEx.False(sources is ProxyCacheStatusRouteSource[], "Cache route sources should not expose a mutable array.");
     }
 
+    public static void CacheStatusRouteSourceMapperRejectsNullRoutes()
+    {
+        AssertEx.Throws<ArgumentNullException>(
+            () => ProxyCacheStatusRouteSourceMapper.ToRouteSources(null!));
+    }
+
     public static void CacheAdministrationClearReturnsPostClearStatus()
     {
         var clearedAtUtc = new DateTimeOffset(2026, 6, 7, 10, 0, 0, TimeSpan.Zero);

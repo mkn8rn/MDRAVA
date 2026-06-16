@@ -103,6 +103,7 @@ internal static partial class TestRegistry
     Test("Cache status reader shapes routes and rejections", Sync(CacheTests.CacheStatusReaderShapesRoutesAndRejections), TestTaxonomy.Caching),
     Test("Cache status reader reports counters without active config", Sync(CacheTests.CacheStatusReaderReportsCountersWithoutActiveConfig), TestTaxonomy.Caching),
     Test("Cache status route source mapper reads routes without configuration snapshot", Sync(CacheTests.CacheStatusRouteSourceMapperReadsRoutesWithoutConfigurationSnapshot), TestTaxonomy.Caching, TestTaxonomy.Config),
+    Test("Cache status route source mapper rejects null routes", Sync(CacheTests.CacheStatusRouteSourceMapperRejectsNullRoutes), TestTaxonomy.Caching, TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
     Test("Cache administration clear returns post-clear status", Sync(CacheTests.CacheAdministrationClearReturnsPostClearStatus), TestTaxonomy.Caching, TestTaxonomy.Admin),
     Test("Metrics endpoint is protected by admin auth", MetricsTests.MetricsEndpointIsProtectedByAdminAuth, TestTaxonomy.Admin, TestTaxonomy.Metrics),
     Test("Metrics endpoint returns Prometheus text", Sync(MetricsTests.MetricsEndpointReturnsPrometheusText), TestTaxonomy.Metrics),
