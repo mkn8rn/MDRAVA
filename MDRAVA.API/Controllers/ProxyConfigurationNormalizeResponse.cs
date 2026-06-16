@@ -3,13 +3,32 @@ using BusinessProxyConfigurationNormalizeResult =
 
 namespace MDRAVA.API.Controllers;
 
-public sealed record ProxyConfigurationNormalizeResponse(
-    bool Succeeded,
-    string Format,
-    string? CanonicalJson,
-    IReadOnlyList<string> Errors,
-    IReadOnlyList<ProxyConfigurationFileErrorResponse> FileErrors)
+public sealed record ProxyConfigurationNormalizeResponse
 {
+    public ProxyConfigurationNormalizeResponse(
+        bool succeeded,
+        string format,
+        string? canonicalJson,
+        IReadOnlyList<string> errors,
+        IReadOnlyList<ProxyConfigurationFileErrorResponse> fileErrors)
+    {
+        Succeeded = succeeded;
+        Format = format;
+        CanonicalJson = canonicalJson;
+        Errors = ApiResponseList.Copy(errors);
+        FileErrors = ApiResponseList.Copy(fileErrors);
+    }
+
+    public bool Succeeded { get; }
+
+    public string Format { get; }
+
+    public string? CanonicalJson { get; }
+
+    public IReadOnlyList<string> Errors { get; }
+
+    public IReadOnlyList<ProxyConfigurationFileErrorResponse> FileErrors { get; }
+
     public static ProxyConfigurationNormalizeResponse FromResult(BusinessProxyConfigurationNormalizeResult result)
     {
         ArgumentNullException.ThrowIfNull(result);
@@ -17,17 +36,17 @@ public sealed record ProxyConfigurationNormalizeResponse(
         return result switch
         {
             BusinessProxyConfigurationNormalizeResult.NormalizedResult normalized => new ProxyConfigurationNormalizeResponse(
-                Succeeded: true,
-                Format: normalized.Format,
-                CanonicalJson: normalized.CanonicalJson,
-                Errors: ApiResponseList.Copy(normalized.Errors),
-                FileErrors: ProxyConfigurationFileErrorResponse.FromErrors(normalized.FileErrors)),
+                succeeded: true,
+                format: normalized.Format,
+                canonicalJson: normalized.CanonicalJson,
+                errors: normalized.Errors,
+                fileErrors: ProxyConfigurationFileErrorResponse.FromErrors(normalized.FileErrors)),
             BusinessProxyConfigurationNormalizeResult.FailedResult failed => new ProxyConfigurationNormalizeResponse(
-                Succeeded: false,
-                Format: failed.Format,
-                CanonicalJson: null,
-                Errors: ApiResponseList.Copy(failed.Errors),
-                FileErrors: ProxyConfigurationFileErrorResponse.FromErrors(failed.FileErrors)),
+                succeeded: false,
+                format: failed.Format,
+                canonicalJson: null,
+                errors: failed.Errors,
+                fileErrors: ProxyConfigurationFileErrorResponse.FromErrors(failed.FileErrors)),
             _ => throw new InvalidOperationException($"Unknown normalize result '{result.GetType().Name}'.")
         };
     }

@@ -306,6 +306,36 @@ internal static class ConfigurationTests
         var normalizeResponse = ProxyConfigurationNormalizeResponse.FromResult(normalize);
         AssertEx.False(normalizeResponse.Errors is string[], "Normalize API errors should not expose a mutable array.");
         AssertEx.False(normalizeResponse.FileErrors is ProxyConfigurationFileErrorResponse[], "Normalize API file errors should not expose a mutable array.");
+        var normalizeResponseErrors = new List<string> { normalizeResponse.Errors[0] };
+        var normalizeResponseFileErrors = new List<ProxyConfigurationFileErrorResponse> { normalizeResponse.FileErrors[0] };
+        var directNormalizeResponse = new ProxyConfigurationNormalizeResponse(
+            succeeded: false,
+            format: "json",
+            canonicalJson: null,
+            errors: normalizeResponseErrors,
+            fileErrors: normalizeResponseFileErrors);
+
+        normalizeResponseErrors[0] = "replacement error";
+        normalizeResponseFileErrors[0] = normalizeResponseFileErrors[0] with { Path = "replacement.json" };
+        normalizeResponseErrors.Clear();
+        normalizeResponseFileErrors.Clear();
+
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyConfigurationNormalizeResponse(
+            succeeded: false,
+            format: "json",
+            canonicalJson: null,
+            errors: null!,
+            fileErrors: []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyConfigurationNormalizeResponse(
+            succeeded: false,
+            format: "json",
+            canonicalJson: null,
+            errors: [],
+            fileErrors: null!));
+        AssertEx.Equal("sites/home.json: parse failed", directNormalizeResponse.Errors[0]);
+        AssertEx.Equal("sites/home.json", directNormalizeResponse.FileErrors[0].Path);
+        AssertEx.False(directNormalizeResponse.Errors is string[], "Direct normalize API errors should not expose a mutable array.");
+        AssertEx.False(directNormalizeResponse.FileErrors is ProxyConfigurationFileErrorResponse[], "Direct normalize API file errors should not expose a mutable array.");
         var validationResponse = ProxyConfigurationValidationResponse.FromResult(invalid);
         AssertEx.False(validationResponse.SourceFiles is string[], "Validation API source files should not expose a mutable array.");
         AssertEx.False(validationResponse.Errors is string[], "Validation API errors should not expose a mutable array.");
