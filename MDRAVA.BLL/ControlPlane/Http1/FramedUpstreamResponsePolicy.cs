@@ -16,11 +16,11 @@ public sealed record FramedUpstreamResponseTranslationInput
         this.ResponseEndedWithHead = ResponseEndedWithHead;
     }
 
-    public int StatusCode { get; init; }
+    public int StatusCode { get; }
 
     public IReadOnlyList<ProxyHeaderField> Headers { get; }
 
-    public bool ResponseEndedWithHead { get; init; }
+    public bool ResponseEndedWithHead { get; }
 }
 
 public static class FramedUpstreamResponsePolicy

@@ -315,6 +315,9 @@ internal static class RouteDiagnosticsTests
         AssertEx.Equal("text/plain", headers.Single(static header => header.Name == "content-type").Value);
         AssertEx.Equal("req-456", headers.Single(static header => header.Name == "x-request-id").Value);
         AssertEx.Equal("2", headers.Single(static header => header.Name == "content-length").Value);
+        AssertEx.Equal(302, response.StatusCode);
+        AssertEx.Equal("Found", response.ReasonPhrase);
+        AssertEx.Equal("go", response.Body);
         AssertEx.True(headers.Any(static header => header.Name == "Location" && header.Value == "/next"));
         AssertEx.False(headers.Any(static header => string.Equals(header.Name, "Connection", StringComparison.OrdinalIgnoreCase)));
         AssertEx.False(headers.Any(static header => string.Equals(header.Name, "Keep-Alive", StringComparison.OrdinalIgnoreCase)));
@@ -325,6 +328,18 @@ internal static class RouteDiagnosticsTests
             null,
             "",
             null!));
+        AssertEx.Throws<ArgumentNullException>(() => new GeneratedRouteResponse(
+            200,
+            null!,
+            null,
+            "",
+            []));
+        AssertEx.Throws<ArgumentNullException>(() => new GeneratedRouteResponse(
+            200,
+            "OK",
+            null,
+            null!,
+            []));
     }
 
     public static void RequestContextRecordsGeneratedFailureResponse()

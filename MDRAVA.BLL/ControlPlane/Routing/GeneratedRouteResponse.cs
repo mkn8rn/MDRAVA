@@ -12,6 +12,9 @@ public sealed record GeneratedRouteResponse
         string Body,
         IReadOnlyList<ProxyHeaderField> Headers)
     {
+        ArgumentNullException.ThrowIfNull(ReasonPhrase);
+        ArgumentNullException.ThrowIfNull(Body);
+
         this.StatusCode = StatusCode;
         this.ReasonPhrase = ReasonPhrase;
         this.ContentType = ContentType;
@@ -19,13 +22,13 @@ public sealed record GeneratedRouteResponse
         this.Headers = ProxyHeaderFieldList.Copy(Headers);
     }
 
-    public int StatusCode { get; init; }
+    public int StatusCode { get; }
 
-    public string ReasonPhrase { get; init; }
+    public string ReasonPhrase { get; }
 
-    public string? ContentType { get; init; }
+    public string? ContentType { get; }
 
-    public string Body { get; init; }
+    public string Body { get; }
 
     public IReadOnlyList<ProxyHeaderField> Headers { get; }
 }

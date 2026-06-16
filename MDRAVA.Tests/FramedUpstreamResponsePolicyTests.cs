@@ -73,6 +73,7 @@ internal static class FramedUpstreamResponsePolicyTests
         headers.Clear();
 
         AssertEx.Equal(200, input.StatusCode);
+        AssertEx.False(input.ResponseEndedWithHead);
         AssertEx.Equal("content-length", input.Headers[0].Name);
         AssertEx.False(input.Headers is ProxyHeaderField[], "Framed upstream response input headers should not expose a mutable array.");
         AssertEx.Throws<ArgumentNullException>(() => new FramedUpstreamResponseTranslationInput(
