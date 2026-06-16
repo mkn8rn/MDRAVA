@@ -17,8 +17,8 @@ public sealed record ProxyAcmeStatusConfigurationSourceSnapshot
         this.Enabled = Enabled;
         this.DirectoryUrl = DirectoryUrl;
         this.UseStaging = UseStaging;
-        this.Certificates = AcmeList.Copy(Certificates);
-        this.RuntimeCertificates = AcmeList.Copy(RuntimeCertificates);
+        this.Certificates = AcmeList.Copy(Certificates.Select(RequireConfiguredCertificate));
+        this.RuntimeCertificates = AcmeList.Copy(RuntimeCertificates.Select(RequireRuntimeCertificateSource));
     }
 
     public bool Enabled { get; }
@@ -30,6 +30,22 @@ public sealed record ProxyAcmeStatusConfigurationSourceSnapshot
     public IReadOnlyList<ProxyAcmeConfiguredCertificateStatus> Certificates { get; }
 
     public IReadOnlyList<ProxyAcmeRuntimeCertificateSource> RuntimeCertificates { get; }
+
+    private static ProxyAcmeConfiguredCertificateStatus RequireConfiguredCertificate(
+        ProxyAcmeConfiguredCertificateStatus certificate)
+    {
+        ArgumentNullException.ThrowIfNull(certificate);
+
+        return certificate;
+    }
+
+    private static ProxyAcmeRuntimeCertificateSource RequireRuntimeCertificateSource(
+        ProxyAcmeRuntimeCertificateSource certificate)
+    {
+        ArgumentNullException.ThrowIfNull(certificate);
+
+        return certificate;
+    }
 }
 
 public sealed record ProxyAcmeRuntimeCertificateSource(
@@ -52,18 +68,32 @@ public static class ProxyAcmeStatusConfigurationSourceMapper
             acme.Enabled,
             acme.DirectoryUrl,
             acme.UseStaging,
-            acme.Certificates
-                .Select(static certificate => new ProxyAcmeConfiguredCertificateStatus(
-                    certificate.Id,
-                    certificate.Enabled,
-                    certificate.Domains,
-                    certificate.RenewBeforeDays)),
-            runtimeCertificates
-                .Select(static certificate => new ProxyAcmeRuntimeCertificateSource(
-                    certificate.Key,
-                    certificate.Value.Id,
-                    certificate.Value.Source,
-                    new DateTimeOffset(certificate.Value.Certificate.NotBefore.ToUniversalTime()),
-                    new DateTimeOffset(certificate.Value.Certificate.NotAfter.ToUniversalTime()))));
+            acme.Certificates.Select(ToConfiguredCertificateStatus),
+            runtimeCertificates.Select(ToRuntimeCertificateSource));
+    }
+
+    private static ProxyAcmeConfiguredCertificateStatus ToConfiguredCertificateStatus(
+        RuntimeAcmeCertificateOptions certificate)
+    {
+        ArgumentNullException.ThrowIfNull(certificate);
+
+        return new ProxyAcmeConfiguredCertificateStatus(
+            certificate.Id,
+            certificate.Enabled,
+            certificate.Domains,
+            certificate.RenewBeforeDays);
+    }
+
+    private static ProxyAcmeRuntimeCertificateSource ToRuntimeCertificateSource(
+        KeyValuePair<string, RuntimeCertificate> certificate)
+    {
+        ArgumentNullException.ThrowIfNull(certificate.Value);
+
+        return new ProxyAcmeRuntimeCertificateSource(
+            certificate.Key,
+            certificate.Value.Id,
+            certificate.Value.Source,
+            new DateTimeOffset(certificate.Value.Certificate.NotBefore.ToUniversalTime()),
+            new DateTimeOffset(certificate.Value.Certificate.NotAfter.ToUniversalTime()));
     }
 }

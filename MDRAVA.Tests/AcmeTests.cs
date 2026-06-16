@@ -657,6 +657,10 @@ internal static class AcmeTests
                     notAfter)
             ]);
 
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyAcmeRuntimeCertificateStatusMapper.FromSources(null!));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyAcmeRuntimeCertificateStatusMapper.FromSources([null!]));
         AssertEx.True(certificates.ContainsKey("home-acme"));
         var certificate = certificates["home-acme"];
         AssertEx.Equal("home-acme", certificate.Id);
@@ -684,6 +688,35 @@ internal static class AcmeTests
             snapshot.Acme,
             runtimeCertificates.Select(static certificate => certificate));
 
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyAcmeStatusConfigurationSourceMapper.FromSources(null!, runtimeCertificates));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyAcmeStatusConfigurationSourceMapper.FromSources(snapshot.Acme, null!));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyAcmeStatusConfigurationSourceMapper.FromSources(
+                AcmeWithCertificates([null!]),
+                runtimeCertificates));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyAcmeStatusConfigurationSourceMapper.FromSources(
+                snapshot.Acme,
+                new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["broken"] = null!
+                }));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            new ProxyAcmeStatusConfigurationSourceSnapshot(
+                snapshot.Acme.Enabled,
+                snapshot.Acme.DirectoryUrl,
+                snapshot.Acme.UseStaging,
+                [null!],
+                source.RuntimeCertificates));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            new ProxyAcmeStatusConfigurationSourceSnapshot(
+                snapshot.Acme.Enabled,
+                snapshot.Acme.DirectoryUrl,
+                snapshot.Acme.UseStaging,
+                source.Certificates,
+                [null!]));
         runtimeCertificates.Clear();
 
         AssertEx.True(source.Enabled);
@@ -706,6 +739,21 @@ internal static class AcmeTests
         AssertEx.False(source.Certificates is ProxyAcmeConfiguredCertificateStatus[], "ACME status source certificates should not expose a mutable array.");
         AssertEx.False(source.RuntimeCertificates is ProxyAcmeRuntimeCertificateSource[], "ACME runtime certificate sources should not expose a mutable array.");
         AssertEx.False(source.Certificates[0].Domains is string[], "ACME status source domains should not expose a mutable array.");
+
+        RuntimeAcmeOptions AcmeWithCertificates(IReadOnlyList<RuntimeAcmeCertificateOptions> certificates)
+        {
+            return new RuntimeAcmeOptions(
+                snapshot.Acme.Enabled,
+                snapshot.Acme.UseStaging,
+                snapshot.Acme.DirectoryUrl,
+                snapshot.Acme.ContactEmails,
+                snapshot.Acme.TermsAccepted,
+                snapshot.Acme.StoragePath,
+                snapshot.Acme.RenewBeforeDays,
+                snapshot.Acme.CheckIntervalMinutes,
+                snapshot.Acme.RetryAfterMinutes,
+                certificates);
+        }
     }
 
     public static async Task AcmeRenewalAvoidsTightRetryLoopAfterFailure()

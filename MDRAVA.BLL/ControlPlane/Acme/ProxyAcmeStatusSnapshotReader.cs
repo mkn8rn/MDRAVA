@@ -43,7 +43,7 @@ public static class ProxyAcmeRuntimeCertificateStatusMapper
     {
         ArgumentNullException.ThrowIfNull(runtimeCertificates);
 
-        return runtimeCertificates.ToDictionary(
+        return runtimeCertificates.Select(RequireRuntimeCertificateSource).ToDictionary(
             static certificate => certificate.Key,
             static certificate => new ProxyAcmeRuntimeCertificateStatus(
                 certificate.Id,
@@ -51,5 +51,13 @@ public static class ProxyAcmeRuntimeCertificateStatusMapper
                 certificate.NotBeforeUtc,
                 certificate.NotAfterUtc),
             StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static ProxyAcmeRuntimeCertificateSource RequireRuntimeCertificateSource(
+        ProxyAcmeRuntimeCertificateSource certificate)
+    {
+        ArgumentNullException.ThrowIfNull(certificate);
+
+        return certificate;
     }
 }
