@@ -133,20 +133,24 @@ internal static class OperatorStatusTests
             unchanged: 0,
             changes: [],
             errors: ["bind_failed"]);
+        var failedListener = ListenerStatus(listener, ProxyListenerState.Failed);
+        var activeReplacement = ListenerStatus(listener, ProxyListenerState.Active);
+        var runtimeListeners = new List<ProxyListenerStatus> { failedListener };
         var runtime = new ProxyRuntimeSnapshot(
-            IsRunning: false,
-            ListenerName: "main",
-            Endpoint: "127.0.0.1:18080",
-            StartedAt: startedAt,
-            StoppedAt: stoppedAt,
-            LastError: "listener failed",
-            IsShuttingDown: true,
-            ShutdownStartedAtUtc: shutdownStartedAt,
-            ShutdownDeadlineUtc: shutdownDeadline)
-        {
-            Listeners = [ListenerStatus(listener, ProxyListenerState.Failed)],
-            LastListenerReload = reload
-        };
+            isRunning: false,
+            listenerName: "main",
+            endpoint: "127.0.0.1:18080",
+            startedAt: startedAt,
+            stoppedAt: stoppedAt,
+            lastError: "listener failed",
+            isShuttingDown: true,
+            shutdownStartedAtUtc: shutdownStartedAt,
+            shutdownDeadlineUtc: shutdownDeadline,
+            listeners: runtimeListeners,
+            lastListenerReload: reload);
+
+        runtimeListeners[0] = activeReplacement;
+        runtimeListeners.Clear();
 
         var summary = ProxyStatusRuntimeSummaryMapper.FromSources(
             runtime.IsRunning,
@@ -173,6 +177,18 @@ internal static class OperatorStatusTests
         AssertEx.Equal(1, summary.Listeners.Count);
         AssertEx.Equal(ProxyListenerState.Failed, summary.Listeners[0].State);
         AssertEx.Equal(reload, summary.LastListenerReload);
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRuntimeSnapshot(
+            isRunning: false,
+            listenerName: "main",
+            endpoint: "127.0.0.1:18080",
+            startedAt: startedAt,
+            stoppedAt: stoppedAt,
+            lastError: "listener failed",
+            isShuttingDown: true,
+            shutdownStartedAtUtc: shutdownStartedAt,
+            shutdownDeadlineUtc: shutdownDeadline,
+            listeners: null!,
+            lastListenerReload: reload));
     }
 
     public static void StatusRuntimeSourceReadsRuntimeSummaryWithoutRuntimeSnapshot()
@@ -296,10 +312,12 @@ internal static class OperatorStatusTests
             "127.0.0.1:18080",
             DateTimeOffset.UnixEpoch,
             null,
-            null)
-        {
-            Listeners = [ListenerStatus(listener, ProxyListenerState.Active)]
-        };
+            null,
+            isShuttingDown: false,
+            shutdownStartedAtUtc: null,
+            shutdownDeadlineUtc: null,
+            listeners: [ListenerStatus(listener, ProxyListenerState.Active)],
+            lastListenerReload: null);
         var metrics = new ProxyMetrics().Snapshot();
         var observedAtUtc = new DateTimeOffset(2026, 6, 10, 9, 5, 0, TimeSpan.Zero);
         var runtimeSummary = ProxyStatusRuntimeSummaryMapper.FromSources(

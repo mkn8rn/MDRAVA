@@ -37,11 +37,9 @@ public sealed class ProxyRuntimeState : IProxyStatusRuntimeStateSource, IHttp3Al
                 _lastError,
                 Volatile.Read(ref _isShuttingDown) == 1,
                 _shutdownStartedAtUtc,
-                _shutdownDeadlineUtc)
-            {
-                Listeners = _listeners.ToArray(),
-                LastListenerReload = _lastListenerReload
-            };
+                _shutdownDeadlineUtc,
+                _listeners,
+                _lastListenerReload);
         }
     }
 
