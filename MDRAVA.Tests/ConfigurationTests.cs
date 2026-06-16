@@ -2408,6 +2408,107 @@ internal static class ConfigurationTests
         AssertEx.False(quicIdentity is RuntimeQuicListenerIdentity);
         AssertEx.False(listenerCollection is RuntimeListener[]);
         AssertEx.False(listenerCollection is RuntimeListenerProjection[]);
+        var directSniCertificates = new List<RuntimeSniCertificateBindingProjection>
+        {
+            new("owned.example.test", "owned-cert")
+        };
+        var directListener = new RuntimeListenerProjection(
+            Name: "main",
+            Address: listener.Address,
+            Port: listener.Port,
+            Enabled: listener.Enabled,
+            Transport: listener.Transport,
+            DefaultCertificateId: listener.DefaultCertificateId,
+            SniCertificates: directSniCertificates,
+            Backlog: listener.Backlog,
+            MaxRequestHeadBytes: listener.MaxRequestHeadBytes,
+            MaxResponseHeadBytes: listener.MaxResponseHeadBytes,
+            MaxChunkLineBytes: listener.MaxChunkLineBytes,
+            ForwardingBufferBytes: listener.ForwardingBufferBytes,
+            Identity: listener.Identity,
+            Protocols: listener.Protocols,
+            Http3Enablement: listener.Http3Enablement,
+            Http3AltSvc: listener.Http3AltSvc,
+            Http2Limits: listener.Http2Limits,
+            TcpTrafficEnabled: listener.TcpTrafficEnabled,
+            Http3ProtocolConfigured: listener.Http3ProtocolConfigured,
+            QuicIdentity: listener.QuicIdentity,
+            Http3: listener.Http3);
+
+        directSniCertificates[0] = new RuntimeSniCertificateBindingProjection(
+            "replacement.test",
+            "replacement-cert");
+        directSniCertificates.Clear();
+
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeListenerProjection(
+            Name: "main",
+            Address: listener.Address,
+            Port: listener.Port,
+            Enabled: listener.Enabled,
+            Transport: listener.Transport,
+            DefaultCertificateId: listener.DefaultCertificateId,
+            SniCertificates: null!,
+            Backlog: listener.Backlog,
+            MaxRequestHeadBytes: listener.MaxRequestHeadBytes,
+            MaxResponseHeadBytes: listener.MaxResponseHeadBytes,
+            MaxChunkLineBytes: listener.MaxChunkLineBytes,
+            ForwardingBufferBytes: listener.ForwardingBufferBytes,
+            Identity: listener.Identity,
+            Protocols: listener.Protocols,
+            Http3Enablement: listener.Http3Enablement,
+            Http3AltSvc: listener.Http3AltSvc,
+            Http2Limits: listener.Http2Limits,
+            TcpTrafficEnabled: listener.TcpTrafficEnabled,
+            Http3ProtocolConfigured: listener.Http3ProtocolConfigured,
+            QuicIdentity: listener.QuicIdentity,
+            Http3: listener.Http3));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeListenerProjection(
+            Name: "main",
+            Address: listener.Address,
+            Port: listener.Port,
+            Enabled: listener.Enabled,
+            Transport: listener.Transport,
+            DefaultCertificateId: listener.DefaultCertificateId,
+            SniCertificates: [],
+            Backlog: listener.Backlog,
+            MaxRequestHeadBytes: listener.MaxRequestHeadBytes,
+            MaxResponseHeadBytes: listener.MaxResponseHeadBytes,
+            MaxChunkLineBytes: listener.MaxChunkLineBytes,
+            ForwardingBufferBytes: listener.ForwardingBufferBytes,
+            Identity: null!,
+            Protocols: listener.Protocols,
+            Http3Enablement: listener.Http3Enablement,
+            Http3AltSvc: listener.Http3AltSvc,
+            Http2Limits: listener.Http2Limits,
+            TcpTrafficEnabled: listener.TcpTrafficEnabled,
+            Http3ProtocolConfigured: listener.Http3ProtocolConfigured,
+            QuicIdentity: listener.QuicIdentity,
+            Http3: listener.Http3));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeListenerProjection(
+            Name: "main",
+            Address: listener.Address,
+            Port: listener.Port,
+            Enabled: listener.Enabled,
+            Transport: listener.Transport,
+            DefaultCertificateId: listener.DefaultCertificateId,
+            SniCertificates: [],
+            Backlog: listener.Backlog,
+            MaxRequestHeadBytes: listener.MaxRequestHeadBytes,
+            MaxResponseHeadBytes: listener.MaxResponseHeadBytes,
+            MaxChunkLineBytes: listener.MaxChunkLineBytes,
+            ForwardingBufferBytes: listener.ForwardingBufferBytes,
+            Identity: listener.Identity,
+            Protocols: listener.Protocols,
+            Http3Enablement: listener.Http3Enablement,
+            Http3AltSvc: listener.Http3AltSvc,
+            Http2Limits: listener.Http2Limits,
+            TcpTrafficEnabled: listener.TcpTrafficEnabled,
+            Http3ProtocolConfigured: listener.Http3ProtocolConfigured,
+            QuicIdentity: listener.QuicIdentity,
+            Http3: null!));
+        AssertEx.Equal("owned.example.test", directListener.SniCertificates[0].HostName);
+        AssertEx.Equal("main", directListener.Name);
+        AssertEx.False(directListener.SniCertificates is RuntimeSniCertificateBindingProjection[]);
     }
 
     public static async Task ActiveInspectionProjectionUsesRouteReadModels()

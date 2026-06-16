@@ -25,6 +25,11 @@ public sealed record RuntimeListenerProjection
         RuntimeQuicListenerIdentityProjection? QuicIdentity,
         RuntimeHttp3ListenerReadinessProjection Http3)
     {
+        ArgumentNullException.ThrowIfNull(Identity);
+        ArgumentNullException.ThrowIfNull(Http3AltSvc);
+        ArgumentNullException.ThrowIfNull(Http2Limits);
+        ArgumentNullException.ThrowIfNull(Http3);
+
         this.Name = Name;
         this.Address = Address;
         this.Port = Port;
@@ -48,45 +53,45 @@ public sealed record RuntimeListenerProjection
         this.Http3 = Http3;
     }
 
-    public string Name { get; init; }
+    public string Name { get; }
 
-    public string Address { get; init; }
+    public string Address { get; }
 
-    public int Port { get; init; }
+    public int Port { get; }
 
-    public bool Enabled { get; init; }
+    public bool Enabled { get; }
 
-    public RuntimeListenerTransport Transport { get; init; }
+    public RuntimeListenerTransport Transport { get; }
 
-    public string? DefaultCertificateId { get; init; }
+    public string? DefaultCertificateId { get; }
 
     public IReadOnlyList<RuntimeSniCertificateBindingProjection> SniCertificates { get; }
 
-    public int Backlog { get; init; }
+    public int Backlog { get; }
 
-    public int MaxRequestHeadBytes { get; init; }
+    public int MaxRequestHeadBytes { get; }
 
-    public int MaxResponseHeadBytes { get; init; }
+    public int MaxResponseHeadBytes { get; }
 
-    public int MaxChunkLineBytes { get; init; }
+    public int MaxChunkLineBytes { get; }
 
-    public int ForwardingBufferBytes { get; init; }
+    public int ForwardingBufferBytes { get; }
 
-    public RuntimeListenerIdentityProjection Identity { get; init; }
+    public RuntimeListenerIdentityProjection Identity { get; }
 
-    public RuntimeListenerProtocols Protocols { get; init; }
+    public RuntimeListenerProtocols Protocols { get; }
 
-    public RuntimeHttp3Enablement Http3Enablement { get; init; }
+    public RuntimeHttp3Enablement Http3Enablement { get; }
 
-    public RuntimeHttp3AltSvcProjection Http3AltSvc { get; init; }
+    public RuntimeHttp3AltSvcProjection Http3AltSvc { get; }
 
-    public RuntimeHttp2LimitsProjection Http2Limits { get; init; }
+    public RuntimeHttp2LimitsProjection Http2Limits { get; }
 
-    public bool TcpTrafficEnabled { get; init; }
+    public bool TcpTrafficEnabled { get; }
 
-    public bool Http3ProtocolConfigured { get; init; }
+    public bool Http3ProtocolConfigured { get; }
 
-    public RuntimeQuicListenerIdentityProjection? QuicIdentity { get; init; }
+    public RuntimeQuicListenerIdentityProjection? QuicIdentity { get; }
 
-    public RuntimeHttp3ListenerReadinessProjection Http3 { get; init; }
+    public RuntimeHttp3ListenerReadinessProjection Http3 { get; }
 }
