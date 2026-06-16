@@ -410,7 +410,7 @@ internal static class OperatorStatusTests
             ConsecutiveFailures: 0,
             SelectedRequests: 11,
             RequestFailures: 0);
-        var replacement = upstream with { UpstreamName = "replacement" };
+        var replacement = CreateUpstreamStatus(upstream, upstreamName: "replacement");
         var upstreams = new List<ProxyUpstreamStatus> { upstream };
         var listeners = new List<ProxyListenerStatus> { active };
 
@@ -441,10 +441,79 @@ internal static class OperatorStatusTests
 
         AssertEx.Equal(1, status.Upstreams.Count);
         AssertEx.Equal("primary", status.Upstreams[0].UpstreamName);
+        AssertEx.Equal(RuntimeUpstreamProtocol.Http1, status.Upstreams[0].Protocol);
+        AssertEx.Equal(1, status.Upstreams[0].Weight);
+        AssertEx.NotNull(status.Upstreams[0].CircuitBreaker);
         AssertEx.Equal(1, status.Listeners.Count);
         AssertEx.Equal(ProxyListenerState.Active, status.Listeners[0].State);
         AssertEx.False(status.Upstreams is ProxyUpstreamStatus[], "Status upstreams should not expose a mutable array.");
         AssertEx.False(status.Listeners is ProxyListenerStatus[], "Status listeners should not expose a mutable array.");
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyUpstreamStatus(
+            RouteName: null!,
+            UpstreamName: "primary",
+            Endpoint: "https://primary.internal",
+            Scheme: "https",
+            TlsCertificateValidationEnabled: true,
+            SniHost: "primary.internal",
+            HealthCheckEnabled: true,
+            HealthState: UpstreamHealthState.Healthy,
+            LastHealthCheckResult: "status_200",
+            LastHealthCheckAtUtc: DateTimeOffset.UnixEpoch,
+            ConsecutiveSuccesses: 2,
+            ConsecutiveFailures: 0,
+            SelectedRequests: 11,
+            RequestFailures: 0));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyUpstreamStatus(
+            RouteName: "main",
+            UpstreamName: null!,
+            Endpoint: "https://primary.internal",
+            Scheme: "https",
+            TlsCertificateValidationEnabled: true,
+            SniHost: "primary.internal",
+            HealthCheckEnabled: true,
+            HealthState: UpstreamHealthState.Healthy,
+            LastHealthCheckResult: "status_200",
+            LastHealthCheckAtUtc: DateTimeOffset.UnixEpoch,
+            ConsecutiveSuccesses: 2,
+            ConsecutiveFailures: 0,
+            SelectedRequests: 11,
+            RequestFailures: 0));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyUpstreamStatus(
+            RouteName: "main",
+            UpstreamName: "primary",
+            Endpoint: "https://primary.internal",
+            Scheme: "https",
+            TlsCertificateValidationEnabled: true,
+            SniHost: "primary.internal",
+            HealthCheckEnabled: true,
+            HealthState: UpstreamHealthState.Healthy,
+            LastHealthCheckResult: "status_200",
+            LastHealthCheckAtUtc: DateTimeOffset.UnixEpoch,
+            ConsecutiveSuccesses: 2,
+            ConsecutiveFailures: 0,
+            SelectedRequests: 11,
+            RequestFailures: 0,
+            Protocol: null!,
+            Weight: 1,
+            CircuitBreaker: CircuitBreakerStatus.Disabled(CircuitBreakerPolicyInput.Disabled)));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyUpstreamStatus(
+            RouteName: "main",
+            UpstreamName: "primary",
+            Endpoint: "https://primary.internal",
+            Scheme: "https",
+            TlsCertificateValidationEnabled: true,
+            SniHost: "primary.internal",
+            HealthCheckEnabled: true,
+            HealthState: UpstreamHealthState.Healthy,
+            LastHealthCheckResult: "status_200",
+            LastHealthCheckAtUtc: DateTimeOffset.UnixEpoch,
+            ConsecutiveSuccesses: 2,
+            ConsecutiveFailures: 0,
+            SelectedRequests: 11,
+            RequestFailures: 0,
+            Protocol: RuntimeUpstreamProtocol.Http1,
+            Weight: 1,
+            CircuitBreaker: null!));
         AssertEx.Throws<ArgumentNullException>(() => ProxyUpstreamStatusResponse.FromStatuses(null!));
         var response = ProxyStatusResponse.FromBusinessResponse(status);
         AssertEx.Equal("primary", response.Upstreams[0].UpstreamName);
@@ -548,7 +617,7 @@ internal static class OperatorStatusTests
             ConsecutiveFailures: 0,
             SelectedRequests: 11,
             RequestFailures: 0);
-        var replacementUpstream = upstream with { UpstreamName = "replacement" };
+        var replacementUpstream = CreateUpstreamStatus(upstream, upstreamName: "replacement");
         var upstreams = new List<ProxyUpstreamStatus> { upstream };
         var acme = new AcmeCertificateLifecycleStatus(
             CertificateId: "cert-a",
@@ -2069,13 +2138,36 @@ internal static class OperatorStatusTests
                     ConsecutiveSuccesses: 0,
                     ConsecutiveFailures: 0,
                     SelectedRequests: 0,
-                    RequestFailures: 0)
-                {
-                    Protocol = upstream.Protocol,
-                    Weight = upstream.Weight
-                })
+                    RequestFailures: 0,
+                    upstream.Protocol,
+                    upstream.Weight,
+                    CircuitBreakerStatus.Disabled(CircuitBreakerPolicyInput.Disabled)))
                 .ToArray();
         }
+    }
+
+    private static ProxyUpstreamStatus CreateUpstreamStatus(
+        ProxyUpstreamStatus source,
+        string? upstreamName = null)
+    {
+        return new ProxyUpstreamStatus(
+            source.RouteName,
+            upstreamName ?? source.UpstreamName,
+            source.Endpoint,
+            source.Scheme,
+            source.TlsCertificateValidationEnabled,
+            source.SniHost,
+            source.HealthCheckEnabled,
+            source.HealthState,
+            source.LastHealthCheckResult,
+            source.LastHealthCheckAtUtc,
+            source.ConsecutiveSuccesses,
+            source.ConsecutiveFailures,
+            source.SelectedRequests,
+            source.RequestFailures,
+            source.Protocol,
+            source.Weight,
+            source.CircuitBreaker);
     }
 
     private sealed class FixedTimeProvider : TimeProvider

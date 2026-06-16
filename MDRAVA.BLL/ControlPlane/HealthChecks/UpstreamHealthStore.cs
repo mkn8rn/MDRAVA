@@ -101,12 +101,10 @@ public sealed class UpstreamHealthStore : IProxyStatusUpstreamHealthSource
                     state.ConsecutiveSuccesses,
                     state.ConsecutiveFailures,
                     state.ReadSelectedRequests(),
-                    state.ReadRequestFailures())
-                {
-                    Protocol = source.Protocol,
-                    Weight = source.Weight,
-                    CircuitBreaker = _circuitBreakerStore.Snapshot(source.CircuitBreaker)
-                });
+                    state.ReadRequestFailures(),
+                    source.Protocol,
+                    source.Weight,
+                    _circuitBreakerStore.Snapshot(source.CircuitBreaker)));
             }
         }
 
