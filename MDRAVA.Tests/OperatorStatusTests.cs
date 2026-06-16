@@ -897,13 +897,18 @@ internal static class OperatorStatusTests
             ["status-cert.example.test"]);
         var listener = (Listener() with { DefaultCertificateId = "default" })
             .WithSniCertificates([new RuntimeSniCertificateBinding("alt.example.test", "alt")]);
+        var listenerSources = new List<RuntimeListener> { listener };
+        var certificateSources = new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["default"] = runtimeCertificate
+        };
 
         var source = ProxyCertificateSummarySourceMapper.FromConfiguration(
-            [listener],
-            new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["default"] = runtimeCertificate
-            });
+            listenerSources.Select(static source => source),
+            certificateSources);
+
+        listenerSources.Clear();
+        certificateSources.Clear();
 
         AssertEx.Equal(2, source.ReferencedCertificateIds.Count);
         AssertEx.Equal("default", source.ReferencedCertificateIds[0]);
@@ -912,6 +917,8 @@ internal static class OperatorStatusTests
         AssertEx.Equal("default", source.LoadedCertificates[0].Id);
         AssertEx.Equal(certificate.NotBefore, source.LoadedCertificates[0].NotBefore);
         AssertEx.Equal(certificate.NotAfter, source.LoadedCertificates[0].NotAfter);
+        AssertEx.False(source.ReferencedCertificateIds is string[], "Status certificate references should not expose a mutable array.");
+        AssertEx.False(source.LoadedCertificates is ProxyCertificateValiditySource[], "Status loaded certificate sources should not expose a mutable array.");
     }
 
     public static void StatusLimitSummaryConfigurationMapperReadsLimitsWithoutConfigurationSnapshot()

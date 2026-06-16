@@ -23,8 +23,8 @@ public sealed record ProxyRouteSummarySource(
 public sealed record ProxyCertificateSummarySource
 {
     public ProxyCertificateSummarySource(
-        IReadOnlyList<string> ReferencedCertificateIds,
-        IReadOnlyList<ProxyCertificateValiditySource> LoadedCertificates)
+        IEnumerable<string> ReferencedCertificateIds,
+        IEnumerable<ProxyCertificateValiditySource> LoadedCertificates)
     {
         ArgumentNullException.ThrowIfNull(ReferencedCertificateIds);
         ArgumentNullException.ThrowIfNull(LoadedCertificates);

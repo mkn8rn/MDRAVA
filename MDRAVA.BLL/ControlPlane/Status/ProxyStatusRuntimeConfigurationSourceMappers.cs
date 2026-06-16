@@ -90,9 +90,12 @@ public static class ProxyRouteSummarySourceMapper
 public static class ProxyCertificateSummarySourceMapper
 {
     public static ProxyCertificateSummarySource FromConfiguration(
-        IReadOnlyList<RuntimeListener> listeners,
+        IEnumerable<RuntimeListener> listeners,
         IReadOnlyDictionary<string, RuntimeCertificate> certificates)
     {
+        ArgumentNullException.ThrowIfNull(listeners);
+        ArgumentNullException.ThrowIfNull(certificates);
+
         List<string> referenced = [];
         foreach (var listener in listeners)
         {
