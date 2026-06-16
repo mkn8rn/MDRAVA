@@ -1,68 +1,91 @@
-using MDRAVA.BLL.ControlPlane.Http3;
 using MDRAVA.BLL.Configuration;
+using MDRAVA.BLL.ControlPlane.Http3;
 
 namespace MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 
-public sealed record ProxyConfigurationProjection(
-    int Version,
-    DateTimeOffset LoadedAtUtc,
-    string SourceDirectory,
-    IReadOnlyList<string> SourceFiles,
-    ProxyConfigurationDiscovery Discovery,
-    RuntimeAdminSecurityProjection AdminSecurity,
-    RuntimeAcmeProjection Acme,
-    RuntimeTimeoutsProjection Timeouts,
-    RuntimeConnectionLimitsProjection ConnectionLimits,
-    RuntimeObservabilityProjection Observability,
-    RuntimeLimitsProjection Limits,
-    RuntimeForwardedHeadersProjection ForwardedHeaders,
-    IReadOnlyList<RuntimeCertificateProjection> Certificates,
-    IReadOnlyList<RuntimeListenerProjection> Listeners,
-    IReadOnlyList<RuntimeRouteProjection> Routes)
+public sealed record ProxyConfigurationProjection
 {
-    private IReadOnlyList<string> _sourceFiles = ConfigurationManagementList.Copy(SourceFiles);
-    private IReadOnlyList<RuntimeCertificateProjection> _certificates = ConfigurationManagementList.Copy(Certificates);
-    private IReadOnlyList<RuntimeListenerProjection> _listeners = ConfigurationManagementList.Copy(Listeners);
-    private IReadOnlyList<RuntimeRouteProjection> _routes = ConfigurationManagementList.Copy(Routes);
-
-    public IReadOnlyList<string> SourceFiles
+    public ProxyConfigurationProjection(
+        int Version,
+        DateTimeOffset LoadedAtUtc,
+        string SourceDirectory,
+        IReadOnlyList<string> SourceFiles,
+        ProxyConfigurationDiscovery Discovery,
+        RuntimeAdminSecurityProjection AdminSecurity,
+        RuntimeAcmeProjection Acme,
+        RuntimeTimeoutsProjection Timeouts,
+        RuntimeConnectionLimitsProjection ConnectionLimits,
+        RuntimeObservabilityProjection Observability,
+        RuntimeLimitsProjection Limits,
+        RuntimeForwardedHeadersProjection ForwardedHeaders,
+        RuntimeMetricsProjection Metrics,
+        RuntimeHttp3SupportProjection Http3,
+        IReadOnlyList<RuntimeCertificateProjection> Certificates,
+        IReadOnlyList<RuntimeListenerProjection> Listeners,
+        IReadOnlyList<RuntimeRouteProjection> Routes)
     {
-        get => _sourceFiles;
-        init => _sourceFiles = ConfigurationManagementList.Copy(value);
+        ArgumentNullException.ThrowIfNull(SourceDirectory);
+        ArgumentNullException.ThrowIfNull(Discovery);
+        ArgumentNullException.ThrowIfNull(AdminSecurity);
+        ArgumentNullException.ThrowIfNull(Acme);
+        ArgumentNullException.ThrowIfNull(Timeouts);
+        ArgumentNullException.ThrowIfNull(ConnectionLimits);
+        ArgumentNullException.ThrowIfNull(Observability);
+        ArgumentNullException.ThrowIfNull(Limits);
+        ArgumentNullException.ThrowIfNull(ForwardedHeaders);
+        ArgumentNullException.ThrowIfNull(Metrics);
+        ArgumentNullException.ThrowIfNull(Http3);
+
+        this.Version = Version;
+        this.LoadedAtUtc = LoadedAtUtc;
+        this.SourceDirectory = SourceDirectory;
+        this.SourceFiles = ConfigurationManagementList.Copy(SourceFiles);
+        this.Discovery = Discovery;
+        this.AdminSecurity = AdminSecurity;
+        this.Acme = Acme;
+        this.Timeouts = Timeouts;
+        this.ConnectionLimits = ConnectionLimits;
+        this.Observability = Observability;
+        this.Limits = Limits;
+        this.ForwardedHeaders = ForwardedHeaders;
+        this.Metrics = Metrics;
+        this.Http3 = Http3;
+        this.Certificates = ConfigurationManagementList.Copy(Certificates);
+        this.Listeners = ConfigurationManagementList.Copy(Listeners);
+        this.Routes = ConfigurationManagementList.Copy(Routes);
     }
 
-    public IReadOnlyList<RuntimeCertificateProjection> Certificates
-    {
-        get => _certificates;
-        init => _certificates = ConfigurationManagementList.Copy(value);
-    }
+    public int Version { get; }
 
-    public IReadOnlyList<RuntimeListenerProjection> Listeners
-    {
-        get => _listeners;
-        init => _listeners = ConfigurationManagementList.Copy(value);
-    }
+    public DateTimeOffset LoadedAtUtc { get; }
 
-    public IReadOnlyList<RuntimeRouteProjection> Routes
-    {
-        get => _routes;
-        init => _routes = ConfigurationManagementList.Copy(value);
-    }
+    public string SourceDirectory { get; }
 
-    public RuntimeMetricsProjection Metrics { get; init; } = RuntimeMetricsProjection.Default;
+    public IReadOnlyList<string> SourceFiles { get; }
 
-    public RuntimeHttp3SupportProjection Http3 { get; init; } = new(
-        "unknown",
-        QuicListenerSupported: false,
-        QuicConnectionSupported: false,
-        "disabled",
-        "disabled",
-        EnabledForTraffic: false,
-        QuicListenerReady: false,
-        AltSvcConfigured: false,
-        AltSvcActive: false,
-        AltSvcMaxAgeSeconds: null,
-        "not_configured",
-        UdpQuicListenerIdentityModeled: true,
-        "client_http3_default_enabled_for_eligible_tls_proxy_listeners");
+    public ProxyConfigurationDiscovery Discovery { get; }
+
+    public RuntimeAdminSecurityProjection AdminSecurity { get; }
+
+    public RuntimeAcmeProjection Acme { get; }
+
+    public RuntimeTimeoutsProjection Timeouts { get; }
+
+    public RuntimeConnectionLimitsProjection ConnectionLimits { get; }
+
+    public RuntimeObservabilityProjection Observability { get; }
+
+    public RuntimeLimitsProjection Limits { get; }
+
+    public RuntimeForwardedHeadersProjection ForwardedHeaders { get; }
+
+    public RuntimeMetricsProjection Metrics { get; }
+
+    public RuntimeHttp3SupportProjection Http3 { get; }
+
+    public IReadOnlyList<RuntimeCertificateProjection> Certificates { get; }
+
+    public IReadOnlyList<RuntimeListenerProjection> Listeners { get; }
+
+    public IReadOnlyList<RuntimeRouteProjection> Routes { get; }
 }

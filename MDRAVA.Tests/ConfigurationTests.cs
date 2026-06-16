@@ -1431,6 +1431,61 @@ internal static class ConfigurationTests
         AssertEx.False(projection.Certificates is RuntimeCertificateProjection[]);
         AssertEx.False(projection.Listeners is RuntimeListenerProjection[]);
         AssertEx.False(projection.Routes is RuntimeRouteProjection[]);
+        AssertEx.True(projection.Metrics.Enabled);
+        AssertEx.Equal("not_ready", projection.Http3.ReadinessConclusion);
+        var directProjectionSourceFiles = new List<string> { projection.SourceFiles[0] };
+        var directProjectionCertificates = new List<RuntimeCertificateProjection> { projection.Certificates[0] };
+        var directProjectionListeners = new List<RuntimeListenerProjection> { projection.Listeners[0] };
+        var directProjectionRoutes = new List<RuntimeRouteProjection> { projection.Routes[0] };
+        var directProjection = CreateDirectProjection(
+            sourceFiles: directProjectionSourceFiles,
+            metrics: projection.Metrics,
+            http3: projection.Http3,
+            certificates: directProjectionCertificates,
+            listeners: directProjectionListeners,
+            routes: directProjectionRoutes);
+
+        directProjectionSourceFiles[0] = "sites/replacement.json";
+        directProjectionCertificates.Clear();
+        directProjectionListeners.Clear();
+        directProjectionRoutes.Clear();
+
+        AssertEx.Equal("sites/home.json", directProjection.SourceFiles[0]);
+        AssertEx.Equal("home-cert", directProjection.Certificates[0].Id);
+        AssertEx.Equal("web", directProjection.Listeners[0].Name);
+        AssertEx.Equal("home", directProjection.Routes[0].Name);
+        AssertEx.False(directProjection.SourceFiles is string[]);
+        AssertEx.False(directProjection.Certificates is RuntimeCertificateProjection[]);
+        AssertEx.False(directProjection.Listeners is RuntimeListenerProjection[]);
+        AssertEx.False(directProjection.Routes is RuntimeRouteProjection[]);
+        AssertEx.Throws<ArgumentNullException>(() => CreateDirectProjection(
+            sourceFiles: null!,
+            metrics: projection.Metrics,
+            http3: projection.Http3,
+            certificates: [],
+            listeners: [],
+            routes: []));
+        AssertEx.Throws<ArgumentNullException>(() => CreateDirectProjection(
+            sourceFiles: [],
+            metrics: null!,
+            http3: projection.Http3,
+            certificates: [],
+            listeners: [],
+            routes: []));
+        AssertEx.Throws<ArgumentNullException>(() => CreateDirectProjection(
+            sourceFiles: [],
+            metrics: projection.Metrics,
+            http3: null!,
+            certificates: [],
+            listeners: [],
+            routes: []));
+        AssertEx.Throws<ArgumentNullException>(() => CreateDirectProjection(
+            sourceFiles: [],
+            metrics: projection.Metrics,
+            http3: projection.Http3,
+            certificates: null!,
+            listeners: [],
+            routes: []));
         var response = ProxyConfigurationResponse.FromProjection(projection);
         AssertEx.False(response.SourceFiles is string[], "Configuration API source files should not expose a mutable array.");
         AssertEx.False(response.Certificates is RuntimeCertificateResponse[], "Configuration API certificates should not expose a mutable array.");
@@ -1651,6 +1706,35 @@ internal static class ConfigurationTests
         AssertEx.False(directResponse.Certificates is RuntimeCertificateResponse[], "Direct configuration API certificates should not expose a mutable array.");
         AssertEx.False(directResponse.Listeners is RuntimeListenerResponse[], "Direct configuration API listeners should not expose a mutable array.");
         AssertEx.False(directResponse.Routes is RuntimeRouteResponse[], "Direct configuration API routes should not expose a mutable array.");
+
+        ProxyConfigurationProjection CreateDirectProjection(
+            IReadOnlyList<string> sourceFiles,
+            RuntimeMetricsProjection metrics,
+            RuntimeHttp3SupportProjection http3,
+            IReadOnlyList<RuntimeCertificateProjection> certificates,
+            IReadOnlyList<RuntimeListenerProjection> listeners,
+            IReadOnlyList<RuntimeRouteProjection> routes)
+        {
+            return new ProxyConfigurationProjection(
+                projection.Version,
+                projection.LoadedAtUtc,
+                projection.SourceDirectory,
+                sourceFiles,
+                projection.Discovery,
+                projection.AdminSecurity,
+                projection.Acme,
+                projection.Timeouts,
+                projection.ConnectionLimits,
+                projection.Observability,
+                projection.Limits,
+                projection.ForwardedHeaders,
+                metrics,
+                http3,
+                certificates,
+                listeners,
+                routes);
+        }
+
         var listenerResponses = RuntimeListenerResponse.FromListeners(projection.Listeners);
         AssertEx.False(listenerResponses is RuntimeListenerResponse[], "Configuration API listeners should not expose a mutable array.");
         AssertEx.False(listenerResponses[0].SniCertificates is RuntimeSniCertificateBindingResponse[], "Configuration API listener SNI certificates should not expose a mutable array.");

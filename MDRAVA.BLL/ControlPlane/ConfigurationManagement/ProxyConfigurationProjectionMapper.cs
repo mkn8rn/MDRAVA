@@ -79,6 +79,14 @@ public static class ProxyConfigurationProjectionMapper
             new RuntimeForwardedHeadersProjection(
                 snapshot.ForwardedHeaders.Enabled,
                 snapshot.ForwardedHeaders.TrustedProxies),
+            new RuntimeMetricsProjection(
+                snapshot.Metrics.Enabled,
+                snapshot.Metrics.EndpointPath,
+                snapshot.Metrics.ProtectedByAdminAuth,
+                snapshot.Metrics.IncludePerRouteLabels,
+                snapshot.Metrics.IncludePerUpstreamLabels,
+                snapshot.Metrics.PublicMetricsEnabled),
+            http3,
             snapshot.Certificates.Values
                 .Select(static certificate => new RuntimeCertificateProjection(
                     certificate.Id,
@@ -239,17 +247,7 @@ public static class ProxyConfigurationProjectionMapper
                         route.Retry.RetryOnStatusCodes,
                         route.Retry.RetryMethods,
                         route.Retry.RetryBackoff)))
-                .ToArray()))
-        {
-            Metrics = new RuntimeMetricsProjection(
-                snapshot.Metrics.Enabled,
-                snapshot.Metrics.EndpointPath,
-                snapshot.Metrics.ProtectedByAdminAuth,
-                snapshot.Metrics.IncludePerRouteLabels,
-                snapshot.Metrics.IncludePerUpstreamLabels,
-                snapshot.Metrics.PublicMetricsEnabled),
-            Http3 = http3
-        };
+                .ToArray()));
     }
 
     private static RuntimeQuicListenerIdentityProjection? ToQuicListenerIdentityProjection(
