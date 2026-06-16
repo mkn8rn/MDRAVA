@@ -23,7 +23,7 @@ public static class ProxyStatusConfigurationSourceMapper
                 configuration.LoadedAtUtc,
                 configuration.Listeners,
                 configuration.Routes,
-                configuration.Certificates,
+                configuration.Certificates.Values,
                 configuration.Acme,
                 configuration.Limits));
     }
@@ -34,9 +34,9 @@ public static class ProxyStatusReadinessConfigurationSourceMapper
     public static ProxyStatusReadinessConfigurationSourceSet FromConfiguration(
         int version,
         DateTimeOffset loadedAtUtc,
-        IReadOnlyList<RuntimeListener> listeners,
-        IReadOnlyList<RuntimeRoute> routes,
-        IReadOnlyDictionary<string, RuntimeCertificate> certificates,
+        IEnumerable<RuntimeListener> listeners,
+        IEnumerable<RuntimeRoute> routes,
+        IEnumerable<RuntimeCertificate> certificates,
         RuntimeAcmeOptions acme,
         RuntimeLimits limits)
     {
@@ -46,14 +46,17 @@ public static class ProxyStatusReadinessConfigurationSourceMapper
         ArgumentNullException.ThrowIfNull(acme);
         ArgumentNullException.ThrowIfNull(limits);
 
+        var listenerSources = ProxyStatusList.Copy(listeners);
+        var routeSources = ProxyStatusList.Copy(routes);
+
         return new ProxyStatusReadinessConfigurationSourceSet(
             true,
             version,
             loadedAtUtc,
-            ProxyConfiguredListenerSummarySourceMapper.FromListeners(listeners),
-            ProxyRouteSummarySourceMapper.FromRoutes(routes),
+            ProxyConfiguredListenerSummarySourceMapper.FromListeners(listenerSources),
+            ProxyRouteSummarySourceMapper.FromRoutes(routeSources),
             ProxyCertificateSummarySourceMapper.FromConfiguration(
-                listeners,
+                listenerSources,
                 certificates),
             ProxyAcmeSummaryConfigurationSourceMapper.FromConfiguration(acme),
             ProxyLimitConfigurationSummarySourceMapper.FromConfiguration(limits));
@@ -91,7 +94,7 @@ public static class ProxyCertificateSummarySourceMapper
 {
     public static ProxyCertificateSummarySource FromConfiguration(
         IEnumerable<RuntimeListener> listeners,
-        IReadOnlyDictionary<string, RuntimeCertificate> certificates)
+        IEnumerable<RuntimeCertificate> certificates)
     {
         ArgumentNullException.ThrowIfNull(listeners);
         ArgumentNullException.ThrowIfNull(certificates);
@@ -112,7 +115,7 @@ public static class ProxyCertificateSummarySourceMapper
 
         return new ProxyCertificateSummarySource(
             referenced,
-            certificates.Values
+            certificates
                 .Select(static certificate => new ProxyCertificateValiditySource(
                     certificate.Id,
                     certificate.Certificate.NotBefore,

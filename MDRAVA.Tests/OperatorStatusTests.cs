@@ -314,7 +314,7 @@ internal static class OperatorStatusTests
                     snapshot.LoadedAtUtc,
                     snapshot.Listeners,
                     snapshot.Routes,
-                    snapshot.Certificates,
+                    snapshot.Certificates.Values,
                     snapshot.Acme,
                     snapshot.Limits),
                 runtimeSummary,
@@ -764,6 +764,58 @@ internal static class OperatorStatusTests
         AssertEx.Equal(null, configuration.LimitConfiguration);
     }
 
+    public static void StatusReadinessConfigurationSourceMapperReadsEnumerableFactsWithoutSnapshot()
+    {
+        using var certificate = X509CertificateLoader.LoadPkcs12(
+            TestCertificates.CreateSelfSignedPfxBytes("readiness-cert.example.test"),
+            null);
+        var listener = (Listener() with
+        {
+            DefaultCertificateId = "default",
+            Protocols = RuntimeListenerProtocols.Http1AndHttp2
+        }).WithSniCertificates([new RuntimeSniCertificateBinding("alt.example.test", "alt")]);
+        var route = StaticRoute(cache: CachePolicy());
+        var runtimeCertificate = new RuntimeCertificate(
+            "default",
+            "default.pfx",
+            "pfx",
+            false,
+            certificate,
+            "manualPfx",
+            ["readiness-cert.example.test"]);
+        var listenerSources = new List<RuntimeListener> { listener };
+        var routeSources = new List<RuntimeRoute> { route };
+        var certificateSources = new List<RuntimeCertificate> { runtimeCertificate };
+
+        var source = ProxyStatusReadinessConfigurationSourceMapper.FromConfiguration(
+            version: 24,
+            DateTimeOffset.UnixEpoch.AddMinutes(24),
+            listenerSources.Select(static source => source),
+            routeSources.Select(static source => source),
+            certificateSources.Select(static source => source),
+            new RuntimeAcmeOptions(false, true, "", [], false, "acme", 30, 720, 60, []),
+            new RuntimeLimits(4096, 128, 240, 30, 32768, 128, 8192, 104857600, 8192, TimeSpan.FromSeconds(15)));
+
+        listenerSources.Clear();
+        routeSources.Clear();
+        certificateSources.Clear();
+
+        AssertEx.True(source.HasActiveConfiguration);
+        AssertEx.Equal(24, source.ConfigGeneration!.Value);
+        AssertEx.Equal(DateTimeOffset.UnixEpoch.AddMinutes(24), source.ConfigurationLoadedAtUtc!.Value);
+        AssertEx.Equal(1, source.ConfiguredListeners.Count);
+        AssertEx.True(source.ConfiguredListeners[0].Http1Enabled);
+        AssertEx.True(source.ConfiguredListeners[0].Http2Enabled);
+        AssertEx.Equal(1, source.Routes.Count);
+        AssertEx.Equal("main", source.Routes[0].SiteName);
+        var certificates = AssertEx.NotNull(source.Certificates);
+        AssertEx.Equal("default", certificates.ReferencedCertificateIds[0]);
+        AssertEx.Equal("alt", certificates.ReferencedCertificateIds[1]);
+        AssertEx.Equal("default", certificates.LoadedCertificates[0].Id);
+        AssertEx.False(source.ConfiguredListeners is ProxyConfiguredListenerSummarySource[], "Readiness configured listener sources should not expose a mutable array.");
+        AssertEx.False(source.Routes is ProxyRouteSummarySource[], "Readiness route sources should not expose a mutable array.");
+    }
+
     public static void StatusReadinessSourceMapperConsumesConfigurationSourceSetWithoutConfigurationSnapshot()
     {
         var configuration = new ProxyStatusReadinessConfigurationSourceSet(
@@ -905,7 +957,7 @@ internal static class OperatorStatusTests
 
         var source = ProxyCertificateSummarySourceMapper.FromConfiguration(
             listenerSources.Select(static source => source),
-            certificateSources);
+            certificateSources.Values.Select(static source => source));
 
         listenerSources.Clear();
         certificateSources.Clear();
