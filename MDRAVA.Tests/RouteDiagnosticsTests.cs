@@ -1398,7 +1398,55 @@ internal static class RouteDiagnosticsTests
         AssertEx.Equal("diag.test", accepted.Input.RequestHead.Host);
         AssertEx.True(accepted.Input.Findings.Any(static finding => finding.Code == "sensitive_header_redacted"));
         AssertEx.False(accepted.Input.Findings is List<RouteMatchDryRunFinding>, "Route diagnostics request findings should not expose a mutable list.");
+        AssertEx.Equal("HTTPS", request.Scheme);
+        AssertEx.Equal(" diag.test ", request.Host);
+        AssertEx.Equal("post", request.Method);
+        AssertEx.Equal("/api", request.Path);
+        AssertEx.Equal("id=1", request.Query);
+        AssertEx.Equal("127.0.0.1", request.ClientIp);
+        AssertEx.Equal("tls", request.ListenerName);
+        AssertEx.Equal("HTTP3", request.Protocol);
         AssertEx.False(request.Headers is Dictionary<string, string?>, "Route diagnostics dry-run request headers should not expose a mutable dictionary.");
+        AssertEx.Throws<ArgumentNullException>(() => new RouteMatchDryRunRequest(
+            null!,
+            "diag.test",
+            null,
+            "GET",
+            "/",
+            "",
+            NoHeaders(),
+            null,
+            null));
+        AssertEx.Throws<ArgumentNullException>(() => new RouteMatchDryRunRequest(
+            "http",
+            null!,
+            null,
+            "GET",
+            "/",
+            "",
+            NoHeaders(),
+            null,
+            null));
+        AssertEx.Throws<ArgumentNullException>(() => new RouteMatchDryRunRequest(
+            "http",
+            "diag.test",
+            null,
+            null!,
+            "/",
+            "",
+            NoHeaders(),
+            null,
+            null));
+        AssertEx.Throws<ArgumentNullException>(() => new RouteMatchDryRunRequest(
+            "http",
+            "diag.test",
+            null,
+            "GET",
+            null!,
+            "",
+            NoHeaders(),
+            null,
+            null));
         AssertEx.Throws<ArgumentNullException>(() => new RouteMatchDryRunRequest(
             "http",
             "diag.test",
