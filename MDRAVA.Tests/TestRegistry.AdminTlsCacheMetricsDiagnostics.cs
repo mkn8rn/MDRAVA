@@ -131,7 +131,7 @@ internal static partial class TestRegistry
     Test("Route dry-run reports path rewrite result", Sync(RouteDiagnosticsTests.DryRunReportsPathRewriteResult), TestTaxonomy.Routing),
     Test("Route dry-run can select HTTP/3 protocol listener", Sync(RouteDiagnosticsTests.DryRunCanSelectHttp3ProtocolListener), TestTaxonomy.Http3, TestTaxonomy.Routing),
     Test("Route diagnostics listener selector reads listeners without configuration snapshot", Sync(RouteDiagnosticsTests.ListenerSelectorReadsListenersWithoutConfigurationSnapshot), TestTaxonomy.Routing, TestTaxonomy.Config),
-    Test("Route diagnostics runtime configuration mapper reads active snapshot", Sync(RouteDiagnosticsTests.RouteDiagnosticsRuntimeConfigurationMapperReadsActiveSnapshot), TestTaxonomy.Routing, TestTaxonomy.Config),
+    Test("Route diagnostics runtime configuration mapper reads runtime facts without snapshot", Sync(RouteDiagnosticsTests.RouteDiagnosticsRuntimeConfigurationMapperReadsRuntimeFactsWithoutSnapshot), TestTaxonomy.Routing, TestTaxonomy.Config),
     Test("Route dry-run reports generated route actions", Sync(RouteDiagnosticsTests.DryRunReportsGeneratedRouteActions), TestTaxonomy.Routing),
     Test("Route dry-run policy explainer uses named policy outcomes", Sync(RouteDiagnosticsTests.DryRunPolicyExplainerUsesNamedPolicyOutcomes), TestTaxonomy.Routing, TestTaxonomy.Caching, TestTaxonomy.RetryCircuit),
     Test("Route diagnostics action decision names proxy and generated responses", Sync(RouteDiagnosticsTests.RouteDiagnosticsActionDecisionNamesProxyAndGeneratedResponses), TestTaxonomy.Routing),

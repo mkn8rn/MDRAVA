@@ -23,6 +23,8 @@ public sealed class ProxyRouteDiagnosticsConfigurationSource
         }
 
         return ProxyRouteDiagnosticsConfigurationReadResult.Available(
-            ProxyRouteDiagnosticsRuntimeConfigurationSnapshotMapper.FromConfiguration(available.Snapshot));
+            ProxyRouteDiagnosticsRuntimeConfigurationSnapshotMapper.FromSources(
+                available.Snapshot.Listeners,
+                available.Snapshot.Routes));
     }
 }

@@ -25,11 +25,12 @@ public sealed class ProxyRouteDiagnosticsRuntimeConfigurationSnapshot
 
 public static class ProxyRouteDiagnosticsRuntimeConfigurationSnapshotMapper
 {
-    public static ProxyRouteDiagnosticsRuntimeConfigurationSnapshot FromConfiguration(
-        ProxyConfigurationSnapshot snapshot)
+    public static ProxyRouteDiagnosticsRuntimeConfigurationSnapshot FromSources(
+        IEnumerable<RuntimeListener> runtimeListeners,
+        IEnumerable<RuntimeRoute> runtimeRoutes)
     {
         return new ProxyRouteDiagnosticsRuntimeConfigurationSnapshot(
-            snapshot.Listeners,
-            snapshot.Routes);
+            runtimeListeners,
+            runtimeRoutes);
     }
 }

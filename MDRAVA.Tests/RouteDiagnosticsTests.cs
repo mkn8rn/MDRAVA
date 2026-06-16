@@ -908,7 +908,7 @@ internal static class RouteDiagnosticsTests
         AssertEx.False(diagnosticRoute.RetryMethods is string[], "Route diagnostics retry methods should not expose a mutable array.");
     }
 
-    public static void RouteDiagnosticsRuntimeConfigurationMapperReadsActiveSnapshot()
+    public static void RouteDiagnosticsRuntimeConfigurationMapperReadsRuntimeFactsWithoutSnapshot()
     {
         var listener = new RuntimeListener(
             "main",
@@ -940,10 +940,10 @@ internal static class RouteDiagnosticsTests
             new RuntimeMaintenancePolicy(false, null, "text/plain; charset=utf-8", "Service Unavailable"),
             RuntimeCachePolicy.Disabled,
             new RuntimeRouteResolvedOptions(104857600, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30), true));
-        var runtimeSnapshot = RuntimeSnapshot([route], [listener]);
-
         var diagnosticsSnapshot = ProxyRouteDiagnosticsRuntimeConfigurationSnapshotMapper
-            .FromConfiguration(runtimeSnapshot);
+            .FromSources(
+                new[] { listener }.Select(static source => source),
+                new[] { route }.Select(static source => source));
 
         AssertEx.Equal(1, diagnosticsSnapshot.Listeners.Count);
         AssertEx.Equal("main", diagnosticsSnapshot.Listeners[0].Name);
@@ -954,7 +954,7 @@ internal static class RouteDiagnosticsTests
 
         var listenerSources = new List<RuntimeListener> { listener };
         var routeSources = new List<RuntimeRoute> { route };
-        var directSnapshot = new ProxyRouteDiagnosticsRuntimeConfigurationSnapshot(
+        var directSnapshot = ProxyRouteDiagnosticsRuntimeConfigurationSnapshotMapper.FromSources(
             listenerSources.Select(static source => source),
             routeSources.Select(static source => source));
 
