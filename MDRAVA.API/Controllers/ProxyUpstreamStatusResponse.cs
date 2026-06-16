@@ -28,6 +28,8 @@ public sealed record ProxyUpstreamStatusResponse(
     public static IReadOnlyList<ProxyUpstreamStatusResponse> FromStatuses(
         IEnumerable<BusinessProxyUpstreamStatus> statuses)
     {
+        ArgumentNullException.ThrowIfNull(statuses);
+
         return ApiResponseList.Copy(statuses.Select(FromStatus));
     }
 
