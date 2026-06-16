@@ -17,7 +17,7 @@ public sealed class ProxyConfigurationAcmeRenewalScheduleInputSource : IAcmeRene
         return _configurationStore.ReadSnapshot() is ProxyConfigurationSnapshotReadResult.AvailableResult available
             ? AcmeRenewalScheduleInputReadResult.Available(
                 AcmeRenewalScheduleInputMapper.FromSource(
-                    AcmeRenewalScheduleSourceMapper.FromRuntimeConfiguration(available.Snapshot.Acme)))
+                    AcmeRenewalScheduleSourceMapper.FromSource(available.Snapshot.Acme)))
             : AcmeRenewalScheduleInputReadResult.MissingConfiguration;
     }
 }

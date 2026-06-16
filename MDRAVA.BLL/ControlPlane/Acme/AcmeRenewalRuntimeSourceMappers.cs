@@ -50,8 +50,10 @@ public static class AcmeRenewalConfigurationSourceMapper
 
 public static class AcmeRenewalScheduleSourceMapper
 {
-    public static AcmeRenewalScheduleSource FromRuntimeConfiguration(RuntimeAcmeOptions acme)
+    public static AcmeRenewalScheduleSource FromSource(RuntimeAcmeOptions acme)
     {
+        ArgumentNullException.ThrowIfNull(acme);
+
         return new AcmeRenewalScheduleSource(
             acme.Enabled,
             acme.CheckIntervalMinutes);

@@ -590,10 +590,10 @@ internal static class AcmeTests
         using var temp = TemporaryDirectory.Create();
         var policy = new AcmeRenewalSchedulePolicy();
         var belowMinimum = AcmeRenewalScheduleInputMapper.FromSource(
-            AcmeRenewalScheduleSourceMapper.FromRuntimeConfiguration(
+            AcmeRenewalScheduleSourceMapper.FromSource(
                 CreateStore(temp.Path, checkIntervalMinutes: 1).Snapshot.Acme));
         var aboveMaximum = AcmeRenewalScheduleInputMapper.FromSource(
-            AcmeRenewalScheduleSourceMapper.FromRuntimeConfiguration(
+            AcmeRenewalScheduleSourceMapper.FromSource(
                 CreateStore(temp.Path, checkIntervalMinutes: 2000).Snapshot.Acme));
 
         AssertEx.Equal(TimeSpan.FromMinutes(5), policy.ResolveDelay(
