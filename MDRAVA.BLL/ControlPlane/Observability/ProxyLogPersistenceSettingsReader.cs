@@ -4,8 +4,10 @@ namespace MDRAVA.BLL.ControlPlane.Observability;
 
 public static class ProxyLogPersistenceSettingsMapper
 {
-    public static ProxyLogPersistenceSettings FromRuntimeOptions(RuntimeLogPersistenceOptions options)
+    public static ProxyLogPersistenceSettings FromSource(RuntimeLogPersistenceOptions options)
     {
+        ArgumentNullException.ThrowIfNull(options);
+
         return new ProxyLogPersistenceSettings(
             options.AccessLogEnabled,
             options.AdminAuditEnabled,

@@ -194,9 +194,9 @@ internal static class LogPersistenceTests
         AssertEx.Equal(null, status.LastWriteFailure);
     }
 
-    public static void LogPersistenceSettingsMapperReadsRuntimeOptionsWithoutConfigurationSnapshot()
+    public static void LogPersistenceSettingsMapperReadsSourceWithoutConfigurationSnapshot()
     {
-        var settings = ProxyLogPersistenceSettingsMapper.FromRuntimeOptions(
+        var settings = ProxyLogPersistenceSettingsMapper.FromSource(
             new RuntimeLogPersistenceOptions(
                 AccessLogEnabled: true,
                 AdminAuditEnabled: false,

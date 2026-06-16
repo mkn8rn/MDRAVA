@@ -18,7 +18,7 @@ internal static partial class TestRegistry
     Test("Log persistence truncates long fields", Sync(LogPersistenceTests.LogPersistenceTruncatesLongFields), TestTaxonomy.Limits, TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),
     Test("Log persistence write failure does not crash", Sync(LogPersistenceTests.LogPersistenceWriteFailureDoesNotCrash), TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),
     Test("Log persistence status reports enabled settings", Sync(LogPersistenceTests.LogPersistenceStatusReportsEnabledSettings), TestTaxonomy.Config, TestTaxonomy.Metrics),
-    Test("Log persistence settings mapper reads runtime options without configuration snapshot", Sync(LogPersistenceTests.LogPersistenceSettingsMapperReadsRuntimeOptionsWithoutConfigurationSnapshot), TestTaxonomy.Config, TestTaxonomy.Metrics),
+    Test("Log persistence settings mapper reads source without configuration snapshot", Sync(LogPersistenceTests.LogPersistenceSettingsMapperReadsSourceWithoutConfigurationSnapshot), TestTaxonomy.Config, TestTaxonomy.Metrics),
     Test("Log persistence settings reader uses named disabled defaults when source missing", Sync(LogPersistenceTests.LogPersistenceSettingsReaderUsesNamedDisabledDefaultsWhenSourceMissing), TestTaxonomy.Config, TestTaxonomy.Metrics),
     Test("Log persistence status reports disabled settings", Sync(LogPersistenceTests.LogPersistenceStatusReportsDisabledSettings), TestTaxonomy.Config, TestTaxonomy.Metrics),
     Test("Log persistence status records last write failure without secrets", Sync(LogPersistenceTests.LogPersistenceStatusRecordsLastWriteFailureWithoutSecrets), TestTaxonomy.Metrics, TestTaxonomy.SecurityNegativePaths),

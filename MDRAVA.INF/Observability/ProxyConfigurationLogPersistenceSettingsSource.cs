@@ -18,7 +18,7 @@ public sealed class ProxyConfigurationLogPersistenceSettingsSource
         if (_configurationStore.ReadSnapshot() is ProxyConfigurationSnapshotReadResult.AvailableResult available)
         {
             return ProxyLogPersistenceSettingsSourceResult.Available(
-                ProxyLogPersistenceSettingsMapper.FromRuntimeOptions(available.Snapshot.Observability.LogPersistence));
+                ProxyLogPersistenceSettingsMapper.FromSource(available.Snapshot.Observability.LogPersistence));
         }
 
         return ProxyLogPersistenceSettingsSourceResult.MissingConfiguration;
