@@ -707,6 +707,7 @@ internal static class ConfigurationTests
         var listenerResponses = RuntimeListenerResponse.FromListeners(projection.Listeners);
         AssertEx.False(listenerResponses is RuntimeListenerResponse[], "Configuration API listeners should not expose a mutable array.");
         AssertEx.False(listenerResponses[0].SniCertificates is RuntimeSniCertificateBindingResponse[], "Configuration API listener SNI certificates should not expose a mutable array.");
+        AssertEx.Throws<ArgumentNullException>(() => RuntimeRouteResponse.FromRoutes(null!));
         var routeResponses = RuntimeRouteResponse.FromRoutes(projection.Routes.Select(static route => route));
         AssertEx.False(routeResponses is RuntimeRouteResponse[], "Configuration API routes should not expose a mutable array.");
         AssertEx.False(routeResponses[0].Upstreams is RuntimeUpstreamResponse[], "Configuration API route upstreams should not expose a mutable array.");

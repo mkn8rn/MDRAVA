@@ -29,6 +29,8 @@ public sealed record RuntimeRouteResponse(
 
     public static IReadOnlyList<RuntimeRouteResponse> FromRoutes(IEnumerable<BusinessRuntimeRouteProjection> routes)
     {
+        ArgumentNullException.ThrowIfNull(routes);
+
         return ApiResponseList.Copy(routes.Select(FromRoute));
     }
 
