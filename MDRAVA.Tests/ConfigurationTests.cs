@@ -1508,6 +1508,26 @@ internal static class ConfigurationTests
         AssertEx.Equal("home.test", directListenerResponse.SniCertificates[0].HostName);
         AssertEx.Equal("web", directListenerResponse.Name);
         AssertEx.False(directListenerResponse.SniCertificates is RuntimeSniCertificateBindingResponse[], "Direct configuration API listener SNI certificates should not expose a mutable array.");
+        var directListenerIdentityResponse = new RuntimeListenerIdentityResponse(
+            name: "web",
+            address: "127.0.0.1",
+            port: 18080,
+            transport: RuntimeListenerTransportResponse.Https,
+            tlsEnabled: true,
+            key: "web|127.0.0.1|18080|https",
+            bindKey: "127.0.0.1|18080|https");
+        var directQuicIdentityResponse = new RuntimeQuicListenerIdentityResponse(
+            name: "web",
+            address: "127.0.0.1",
+            port: 18080,
+            tlsEnabled: true,
+            key: "web|127.0.0.1|18080|udp|quic",
+            bindKey: "127.0.0.1|18080|udp|quic");
+
+        AssertEx.Equal("web|127.0.0.1|18080|https", directListenerIdentityResponse.Key);
+        AssertEx.Equal("127.0.0.1|18080|https", directListenerIdentityResponse.BindKey);
+        AssertEx.Equal("web|127.0.0.1|18080|udp|quic", directQuicIdentityResponse.Key);
+        AssertEx.Equal("127.0.0.1|18080|udp|quic", directQuicIdentityResponse.BindKey);
         AssertEx.Throws<ArgumentNullException>(() => RuntimeRouteResponse.FromRoutes(null!));
         var routeResponses = RuntimeRouteResponse.FromRoutes(projection.Routes.Select(static route => route));
         AssertEx.False(routeResponses is RuntimeRouteResponse[], "Configuration API routes should not expose a mutable array.");

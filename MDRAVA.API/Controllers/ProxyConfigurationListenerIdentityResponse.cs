@@ -4,31 +4,52 @@ using BusinessRuntimeSniCertificateBindingProjection = MDRAVA.BLL.Configuration.
 
 namespace MDRAVA.API.Controllers;
 
-public sealed record RuntimeListenerIdentityResponse(
-    string Name,
-    string Address,
-    int Port,
-    RuntimeListenerTransportResponse Transport,
-    bool TlsEnabled)
+public sealed record RuntimeListenerIdentityResponse
 {
-    public string Key { get; init; } = "";
+    public RuntimeListenerIdentityResponse(
+        string name,
+        string address,
+        int port,
+        RuntimeListenerTransportResponse transport,
+        bool tlsEnabled,
+        string key,
+        string bindKey)
+    {
+        Name = name;
+        Address = address;
+        Port = port;
+        Transport = transport;
+        TlsEnabled = tlsEnabled;
+        Key = key;
+        BindKey = bindKey;
+    }
 
-    public string BindKey { get; init; } = "";
+    public string Name { get; }
+
+    public string Address { get; }
+
+    public int Port { get; }
+
+    public RuntimeListenerTransportResponse Transport { get; }
+
+    public bool TlsEnabled { get; }
+
+    public string Key { get; }
+
+    public string BindKey { get; }
 
     public static RuntimeListenerIdentityResponse FromProjection(BusinessRuntimeListenerIdentityProjection projection)
     {
         ArgumentNullException.ThrowIfNull(projection);
 
         return new RuntimeListenerIdentityResponse(
-            projection.Name,
-            projection.Address,
-            projection.Port,
-            RuntimeListenerTransportResponseMapper.FromTransport(projection.Transport),
-            projection.TlsEnabled)
-        {
-            Key = projection.Key,
-            BindKey = projection.BindKey
-        };
+            name: projection.Name,
+            address: projection.Address,
+            port: projection.Port,
+            transport: RuntimeListenerTransportResponseMapper.FromTransport(projection.Transport),
+            tlsEnabled: projection.TlsEnabled,
+            key: projection.Key,
+            bindKey: projection.BindKey);
     }
 }
 

@@ -49,15 +49,35 @@ public sealed record RuntimeHttp3ListenerReadinessResponse(
     }
 }
 
-public sealed record RuntimeQuicListenerIdentityResponse(
-    string Name,
-    string Address,
-    int Port,
-    bool TlsEnabled)
+public sealed record RuntimeQuicListenerIdentityResponse
 {
-    public string Key { get; init; } = "";
+    public RuntimeQuicListenerIdentityResponse(
+        string name,
+        string address,
+        int port,
+        bool tlsEnabled,
+        string key,
+        string bindKey)
+    {
+        Name = name;
+        Address = address;
+        Port = port;
+        TlsEnabled = tlsEnabled;
+        Key = key;
+        BindKey = bindKey;
+    }
 
-    public string BindKey { get; init; } = "";
+    public string Name { get; }
+
+    public string Address { get; }
+
+    public int Port { get; }
+
+    public bool TlsEnabled { get; }
+
+    public string Key { get; }
+
+    public string BindKey { get; }
 
     public static RuntimeQuicListenerIdentityResponse FromProjection(
         BusinessRuntimeQuicListenerIdentityProjection projection)
@@ -65,14 +85,12 @@ public sealed record RuntimeQuicListenerIdentityResponse(
         ArgumentNullException.ThrowIfNull(projection);
 
         return new RuntimeQuicListenerIdentityResponse(
-            projection.Name,
-            projection.Address,
-            projection.Port,
-            projection.TlsEnabled)
-        {
-            Key = projection.Key,
-            BindKey = projection.BindKey
-        };
+            name: projection.Name,
+            address: projection.Address,
+            port: projection.Port,
+            tlsEnabled: projection.TlsEnabled,
+            key: projection.Key,
+            bindKey: projection.BindKey);
     }
 }
 
