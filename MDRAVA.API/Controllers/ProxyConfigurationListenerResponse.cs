@@ -4,37 +4,100 @@ using BusinessRuntimeListenerProtocols = MDRAVA.BLL.Configuration.RuntimeListene
 
 namespace MDRAVA.API.Controllers;
 
-public sealed record RuntimeListenerResponse(
-    string Name,
-    string Address,
-    int Port,
-    bool Enabled,
-    RuntimeListenerTransportResponse Transport,
-    string? DefaultCertificateId,
-    IReadOnlyList<RuntimeSniCertificateBindingResponse> SniCertificates,
-    int Backlog,
-    int MaxRequestHeadBytes,
-    int MaxResponseHeadBytes,
-    int MaxChunkLineBytes,
-    int ForwardingBufferBytes)
+public sealed record RuntimeListenerResponse
 {
-    public RuntimeListenerIdentityResponse Identity { get; init; } = null!;
+    public RuntimeListenerResponse(
+        string name,
+        string address,
+        int port,
+        bool enabled,
+        RuntimeListenerTransportResponse transport,
+        string? defaultCertificateId,
+        IReadOnlyList<RuntimeSniCertificateBindingResponse> sniCertificates,
+        int backlog,
+        int maxRequestHeadBytes,
+        int maxResponseHeadBytes,
+        int maxChunkLineBytes,
+        int forwardingBufferBytes,
+        RuntimeListenerIdentityResponse identity,
+        RuntimeListenerProtocolsResponse protocols,
+        RuntimeHttp3EnablementResponse http3Enablement,
+        RuntimeHttp3AltSvcResponse http3AltSvc,
+        RuntimeHttp2LimitsResponse http2Limits,
+        bool tcpTrafficEnabled,
+        bool http3ProtocolConfigured,
+        RuntimeQuicListenerIdentityResponse? quicIdentity,
+        RuntimeHttp3ListenerReadinessResponse http3)
+    {
+        ArgumentNullException.ThrowIfNull(identity);
+        ArgumentNullException.ThrowIfNull(http3AltSvc);
+        ArgumentNullException.ThrowIfNull(http2Limits);
+        ArgumentNullException.ThrowIfNull(http3);
 
-    public RuntimeListenerProtocolsResponse Protocols { get; init; }
+        Name = name;
+        Address = address;
+        Port = port;
+        Enabled = enabled;
+        Transport = transport;
+        DefaultCertificateId = defaultCertificateId;
+        SniCertificates = ApiResponseList.Copy(sniCertificates);
+        Backlog = backlog;
+        MaxRequestHeadBytes = maxRequestHeadBytes;
+        MaxResponseHeadBytes = maxResponseHeadBytes;
+        MaxChunkLineBytes = maxChunkLineBytes;
+        ForwardingBufferBytes = forwardingBufferBytes;
+        Identity = identity;
+        Protocols = protocols;
+        Http3Enablement = http3Enablement;
+        Http3AltSvc = http3AltSvc;
+        Http2Limits = http2Limits;
+        TcpTrafficEnabled = tcpTrafficEnabled;
+        Http3ProtocolConfigured = http3ProtocolConfigured;
+        QuicIdentity = quicIdentity;
+        Http3 = http3;
+    }
 
-    public RuntimeHttp3EnablementResponse Http3Enablement { get; init; }
+    public string Name { get; }
 
-    public RuntimeHttp3AltSvcResponse Http3AltSvc { get; init; } = null!;
+    public string Address { get; }
 
-    public RuntimeHttp2LimitsResponse Http2Limits { get; init; } = null!;
+    public int Port { get; }
 
-    public bool TcpTrafficEnabled { get; init; }
+    public bool Enabled { get; }
 
-    public bool Http3ProtocolConfigured { get; init; }
+    public RuntimeListenerTransportResponse Transport { get; }
 
-    public RuntimeQuicListenerIdentityResponse? QuicIdentity { get; init; }
+    public string? DefaultCertificateId { get; }
 
-    public RuntimeHttp3ListenerReadinessResponse Http3 { get; init; } = null!;
+    public IReadOnlyList<RuntimeSniCertificateBindingResponse> SniCertificates { get; }
+
+    public int Backlog { get; }
+
+    public int MaxRequestHeadBytes { get; }
+
+    public int MaxResponseHeadBytes { get; }
+
+    public int MaxChunkLineBytes { get; }
+
+    public int ForwardingBufferBytes { get; }
+
+    public RuntimeListenerIdentityResponse Identity { get; }
+
+    public RuntimeListenerProtocolsResponse Protocols { get; }
+
+    public RuntimeHttp3EnablementResponse Http3Enablement { get; }
+
+    public RuntimeHttp3AltSvcResponse Http3AltSvc { get; }
+
+    public RuntimeHttp2LimitsResponse Http2Limits { get; }
+
+    public bool TcpTrafficEnabled { get; }
+
+    public bool Http3ProtocolConfigured { get; }
+
+    public RuntimeQuicListenerIdentityResponse? QuicIdentity { get; }
+
+    public RuntimeHttp3ListenerReadinessResponse Http3 { get; }
 
     public static IReadOnlyList<RuntimeListenerResponse> FromListeners(
         IReadOnlyList<BusinessRuntimeListenerProjection> listeners)
@@ -49,31 +112,29 @@ public sealed record RuntimeListenerResponse(
         ArgumentNullException.ThrowIfNull(listener);
 
         return new RuntimeListenerResponse(
-            listener.Name,
-            listener.Address,
-            listener.Port,
-            listener.Enabled,
-            RuntimeListenerTransportResponseMapper.FromTransport(listener.Transport),
-            listener.DefaultCertificateId,
-            RuntimeSniCertificateBindingResponse.FromBindings(listener.SniCertificates),
-            listener.Backlog,
-            listener.MaxRequestHeadBytes,
-            listener.MaxResponseHeadBytes,
-            listener.MaxChunkLineBytes,
-            listener.ForwardingBufferBytes)
-        {
-            Identity = RuntimeListenerIdentityResponse.FromProjection(listener.Identity),
-            Protocols = RuntimeListenerProtocolsResponseMapper.FromProtocols(listener.Protocols),
-            Http3Enablement = RuntimeHttp3EnablementResponseMapper.FromEnablement(listener.Http3Enablement),
-            Http3AltSvc = RuntimeHttp3AltSvcResponse.FromProjection(listener.Http3AltSvc),
-            Http2Limits = RuntimeHttp2LimitsResponse.FromProjection(listener.Http2Limits),
-            TcpTrafficEnabled = listener.TcpTrafficEnabled,
-            Http3ProtocolConfigured = listener.Http3ProtocolConfigured,
-            QuicIdentity = listener.QuicIdentity is null
+            name: listener.Name,
+            address: listener.Address,
+            port: listener.Port,
+            enabled: listener.Enabled,
+            transport: RuntimeListenerTransportResponseMapper.FromTransport(listener.Transport),
+            defaultCertificateId: listener.DefaultCertificateId,
+            sniCertificates: RuntimeSniCertificateBindingResponse.FromBindings(listener.SniCertificates),
+            backlog: listener.Backlog,
+            maxRequestHeadBytes: listener.MaxRequestHeadBytes,
+            maxResponseHeadBytes: listener.MaxResponseHeadBytes,
+            maxChunkLineBytes: listener.MaxChunkLineBytes,
+            forwardingBufferBytes: listener.ForwardingBufferBytes,
+            identity: RuntimeListenerIdentityResponse.FromProjection(listener.Identity),
+            protocols: RuntimeListenerProtocolsResponseMapper.FromProtocols(listener.Protocols),
+            http3Enablement: RuntimeHttp3EnablementResponseMapper.FromEnablement(listener.Http3Enablement),
+            http3AltSvc: RuntimeHttp3AltSvcResponse.FromProjection(listener.Http3AltSvc),
+            http2Limits: RuntimeHttp2LimitsResponse.FromProjection(listener.Http2Limits),
+            tcpTrafficEnabled: listener.TcpTrafficEnabled,
+            http3ProtocolConfigured: listener.Http3ProtocolConfigured,
+            quicIdentity: listener.QuicIdentity is null
                 ? null
                 : RuntimeQuicListenerIdentityResponse.FromProjection(listener.QuicIdentity),
-            Http3 = RuntimeHttp3ListenerReadinessResponse.FromProjection(listener.Http3)
-        };
+            http3: RuntimeHttp3ListenerReadinessResponse.FromProjection(listener.Http3));
     }
 }
 

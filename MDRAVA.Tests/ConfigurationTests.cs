@@ -1226,7 +1226,28 @@ internal static class ConfigurationTests
             thumbprint: responseCertificates[0].Thumbprint,
             notBefore: responseCertificates[0].NotBefore,
             notAfter: responseCertificates[0].NotAfter);
-        responseListeners[0] = responseListeners[0] with { Name = "replacement-listener" };
+        responseListeners[0] = new RuntimeListenerResponse(
+            name: "replacement-listener",
+            address: responseListeners[0].Address,
+            port: responseListeners[0].Port,
+            enabled: responseListeners[0].Enabled,
+            transport: responseListeners[0].Transport,
+            defaultCertificateId: responseListeners[0].DefaultCertificateId,
+            sniCertificates: responseListeners[0].SniCertificates,
+            backlog: responseListeners[0].Backlog,
+            maxRequestHeadBytes: responseListeners[0].MaxRequestHeadBytes,
+            maxResponseHeadBytes: responseListeners[0].MaxResponseHeadBytes,
+            maxChunkLineBytes: responseListeners[0].MaxChunkLineBytes,
+            forwardingBufferBytes: responseListeners[0].ForwardingBufferBytes,
+            identity: responseListeners[0].Identity,
+            protocols: responseListeners[0].Protocols,
+            http3Enablement: responseListeners[0].Http3Enablement,
+            http3AltSvc: responseListeners[0].Http3AltSvc,
+            http2Limits: responseListeners[0].Http2Limits,
+            tcpTrafficEnabled: responseListeners[0].TcpTrafficEnabled,
+            http3ProtocolConfigured: responseListeners[0].Http3ProtocolConfigured,
+            quicIdentity: responseListeners[0].QuicIdentity,
+            http3: responseListeners[0].Http3);
         responseRoutes[0] = new RuntimeRouteResponse(
             name: "replacement-route",
             host: responseRoutes[0].Host,
@@ -1388,6 +1409,105 @@ internal static class ConfigurationTests
         var listenerResponses = RuntimeListenerResponse.FromListeners(projection.Listeners);
         AssertEx.False(listenerResponses is RuntimeListenerResponse[], "Configuration API listeners should not expose a mutable array.");
         AssertEx.False(listenerResponses[0].SniCertificates is RuntimeSniCertificateBindingResponse[], "Configuration API listener SNI certificates should not expose a mutable array.");
+        var directSniCertificates = new List<RuntimeSniCertificateBindingResponse>
+        {
+            listenerResponses[0].SniCertificates[0]
+        };
+        var directListenerResponse = new RuntimeListenerResponse(
+            name: "web",
+            address: listenerResponses[0].Address,
+            port: listenerResponses[0].Port,
+            enabled: listenerResponses[0].Enabled,
+            transport: listenerResponses[0].Transport,
+            defaultCertificateId: listenerResponses[0].DefaultCertificateId,
+            sniCertificates: directSniCertificates,
+            backlog: listenerResponses[0].Backlog,
+            maxRequestHeadBytes: listenerResponses[0].MaxRequestHeadBytes,
+            maxResponseHeadBytes: listenerResponses[0].MaxResponseHeadBytes,
+            maxChunkLineBytes: listenerResponses[0].MaxChunkLineBytes,
+            forwardingBufferBytes: listenerResponses[0].ForwardingBufferBytes,
+            identity: listenerResponses[0].Identity,
+            protocols: listenerResponses[0].Protocols,
+            http3Enablement: listenerResponses[0].Http3Enablement,
+            http3AltSvc: listenerResponses[0].Http3AltSvc,
+            http2Limits: listenerResponses[0].Http2Limits,
+            tcpTrafficEnabled: listenerResponses[0].TcpTrafficEnabled,
+            http3ProtocolConfigured: listenerResponses[0].Http3ProtocolConfigured,
+            quicIdentity: listenerResponses[0].QuicIdentity,
+            http3: listenerResponses[0].Http3);
+
+        directSniCertificates[0] = new RuntimeSniCertificateBindingResponse("replacement.test", "replacement-cert");
+        directSniCertificates.Clear();
+
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeListenerResponse(
+            name: "web",
+            address: listenerResponses[0].Address,
+            port: listenerResponses[0].Port,
+            enabled: listenerResponses[0].Enabled,
+            transport: listenerResponses[0].Transport,
+            defaultCertificateId: listenerResponses[0].DefaultCertificateId,
+            sniCertificates: null!,
+            backlog: listenerResponses[0].Backlog,
+            maxRequestHeadBytes: listenerResponses[0].MaxRequestHeadBytes,
+            maxResponseHeadBytes: listenerResponses[0].MaxResponseHeadBytes,
+            maxChunkLineBytes: listenerResponses[0].MaxChunkLineBytes,
+            forwardingBufferBytes: listenerResponses[0].ForwardingBufferBytes,
+            identity: listenerResponses[0].Identity,
+            protocols: listenerResponses[0].Protocols,
+            http3Enablement: listenerResponses[0].Http3Enablement,
+            http3AltSvc: listenerResponses[0].Http3AltSvc,
+            http2Limits: listenerResponses[0].Http2Limits,
+            tcpTrafficEnabled: listenerResponses[0].TcpTrafficEnabled,
+            http3ProtocolConfigured: listenerResponses[0].Http3ProtocolConfigured,
+            quicIdentity: listenerResponses[0].QuicIdentity,
+            http3: listenerResponses[0].Http3));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeListenerResponse(
+            name: "web",
+            address: listenerResponses[0].Address,
+            port: listenerResponses[0].Port,
+            enabled: listenerResponses[0].Enabled,
+            transport: listenerResponses[0].Transport,
+            defaultCertificateId: listenerResponses[0].DefaultCertificateId,
+            sniCertificates: [],
+            backlog: listenerResponses[0].Backlog,
+            maxRequestHeadBytes: listenerResponses[0].MaxRequestHeadBytes,
+            maxResponseHeadBytes: listenerResponses[0].MaxResponseHeadBytes,
+            maxChunkLineBytes: listenerResponses[0].MaxChunkLineBytes,
+            forwardingBufferBytes: listenerResponses[0].ForwardingBufferBytes,
+            identity: null!,
+            protocols: listenerResponses[0].Protocols,
+            http3Enablement: listenerResponses[0].Http3Enablement,
+            http3AltSvc: listenerResponses[0].Http3AltSvc,
+            http2Limits: listenerResponses[0].Http2Limits,
+            tcpTrafficEnabled: listenerResponses[0].TcpTrafficEnabled,
+            http3ProtocolConfigured: listenerResponses[0].Http3ProtocolConfigured,
+            quicIdentity: listenerResponses[0].QuicIdentity,
+            http3: listenerResponses[0].Http3));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeListenerResponse(
+            name: "web",
+            address: listenerResponses[0].Address,
+            port: listenerResponses[0].Port,
+            enabled: listenerResponses[0].Enabled,
+            transport: listenerResponses[0].Transport,
+            defaultCertificateId: listenerResponses[0].DefaultCertificateId,
+            sniCertificates: [],
+            backlog: listenerResponses[0].Backlog,
+            maxRequestHeadBytes: listenerResponses[0].MaxRequestHeadBytes,
+            maxResponseHeadBytes: listenerResponses[0].MaxResponseHeadBytes,
+            maxChunkLineBytes: listenerResponses[0].MaxChunkLineBytes,
+            forwardingBufferBytes: listenerResponses[0].ForwardingBufferBytes,
+            identity: listenerResponses[0].Identity,
+            protocols: listenerResponses[0].Protocols,
+            http3Enablement: listenerResponses[0].Http3Enablement,
+            http3AltSvc: listenerResponses[0].Http3AltSvc,
+            http2Limits: listenerResponses[0].Http2Limits,
+            tcpTrafficEnabled: listenerResponses[0].TcpTrafficEnabled,
+            http3ProtocolConfigured: listenerResponses[0].Http3ProtocolConfigured,
+            quicIdentity: listenerResponses[0].QuicIdentity,
+            http3: null!));
+        AssertEx.Equal("home.test", directListenerResponse.SniCertificates[0].HostName);
+        AssertEx.Equal("web", directListenerResponse.Name);
+        AssertEx.False(directListenerResponse.SniCertificates is RuntimeSniCertificateBindingResponse[], "Direct configuration API listener SNI certificates should not expose a mutable array.");
         AssertEx.Throws<ArgumentNullException>(() => RuntimeRouteResponse.FromRoutes(null!));
         var routeResponses = RuntimeRouteResponse.FromRoutes(projection.Routes.Select(static route => route));
         AssertEx.False(routeResponses is RuntimeRouteResponse[], "Configuration API routes should not expose a mutable array.");
