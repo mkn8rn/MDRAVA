@@ -994,25 +994,7 @@ internal static class RouteDiagnosticsTests
         {
             new("api", "primary", "http", RuntimeUpstreamProtocol.Http1, "127.0.0.1", 18080, 1, RuntimeUpstreamTlsOptions.Default)
         };
-        var route = new RuntimeRoute(
-            "api",
-            "diag.test",
-            "/api",
-            RuntimeRouteAction.Proxy,
-            "round-robin",
-            new RuntimeHealthCheckOptions(false, "/health", TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), 1, 1),
-            upstreams,
-            new RuntimeHttpsRedirectPolicy(false, 308, null),
-            new RuntimeCanonicalHostPolicy(false, "", 308),
-            RuntimeHeaderPolicy.Empty,
-            new RuntimePathRewritePolicy("", "", ""),
-            new RuntimeRedirectPolicy(308, "", "", true),
-            new RuntimeStaticResponse(200, "text/plain; charset=utf-8", ""),
-            new RuntimeMaintenancePolicy(false, null, "text/plain; charset=utf-8", "Service Unavailable"),
-            new RuntimeCachePolicy(true, 1024, 4096, TimeSpan.FromSeconds(60), true, [], [200], cacheMethods),
-            new RuntimeRouteResolvedOptions(104857600, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30), true),
-            SiteName: "",
-            Retry: new RuntimeRetryPolicy(true, 2, null, true, false, [], retryMethods, TimeSpan.Zero));
+        var route = Route(cacheMethods, retryMethods, upstreams);
         var store = new ProxyConfigurationStore();
         store.Replace(RuntimeSnapshot([route]));
         var source = new ProxyRouteDiagnosticsConfigurationSource(store);
@@ -1033,6 +1015,36 @@ internal static class RouteDiagnosticsTests
         AssertEx.False(diagnosticRoute.CacheMethods is string[], "Route diagnostics cache methods should not expose a mutable array.");
         AssertEx.Equal("POST", diagnosticRoute.RetryMethods[0]);
         AssertEx.False(diagnosticRoute.RetryMethods is string[], "Route diagnostics retry methods should not expose a mutable array.");
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRouteDiagnosticsRuntimeRoute(
+            Route([null!], ["POST"], [new("api", "primary", "http", RuntimeUpstreamProtocol.Http1, "127.0.0.1", 18080, 1, RuntimeUpstreamTlsOptions.Default)])));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRouteDiagnosticsRuntimeRoute(
+            Route(["GET"], [null!], [new("api", "primary", "http", RuntimeUpstreamProtocol.Http1, "127.0.0.1", 18080, 1, RuntimeUpstreamTlsOptions.Default)])));
+
+        static RuntimeRoute Route(
+            IEnumerable<string> cacheMethods,
+            IEnumerable<string> retryMethods,
+            IReadOnlyList<RuntimeUpstream> upstreams)
+        {
+            return new RuntimeRoute(
+                "api",
+                "diag.test",
+                "/api",
+                RuntimeRouteAction.Proxy,
+                "round-robin",
+                new RuntimeHealthCheckOptions(false, "/health", TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), 1, 1),
+                upstreams,
+                new RuntimeHttpsRedirectPolicy(false, 308, null),
+                new RuntimeCanonicalHostPolicy(false, "", 308),
+                RuntimeHeaderPolicy.Empty,
+                new RuntimePathRewritePolicy("", "", ""),
+                new RuntimeRedirectPolicy(308, "", "", true),
+                new RuntimeStaticResponse(200, "text/plain; charset=utf-8", ""),
+                new RuntimeMaintenancePolicy(false, null, "text/plain; charset=utf-8", "Service Unavailable"),
+                new RuntimeCachePolicy(true, 1024, 4096, TimeSpan.FromSeconds(60), true, [], [200], cacheMethods),
+                new RuntimeRouteResolvedOptions(104857600, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30), true),
+                SiteName: "",
+                Retry: new RuntimeRetryPolicy(true, 2, null, true, false, [], retryMethods, TimeSpan.Zero));
+        }
     }
 
     public static void RouteDiagnosticsRuntimeConfigurationMapperReadsRuntimeFactsWithoutSnapshot()
