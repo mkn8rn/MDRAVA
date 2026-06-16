@@ -317,10 +317,15 @@ internal static class MetricsTests
         AssertEx.False(snapshot.ConfigLint.Findings is ProxyConfigLintFindingMetricSnapshot[]);
         AssertEx.False(snapshot.RouteDiagnostics.DryRunFailures is ProxyRouteDryRunFailureSnapshot[]);
         var response = ProxyMetricsSnapshotResponse.FromSnapshot(snapshot);
+        AssertEx.False(response.RequestFailuresByKind is Dictionary<string, long>, "Metrics API request failures should not expose a mutable dictionary.");
         AssertEx.False(response.RequestsByRoute is ProxyRequestSeriesSnapshotResponse[], "Metrics API request series should not expose a mutable array.");
         AssertEx.False(response.RetrySkipped is ProxyRetrySkippedSnapshotResponse[], "Metrics API retry skipped series should not expose a mutable array.");
         AssertEx.False(response.UpstreamSelectionsByUpstream is ProxyUpstreamSelectionSnapshotResponse[], "Metrics API upstream selection series should not expose a mutable array.");
+        AssertEx.False(response.Http2ProtocolErrors is Dictionary<string, long>, "Metrics API HTTP/2 protocol errors should not expose a mutable dictionary.");
+        AssertEx.False(response.UpstreamHttp3ProtocolErrors is Dictionary<string, long>, "Metrics API upstream HTTP/3 protocol errors should not expose a mutable dictionary.");
         AssertEx.False(response.Http3RequestsByOutcome is ProxyHttp3RequestOutcomeSnapshotResponse[], "Metrics API HTTP/3 outcome series should not expose a mutable array.");
+        AssertEx.False(response.Http3RejectedRequests is Dictionary<string, long>, "Metrics API HTTP/3 rejected requests should not expose a mutable dictionary.");
+        AssertEx.False(response.Http3ProtocolErrors is Dictionary<string, long>, "Metrics API HTTP/3 protocol errors should not expose a mutable dictionary.");
         AssertEx.False(response.ConfigLintFindings is ProxyConfigLintFindingMetricSnapshotResponse[], "Metrics API config lint findings should not expose a mutable array.");
         AssertEx.False(response.RouteMatchDryRunFailures is ProxyRouteDryRunFailureSnapshotResponse[], "Metrics API route dry-run failures should not expose a mutable array.");
     }

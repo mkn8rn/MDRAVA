@@ -1,3 +1,5 @@
+using System.Collections.ObjectModel;
+
 using BusinessProxyMetricsSnapshot = MDRAVA.BLL.ControlPlane.Metrics.ProxyMetricsSnapshot;
 
 namespace MDRAVA.API.Controllers;
@@ -137,6 +139,39 @@ public sealed record ProxyMetricsSnapshotResponse(
     long RouteMatchDryRuns,
     IReadOnlyList<ProxyRouteDryRunFailureSnapshotResponse> RouteMatchDryRunFailures)
 {
+    public IReadOnlyDictionary<string, long> RequestFailuresByKind { get; } =
+        CopyDictionary(RequestFailuresByKind);
+
+    public IReadOnlyList<ProxyRequestSeriesSnapshotResponse> RequestsByRoute { get; } =
+        ApiResponseList.Copy(RequestsByRoute);
+
+    public IReadOnlyList<ProxyRetrySkippedSnapshotResponse> RetrySkipped { get; } =
+        ApiResponseList.Copy(RetrySkipped);
+
+    public IReadOnlyList<ProxyUpstreamSelectionSnapshotResponse> UpstreamSelectionsByUpstream { get; } =
+        ApiResponseList.Copy(UpstreamSelectionsByUpstream);
+
+    public IReadOnlyDictionary<string, long> Http2ProtocolErrors { get; } =
+        CopyDictionary(Http2ProtocolErrors);
+
+    public IReadOnlyDictionary<string, long> UpstreamHttp3ProtocolErrors { get; } =
+        CopyDictionary(UpstreamHttp3ProtocolErrors);
+
+    public IReadOnlyList<ProxyHttp3RequestOutcomeSnapshotResponse> Http3RequestsByOutcome { get; } =
+        ApiResponseList.Copy(Http3RequestsByOutcome);
+
+    public IReadOnlyDictionary<string, long> Http3RejectedRequests { get; } =
+        CopyDictionary(Http3RejectedRequests);
+
+    public IReadOnlyDictionary<string, long> Http3ProtocolErrors { get; } =
+        CopyDictionary(Http3ProtocolErrors);
+
+    public IReadOnlyList<ProxyConfigLintFindingMetricSnapshotResponse> ConfigLintFindings { get; } =
+        ApiResponseList.Copy(ConfigLintFindings);
+
+    public IReadOnlyList<ProxyRouteDryRunFailureSnapshotResponse> RouteMatchDryRunFailures { get; } =
+        ApiResponseList.Copy(RouteMatchDryRunFailures);
+
     public static ProxyMetricsSnapshotResponse FromSnapshot(BusinessProxyMetricsSnapshot snapshot)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
@@ -301,5 +336,14 @@ public sealed record ProxyMetricsSnapshotResponse(
             ProxyConfigLintFindingMetricSnapshotResponse.FromSnapshots(configLint.Findings),
             routeDiagnostics.DryRuns,
             ProxyRouteDryRunFailureSnapshotResponse.FromSnapshots(routeDiagnostics.DryRunFailures));
+    }
+
+    private static IReadOnlyDictionary<string, long> CopyDictionary(
+        IReadOnlyDictionary<string, long> values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+
+        return new ReadOnlyDictionary<string, long>(
+            new Dictionary<string, long>(values, StringComparer.Ordinal));
     }
 }
