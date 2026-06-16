@@ -502,6 +502,29 @@ internal static class ClientHttp3Tests
         AssertEx.Equal(0L, snapshot.Http3.AltSvcSuppressed);
     }
 
+    public static void Http3RuntimeMappersRejectNullInputs()
+    {
+        var listener = TestHttp3Listener(
+            "http1AndHttp3",
+            new RuntimeHttp3AltSvcOptions(Enabled: true, MaxAgeSeconds: 60));
+
+        AssertEx.Throws<ArgumentNullException>(
+            () => ProxyHttp3AltSvcRuntimeMapper.ToListenerInput(null!));
+        AssertEx.Throws<ArgumentNullException>(
+            () => ProxyHttp3RequestTranslationRuntimeMapper.ToListenerInput(null!));
+
+        var altSvc = ProxyHttp3AltSvcRuntimeMapper.ToListenerInput(listener);
+        var translation = ProxyHttp3RequestTranslationRuntimeMapper.ToListenerInput(listener);
+
+        AssertEx.True(altSvc.EnabledForTraffic);
+        AssertEx.Equal("default", altSvc.EnablementLevel);
+        AssertEx.True(altSvc.AltSvcEnabled);
+        AssertEx.Equal(60, altSvc.AltSvcMaxAgeSeconds);
+        AssertEx.Equal(8443, altSvc.Port);
+        AssertEx.Equal("main|quic", altSvc.QuicListenerIdentity);
+        AssertEx.True(translation.IsHttps);
+    }
+
     public static void AltSvcPolicyAppliesHeaderWithoutKeepingStaleValues()
     {
         var result = Http3AltSvcPolicy.ApplyHeader(

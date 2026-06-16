@@ -6,6 +6,8 @@ public static class ProxyHttp3AltSvcRuntimeMapper
 {
     public static Http3AltSvcListenerInput ToListenerInput(RuntimeListener listener)
     {
+        ArgumentNullException.ThrowIfNull(listener);
+
         return new Http3AltSvcListenerInput(
             listener.Http3.EnabledForTraffic,
             listener.Http3.EnablementLevel,
