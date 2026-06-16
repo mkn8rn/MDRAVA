@@ -8,11 +8,17 @@ public static class ProxyCacheStatusRouteSourceMapper
     {
         ArgumentNullException.ThrowIfNull(routes);
 
-        return CacheList.Copy(routes
-            .Select(static route => new ProxyCacheStatusRouteSource(
-                route.Name,
-                route.Cache.Enabled,
-                route.Cache.MaxEntryBytes,
-                route.Cache.MaxTotalBytes)));
+        return CacheList.Copy(routes.Select(ToRouteSource));
+    }
+
+    private static ProxyCacheStatusRouteSource ToRouteSource(RuntimeRoute route)
+    {
+        ArgumentNullException.ThrowIfNull(route);
+
+        return new ProxyCacheStatusRouteSource(
+            route.Name,
+            route.Cache.Enabled,
+            route.Cache.MaxEntryBytes,
+            route.Cache.MaxTotalBytes);
     }
 }

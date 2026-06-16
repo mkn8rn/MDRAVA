@@ -817,6 +817,8 @@ internal static class CacheTests
     {
         AssertEx.Throws<ArgumentNullException>(
             () => ProxyCacheStatusRouteSourceMapper.ToRouteSources(null!));
+        AssertEx.Throws<ArgumentNullException>(
+            () => ProxyCacheStatusRouteSourceMapper.ToRouteSources([null!]));
     }
 
     public static void CacheRuntimeMapperRejectsNullInputs()
