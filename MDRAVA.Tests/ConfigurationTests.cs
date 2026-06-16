@@ -54,6 +54,83 @@ internal static class ConfigurationTests
         AssertEx.Throws<ArgumentNullException>(() => SiteConfigurationSource.FromLintInput(null!));
     }
 
+    public static void SiteOptionsAggregatorCopiesInputCollections()
+    {
+        var listenerSni = new List<SniCertificateOptions>
+        {
+            new() { HostName = "home.test", CertificateId = "home-cert" }
+        };
+        var upstreamFailures = new List<int> { 503 };
+        var upstreams = new List<UpstreamOptions>
+        {
+            new()
+            {
+                Name = "primary",
+                Address = "127.0.0.1",
+                Port = 5000,
+                CircuitBreaker = new ProxyCircuitBreakerOptions
+                {
+                    Enabled = true,
+                    FailureStatusCodes = upstreamFailures
+                }
+            }
+        };
+        var removeRequestHeaders = new List<string> { "X-Remove" };
+        var cacheMethods = new List<string> { "GET" };
+        var retryStatusCodes = new List<int> { 502 };
+        var site = new SiteOptions
+        {
+            Name = "home",
+            Host = "home.test",
+            Listeners =
+            [
+                new ListenerOptions
+                {
+                    Name = "main",
+                    SniCertificates = listenerSni
+                }
+            ],
+            Upstreams = upstreams,
+            HeaderPolicy = new ProxyHeaderPolicyOptions
+            {
+                RemoveRequestHeaders = removeRequestHeaders
+            },
+            Cache = new ProxyCachePolicyOptions
+            {
+                Methods = cacheMethods
+            },
+            Retry = new ProxyRetryPolicyOptions
+            {
+                RetryOnStatusCodes = retryStatusCodes
+            }
+        };
+
+        var aggregated = SiteOptionsAggregator.ToProxyOptions(
+            [SiteConfigurationSource.FromFile("sites/home.json", site)]);
+
+        site.Listeners.Clear();
+        listenerSni.Add(new SniCertificateOptions { HostName = "api.test", CertificateId = "api-cert" });
+        site.Upstreams.Clear();
+        upstreamFailures.Add(504);
+        removeRequestHeaders.Add("X-Late");
+        cacheMethods.Add("POST");
+        retryStatusCodes.Add(503);
+
+        AssertEx.Equal(1, aggregated.Listeners.Count);
+        AssertEx.Equal(1, aggregated.Listeners[0].SniCertificates.Count);
+        AssertEx.Equal("home.test", aggregated.Listeners[0].SniCertificates[0].HostName);
+        AssertEx.Equal(1, aggregated.Routes.Count);
+        AssertEx.Equal(1, aggregated.Routes[0].Upstreams.Count);
+        AssertEx.Equal(1, aggregated.Routes[0].Upstreams[0].CircuitBreaker.FailureStatusCodes.Count);
+        AssertEx.Equal(503, aggregated.Routes[0].Upstreams[0].CircuitBreaker.FailureStatusCodes[0]);
+        AssertEx.Equal(1, aggregated.Routes[0].HeaderPolicy.RemoveRequestHeaders.Count);
+        AssertEx.Equal("X-Remove", aggregated.Routes[0].HeaderPolicy.RemoveRequestHeaders[0]);
+        AssertEx.Equal(1, aggregated.Routes[0].Cache.Methods.Count);
+        AssertEx.Equal("GET", aggregated.Routes[0].Cache.Methods[0]);
+        AssertEx.Equal(1, aggregated.Routes[0].Retry.RetryOnStatusCodes.Count);
+        AssertEx.Equal(502, aggregated.Routes[0].Retry.RetryOnStatusCodes[0]);
+    }
+
     public static void ConfigurationNormalizeResultNamesNormalizedAndFailedOutcomes()
     {
         var normalized = ProxyConfigurationNormalizeResult.Normalized("json", "{}");
