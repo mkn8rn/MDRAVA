@@ -579,6 +579,74 @@ internal static class Http3InfrastructureTests
         AssertEx.False(ReferenceEquals(projection.ClientProtocols, response.ClientProtocols), "HTTP/3 API client protocols should not reuse the BLL projection list.");
         AssertEx.False(response.ClientProtocols is string[], "HTTP/3 API protocol lists should not expose mutable arrays.");
         AssertEx.False(response.UnsupportedFeatures is string[], "HTTP/3 API unsupported-feature lists should not expose mutable arrays.");
+
+        var directBlockers = new List<string> { "direct_blocker" };
+        var directClientProtocols = new List<string> { "direct_http1" };
+        var directUpstreamProtocols = new List<string> { "direct_h3" };
+        var directRouteActions = new List<string> { "direct_proxy" };
+        var directPolicyFeatures = new List<string> { "direct_cache" };
+        var directUnsupported = new List<string> { "direct_webtransport" };
+        var directResponse = new RuntimeHttp3SupportResponse(
+            RuntimeSupport: "supported",
+            QuicListenerSupported: true,
+            QuicConnectionSupported: true,
+            Configured: "default",
+            EnablementLevel: "default",
+            EnabledForTraffic: true,
+            QuicListenerReady: true,
+            AltSvcConfigured: true,
+            AltSvcActive: true,
+            AltSvcMaxAgeSeconds: 3600,
+            DisabledReason: "quic_listener_ready",
+            UdpQuicListenerIdentityModeled: true,
+            ReadinessConclusion: "ready")
+        {
+            DefaultReadinessBlockers = directBlockers,
+            ClientProtocols = directClientProtocols,
+            UpstreamProtocols = directUpstreamProtocols,
+            SupportedRouteActions = directRouteActions,
+            SupportedPolicyFeatures = directPolicyFeatures,
+            UnsupportedFeatures = directUnsupported
+        };
+
+        directBlockers[0] = "replacement_direct_blocker";
+        directClientProtocols[0] = "replacement_direct_client";
+        directUpstreamProtocols[0] = "replacement_direct_upstream";
+        directRouteActions[0] = "replacement_direct_action";
+        directPolicyFeatures[0] = "replacement_direct_policy";
+        directUnsupported[0] = "replacement_direct_unsupported";
+        directBlockers.Clear();
+        directClientProtocols.Clear();
+        directUpstreamProtocols.Clear();
+        directRouteActions.Clear();
+        directPolicyFeatures.Clear();
+        directUnsupported.Clear();
+
+        AssertEx.Throws<ArgumentNullException>(() => _ = new RuntimeHttp3SupportResponse(
+            RuntimeSupport: "supported",
+            QuicListenerSupported: true,
+            QuicConnectionSupported: true,
+            Configured: "default",
+            EnablementLevel: "default",
+            EnabledForTraffic: true,
+            QuicListenerReady: true,
+            AltSvcConfigured: true,
+            AltSvcActive: true,
+            AltSvcMaxAgeSeconds: 3600,
+            DisabledReason: "quic_listener_ready",
+            UdpQuicListenerIdentityModeled: true,
+            ReadinessConclusion: "ready")
+        {
+            UnsupportedFeatures = null!
+        });
+        AssertEx.Equal("direct_blocker", directResponse.DefaultReadinessBlockers[0]);
+        AssertEx.Equal("direct_http1", directResponse.ClientProtocols[0]);
+        AssertEx.Equal("direct_h3", directResponse.UpstreamProtocols[0]);
+        AssertEx.Equal("direct_proxy", directResponse.SupportedRouteActions[0]);
+        AssertEx.Equal("direct_cache", directResponse.SupportedPolicyFeatures[0]);
+        AssertEx.Equal("direct_webtransport", directResponse.UnsupportedFeatures[0]);
+        AssertEx.False(directResponse.ClientProtocols is string[], "Direct HTTP/3 API protocol lists should not expose mutable arrays.");
+        AssertEx.False(directResponse.UnsupportedFeatures is string[], "Direct HTTP/3 API unsupported-feature lists should not expose mutable arrays.");
     }
 
     public static void UpstreamProtocolAcceptsExplicitHttp3()

@@ -17,9 +17,21 @@ public sealed record RuntimeHttp3SupportResponse(
     bool UdpQuicListenerIdentityModeled,
     string ReadinessConclusion)
 {
+    private IReadOnlyList<string> _defaultReadinessBlockers = ApiResponseList.Copy<string>([]);
+    private IReadOnlyList<string> _clientProtocols = ApiResponseList.Copy(["http1", "http2", "http3"]);
+    private IReadOnlyList<string> _upstreamProtocols = ApiResponseList.Copy(["http1", "http2", "http3"]);
+    private IReadOnlyList<string> _supportedRouteActions = ApiResponseList.Copy(
+        ["proxy", "redirect", "staticResponse", "maintenance"]);
+    private IReadOnlyList<string> _supportedPolicyFeatures = ApiResponseList.Copy<string>([]);
+    private IReadOnlyList<string> _unsupportedFeatures = ApiResponseList.Copy<string>([]);
+
     public string DefaultEnablementState { get; init; } = "disabled";
 
-    public IReadOnlyList<string> DefaultReadinessBlockers { get; init; } = [];
+    public IReadOnlyList<string> DefaultReadinessBlockers
+    {
+        get => _defaultReadinessBlockers;
+        init => _defaultReadinessBlockers = ApiResponseList.Copy(value);
+    }
 
     public string AltSvcStateReason { get; init; } = "not_configured";
 
@@ -35,16 +47,35 @@ public sealed record RuntimeHttp3SupportResponse(
 
     public string UpstreamHttp3SupportLevel { get; init; } = "opt_in_https_quic";
 
-    public IReadOnlyList<string> ClientProtocols { get; init; } = ["http1", "http2", "http3"];
+    public IReadOnlyList<string> ClientProtocols
+    {
+        get => _clientProtocols;
+        init => _clientProtocols = ApiResponseList.Copy(value);
+    }
 
-    public IReadOnlyList<string> UpstreamProtocols { get; init; } = ["http1", "http2", "http3"];
+    public IReadOnlyList<string> UpstreamProtocols
+    {
+        get => _upstreamProtocols;
+        init => _upstreamProtocols = ApiResponseList.Copy(value);
+    }
 
-    public IReadOnlyList<string> SupportedRouteActions { get; init; } =
-        ["proxy", "redirect", "staticResponse", "maintenance"];
+    public IReadOnlyList<string> SupportedRouteActions
+    {
+        get => _supportedRouteActions;
+        init => _supportedRouteActions = ApiResponseList.Copy(value);
+    }
 
-    public IReadOnlyList<string> SupportedPolicyFeatures { get; init; } = [];
+    public IReadOnlyList<string> SupportedPolicyFeatures
+    {
+        get => _supportedPolicyFeatures;
+        init => _supportedPolicyFeatures = ApiResponseList.Copy(value);
+    }
 
-    public IReadOnlyList<string> UnsupportedFeatures { get; init; } = [];
+    public IReadOnlyList<string> UnsupportedFeatures
+    {
+        get => _unsupportedFeatures;
+        init => _unsupportedFeatures = ApiResponseList.Copy(value);
+    }
 
     public bool UpstreamHttp3Configured { get; init; }
 
