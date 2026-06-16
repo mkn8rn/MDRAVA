@@ -27,10 +27,8 @@ public sealed record RuntimeRouteResponse(
 
     public RuntimeRetryPolicyResponse Retry { get; init; } = null!;
 
-    public static IReadOnlyList<RuntimeRouteResponse> FromRoutes(IReadOnlyList<BusinessRuntimeRouteProjection> routes)
+    public static IReadOnlyList<RuntimeRouteResponse> FromRoutes(IEnumerable<BusinessRuntimeRouteProjection> routes)
     {
-        ArgumentNullException.ThrowIfNull(routes);
-
         return ApiResponseList.Copy(routes.Select(FromRoute));
     }
 
