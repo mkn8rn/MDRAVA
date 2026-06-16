@@ -22,17 +22,17 @@ public sealed record RuntimeCertificate
         this.Domains = RuntimeList.Copy(Domains);
     }
 
-    public string Id { get; init; }
+    public string Id { get; }
 
-    public string Path { get; init; }
+    public string Path { get; }
 
-    public string Format { get; init; }
+    public string Format { get; }
 
-    public bool HasConfiguredPassword { get; init; }
+    public bool HasConfiguredPassword { get; }
 
-    public X509Certificate2 Certificate { get; init; }
+    public X509Certificate2 Certificate { get; }
 
-    public string Source { get; init; }
+    public string Source { get; }
 
     public IReadOnlyList<string> Domains { get; }
 }
