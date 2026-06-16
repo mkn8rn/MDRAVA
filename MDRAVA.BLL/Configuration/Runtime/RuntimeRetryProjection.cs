@@ -22,19 +22,19 @@ public sealed record RuntimeRetryProjection
         this.RetryBackoff = RetryBackoff;
     }
 
-    public bool Enabled { get; init; }
+    public bool Enabled { get; }
 
-    public int MaxAttempts { get; init; }
+    public int MaxAttempts { get; }
 
-    public TimeSpan? PerAttemptTimeout { get; init; }
+    public TimeSpan? PerAttemptTimeout { get; }
 
-    public bool RetryOnConnectFailure { get; init; }
+    public bool RetryOnConnectFailure { get; }
 
-    public bool RetryOnUpstreamResponseHeadTimeout { get; init; }
+    public bool RetryOnUpstreamResponseHeadTimeout { get; }
 
     public IReadOnlyList<int> RetryOnStatusCodes { get; }
 
     public IReadOnlyList<string> RetryMethods { get; }
 
-    public TimeSpan RetryBackoff { get; init; }
+    public TimeSpan RetryBackoff { get; }
 }

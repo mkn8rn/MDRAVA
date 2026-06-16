@@ -768,6 +768,9 @@ internal static class ConfigurationTests
         AssertEx.Equal("X-Tenant", cacheProjection.VaryByHeaders[0]);
         AssertEx.Equal(200, cacheProjection.CacheableStatusCodes[0]);
         AssertEx.Equal("GET", cacheProjection.Methods[0]);
+        AssertEx.True(cacheProjection.Enabled);
+        AssertEx.Equal(1024L, cacheProjection.MaxEntryBytes);
+        AssertEx.Equal(TimeSpan.FromSeconds(60), cacheProjection.DefaultTtl);
         AssertEx.Equal("home.test", runtimeCertificate.Domains[0]);
         AssertEx.Equal("api.home.test", certificateProjection.Domains[0]);
         AssertEx.Equal("api-cert", certificateProjection.Id);
@@ -786,6 +789,9 @@ internal static class ConfigurationTests
         AssertEx.Equal("GET", retry.RetryMethods[0]);
         AssertEx.Equal(502, retryProjection.RetryOnStatusCodes[0]);
         AssertEx.Equal("GET", retryProjection.RetryMethods[0]);
+        AssertEx.True(retryProjection.Enabled);
+        AssertEx.Equal(2, retryProjection.MaxAttempts);
+        AssertEx.Equal(TimeSpan.FromMilliseconds(50), retryProjection.RetryBackoff);
         AssertEx.False(acme.ContactEmails is string[]);
         AssertEx.False(acme.Certificates is RuntimeAcmeCertificateOptions[]);
         AssertEx.False(acme.Certificates[0].Domains is string[]);
@@ -928,6 +934,51 @@ internal static class ConfigurationTests
         AssertEx.Throws<ArgumentNullException>(() => new RuntimeForwardedHeadersProjection(
             Enabled: true,
             TrustedProxies: null!));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeCacheProjection(
+            Enabled: true,
+            MaxEntryBytes: 1024,
+            MaxTotalBytes: 4096,
+            DefaultTtl: TimeSpan.FromSeconds(60),
+            RespectOriginCacheControl: true,
+            VaryByHeaders: null!,
+            CacheableStatusCodes: [],
+            Methods: []));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeCacheProjection(
+            Enabled: true,
+            MaxEntryBytes: 1024,
+            MaxTotalBytes: 4096,
+            DefaultTtl: TimeSpan.FromSeconds(60),
+            RespectOriginCacheControl: true,
+            VaryByHeaders: [],
+            CacheableStatusCodes: null!,
+            Methods: []));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeCacheProjection(
+            Enabled: true,
+            MaxEntryBytes: 1024,
+            MaxTotalBytes: 4096,
+            DefaultTtl: TimeSpan.FromSeconds(60),
+            RespectOriginCacheControl: true,
+            VaryByHeaders: [],
+            CacheableStatusCodes: [],
+            Methods: null!));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeRetryProjection(
+            Enabled: true,
+            MaxAttempts: 2,
+            PerAttemptTimeout: TimeSpan.FromSeconds(1),
+            RetryOnConnectFailure: true,
+            RetryOnUpstreamResponseHeadTimeout: true,
+            RetryOnStatusCodes: null!,
+            RetryMethods: [],
+            RetryBackoff: TimeSpan.FromMilliseconds(50)));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeRetryProjection(
+            Enabled: true,
+            MaxAttempts: 2,
+            PerAttemptTimeout: TimeSpan.FromSeconds(1),
+            RetryOnConnectFailure: true,
+            RetryOnUpstreamResponseHeadTimeout: true,
+            RetryOnStatusCodes: [],
+            RetryMethods: null!,
+            RetryBackoff: TimeSpan.FromMilliseconds(50)));
         AssertEx.False(admin.Urls is string[]);
         AssertEx.False(adminProjection.Urls is string[]);
         AssertEx.False(forwardedHeaders.TrustedProxies is string[]);
