@@ -951,6 +951,22 @@ internal static class RouteDiagnosticsTests
         AssertEx.Equal(1, diagnosticsSnapshot.Routes.Count);
         AssertEx.Equal("api", diagnosticsSnapshot.Routes[0].Name);
         AssertEx.Equal("diag.test", diagnosticsSnapshot.Routes[0].Host);
+
+        var listenerSources = new List<RuntimeListener> { listener };
+        var routeSources = new List<RuntimeRoute> { route };
+        var directSnapshot = new ProxyRouteDiagnosticsRuntimeConfigurationSnapshot(
+            listenerSources.Select(static source => source),
+            routeSources.Select(static source => source));
+
+        listenerSources.Clear();
+        routeSources.Clear();
+
+        AssertEx.Equal(1, directSnapshot.Listeners.Count);
+        AssertEx.Equal("main", directSnapshot.Listeners[0].Name);
+        AssertEx.Equal(1, directSnapshot.Routes.Count);
+        AssertEx.Equal("api", directSnapshot.Routes[0].Name);
+        AssertEx.False(directSnapshot.Listeners is IProxyRouteDiagnosticsListener[], "Mapped route diagnostics listeners should not expose a mutable array.");
+        AssertEx.False(directSnapshot.Routes is IProxyRouteDiagnosticsRoute[], "Mapped route diagnostics routes should not expose a mutable array.");
     }
 
     public static void LintHandlesJsonAndYamlSubmittedConfigWithoutApplying()

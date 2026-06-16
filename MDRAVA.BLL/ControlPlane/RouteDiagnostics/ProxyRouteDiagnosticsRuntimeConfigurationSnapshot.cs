@@ -6,8 +6,8 @@ public sealed class ProxyRouteDiagnosticsRuntimeConfigurationSnapshot
     : IProxyRouteDiagnosticsConfigurationSnapshot
 {
     public ProxyRouteDiagnosticsRuntimeConfigurationSnapshot(
-        IReadOnlyList<RuntimeListener> runtimeListeners,
-        IReadOnlyList<RuntimeRoute> runtimeRoutes)
+        IEnumerable<RuntimeListener> runtimeListeners,
+        IEnumerable<RuntimeRoute> runtimeRoutes)
     {
         ArgumentNullException.ThrowIfNull(runtimeListeners);
         ArgumentNullException.ThrowIfNull(runtimeRoutes);
