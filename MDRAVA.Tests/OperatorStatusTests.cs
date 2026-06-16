@@ -611,7 +611,15 @@ internal static class OperatorStatusTests
             configuredRoutes: 1,
             metrics: response.Metrics,
             upstreams: apiUpstreams,
-            listeners: apiListeners);
+            listeners: apiListeners,
+            lastListenerReload: response.LastListenerReload,
+            http3: response.Http3,
+            routeDiagnostics: response.RouteDiagnostics,
+            configLint: response.ConfigLint,
+            logPersistence: response.LogPersistence,
+            readiness: response.Readiness,
+            subsystems: response.Subsystems,
+            runtimePreflight: response.RuntimePreflight);
 
         apiUpstreams[0] = apiUpstreams[0] with { UpstreamName = "api-replacement" };
         apiListeners[0] = apiListeners[0] with { State = ProxyListenerStateResponse.Failed };
@@ -634,7 +642,15 @@ internal static class OperatorStatusTests
             configuredRoutes: 1,
             metrics: response.Metrics,
             upstreams: null!,
-            listeners: []));
+            listeners: [],
+            lastListenerReload: response.LastListenerReload,
+            http3: response.Http3,
+            routeDiagnostics: response.RouteDiagnostics,
+            configLint: response.ConfigLint,
+            logPersistence: response.LogPersistence,
+            readiness: response.Readiness,
+            subsystems: response.Subsystems,
+            runtimePreflight: response.RuntimePreflight));
         AssertEx.Throws<ArgumentNullException>(() => new ProxyStatusResponse(
             listenerLive: true,
             listenerName: "main",
@@ -651,7 +667,40 @@ internal static class OperatorStatusTests
             configuredRoutes: 1,
             metrics: response.Metrics,
             upstreams: [],
-            listeners: null!));
+            listeners: null!,
+            lastListenerReload: response.LastListenerReload,
+            http3: response.Http3,
+            routeDiagnostics: response.RouteDiagnostics,
+            configLint: response.ConfigLint,
+            logPersistence: response.LogPersistence,
+            readiness: response.Readiness,
+            subsystems: response.Subsystems,
+            runtimePreflight: response.RuntimePreflight));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyStatusResponse(
+            listenerLive: true,
+            listenerName: "main",
+            endpoint: "127.0.0.1:18080",
+            startedAt: DateTimeOffset.UnixEpoch,
+            stoppedAt: null,
+            lastError: null,
+            isShuttingDown: false,
+            shutdownStartedAtUtc: null,
+            shutdownDeadlineUtc: null,
+            configVersion: 7,
+            configLoadedAtUtc: DateTimeOffset.UnixEpoch,
+            configuredListeners: 1,
+            configuredRoutes: 1,
+            metrics: response.Metrics,
+            upstreams: [],
+            listeners: [],
+            lastListenerReload: response.LastListenerReload,
+            http3: null!,
+            routeDiagnostics: response.RouteDiagnostics,
+            configLint: response.ConfigLint,
+            logPersistence: response.LogPersistence,
+            readiness: response.Readiness,
+            subsystems: response.Subsystems,
+            runtimePreflight: response.RuntimePreflight));
         AssertEx.Equal("primary", directResponse.Upstreams[0].UpstreamName);
         AssertEx.Equal(ProxyListenerStateResponse.Active, directResponse.Listeners[0].State);
         AssertEx.False(directResponse.Upstreams is ProxyUpstreamStatusResponse[], "Direct status API upstreams should not expose a mutable array.");

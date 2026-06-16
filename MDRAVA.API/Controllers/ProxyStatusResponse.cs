@@ -20,8 +20,25 @@ public sealed record ProxyStatusResponse
         int configuredRoutes,
         ProxyMetricsSnapshotResponse metrics,
         IReadOnlyList<ProxyUpstreamStatusResponse> upstreams,
-        IReadOnlyList<ProxyListenerStatusResponse> listeners)
+        IReadOnlyList<ProxyListenerStatusResponse> listeners,
+        ProxyListenerReloadResponse? lastListenerReload,
+        RuntimeHttp3SupportResponse http3,
+        RouteDiagnosticsStatusResponse routeDiagnostics,
+        ConfigLintStatusResponse configLint,
+        ProxyLogPersistenceStatusResponse logPersistence,
+        ProxyReadinessStatusResponse readiness,
+        ProxySubsystemSummariesResponse subsystems,
+        ProxyRuntimePreflightStatusResponse runtimePreflight)
     {
+        ArgumentNullException.ThrowIfNull(metrics);
+        ArgumentNullException.ThrowIfNull(http3);
+        ArgumentNullException.ThrowIfNull(routeDiagnostics);
+        ArgumentNullException.ThrowIfNull(configLint);
+        ArgumentNullException.ThrowIfNull(logPersistence);
+        ArgumentNullException.ThrowIfNull(readiness);
+        ArgumentNullException.ThrowIfNull(subsystems);
+        ArgumentNullException.ThrowIfNull(runtimePreflight);
+
         ListenerLive = listenerLive;
         ListenerName = listenerName;
         Endpoint = endpoint;
@@ -38,6 +55,14 @@ public sealed record ProxyStatusResponse
         Metrics = metrics;
         Upstreams = ApiResponseList.Copy(upstreams);
         Listeners = ApiResponseList.Copy(listeners);
+        LastListenerReload = lastListenerReload;
+        Http3 = http3;
+        RouteDiagnostics = routeDiagnostics;
+        ConfigLint = configLint;
+        LogPersistence = logPersistence;
+        Readiness = readiness;
+        Subsystems = subsystems;
+        RuntimePreflight = runtimePreflight;
     }
 
     public bool ListenerLive { get; }
@@ -72,21 +97,21 @@ public sealed record ProxyStatusResponse
 
     public IReadOnlyList<ProxyListenerStatusResponse> Listeners { get; }
 
-    public ProxyListenerReloadResponse? LastListenerReload { get; init; }
+    public ProxyListenerReloadResponse? LastListenerReload { get; }
 
-    public RuntimeHttp3SupportResponse Http3 { get; init; } = null!;
+    public RuntimeHttp3SupportResponse Http3 { get; }
 
-    public RouteDiagnosticsStatusResponse RouteDiagnostics { get; init; } = null!;
+    public RouteDiagnosticsStatusResponse RouteDiagnostics { get; }
 
-    public ConfigLintStatusResponse ConfigLint { get; init; } = null!;
+    public ConfigLintStatusResponse ConfigLint { get; }
 
-    public ProxyLogPersistenceStatusResponse LogPersistence { get; init; } = null!;
+    public ProxyLogPersistenceStatusResponse LogPersistence { get; }
 
-    public ProxyReadinessStatusResponse Readiness { get; init; } = null!;
+    public ProxyReadinessStatusResponse Readiness { get; }
 
-    public ProxySubsystemSummariesResponse Subsystems { get; init; } = null!;
+    public ProxySubsystemSummariesResponse Subsystems { get; }
 
-    public ProxyRuntimePreflightStatusResponse RuntimePreflight { get; init; } = null!;
+    public ProxyRuntimePreflightStatusResponse RuntimePreflight { get; }
 
     public static ProxyStatusResponse FromBusinessResponse(BusinessProxyStatus response)
     {
@@ -108,18 +133,16 @@ public sealed record ProxyStatusResponse
             configuredRoutes: response.ConfiguredRoutes,
             metrics: ProxyMetricsSnapshotResponse.FromSnapshot(response.Metrics),
             upstreams: ProxyUpstreamStatusResponse.FromStatuses(response.Upstreams),
-            listeners: ProxyListenerStatusResponse.FromStatuses(response.Listeners))
-        {
-            LastListenerReload = response.LastListenerReload is null
+            listeners: ProxyListenerStatusResponse.FromStatuses(response.Listeners),
+            lastListenerReload: response.LastListenerReload is null
                 ? null
                 : ProxyListenerReloadResponse.FromResult(response.LastListenerReload),
-            Http3 = RuntimeHttp3SupportResponse.FromProjection(response.Http3),
-            RouteDiagnostics = RouteDiagnosticsStatusResponse.FromStatus(response.RouteDiagnostics),
-            ConfigLint = ConfigLintStatusResponse.FromStatus(response.ConfigLint),
-            LogPersistence = ProxyLogPersistenceStatusResponse.FromStatus(response.LogPersistence),
-            Readiness = ProxyReadinessStatusResponse.FromStatus(response.Readiness),
-            Subsystems = ProxySubsystemSummariesResponse.FromSummaries(response.Subsystems),
-            RuntimePreflight = ProxyRuntimePreflightStatusResponse.FromStatus(response.RuntimePreflight)
-        };
+            http3: RuntimeHttp3SupportResponse.FromProjection(response.Http3),
+            routeDiagnostics: RouteDiagnosticsStatusResponse.FromStatus(response.RouteDiagnostics),
+            configLint: ConfigLintStatusResponse.FromStatus(response.ConfigLint),
+            logPersistence: ProxyLogPersistenceStatusResponse.FromStatus(response.LogPersistence),
+            readiness: ProxyReadinessStatusResponse.FromStatus(response.Readiness),
+            subsystems: ProxySubsystemSummariesResponse.FromSummaries(response.Subsystems),
+            runtimePreflight: ProxyRuntimePreflightStatusResponse.FromStatus(response.RuntimePreflight));
     }
 }
