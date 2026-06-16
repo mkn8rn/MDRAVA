@@ -106,33 +106,52 @@ public static class Http3RuntimeSupport
                 : "explicit_only";
         var upstreamHttp3Configured = source.UpstreamHttp3Configured;
         return new RuntimeHttp3SupportProjection(
-            platformSupport.RuntimeSupport,
-            platformSupport.QuicListenerSupported,
-            platformSupport.QuicConnectionSupported,
-            ConfiguredMode(listeners),
-            EnablementLevel(listeners),
-            http3Enabled,
-            quicReady,
-            altSvcConfigured,
-            altSvcActive,
-            maxAge,
-            DisabledReason(listeners, http3Configured, http3Enabled, quicReady, hasRuntimeState),
+            RuntimeSupport: platformSupport.RuntimeSupport,
+            QuicListenerSupported: platformSupport.QuicListenerSupported,
+            QuicConnectionSupported: platformSupport.QuicConnectionSupported,
+            Configured: ConfiguredMode(listeners),
+            EnablementLevel: EnablementLevel(listeners),
+            EnabledForTraffic: http3Enabled,
+            QuicListenerReady: quicReady,
+            AltSvcConfigured: altSvcConfigured,
+            AltSvcActive: altSvcActive,
+            AltSvcMaxAgeSeconds: maxAge,
+            DisabledReason: DisabledReason(listeners, http3Configured, http3Enabled, quicReady, hasRuntimeState),
             UdpQuicListenerIdentityModeled: true,
-            readinessConclusion)
-        {
-            DefaultEnablementState = defaultState,
-            DefaultReadinessBlockers = blockers,
-            AltSvcStateReason = AltSvcReason(altSvcConfigured, altSvcActive, http3Enabled, quicReady, hasRuntimeState),
-            UpstreamHttp3SupportLevel = upstreamHttp3Configured
+            ReadinessConclusion: readinessConclusion,
+            DefaultEnablementState: defaultState,
+            DefaultReadinessBlockers: blockers,
+            AltSvcStateReason: AltSvcReason(altSvcConfigured, altSvcActive, http3Enabled, quicReady, hasRuntimeState),
+            QpackMode: "static_with_zero_dynamic_table",
+            QpackDynamicTableCapacity: 0,
+            QpackBlockedStreams: 0,
+            RequestBodyMode: "streaming",
+            ClientHttp3SupportLevel: "default_enabled_for_eligible_tls_proxy_listeners",
+            UpstreamHttp3SupportLevel: upstreamHttp3Configured
                 ? "opt_in_https_quic_reused_multiplexed"
                 : "opt_in_https_quic_available",
-            UpstreamHttp3Configured = upstreamHttp3Configured,
-            UpstreamPoolingMode = upstreamHttp3Configured ? "reused_multiplexed" : "not_configured",
-            UpstreamMultiplexingEnabled = upstreamHttp3Configured,
-            UpstreamMaxStreamsPerConnection = upstreamHttp3Configured ? 8 : 0,
-            UpstreamQpackMode = "static_with_zero_dynamic_table",
-            UpstreamPoolingLimitationReason = ""
-        };
+            ClientProtocols: ["http1", "http2", "http3"],
+            UpstreamProtocols: ["http1", "http2", "http3"],
+            SupportedRouteActions: ["proxy", "redirect", "staticResponse", "maintenance"],
+            SupportedPolicyFeatures:
+            [
+                "cache_get_head",
+                "retry_circuit_safe_methods",
+                "weighted_balancing",
+                "health_checks",
+                "path_rewrites",
+                "canonical_redirects",
+                "http_to_https_redirects",
+                "forwarded_headers",
+                "request_response_header_policies"
+            ],
+            UnsupportedFeatures: RuntimeHttp3UnsupportedFeatureCodes.EffectiveConfig,
+            UpstreamHttp3Configured: upstreamHttp3Configured,
+            UpstreamPoolingMode: upstreamHttp3Configured ? "reused_multiplexed" : "not_configured",
+            UpstreamMultiplexingEnabled: upstreamHttp3Configured,
+            UpstreamMaxStreamsPerConnection: upstreamHttp3Configured ? 8 : 0,
+            UpstreamQpackMode: "static_with_zero_dynamic_table",
+            UpstreamPoolingLimitationReason: "");
     }
 
     private static string EnablementLevel(IReadOnlyList<Http3SupportListenerSource> listeners)
