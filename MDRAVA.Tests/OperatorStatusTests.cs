@@ -317,7 +317,7 @@ internal static class OperatorStatusTests
         var http3 = Http3RuntimeSupport.ProjectRuntime(
             ProxyHttp3SupportConfigurationSourceMapper.FromSources(snapshot.Listeners, snapshot.Routes),
             TestHttp3PlatformSupport.Supported,
-            Http3SupportSourceMapper.FromRuntimeListeners(runtime.Listeners));
+            Http3SupportSourceMapper.FromListenerStatuses(runtime.Listeners));
         var logPersistence = ProxyLogPersistenceStatus.FromSettings(
             logDirectory: null,
             new ProxyLogPersistenceSettings(

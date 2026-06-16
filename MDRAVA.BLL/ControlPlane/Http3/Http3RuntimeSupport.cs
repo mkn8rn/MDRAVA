@@ -36,9 +36,11 @@ public sealed record Http3SupportRuntimeListenerSource(
 
 public static class Http3SupportSourceMapper
 {
-    public static IReadOnlyList<Http3SupportRuntimeListenerSource> FromRuntimeListeners(
+    public static IReadOnlyList<Http3SupportRuntimeListenerSource> FromListenerStatuses(
         IEnumerable<ProxyListenerStatus> listeners)
     {
+        ArgumentNullException.ThrowIfNull(listeners);
+
         return Http3List.Copy(listeners
             .Select(static listener => new Http3SupportRuntimeListenerSource(
                 string.Equals(listener.Kind, "quic", StringComparison.OrdinalIgnoreCase),

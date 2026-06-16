@@ -60,7 +60,7 @@ public sealed class ProxyStatusInputReader : IProxyStatusInputReader
         var http3 = Http3RuntimeSupport.ProjectRuntime(
             configuration?.Http3Configuration ?? Http3SupportConfigurationSource.Empty,
             _http3PlatformSupportSource.Read(),
-            Http3SupportSourceMapper.FromRuntimeListeners(runtimeSummary.Listeners));
+            Http3SupportSourceMapper.FromListenerStatuses(runtimeSummary.Listeners));
         var logPersistence = _logPersistenceStore.GetStatus();
         var runtimePreflight = _preflightSource.ReadRuntimePreflight();
         var cacheStatus = _cacheStatusReader.GetStatus();
