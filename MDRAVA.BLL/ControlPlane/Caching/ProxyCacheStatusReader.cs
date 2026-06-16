@@ -34,8 +34,16 @@ public sealed class ProxyCacheStatusReader : IProxyCacheStatusReader
             .OrderBy(static rejection => rejection.Reason, StringComparer.OrdinalIgnoreCase)
             .Select(ProxyCacheRejectionStatus.FromRuntimeRejection);
 
-        return ProxyCacheStatus.FromRuntimeSnapshot(
-            runtime,
+        return ProxyCacheStatus.FromSources(
+            runtime.EntryCount,
+            runtime.ApproximateBytes,
+            runtime.HitCount,
+            runtime.MissCount,
+            runtime.StoreCount,
+            runtime.EvictionCount,
+            runtime.StoreRejectionCount,
+            runtime.LastClearedAtUtc,
+            runtime.LastClearReason,
             rejections,
             routeStatuses);
     }

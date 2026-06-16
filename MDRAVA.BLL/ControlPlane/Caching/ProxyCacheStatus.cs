@@ -53,25 +53,32 @@ public sealed record ProxyCacheStatus
 
     public IReadOnlyList<ProxyCacheRouteStatus> Routes { get; }
 
-    public static ProxyCacheStatus FromRuntimeSnapshot(
-        ProxyCacheRuntimeStatusSnapshot runtime,
+    public static ProxyCacheStatus FromSources(
+        int entryCount,
+        long approximateBytes,
+        long hitCount,
+        long missCount,
+        long storeCount,
+        long evictionCount,
+        long storeRejectionCount,
+        DateTimeOffset? lastClearedAtUtc,
+        string? lastClearReason,
         IEnumerable<ProxyCacheRejectionStatus> rejections,
         IEnumerable<ProxyCacheRouteStatus> routes)
     {
-        ArgumentNullException.ThrowIfNull(runtime);
         ArgumentNullException.ThrowIfNull(rejections);
         ArgumentNullException.ThrowIfNull(routes);
 
         return new ProxyCacheStatus(
-            runtime.EntryCount,
-            runtime.ApproximateBytes,
-            runtime.HitCount,
-            runtime.MissCount,
-            runtime.StoreCount,
-            runtime.EvictionCount,
-            runtime.StoreRejectionCount,
-            runtime.LastClearedAtUtc,
-            runtime.LastClearReason,
+            entryCount,
+            approximateBytes,
+            hitCount,
+            missCount,
+            storeCount,
+            evictionCount,
+            storeRejectionCount,
+            lastClearedAtUtc,
+            lastClearReason,
             rejections,
             routes);
     }

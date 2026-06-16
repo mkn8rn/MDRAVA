@@ -446,19 +446,16 @@ internal static class MetricsTests
                 LastResult: "success",
                 ErrorSummary: null)
         };
-        var cacheStatus = ProxyCacheStatus.FromRuntimeSnapshot(
-            new ProxyCacheRuntimeStatusSnapshot(
-                EntryCount: 0,
-                ApproximateBytes: 0,
-                HitCount: 0,
-                MissCount: 0,
-                StoreCount: 0,
-                EvictionCount: 0,
-                StoreRejectionCount: 0,
-                LastClearedAtUtc: null,
-                LastClearReason: null,
-                Rejections: [],
-                Entries: []),
+        var cacheStatus = ProxyCacheStatus.FromSources(
+            entryCount: 0,
+            approximateBytes: 0,
+            hitCount: 0,
+            missCount: 0,
+            storeCount: 0,
+            evictionCount: 0,
+            storeRejectionCount: 0,
+            lastClearedAtUtc: null,
+            lastClearReason: null,
             rejections: [],
             routes: []);
 

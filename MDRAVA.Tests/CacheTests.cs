@@ -374,7 +374,18 @@ internal static class CacheTests
             body,
             storedAtUtc,
             storedAtUtc.AddMinutes(1));
-        var status = ProxyCacheStatus.FromRuntimeSnapshot(runtime, rejections, routes);
+        var status = ProxyCacheStatus.FromSources(
+            runtime.EntryCount,
+            runtime.ApproximateBytes,
+            runtime.HitCount,
+            runtime.MissCount,
+            runtime.StoreCount,
+            runtime.EvictionCount,
+            runtime.StoreRejectionCount,
+            runtime.LastClearedAtUtc,
+            runtime.LastClearReason,
+            rejections,
+            routes);
 
         varyByHeaders[0] = "X-Replacement";
         cacheableStatusCodes[0] = 500;
