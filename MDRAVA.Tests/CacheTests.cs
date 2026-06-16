@@ -737,8 +737,9 @@ internal static class CacheTests
         {
             Name = "enabled-cache"
         };
+        RuntimeRoute[] routes = [disabled, enabled];
 
-        var sources = ProxyCacheStatusRouteSourceMapper.ToRouteSources([disabled, enabled]);
+        var sources = ProxyCacheStatusRouteSourceMapper.ToRouteSources(routes.Select(static route => route));
 
         AssertEx.Equal(2, sources.Count);
         AssertEx.Equal("cache", sources[0].RouteName);
@@ -749,6 +750,7 @@ internal static class CacheTests
         AssertEx.True(sources[1].Enabled);
         AssertEx.Equal(4096L, sources[1].MaxEntryBytes);
         AssertEx.Equal(8192L, sources[1].MaxTotalBytes);
+        AssertEx.False(sources is ProxyCacheStatusRouteSource[], "Cache route sources should not expose a mutable array.");
     }
 
     public static void CacheAdministrationClearReturnsPostClearStatus()
