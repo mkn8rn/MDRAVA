@@ -4,66 +4,150 @@ using BusinessRuntimeCertificateProjection = MDRAVA.BLL.Configuration.RuntimeCer
 
 namespace MDRAVA.API.Controllers;
 
-public sealed record RuntimeAcmeResponse(
-    bool Enabled,
-    bool UseStaging,
-    string DirectoryUrl,
-    IReadOnlyList<string> ContactEmails,
-    bool TermsAccepted,
-    string StoragePath,
-    int RenewBeforeDays,
-    int CheckIntervalMinutes,
-    int RetryAfterMinutes,
-    IReadOnlyList<RuntimeAcmeCertificateResponse> Certificates)
+public sealed record RuntimeAcmeResponse
 {
+    public RuntimeAcmeResponse(
+        bool enabled,
+        bool useStaging,
+        string directoryUrl,
+        IReadOnlyList<string> contactEmails,
+        bool termsAccepted,
+        string storagePath,
+        int renewBeforeDays,
+        int checkIntervalMinutes,
+        int retryAfterMinutes,
+        IReadOnlyList<RuntimeAcmeCertificateResponse> certificates)
+    {
+        Enabled = enabled;
+        UseStaging = useStaging;
+        DirectoryUrl = directoryUrl;
+        ContactEmails = ApiResponseList.Copy(contactEmails);
+        TermsAccepted = termsAccepted;
+        StoragePath = storagePath;
+        RenewBeforeDays = renewBeforeDays;
+        CheckIntervalMinutes = checkIntervalMinutes;
+        RetryAfterMinutes = retryAfterMinutes;
+        Certificates = ApiResponseList.Copy(certificates);
+    }
+
+    public bool Enabled { get; }
+
+    public bool UseStaging { get; }
+
+    public string DirectoryUrl { get; }
+
+    public IReadOnlyList<string> ContactEmails { get; }
+
+    public bool TermsAccepted { get; }
+
+    public string StoragePath { get; }
+
+    public int RenewBeforeDays { get; }
+
+    public int CheckIntervalMinutes { get; }
+
+    public int RetryAfterMinutes { get; }
+
+    public IReadOnlyList<RuntimeAcmeCertificateResponse> Certificates { get; }
+
     public static RuntimeAcmeResponse FromProjection(BusinessRuntimeAcmeProjection projection)
     {
         ArgumentNullException.ThrowIfNull(projection);
 
         return new RuntimeAcmeResponse(
-            projection.Enabled,
-            projection.UseStaging,
-            projection.DirectoryUrl,
-            ApiResponseList.Copy(projection.ContactEmails),
-            projection.TermsAccepted,
-            projection.StoragePath,
-            projection.RenewBeforeDays,
-            projection.CheckIntervalMinutes,
-            projection.RetryAfterMinutes,
-            ApiResponseList.Copy(projection.Certificates.Select(RuntimeAcmeCertificateResponse.FromProjection)));
+            enabled: projection.Enabled,
+            useStaging: projection.UseStaging,
+            directoryUrl: projection.DirectoryUrl,
+            contactEmails: projection.ContactEmails,
+            termsAccepted: projection.TermsAccepted,
+            storagePath: projection.StoragePath,
+            renewBeforeDays: projection.RenewBeforeDays,
+            checkIntervalMinutes: projection.CheckIntervalMinutes,
+            retryAfterMinutes: projection.RetryAfterMinutes,
+            certificates: ApiResponseList.Copy(projection.Certificates.Select(RuntimeAcmeCertificateResponse.FromProjection)));
     }
 }
 
-public sealed record RuntimeAcmeCertificateResponse(
-    string Id,
-    bool Enabled,
-    IReadOnlyList<string> Domains,
-    int RenewBeforeDays)
+public sealed record RuntimeAcmeCertificateResponse
 {
+    public RuntimeAcmeCertificateResponse(
+        string id,
+        bool enabled,
+        IReadOnlyList<string> domains,
+        int renewBeforeDays)
+    {
+        Id = id;
+        Enabled = enabled;
+        Domains = ApiResponseList.Copy(domains);
+        RenewBeforeDays = renewBeforeDays;
+    }
+
+    public string Id { get; }
+
+    public bool Enabled { get; }
+
+    public IReadOnlyList<string> Domains { get; }
+
+    public int RenewBeforeDays { get; }
+
     public static RuntimeAcmeCertificateResponse FromProjection(BusinessRuntimeAcmeCertificateProjection projection)
     {
         ArgumentNullException.ThrowIfNull(projection);
 
         return new RuntimeAcmeCertificateResponse(
-            projection.Id,
-            projection.Enabled,
-            ApiResponseList.Copy(projection.Domains),
-            projection.RenewBeforeDays);
+            id: projection.Id,
+            enabled: projection.Enabled,
+            domains: projection.Domains,
+            renewBeforeDays: projection.RenewBeforeDays);
     }
 }
 
-public sealed record RuntimeCertificateResponse(
-    string Id,
-    string Path,
-    string Format,
-    string Source,
-    IReadOnlyList<string> Domains,
-    bool HasConfiguredPassword,
-    string? Subject,
-    string? Thumbprint,
-    DateTime NotBefore,
-    DateTime NotAfter)
+public sealed record RuntimeCertificateResponse
 {
+    public RuntimeCertificateResponse(
+        string id,
+        string path,
+        string format,
+        string source,
+        IReadOnlyList<string> domains,
+        bool hasConfiguredPassword,
+        string? subject,
+        string? thumbprint,
+        DateTime notBefore,
+        DateTime notAfter)
+    {
+        Id = id;
+        Path = path;
+        Format = format;
+        Source = source;
+        Domains = ApiResponseList.Copy(domains);
+        HasConfiguredPassword = hasConfiguredPassword;
+        Subject = subject;
+        Thumbprint = thumbprint;
+        NotBefore = notBefore;
+        NotAfter = notAfter;
+    }
+
+    public string Id { get; }
+
+    public string Path { get; }
+
+    public string Format { get; }
+
+    public string Source { get; }
+
+    public IReadOnlyList<string> Domains { get; }
+
+    public bool HasConfiguredPassword { get; }
+
+    public string? Subject { get; }
+
+    public string? Thumbprint { get; }
+
+    public DateTime NotBefore { get; }
+
+    public DateTime NotAfter { get; }
+
     public static IReadOnlyList<RuntimeCertificateResponse> FromCertificates(
         IReadOnlyList<BusinessRuntimeCertificateProjection> certificates)
     {
@@ -77,15 +161,15 @@ public sealed record RuntimeCertificateResponse(
         ArgumentNullException.ThrowIfNull(certificate);
 
         return new RuntimeCertificateResponse(
-            certificate.Id,
-            certificate.Path,
-            certificate.Format,
-            certificate.Source,
-            ApiResponseList.Copy(certificate.Domains),
-            certificate.HasConfiguredPassword,
-            certificate.Subject,
-            certificate.Thumbprint,
-            certificate.NotBefore,
-            certificate.NotAfter);
+            id: certificate.Id,
+            path: certificate.Path,
+            format: certificate.Format,
+            source: certificate.Source,
+            domains: certificate.Domains,
+            hasConfiguredPassword: certificate.HasConfiguredPassword,
+            subject: certificate.Subject,
+            thumbprint: certificate.Thumbprint,
+            notBefore: certificate.NotBefore,
+            notAfter: certificate.NotAfter);
     }
 }

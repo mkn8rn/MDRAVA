@@ -805,6 +805,97 @@ internal static class ConfigurationTests
         var certificateResponses = RuntimeCertificateResponse.FromCertificates([certificateProjection]);
         AssertEx.False(certificateResponses is RuntimeCertificateResponse[], "Configuration API certificates should not expose a mutable array.");
         AssertEx.False(certificateResponses[0].Domains is string[], "Configuration API certificate domains should not expose a mutable array.");
+        var acmeResponseContacts = new List<string> { acmeResponse.ContactEmails[0] };
+        var acmeCertificateDomains = new List<string> { acmeResponse.Certificates[0].Domains[0] };
+        var directAcmeCertificate = new RuntimeAcmeCertificateResponse(
+            id: acmeResponse.Certificates[0].Id,
+            enabled: acmeResponse.Certificates[0].Enabled,
+            domains: acmeCertificateDomains,
+            renewBeforeDays: acmeResponse.Certificates[0].RenewBeforeDays);
+        var acmeResponseCertificates = new List<RuntimeAcmeCertificateResponse> { directAcmeCertificate };
+        var directAcmeResponse = new RuntimeAcmeResponse(
+            enabled: acmeResponse.Enabled,
+            useStaging: acmeResponse.UseStaging,
+            directoryUrl: acmeResponse.DirectoryUrl,
+            contactEmails: acmeResponseContacts,
+            termsAccepted: acmeResponse.TermsAccepted,
+            storagePath: acmeResponse.StoragePath,
+            renewBeforeDays: acmeResponse.RenewBeforeDays,
+            checkIntervalMinutes: acmeResponse.CheckIntervalMinutes,
+            retryAfterMinutes: acmeResponse.RetryAfterMinutes,
+            certificates: acmeResponseCertificates);
+        var certificateResponseDomains = new List<string> { certificateResponses[0].Domains[0] };
+        var directCertificateResponse = new RuntimeCertificateResponse(
+            id: certificateResponses[0].Id,
+            path: certificateResponses[0].Path,
+            format: certificateResponses[0].Format,
+            source: certificateResponses[0].Source,
+            domains: certificateResponseDomains,
+            hasConfiguredPassword: certificateResponses[0].HasConfiguredPassword,
+            subject: certificateResponses[0].Subject,
+            thumbprint: certificateResponses[0].Thumbprint,
+            notBefore: certificateResponses[0].NotBefore,
+            notAfter: certificateResponses[0].NotAfter);
+
+        acmeResponseContacts[0] = "replacement@home.test";
+        acmeCertificateDomains[0] = "replacement.home.test";
+        acmeResponseCertificates[0] = new RuntimeAcmeCertificateResponse(
+            id: "replacement-cert",
+            enabled: false,
+            domains: ["replacement.home.test"],
+            renewBeforeDays: 1);
+        certificateResponseDomains[0] = "replacement.home.test";
+        acmeResponseContacts.Clear();
+        acmeCertificateDomains.Clear();
+        acmeResponseCertificates.Clear();
+        certificateResponseDomains.Clear();
+
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeAcmeResponse(
+            enabled: true,
+            useStaging: false,
+            directoryUrl: "https://acme.test/directory",
+            contactEmails: null!,
+            termsAccepted: true,
+            storagePath: "acme",
+            renewBeforeDays: 14,
+            checkIntervalMinutes: 60,
+            retryAfterMinutes: 10,
+            certificates: []));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeAcmeResponse(
+            enabled: true,
+            useStaging: false,
+            directoryUrl: "https://acme.test/directory",
+            contactEmails: [],
+            termsAccepted: true,
+            storagePath: "acme",
+            renewBeforeDays: 14,
+            checkIntervalMinutes: 60,
+            retryAfterMinutes: 10,
+            certificates: null!));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeAcmeCertificateResponse(
+            id: "api-cert",
+            enabled: true,
+            domains: null!,
+            renewBeforeDays: 14));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeCertificateResponse(
+            id: "api-cert",
+            path: "certs/api.pfx",
+            format: "pfx",
+            source: "manual",
+            domains: null!,
+            hasConfiguredPassword: false,
+            subject: null,
+            thumbprint: null,
+            notBefore: DateTime.UnixEpoch,
+            notAfter: DateTime.UnixEpoch.AddDays(1)));
+        AssertEx.Equal("ops@home.test", directAcmeResponse.ContactEmails[0]);
+        AssertEx.Equal("api-cert", directAcmeResponse.Certificates[0].Id);
+        AssertEx.Equal("api.home.test", directAcmeCertificate.Domains[0]);
+        AssertEx.Equal("api.home.test", directCertificateResponse.Domains[0]);
+        AssertEx.False(directAcmeResponse.ContactEmails is string[], "Direct ACME API contact emails should not expose a mutable array.");
+        AssertEx.False(directAcmeResponse.Certificates is RuntimeAcmeCertificateResponse[], "Direct ACME API certificates should not expose a mutable array.");
+        AssertEx.False(directAcmeCertificate.Domains is string[], "Direct ACME API certificate domains should not expose a mutable array.");
+        AssertEx.False(directCertificateResponse.Domains is string[], "Direct configuration API certificate domains should not expose a mutable array.");
     }
 
     public static void RuntimeConfigurationGraphRecordsCopyInputCollections()
@@ -974,7 +1065,17 @@ internal static class ConfigurationTests
             routes: responseRoutes);
 
         responseSourceFiles[0] = "sites/replacement.json";
-        responseCertificates[0] = responseCertificates[0] with { Id = "replacement-cert" };
+        responseCertificates[0] = new RuntimeCertificateResponse(
+            id: "replacement-cert",
+            path: responseCertificates[0].Path,
+            format: responseCertificates[0].Format,
+            source: responseCertificates[0].Source,
+            domains: responseCertificates[0].Domains,
+            hasConfiguredPassword: responseCertificates[0].HasConfiguredPassword,
+            subject: responseCertificates[0].Subject,
+            thumbprint: responseCertificates[0].Thumbprint,
+            notBefore: responseCertificates[0].NotBefore,
+            notAfter: responseCertificates[0].NotAfter);
         responseListeners[0] = responseListeners[0] with { Name = "replacement-listener" };
         responseRoutes[0] = responseRoutes[0] with { Name = "replacement-route" };
         responseSourceFiles.Clear();
