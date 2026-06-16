@@ -5,8 +5,8 @@ namespace MDRAVA.BLL.ControlPlane.Http3;
 public static class ProxyHttp3SupportConfigurationSourceMapper
 {
     public static Http3SupportConfigurationSource FromConfiguration(
-        IReadOnlyList<RuntimeListener> listeners,
-        IReadOnlyList<RuntimeRoute> routes)
+        IEnumerable<RuntimeListener> listeners,
+        IEnumerable<RuntimeRoute> routes)
     {
         return new Http3SupportConfigurationSource(
             listeners
@@ -22,8 +22,7 @@ public static class ProxyHttp3SupportConfigurationSourceMapper
                         listener.Port,
                         listener.QuicIdentity?.Key)),
                     listener.Http3AltSvc.MaxAgeSeconds,
-                    listener.QuicIdentity?.Key))
-                .ToArray(),
+                    listener.QuicIdentity?.Key)),
             routes.Any(static route => route.Upstreams.Any(static upstream =>
                 RuntimeUpstreamProtocol.IsHttp3(upstream.Protocol))));
     }
