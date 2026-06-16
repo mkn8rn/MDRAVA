@@ -372,7 +372,11 @@ internal static class MetricsTests
         var route = Route(RuntimeCachePolicy.Disabled).WithUpstreams([upstream]);
 
         var labelOptions = ProxyMetricsExportLabelOptionsMapper.FromMetrics(metrics);
-        var http3Facts = ProxyMetricsExportHttp3FactsMapper.FromRuntimeConfiguration([listener], [route]);
+        RuntimeListener[] listeners = [listener];
+        RuntimeRoute[] routes = [route];
+        var http3Facts = ProxyMetricsExportHttp3FactsMapper.FromRuntimeConfiguration(
+            listeners.Select(static listener => listener),
+            routes.Select(static route => route));
 
         AssertEx.False(labelOptions.IncludePerRouteLabels);
         AssertEx.True(labelOptions.IncludePerUpstreamLabels);

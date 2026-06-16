@@ -55,8 +55,8 @@ public static class ProxyMetricsExportLabelOptionsMapper
 public static class ProxyMetricsExportHttp3FactsMapper
 {
     public static ProxyMetricsExportHttp3Facts FromRuntimeConfiguration(
-        IReadOnlyList<RuntimeListener> listeners,
-        IReadOnlyList<RuntimeRoute> routes)
+        IEnumerable<RuntimeListener> listeners,
+        IEnumerable<RuntimeRoute> routes)
     {
         return new ProxyMetricsExportHttp3Facts(
             listeners.Count(static listener =>
