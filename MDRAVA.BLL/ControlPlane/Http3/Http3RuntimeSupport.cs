@@ -7,7 +7,7 @@ public sealed record Http3SupportConfigurationSource
     public static Http3SupportConfigurationSource Empty { get; } = new([], false);
 
     public Http3SupportConfigurationSource(
-        IReadOnlyList<Http3SupportListenerSource> Listeners,
+        IEnumerable<Http3SupportListenerSource> Listeners,
         bool UpstreamHttp3Configured)
     {
         ArgumentNullException.ThrowIfNull(Listeners);
@@ -37,14 +37,13 @@ public sealed record Http3SupportRuntimeListenerSource(
 public static class Http3SupportSourceMapper
 {
     public static IReadOnlyList<Http3SupportRuntimeListenerSource> FromRuntimeListeners(
-        IReadOnlyList<ProxyListenerStatus> listeners)
+        IEnumerable<ProxyListenerStatus> listeners)
     {
-        return listeners
+        return Http3List.Copy(listeners
             .Select(static listener => new Http3SupportRuntimeListenerSource(
                 string.Equals(listener.Kind, "quic", StringComparison.OrdinalIgnoreCase),
                 listener.Identity,
-                listener.State))
-            .ToArray();
+                listener.State)));
     }
 }
 

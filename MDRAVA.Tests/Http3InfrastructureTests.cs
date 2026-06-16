@@ -498,7 +498,7 @@ internal static class Http3InfrastructureTests
             QuicListenerIdentity: "main|quic");
         var listeners = new List<Http3SupportListenerSource> { listener };
         var source = new Http3SupportConfigurationSource(
-            Listeners: listeners,
+            Listeners: listeners.Select(static listener => listener),
             UpstreamHttp3Configured: true);
         var blockers = new List<string> { "runtime_quic_unsupported" };
         var clientProtocols = new List<string> { "http1", "http2", "http3" };
