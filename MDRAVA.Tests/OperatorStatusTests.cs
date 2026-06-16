@@ -857,6 +857,31 @@ internal static class OperatorStatusTests
             ObservedAtUtc: observedAtUtc,
             Readiness: readiness,
             ConfigLint: ConfigLintStatus.Empty);
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyStatusRuntimeSummary(
+            ListenerLive: true,
+            ListenerName: "main",
+            Endpoint: "127.0.0.1:18080",
+            StartedAt: DateTimeOffset.UnixEpoch,
+            StoppedAt: null,
+            LastError: null,
+            IsShuttingDown: false,
+            ShutdownStartedAtUtc: null,
+            ShutdownDeadlineUtc: null,
+            Listeners: [null!],
+            LastListenerReload: null));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyStatusInput(
+            Runtime: runtime,
+            Configuration: null,
+            Metrics: metrics,
+            Upstreams: [null!],
+            Http3: http3,
+            LogPersistence: ProxyLogPersistenceStatus.Unknown,
+            CacheStatus: null,
+            AcmeStatuses: acmeStatuses,
+            RuntimePreflight: ProxyRuntimePreflightStatus.Unknown,
+            ObservedAtUtc: observedAtUtc,
+            Readiness: readiness,
+            ConfigLint: ConfigLintStatus.Empty));
 
         listenerStatuses[0] = failed;
         upstreams[0] = replacementUpstream;
@@ -1820,6 +1845,13 @@ internal static class OperatorStatusTests
             clientHttp3Ready: false,
             upstreamHttp3Configured: true,
             unsupportedHttp3Features: null!));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyProtocolSubsystemSummary(
+            clientHttp1Enabled: true,
+            clientHttp2Enabled: true,
+            clientHttp3Enabled: false,
+            clientHttp3Ready: false,
+            upstreamHttp3Configured: true,
+            unsupportedHttp3Features: [null!]));
         AssertEx.Equal(2, protocols.UnsupportedHttp3Features.Count);
         AssertEx.Equal("datagrams", protocols.UnsupportedHttp3Features[0]);
         AssertEx.Equal("webtransport", protocols.UnsupportedHttp3Features[1]);
