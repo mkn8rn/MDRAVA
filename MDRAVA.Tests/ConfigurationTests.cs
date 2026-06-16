@@ -1265,6 +1265,43 @@ internal static class ConfigurationTests
         AssertEx.False(retry.RetryMethods is string[]);
         AssertEx.False(retryProjection.RetryOnStatusCodes is int[]);
         AssertEx.False(retryProjection.RetryMethods is string[]);
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeCachePolicy(
+            Enabled: true,
+            MaxEntryBytes: 1024,
+            MaxTotalBytes: 4096,
+            DefaultTtl: TimeSpan.FromSeconds(60),
+            RespectOriginCacheControl: true,
+            VaryByHeaders: [null!],
+            CacheableStatusCodes: [],
+            Methods: []));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeCachePolicy(
+            Enabled: true,
+            MaxEntryBytes: 1024,
+            MaxTotalBytes: 4096,
+            DefaultTtl: TimeSpan.FromSeconds(60),
+            RespectOriginCacheControl: true,
+            VaryByHeaders: [],
+            CacheableStatusCodes: [],
+            Methods: [null!]));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeHeaderPolicy(
+            [null!],
+            [],
+            [],
+            []));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeHeaderPolicy(
+            [],
+            [],
+            [null!],
+            []));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeRetryPolicy(
+            Enabled: true,
+            MaxAttempts: 2,
+            PerAttemptTimeout: TimeSpan.FromSeconds(1),
+            RetryOnConnectFailure: true,
+            RetryOnUpstreamResponseHeadTimeout: true,
+            RetryOnStatusCodes: [],
+            RetryMethods: [null!],
+            RetryBackoff: TimeSpan.FromMilliseconds(50)));
         var adminResponse = RuntimeAdminSecurityResponse.FromProjection(adminProjection);
         AssertEx.False(adminResponse.Urls is string[], "Admin security API URLs should not expose a mutable array.");
         var adminResponseUrls = new List<string> { adminResponse.Urls[0] };
@@ -1667,6 +1704,14 @@ internal static class ConfigurationTests
         AssertEx.False(snapshot.Certificates is Dictionary<string, RuntimeCertificate>);
         AssertEx.False(snapshot.Listeners is RuntimeListener[]);
         AssertEx.False(snapshot.Routes is RuntimeRoute[]);
+        AssertEx.Throws<ArgumentNullException>(() =>
+            listener.WithSniCertificates([null!]));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            route.WithUpstreams([null!]));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            snapshot.WithListenersAndRoutes([null!], snapshot.Routes));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            snapshot.WithListenersAndRoutes(snapshot.Listeners, [null!]));
         var http3Projection = new RuntimeHttp3SupportProjection(
             "unknown",
             QuicListenerSupported: false,

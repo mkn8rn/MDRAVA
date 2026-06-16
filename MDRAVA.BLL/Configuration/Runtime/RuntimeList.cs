@@ -7,7 +7,15 @@ internal static class RuntimeList
     public static ReadOnlyCollection<T> Copy<T>(IEnumerable<T> values)
     {
         ArgumentNullException.ThrowIfNull(values);
-        return new ReadOnlyCollection<T>(values.ToArray());
+
+        var copy = new List<T>();
+        foreach (var value in values)
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            copy.Add(value);
+        }
+
+        return new ReadOnlyCollection<T>(copy);
     }
 
     public static ReadOnlyDictionary<TKey, TValue> CopyDictionary<TKey, TValue>(
