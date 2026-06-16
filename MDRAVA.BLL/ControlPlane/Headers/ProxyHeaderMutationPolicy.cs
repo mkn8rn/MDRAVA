@@ -58,10 +58,10 @@ public sealed record ProxyHeaderMutationPolicyInput
         ArgumentNullException.ThrowIfNull(SetResponseHeaders);
         ArgumentNullException.ThrowIfNull(RemoveResponseHeaders);
 
-        this.SetRequestHeaders = new ReadOnlyCollection<ProxyHeaderField>(SetRequestHeaders.ToArray());
-        this.RemoveRequestHeaders = new ReadOnlyCollection<string>(RemoveRequestHeaders.ToArray());
-        this.SetResponseHeaders = new ReadOnlyCollection<ProxyHeaderField>(SetResponseHeaders.ToArray());
-        this.RemoveResponseHeaders = new ReadOnlyCollection<string>(RemoveResponseHeaders.ToArray());
+        this.SetRequestHeaders = ProxyHeaderFieldList.Copy(SetRequestHeaders);
+        this.RemoveRequestHeaders = CopyHeaderNames(RemoveRequestHeaders);
+        this.SetResponseHeaders = ProxyHeaderFieldList.Copy(SetResponseHeaders);
+        this.RemoveResponseHeaders = CopyHeaderNames(RemoveResponseHeaders);
     }
 
     public IReadOnlyList<ProxyHeaderField> SetRequestHeaders { get; }
@@ -71,4 +71,16 @@ public sealed record ProxyHeaderMutationPolicyInput
     public IReadOnlyList<ProxyHeaderField> SetResponseHeaders { get; }
 
     public IReadOnlyList<string> RemoveResponseHeaders { get; }
+
+    private static IReadOnlyList<string> CopyHeaderNames(IReadOnlyList<string> names)
+    {
+        var copy = new List<string>();
+        foreach (var name in names)
+        {
+            ArgumentNullException.ThrowIfNull(name);
+            copy.Add(name);
+        }
+
+        return new ReadOnlyCollection<string>(copy);
+    }
 }
