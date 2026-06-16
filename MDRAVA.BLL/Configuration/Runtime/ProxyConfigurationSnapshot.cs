@@ -18,6 +18,43 @@ public sealed record ProxyConfigurationSnapshot
         IReadOnlyDictionary<string, RuntimeCertificate> Certificates,
         IReadOnlyList<RuntimeListener> Listeners,
         IReadOnlyList<RuntimeRoute> Routes)
+        : this(
+            Version,
+            LoadedAtUtc,
+            SourceDirectory,
+            SourceFiles,
+            Discovery,
+            AdminSecurity,
+            Acme,
+            Timeouts,
+            ConnectionLimits,
+            Observability,
+            Limits,
+            ForwardedHeaders,
+            Certificates,
+            Listeners,
+            Routes,
+            RuntimeMetricsOptions.Default)
+    {
+    }
+
+    public ProxyConfigurationSnapshot(
+        int Version,
+        DateTimeOffset LoadedAtUtc,
+        string SourceDirectory,
+        IReadOnlyList<string> SourceFiles,
+        ProxyConfigurationDiscovery Discovery,
+        RuntimeAdminSecurityOptions AdminSecurity,
+        RuntimeAcmeOptions Acme,
+        RuntimeTimeouts Timeouts,
+        RuntimeConnectionLimits ConnectionLimits,
+        RuntimeObservabilityOptions Observability,
+        RuntimeLimits Limits,
+        RuntimeForwardedHeadersOptions ForwardedHeaders,
+        IReadOnlyDictionary<string, RuntimeCertificate> Certificates,
+        IReadOnlyList<RuntimeListener> Listeners,
+        IReadOnlyList<RuntimeRoute> Routes,
+        RuntimeMetricsOptions Metrics)
     {
         this.Version = Version;
         this.LoadedAtUtc = LoadedAtUtc;
@@ -34,31 +71,32 @@ public sealed record ProxyConfigurationSnapshot
         this.Certificates = RuntimeList.CopyDictionary(Certificates, StringComparer.OrdinalIgnoreCase);
         this.Listeners = RuntimeList.Copy(Listeners);
         this.Routes = RuntimeList.Copy(Routes);
+        this.Metrics = Metrics;
     }
 
-    public int Version { get; init; }
+    public int Version { get; }
 
-    public DateTimeOffset LoadedAtUtc { get; init; }
+    public DateTimeOffset LoadedAtUtc { get; }
 
-    public string SourceDirectory { get; init; }
+    public string SourceDirectory { get; }
 
     public IReadOnlyList<string> SourceFiles { get; }
 
-    public ProxyConfigurationDiscovery Discovery { get; init; }
+    public ProxyConfigurationDiscovery Discovery { get; }
 
-    public RuntimeAdminSecurityOptions AdminSecurity { get; init; }
+    public RuntimeAdminSecurityOptions AdminSecurity { get; }
 
-    public RuntimeAcmeOptions Acme { get; init; }
+    public RuntimeAcmeOptions Acme { get; }
 
-    public RuntimeTimeouts Timeouts { get; init; }
+    public RuntimeTimeouts Timeouts { get; }
 
-    public RuntimeConnectionLimits ConnectionLimits { get; init; }
+    public RuntimeConnectionLimits ConnectionLimits { get; }
 
-    public RuntimeObservabilityOptions Observability { get; init; }
+    public RuntimeObservabilityOptions Observability { get; }
 
-    public RuntimeLimits Limits { get; init; }
+    public RuntimeLimits Limits { get; }
 
-    public RuntimeForwardedHeadersOptions ForwardedHeaders { get; init; }
+    public RuntimeForwardedHeadersOptions ForwardedHeaders { get; }
 
     public IReadOnlyDictionary<string, RuntimeCertificate> Certificates { get; }
 
@@ -66,7 +104,7 @@ public sealed record ProxyConfigurationSnapshot
 
     public IReadOnlyList<RuntimeRoute> Routes { get; }
 
-    public RuntimeMetricsOptions Metrics { get; init; } = RuntimeMetricsOptions.Default;
+    public RuntimeMetricsOptions Metrics { get; }
 
     public ProxyConfigurationSnapshot WithCertificates(
         IReadOnlyDictionary<string, RuntimeCertificate> certificates)
@@ -86,10 +124,8 @@ public sealed record ProxyConfigurationSnapshot
             ForwardedHeaders,
             certificates,
             Listeners,
-            Routes)
-        {
-            Metrics = Metrics
-        };
+            Routes,
+            Metrics);
     }
 
     public ProxyConfigurationSnapshot WithListenersAndRoutes(
@@ -111,9 +147,7 @@ public sealed record ProxyConfigurationSnapshot
             ForwardedHeaders,
             Certificates,
             listeners,
-            routes)
-        {
-            Metrics = Metrics
-        };
+            routes,
+            Metrics);
     }
 }

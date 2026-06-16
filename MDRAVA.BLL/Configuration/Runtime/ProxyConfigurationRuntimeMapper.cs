@@ -66,10 +66,23 @@ public static partial class ProxyConfigurationRuntimeMapper
         var acme = ToRuntimeAcmeOptions(operationalOptions.Acme);
         var metrics = ToRuntimeMetricsOptions(operationalOptions.Metrics);
 
-        return new ProxyConfigurationSnapshot(version, loadedAtUtc, sourceDirectory, sourceFiles, discovery, adminSecurity, acme, timeouts, connectionLimits, observability, limits, forwardedHeaders, certificates, listeners, routes)
-        {
-            Metrics = metrics
-        };
+        return new ProxyConfigurationSnapshot(
+            version,
+            loadedAtUtc,
+            sourceDirectory,
+            sourceFiles,
+            discovery,
+            adminSecurity,
+            acme,
+            timeouts,
+            connectionLimits,
+            observability,
+            limits,
+            forwardedHeaders,
+            certificates,
+            listeners,
+            routes,
+            metrics);
     }
 
     public static IReadOnlyList<RuntimeListener> ToRuntimeListeners(IReadOnlyList<ListenerOptions> listeners)

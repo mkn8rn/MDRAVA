@@ -1213,10 +1213,8 @@ internal static class ResilienceTests
             new RuntimeForwardedHeadersOptions(true, []),
             new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),
             [],
-            routes ?? [])
-        {
-            Metrics = metricsOptions ?? RuntimeMetricsOptions.Default
-        });
+            routes ?? [],
+            metricsOptions ?? RuntimeMetricsOptions.Default));
         return store;
     }
 
