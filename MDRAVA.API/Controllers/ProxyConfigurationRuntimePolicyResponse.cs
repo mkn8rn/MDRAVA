@@ -81,16 +81,26 @@ public sealed record RuntimeLimitsResponse(
     }
 }
 
-public sealed record RuntimeForwardedHeadersResponse(
-    bool Enabled,
-    IReadOnlyList<string> TrustedProxies)
+public sealed record RuntimeForwardedHeadersResponse
 {
+    public RuntimeForwardedHeadersResponse(
+        bool enabled,
+        IReadOnlyList<string> trustedProxies)
+    {
+        Enabled = enabled;
+        TrustedProxies = ApiResponseList.Copy(trustedProxies);
+    }
+
+    public bool Enabled { get; }
+
+    public IReadOnlyList<string> TrustedProxies { get; }
+
     public static RuntimeForwardedHeadersResponse FromProjection(BusinessRuntimeForwardedHeadersProjection projection)
     {
         ArgumentNullException.ThrowIfNull(projection);
 
         return new RuntimeForwardedHeadersResponse(
-            projection.Enabled,
-            ApiResponseList.Copy(projection.TrustedProxies));
+            enabled: projection.Enabled,
+            trustedProxies: projection.TrustedProxies);
     }
 }

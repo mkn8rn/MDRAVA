@@ -786,6 +786,19 @@ internal static class ConfigurationTests
         AssertEx.False(directAdminResponse.Urls is string[], "Direct admin security API URLs should not expose a mutable array.");
         var forwardedHeadersResponse = RuntimeForwardedHeadersResponse.FromProjection(forwardedHeadersProjection);
         AssertEx.False(forwardedHeadersResponse.TrustedProxies is string[], "Forwarded headers API trusted proxies should not expose a mutable array.");
+        var forwardedHeaderTrustedProxies = new List<string> { forwardedHeadersResponse.TrustedProxies[0] };
+        var directForwardedHeadersResponse = new RuntimeForwardedHeadersResponse(
+            enabled: forwardedHeadersResponse.Enabled,
+            trustedProxies: forwardedHeaderTrustedProxies);
+
+        forwardedHeaderTrustedProxies[0] = "10.0.0.1";
+        forwardedHeaderTrustedProxies.Clear();
+
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeForwardedHeadersResponse(
+            enabled: true,
+            trustedProxies: null!));
+        AssertEx.Equal("127.0.0.1", directForwardedHeadersResponse.TrustedProxies[0]);
+        AssertEx.False(directForwardedHeadersResponse.TrustedProxies is string[], "Direct forwarded headers API trusted proxies should not expose a mutable array.");
         var headerPolicyResponse = RuntimeHeaderPolicyResponse.FromProjection(headerPolicyProjection);
         AssertEx.False(headerPolicyResponse.SetRequestHeaders is RuntimeHeaderFieldResponse[], "Header policy API set request headers should not expose a mutable array.");
         AssertEx.False(headerPolicyResponse.RemoveRequestHeaders is string[], "Header policy API remove request headers should not expose a mutable array.");
