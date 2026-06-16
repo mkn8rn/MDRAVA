@@ -735,27 +735,39 @@ internal static class Http3InfrastructureTests
         var directPolicyFeatures = new List<string> { "direct_cache" };
         var directUnsupported = new List<string> { "direct_webtransport" };
         var directResponse = new RuntimeHttp3SupportResponse(
-            RuntimeSupport: "supported",
-            QuicListenerSupported: true,
-            QuicConnectionSupported: true,
-            Configured: "default",
-            EnablementLevel: "default",
-            EnabledForTraffic: true,
-            QuicListenerReady: true,
-            AltSvcConfigured: true,
-            AltSvcActive: true,
-            AltSvcMaxAgeSeconds: 3600,
-            DisabledReason: "quic_listener_ready",
-            UdpQuicListenerIdentityModeled: true,
-            ReadinessConclusion: "ready")
-        {
-            DefaultReadinessBlockers = directBlockers,
-            ClientProtocols = directClientProtocols,
-            UpstreamProtocols = directUpstreamProtocols,
-            SupportedRouteActions = directRouteActions,
-            SupportedPolicyFeatures = directPolicyFeatures,
-            UnsupportedFeatures = directUnsupported
-        };
+            runtimeSupport: "supported",
+            quicListenerSupported: true,
+            quicConnectionSupported: true,
+            configured: "default",
+            enablementLevel: "default",
+            enabledForTraffic: true,
+            quicListenerReady: true,
+            altSvcConfigured: true,
+            altSvcActive: true,
+            altSvcMaxAgeSeconds: 3600,
+            disabledReason: "quic_listener_ready",
+            udpQuicListenerIdentityModeled: true,
+            readinessConclusion: "ready",
+            defaultEnablementState: "enabled",
+            defaultReadinessBlockers: directBlockers,
+            altSvcStateReason: "active",
+            qpackMode: "static_with_zero_dynamic_table",
+            qpackDynamicTableCapacity: 0,
+            qpackBlockedStreams: 0,
+            requestBodyMode: "streaming",
+            clientHttp3SupportLevel: "default_enabled_for_eligible_tls_proxy_listeners",
+            upstreamHttp3SupportLevel: "opt_in_https_quic_reused_multiplexed",
+            clientProtocols: directClientProtocols,
+            upstreamProtocols: directUpstreamProtocols,
+            supportedRouteActions: directRouteActions,
+            supportedPolicyFeatures: directPolicyFeatures,
+            unsupportedFeatures: directUnsupported,
+            upstreamHttp3Configured: true,
+            upstreamPoolingMode: "reused_multiplexed",
+            upstreamMultiplexingEnabled: true,
+            upstreamMaxStreamsPerConnection: 8,
+            upstreamQpackMode: "static_with_zero_dynamic_table",
+            upstreamPoolingLimitationReason: "");
 
         directBlockers[0] = "replacement_direct_blocker";
         directClientProtocols[0] = "replacement_direct_client";
@@ -771,22 +783,39 @@ internal static class Http3InfrastructureTests
         directUnsupported.Clear();
 
         AssertEx.Throws<ArgumentNullException>(() => _ = new RuntimeHttp3SupportResponse(
-            RuntimeSupport: "supported",
-            QuicListenerSupported: true,
-            QuicConnectionSupported: true,
-            Configured: "default",
-            EnablementLevel: "default",
-            EnabledForTraffic: true,
-            QuicListenerReady: true,
-            AltSvcConfigured: true,
-            AltSvcActive: true,
-            AltSvcMaxAgeSeconds: 3600,
-            DisabledReason: "quic_listener_ready",
-            UdpQuicListenerIdentityModeled: true,
-            ReadinessConclusion: "ready")
-        {
-            UnsupportedFeatures = null!
-        });
+            runtimeSupport: "supported",
+            quicListenerSupported: true,
+            quicConnectionSupported: true,
+            configured: "default",
+            enablementLevel: "default",
+            enabledForTraffic: true,
+            quicListenerReady: true,
+            altSvcConfigured: true,
+            altSvcActive: true,
+            altSvcMaxAgeSeconds: 3600,
+            disabledReason: "quic_listener_ready",
+            udpQuicListenerIdentityModeled: true,
+            readinessConclusion: "ready",
+            defaultEnablementState: "enabled",
+            defaultReadinessBlockers: directBlockers,
+            altSvcStateReason: "active",
+            qpackMode: "static_with_zero_dynamic_table",
+            qpackDynamicTableCapacity: 0,
+            qpackBlockedStreams: 0,
+            requestBodyMode: "streaming",
+            clientHttp3SupportLevel: "default_enabled_for_eligible_tls_proxy_listeners",
+            upstreamHttp3SupportLevel: "opt_in_https_quic_reused_multiplexed",
+            clientProtocols: directClientProtocols,
+            upstreamProtocols: directUpstreamProtocols,
+            supportedRouteActions: directRouteActions,
+            supportedPolicyFeatures: directPolicyFeatures,
+            unsupportedFeatures: null!,
+            upstreamHttp3Configured: true,
+            upstreamPoolingMode: "reused_multiplexed",
+            upstreamMultiplexingEnabled: true,
+            upstreamMaxStreamsPerConnection: 8,
+            upstreamQpackMode: "static_with_zero_dynamic_table",
+            upstreamPoolingLimitationReason: ""));
         AssertEx.Equal("direct_blocker", directResponse.DefaultReadinessBlockers[0]);
         AssertEx.Equal("direct_http1", directResponse.ClientProtocols[0]);
         AssertEx.Equal("direct_h3", directResponse.UpstreamProtocols[0]);
