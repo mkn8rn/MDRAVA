@@ -34,27 +34,33 @@ internal static class TlsCertificateSelectorTests
         AssertEx.Equal("acme.test", acme.Domains[0]);
     }
 
-    public static void SelectionInputReadsRuntimeConfiguration()
+    public static void SelectionInputReadsRuntimeFactsWithoutSnapshot()
     {
         using var defaultCertificate = Certificate("default.test");
         var certificates = new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase)
         {
             ["default"] = RuntimeCertificate("default", defaultCertificate)
         };
-        var bindings = new[]
+        var bindings = new List<RuntimeSniCertificateBinding>
         {
             new RuntimeSniCertificateBinding("home.test", "default")
         };
-        var listener = Listener("default", bindings);
-        var snapshot = Snapshot(certificates, [listener]);
 
-        var input = TlsCertificateSelectionInputMapper.FromRuntimeConfiguration(snapshot, listener, "Home.Test");
+        var input = TlsCertificateSelectionInputMapper.FromSources(
+            certificates.Select(static certificate => certificate),
+            "default",
+            bindings.Select(static binding => binding),
+            "Home.Test");
 
-        AssertEx.True(ReferenceEquals(snapshot.Certificates, input.Certificates));
+        certificates.Clear();
+        bindings.Clear();
+
+        AssertEx.True(input.Certificates.ContainsKey("default"));
         AssertEx.Equal("default", input.DefaultCertificateId);
         AssertEx.Equal(1, input.SniCertificates.Count);
         AssertEx.Equal("home.test", input.SniCertificates[0].HostName);
         AssertEx.Equal("Home.Test", input.HostName);
+        AssertEx.False(input.SniCertificates is RuntimeSniCertificateBinding[], "TLS selection SNI certificates should not expose a mutable array.");
     }
 
     public static void SelectsSniCertificateBeforeDefaultAndFallsBackSafely()

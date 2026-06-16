@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Security.Cryptography.X509Certificates;
 using MDRAVA.BLL.Configuration;
 
@@ -29,23 +30,48 @@ public static class TlsCertificateSelector
     }
 }
 
-public sealed record TlsCertificateSelectionInput(
-    IReadOnlyDictionary<string, RuntimeCertificate> Certificates,
-    string? DefaultCertificateId,
-    IReadOnlyList<RuntimeSniCertificateBinding> SniCertificates,
-    string? HostName);
+public sealed record TlsCertificateSelectionInput
+{
+    public TlsCertificateSelectionInput(
+        IEnumerable<KeyValuePair<string, RuntimeCertificate>> certificates,
+        string? defaultCertificateId,
+        IEnumerable<RuntimeSniCertificateBinding> sniCertificates,
+        string? hostName)
+    {
+        ArgumentNullException.ThrowIfNull(certificates);
+        ArgumentNullException.ThrowIfNull(sniCertificates);
+
+        Certificates = new ReadOnlyDictionary<string, RuntimeCertificate>(
+            certificates.ToDictionary(
+                static certificate => certificate.Key,
+                static certificate => certificate.Value,
+                StringComparer.OrdinalIgnoreCase));
+        DefaultCertificateId = defaultCertificateId;
+        SniCertificates = new ReadOnlyCollection<RuntimeSniCertificateBinding>(sniCertificates.ToArray());
+        HostName = hostName;
+    }
+
+    public IReadOnlyDictionary<string, RuntimeCertificate> Certificates { get; }
+
+    public string? DefaultCertificateId { get; }
+
+    public IReadOnlyList<RuntimeSniCertificateBinding> SniCertificates { get; }
+
+    public string? HostName { get; }
+}
 
 public static class TlsCertificateSelectionInputMapper
 {
-    public static TlsCertificateSelectionInput FromRuntimeConfiguration(
-        ProxyConfigurationSnapshot snapshot,
-        RuntimeListener listener,
+    public static TlsCertificateSelectionInput FromSources(
+        IEnumerable<KeyValuePair<string, RuntimeCertificate>> certificates,
+        string? defaultCertificateId,
+        IEnumerable<RuntimeSniCertificateBinding> sniCertificates,
         string? hostName)
     {
         return new TlsCertificateSelectionInput(
-            snapshot.Certificates,
-            listener.DefaultCertificateId,
-            listener.SniCertificates,
+            certificates,
+            defaultCertificateId,
+            sniCertificates,
             hostName);
     }
 }
