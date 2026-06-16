@@ -214,4 +214,12 @@ internal static class HeaderPolicyTests
         AssertEx.False(input.SetResponseHeaders is ProxyHeaderField[], "Header mutation response set headers should not expose a mutable array.");
         AssertEx.False(input.RemoveResponseHeaders is string[], "Header mutation response remove headers should not expose a mutable array.");
     }
+
+    public static void HeaderRuntimeMappersRejectNullInputs()
+    {
+        AssertEx.Throws<ArgumentNullException>(
+            () => ProxyHeaderMutationRuntimeMapper.ToPolicyInput(null!));
+        AssertEx.Throws<ArgumentNullException>(
+            () => ProxyForwardedHeadersRuntimeMapper.ToListener(null!));
+    }
 }
