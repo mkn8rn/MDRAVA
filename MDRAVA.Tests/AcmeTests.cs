@@ -514,7 +514,7 @@ internal static class AcmeTests
         AssertEx.Equal(notAfter, certificate.NotAfterUtc);
     }
 
-    public static void AcmeStatusConfigurationSourceMapperReadsRuntimeConfiguration()
+    public static void AcmeStatusConfigurationSourceMapperReadsRuntimeFactsWithoutSnapshot()
     {
         using var temp = TemporaryDirectory.Create();
         using var certificate = X509CertificateLoader.LoadPkcs12(
@@ -527,8 +527,13 @@ internal static class AcmeTests
             {
                 ["home-acme"] = RuntimeCertificate("home-acme", certificate, "acme")
             });
+        var runtimeCertificates = new Dictionary<string, RuntimeCertificate>(snapshot.Certificates, StringComparer.OrdinalIgnoreCase);
 
-        var source = ProxyAcmeStatusConfigurationSourceMapper.FromConfiguration(snapshot);
+        var source = ProxyAcmeStatusConfigurationSourceMapper.FromSources(
+            snapshot.Acme,
+            runtimeCertificates.Select(static certificate => certificate));
+
+        runtimeCertificates.Clear();
 
         AssertEx.True(source.Enabled);
         AssertEx.Equal(snapshot.Acme.DirectoryUrl, source.DirectoryUrl);

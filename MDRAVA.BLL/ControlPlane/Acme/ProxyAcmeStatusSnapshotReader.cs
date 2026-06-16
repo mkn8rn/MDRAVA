@@ -39,8 +39,10 @@ public sealed class ProxyAcmeStatusSnapshotReader : IProxyAcmeStatusSnapshotRead
 public static class ProxyAcmeRuntimeCertificateStatusMapper
 {
     public static IReadOnlyDictionary<string, ProxyAcmeRuntimeCertificateStatus> FromSources(
-        IReadOnlyList<ProxyAcmeRuntimeCertificateSource> runtimeCertificates)
+        IEnumerable<ProxyAcmeRuntimeCertificateSource> runtimeCertificates)
     {
+        ArgumentNullException.ThrowIfNull(runtimeCertificates);
+
         return runtimeCertificates.ToDictionary(
             static certificate => certificate.Key,
             static certificate => new ProxyAcmeRuntimeCertificateStatus(

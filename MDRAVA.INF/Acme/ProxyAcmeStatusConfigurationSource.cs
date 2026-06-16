@@ -21,6 +21,8 @@ public sealed class ProxyAcmeStatusConfigurationSource : IProxyAcmeStatusConfigu
         }
 
         return ProxyAcmeStatusConfigurationSourceReadResult.Available(
-            ProxyAcmeStatusConfigurationSourceMapper.FromConfiguration(available.Snapshot));
+            ProxyAcmeStatusConfigurationSourceMapper.FromSources(
+                available.Snapshot.Acme,
+                available.Snapshot.Certificates));
     }
 }

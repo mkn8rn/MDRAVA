@@ -41,22 +41,24 @@ public sealed record ProxyAcmeRuntimeCertificateSource(
 
 public static class ProxyAcmeStatusConfigurationSourceMapper
 {
-    public static ProxyAcmeStatusConfigurationSourceSnapshot FromConfiguration(
-        ProxyConfigurationSnapshot snapshot)
+    public static ProxyAcmeStatusConfigurationSourceSnapshot FromSources(
+        RuntimeAcmeOptions acme,
+        IEnumerable<KeyValuePair<string, RuntimeCertificate>> runtimeCertificates)
     {
-        ArgumentNullException.ThrowIfNull(snapshot);
+        ArgumentNullException.ThrowIfNull(acme);
+        ArgumentNullException.ThrowIfNull(runtimeCertificates);
 
         return new ProxyAcmeStatusConfigurationSourceSnapshot(
-            snapshot.Acme.Enabled,
-            snapshot.Acme.DirectoryUrl,
-            snapshot.Acme.UseStaging,
-            snapshot.Acme.Certificates
+            acme.Enabled,
+            acme.DirectoryUrl,
+            acme.UseStaging,
+            acme.Certificates
                 .Select(static certificate => new ProxyAcmeConfiguredCertificateStatus(
                     certificate.Id,
                     certificate.Enabled,
                     certificate.Domains,
                     certificate.RenewBeforeDays)),
-            snapshot.Certificates
+            runtimeCertificates
                 .Select(static certificate => new ProxyAcmeRuntimeCertificateSource(
                     certificate.Key,
                     certificate.Value.Id,
