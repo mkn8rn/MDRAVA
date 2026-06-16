@@ -136,6 +136,9 @@ internal static class HeaderPolicyTests
         AssertEx.Equal("Forwarded", context.Headers[0].Name);
         AssertEx.False(context.Headers is ProxyHeaderField[], "Forwarded header context should not expose a mutable array.");
         AssertEx.Throws<ArgumentNullException>(() => new ForwardedHeadersContext(null, null, null!));
+        var unresolved = new ForwardedHeadersContext(null, null, []);
+        AssertEx.Equal(null, unresolved.ResolvedClientAddress);
+        AssertEx.Equal(null, unresolved.ResolvedClientEndpoint);
     }
 
     public static void ForwardedAddressPolicyNamesNormalizedAddress()

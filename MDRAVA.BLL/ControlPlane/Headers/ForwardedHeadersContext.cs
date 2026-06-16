@@ -14,9 +14,9 @@ public sealed record ForwardedHeadersContext
         this.Headers = ProxyHeaderFieldList.Copy(Headers);
     }
 
-    public string? ResolvedClientAddress { get; init; }
+    public string? ResolvedClientAddress { get; }
 
-    public string? ResolvedClientEndpoint { get; init; }
+    public string? ResolvedClientEndpoint { get; }
 
     public IReadOnlyList<ProxyHeaderField> Headers { get; }
 }
