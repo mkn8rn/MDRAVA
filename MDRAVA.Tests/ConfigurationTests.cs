@@ -858,6 +858,96 @@ internal static class ConfigurationTests
         var retryResponse = RuntimeRetryPolicyResponse.FromProjection(retryProjection);
         AssertEx.False(retryResponse.RetryOnStatusCodes is int[], "Retry API status codes should not expose a mutable array.");
         AssertEx.False(retryResponse.RetryMethods is string[], "Retry API methods should not expose a mutable array.");
+        var cacheResponseVaryHeaders = new List<string> { cacheResponse.VaryByHeaders[0] };
+        var cacheResponseStatusCodes = new List<int> { cacheResponse.CacheableStatusCodes[0] };
+        var cacheResponseMethods = new List<string> { cacheResponse.Methods[0] };
+        var directCacheResponse = new RuntimeCachePolicyResponse(
+            enabled: cacheResponse.Enabled,
+            maxEntryBytes: cacheResponse.MaxEntryBytes,
+            maxTotalBytes: cacheResponse.MaxTotalBytes,
+            defaultTtl: cacheResponse.DefaultTtl,
+            respectOriginCacheControl: cacheResponse.RespectOriginCacheControl,
+            varyByHeaders: cacheResponseVaryHeaders,
+            cacheableStatusCodes: cacheResponseStatusCodes,
+            methods: cacheResponseMethods);
+        var retryResponseStatusCodes = new List<int> { retryResponse.RetryOnStatusCodes[0] };
+        var retryResponseMethods = new List<string> { retryResponse.RetryMethods[0] };
+        var directRetryResponse = new RuntimeRetryPolicyResponse(
+            enabled: retryResponse.Enabled,
+            maxAttempts: retryResponse.MaxAttempts,
+            perAttemptTimeout: retryResponse.PerAttemptTimeout,
+            retryOnConnectFailure: retryResponse.RetryOnConnectFailure,
+            retryOnUpstreamResponseHeadTimeout: retryResponse.RetryOnUpstreamResponseHeadTimeout,
+            retryOnStatusCodes: retryResponseStatusCodes,
+            retryMethods: retryResponseMethods,
+            retryBackoff: retryResponse.RetryBackoff);
+
+        cacheResponseVaryHeaders[0] = "X-Replacement";
+        cacheResponseStatusCodes[0] = 299;
+        cacheResponseMethods[0] = "POST";
+        retryResponseStatusCodes[0] = 599;
+        retryResponseMethods[0] = "POST";
+        cacheResponseVaryHeaders.Clear();
+        cacheResponseStatusCodes.Clear();
+        cacheResponseMethods.Clear();
+        retryResponseStatusCodes.Clear();
+        retryResponseMethods.Clear();
+
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeCachePolicyResponse(
+            enabled: true,
+            maxEntryBytes: 1024,
+            maxTotalBytes: 4096,
+            defaultTtl: TimeSpan.FromSeconds(60),
+            respectOriginCacheControl: true,
+            varyByHeaders: null!,
+            cacheableStatusCodes: [],
+            methods: []));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeCachePolicyResponse(
+            enabled: true,
+            maxEntryBytes: 1024,
+            maxTotalBytes: 4096,
+            defaultTtl: TimeSpan.FromSeconds(60),
+            respectOriginCacheControl: true,
+            varyByHeaders: [],
+            cacheableStatusCodes: null!,
+            methods: []));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeCachePolicyResponse(
+            enabled: true,
+            maxEntryBytes: 1024,
+            maxTotalBytes: 4096,
+            defaultTtl: TimeSpan.FromSeconds(60),
+            respectOriginCacheControl: true,
+            varyByHeaders: [],
+            cacheableStatusCodes: [],
+            methods: null!));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeRetryPolicyResponse(
+            enabled: true,
+            maxAttempts: 3,
+            perAttemptTimeout: TimeSpan.FromSeconds(1),
+            retryOnConnectFailure: true,
+            retryOnUpstreamResponseHeadTimeout: true,
+            retryOnStatusCodes: null!,
+            retryMethods: [],
+            retryBackoff: TimeSpan.FromMilliseconds(100)));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeRetryPolicyResponse(
+            enabled: true,
+            maxAttempts: 3,
+            perAttemptTimeout: TimeSpan.FromSeconds(1),
+            retryOnConnectFailure: true,
+            retryOnUpstreamResponseHeadTimeout: true,
+            retryOnStatusCodes: [],
+            retryMethods: null!,
+            retryBackoff: TimeSpan.FromMilliseconds(100)));
+        AssertEx.Equal("X-Tenant", directCacheResponse.VaryByHeaders[0]);
+        AssertEx.Equal(200, directCacheResponse.CacheableStatusCodes[0]);
+        AssertEx.Equal("GET", directCacheResponse.Methods[0]);
+        AssertEx.Equal(502, directRetryResponse.RetryOnStatusCodes[0]);
+        AssertEx.Equal("GET", directRetryResponse.RetryMethods[0]);
+        AssertEx.False(directCacheResponse.VaryByHeaders is string[], "Direct cache API vary headers should not expose a mutable array.");
+        AssertEx.False(directCacheResponse.CacheableStatusCodes is int[], "Direct cache API cacheable status codes should not expose a mutable array.");
+        AssertEx.False(directCacheResponse.Methods is string[], "Direct cache API methods should not expose a mutable array.");
+        AssertEx.False(directRetryResponse.RetryOnStatusCodes is int[], "Direct retry API status codes should not expose a mutable array.");
+        AssertEx.False(directRetryResponse.RetryMethods is string[], "Direct retry API methods should not expose a mutable array.");
         var acmeResponse = RuntimeAcmeResponse.FromProjection(acmeProjection);
         AssertEx.False(acmeResponse.ContactEmails is string[], "ACME API contact emails should not expose a mutable array.");
         AssertEx.False(acmeResponse.Certificates is RuntimeAcmeCertificateResponse[], "ACME API certificates should not expose a mutable array.");
