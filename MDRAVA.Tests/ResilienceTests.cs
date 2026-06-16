@@ -463,6 +463,27 @@ internal static class ResilienceTests
         AssertEx.Equal("first,second,first", string.Join(',', selected));
     }
 
+    public static void UpstreamSelectionRouteCopiesUpstreamList()
+    {
+        using var fixture = SelectorFixture.Create();
+        var upstreams = new List<RuntimeUpstream> { Upstream("first", weight: 1) };
+        var route = new UpstreamSelectionRoute(
+            "route",
+            HealthCheckEnabled: false,
+            upstreams);
+
+        upstreams.Clear();
+
+        var selection = AssertEx.NotNull(fixture.Selector.Select(route));
+
+        AssertEx.Equal("first", selection.Upstream.Name);
+        AssertEx.False(route.Upstreams is RuntimeUpstream[], "Upstream selection route should not expose a mutable array.");
+        AssertEx.Throws<ArgumentNullException>(() => new UpstreamSelectionRoute(
+            "route",
+            HealthCheckEnabled: false,
+            null!));
+    }
+
     public static void UnhealthyAndOpenCircuitUpstreamsAreSkipped()
     {
         var first = Upstream("first", weight: 1, circuit: Circuit(threshold: 1));

@@ -24,6 +24,7 @@ internal static partial class TestRegistry
     Test("Half-open failure reopens circuit", Sync(ResilienceTests.HalfOpenFailureReopensCircuit), TestTaxonomy.RetryCircuit, TestTaxonomy.SecurityNegativePaths),
     Test("Weighted round-robin honors weights", Sync(ResilienceTests.WeightedRoundRobinHonorsWeights), TestTaxonomy.RetryCircuit),
     Test("Equal weights preserve round-robin order", Sync(ResilienceTests.EqualWeightRoundRobinPreservesExistingOrder), TestTaxonomy.RetryCircuit),
+    Test("Upstream selection route copies upstream list", Sync(ResilienceTests.UpstreamSelectionRouteCopiesUpstreamList), TestTaxonomy.RetryCircuit),
     Test("Unhealthy and open-circuit upstreams are skipped", Sync(ResilienceTests.UnhealthyAndOpenCircuitUpstreamsAreSkipped), TestTaxonomy.RetryCircuit, TestTaxonomy.HealthChecks, TestTaxonomy.SecurityNegativePaths),
     Test("Mixed protocol upstream failures isolate circuit state", Sync(ResilienceTests.MixedProtocolUpstreamFailuresIsolateCircuitState), TestTaxonomy.RetryCircuit, TestTaxonomy.SecurityNegativePaths),
     Test("All unavailable upstreams return no selection", Sync(ResilienceTests.AllUpstreamsUnavailableReturnsNoSelection), TestTaxonomy.Routing, TestTaxonomy.RetryCircuit, TestTaxonomy.SecurityNegativePaths),
