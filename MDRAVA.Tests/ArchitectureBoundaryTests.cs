@@ -53,6 +53,18 @@ internal static class ArchitectureBoundaryTests
             ]);
     }
 
+    public static void ApiControllersDoNotReferenceInfrastructureLayer()
+    {
+        var root = FindRepositoryRoot();
+
+        AssertSourceDoesNotContain(
+            root,
+            "MDRAVA.API/Controllers",
+            [
+                "MDRAVA.INF"
+            ]);
+    }
+
     private static void AssertReferences(
         string root,
         string projectPath,
