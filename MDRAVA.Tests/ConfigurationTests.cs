@@ -352,6 +352,22 @@ internal static class ConfigurationTests
         AssertEx.Equal(1, result.Errors.Count);
         AssertEx.Equal("bind failed", result.Errors[0]);
         AssertEx.False(result.Errors is string[], "Listener reload errors should not expose a mutable array.");
+        AssertEx.Throws<ArgumentNullException>(() => ProxyListenerReloadResult.Applied(
+            DateTimeOffset.UnixEpoch,
+            added: 1,
+            removed: 0,
+            changed: 0,
+            unchanged: 0,
+            changes: [null!],
+            errors: []));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyListenerReloadResult.Failed(
+            DateTimeOffset.UnixEpoch,
+            added: 0,
+            removed: 0,
+            changed: 1,
+            unchanged: 0,
+            changes,
+            errors: [null!]));
         var response = ProxyListenerReloadResponse.FromResult(result);
         AssertEx.False(response.Changes is ProxyListenerReloadChangeResponse[], "Listener reload API changes should not expose a mutable array.");
         AssertEx.False(response.Errors is string[], "Listener reload API errors should not expose a mutable array.");

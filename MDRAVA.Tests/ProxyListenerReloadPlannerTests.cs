@@ -71,6 +71,8 @@ internal static class ProxyListenerReloadPlannerTests
         AssertEx.Throws<ArgumentNullException>(() => new ProxyListenerDiff([], null!, [], []));
         AssertEx.Throws<ArgumentNullException>(() => new ProxyListenerDiff([], [], null!, []));
         AssertEx.Throws<ArgumentNullException>(() => new ProxyListenerDiff([], [], [], null!));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyListenerDiff([null!], [], [], []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyListenerDiff([], [null!], [], []));
     }
 
     private static Dictionary<string, ProxyTcpListenerReloadTarget> Tcp(params ProxyTcpListenerReloadTarget[] targets)

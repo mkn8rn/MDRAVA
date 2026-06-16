@@ -221,6 +221,19 @@ internal static class OperatorStatusTests
         var afterInputMutation = runtime.Snapshot();
         AssertEx.Equal(1, afterInputMutation.Listeners.Count);
         AssertEx.Equal(ProxyListenerState.Active, afterInputMutation.Listeners[0].State);
+        AssertEx.Throws<ArgumentNullException>(() => runtime.ReplaceListeners([null!], null));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRuntimeSnapshot(
+            isRunning: true,
+            listenerName: "main",
+            endpoint: "127.0.0.1:18080",
+            startedAt: DateTimeOffset.UnixEpoch,
+            stoppedAt: null,
+            lastError: null,
+            isShuttingDown: false,
+            shutdownStartedAtUtc: null,
+            shutdownDeadlineUtc: null,
+            listeners: [null!],
+            lastListenerReload: null));
 
         var readListeners = runtime.ReadRuntimeListeners();
         AssertEx.Equal(1, readListeners.Count);

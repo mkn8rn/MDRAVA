@@ -82,7 +82,7 @@ public sealed class ProxyRuntimeState : IProxyStatusRuntimeStateSource, IHttp3Al
         IEnumerable<ProxyListenerStatus> listeners,
         ProxyListenerReloadResult? lastReload)
     {
-        var listenerSnapshot = listeners.ToArray();
+        var listenerSnapshot = ProxyListenerList.Copy(listeners).ToArray();
         lock (_gate)
         {
             _listeners = listenerSnapshot;
