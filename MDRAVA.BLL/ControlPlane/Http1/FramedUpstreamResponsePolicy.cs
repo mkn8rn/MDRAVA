@@ -4,10 +4,24 @@ using MDRAVA.BLL.ControlPlane.Routing;
 
 namespace MDRAVA.BLL.ControlPlane.Http1;
 
-public sealed record FramedUpstreamResponseTranslationInput(
-    int StatusCode,
-    IReadOnlyList<ProxyHeaderField> Headers,
-    bool ResponseEndedWithHead);
+public sealed record FramedUpstreamResponseTranslationInput
+{
+    public FramedUpstreamResponseTranslationInput(
+        int StatusCode,
+        IReadOnlyList<ProxyHeaderField> Headers,
+        bool ResponseEndedWithHead)
+    {
+        this.StatusCode = StatusCode;
+        this.Headers = ProxyHeaderFieldList.Copy(Headers);
+        this.ResponseEndedWithHead = ResponseEndedWithHead;
+    }
+
+    public int StatusCode { get; init; }
+
+    public IReadOnlyList<ProxyHeaderField> Headers { get; }
+
+    public bool ResponseEndedWithHead { get; init; }
+}
 
 public static class FramedUpstreamResponsePolicy
 {

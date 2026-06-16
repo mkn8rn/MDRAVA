@@ -58,6 +58,29 @@ internal static class FramedUpstreamResponsePolicyTests
         AssertEx.Equal(Http1ParseErrorText.FromError(Http1ParseError.ConflictingContentLength), conflictingContentLength);
     }
 
+    public static void TranslationInputCopiesHeaders()
+    {
+        var headers = new List<ProxyHeaderField>
+        {
+            new("content-length", "12")
+        };
+
+        var input = new FramedUpstreamResponseTranslationInput(
+            200,
+            headers,
+            ResponseEndedWithHead: false);
+
+        headers.Clear();
+
+        AssertEx.Equal(200, input.StatusCode);
+        AssertEx.Equal("content-length", input.Headers[0].Name);
+        AssertEx.False(input.Headers is ProxyHeaderField[], "Framed upstream response input headers should not expose a mutable array.");
+        AssertEx.Throws<ArgumentNullException>(() => new FramedUpstreamResponseTranslationInput(
+            200,
+            null!,
+            ResponseEndedWithHead: false));
+    }
+
     private static Http1ResponseHead Build(
         string method,
         FramedUpstreamResponseTranslationInput input)
