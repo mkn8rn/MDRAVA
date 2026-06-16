@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using MDRAVA.BLL.Configuration;
 
 namespace MDRAVA.BLL.ControlPlane.ConfigurationManagement;
@@ -54,6 +55,13 @@ public abstract record ProxyConfigurationNormalizeResult
         internal FailedResult(
             string format,
             IReadOnlyList<ProxyConfigurationFileError> fileErrors)
+            : this(format, ConfigurationManagementList.Copy(fileErrors))
+        {
+        }
+
+        private FailedResult(
+            string format,
+            ReadOnlyCollection<ProxyConfigurationFileError> fileErrors)
             : base(
                 format,
                 CreateErrors(fileErrors),

@@ -530,6 +530,73 @@ internal static class ConfigurationTests
         AssertEx.Equal("sites/home.json", reloadFailed.FileErrors[0].Path);
         AssertEx.False(reloadFailed.Errors is string[], "Reload errors should not expose a mutable array.");
         AssertEx.False(reloadFailed.FileErrors is ProxyConfigurationFileError[], "Reload file errors should not expose a mutable array.");
+        AssertEx.Throws<ArgumentNullException>(() => ProxyConfigurationNormalizeResult.Failed("json", [null!]));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyConfigurationValidationResult.Valid(
+            sourceDirectory: "data",
+            attemptedAtUtc: DateTimeOffset.UnixEpoch,
+            activeVersion: 1,
+            lastSuccessfulLoadAtUtc: DateTimeOffset.UnixEpoch,
+            wouldBeVersion: 2,
+            [null!],
+            discovery));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyConfigurationValidationResult.Invalid(
+            sourceDirectory: "data",
+            attemptedAtUtc: DateTimeOffset.UnixEpoch,
+            activeVersion: 1,
+            lastSuccessfulLoadAtUtc: DateTimeOffset.UnixEpoch,
+            wouldBeVersion: null,
+            ["sites/home.json"],
+            discovery,
+            [null!],
+            []));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyConfigurationValidationResult.Invalid(
+            sourceDirectory: "data",
+            attemptedAtUtc: DateTimeOffset.UnixEpoch,
+            activeVersion: 1,
+            lastSuccessfulLoadAtUtc: DateTimeOffset.UnixEpoch,
+            wouldBeVersion: null,
+            ["sites/home.json"],
+            discovery,
+            [],
+            [null!]));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyConfigurationLoadResult.FailedResult(
+            sourceDirectory: "data",
+            attemptedAtUtc: DateTimeOffset.UnixEpoch,
+            sourceFiles: [null!],
+            discovery,
+            fileErrors: [ProxyConfigurationFileError.ForPath("sites/home.json", "parse failed")],
+            wouldBeVersion: null));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyConfigurationLoadResult.FailedResult(
+            sourceDirectory: "data",
+            attemptedAtUtc: DateTimeOffset.UnixEpoch,
+            sourceFiles: ["sites/home.json"],
+            discovery,
+            fileErrors: [null!],
+            wouldBeVersion: null));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyConfigurationLoadResult.ValidatedResult(
+            sourceDirectory: "data",
+            attemptedAtUtc: DateTimeOffset.UnixEpoch,
+            sourceFiles: [null!],
+            discovery,
+            wouldBeVersion: 2));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyConfigurationReloadResult<TestConfigurationProjection>.LoadFailed(
+            sourceDirectory: "data",
+            attemptedAtUtc: DateTimeOffset.UnixEpoch,
+            activeVersion: 1,
+            loadedAtUtc: DateTimeOffset.UnixEpoch,
+            discovery,
+            [null!],
+            [],
+            activeConfiguration: null));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyConfigurationReloadResult<TestConfigurationProjection>.LoadFailed(
+            sourceDirectory: "data",
+            attemptedAtUtc: DateTimeOffset.UnixEpoch,
+            activeVersion: 1,
+            loadedAtUtc: DateTimeOffset.UnixEpoch,
+            discovery,
+            [],
+            [null!],
+            activeConfiguration: null));
         var normalizeResponse = ProxyConfigurationNormalizeResponse.FromResult(normalize);
         AssertEx.False(normalizeResponse.Errors is string[], "Normalize API errors should not expose a mutable array.");
         AssertEx.False(normalizeResponse.FileErrors is ProxyConfigurationFileErrorResponse[], "Normalize API file errors should not expose a mutable array.");
