@@ -32,9 +32,9 @@ public static partial class SiteOptionsAggregator
     {
         return new ProxyHeaderPolicyOptions
         {
-            SetRequestHeaders = site.SetRequestHeaders.Concat(route.SetRequestHeaders).ToList(),
+            SetRequestHeaders = CopyHeaderFields(site.SetRequestHeaders.Concat(route.SetRequestHeaders)),
             RemoveRequestHeaders = site.RemoveRequestHeaders.Concat(route.RemoveRequestHeaders).ToList(),
-            SetResponseHeaders = site.SetResponseHeaders.Concat(route.SetResponseHeaders).ToList(),
+            SetResponseHeaders = CopyHeaderFields(site.SetResponseHeaders.Concat(route.SetResponseHeaders)),
             RemoveResponseHeaders = site.RemoveResponseHeaders.Concat(route.RemoveResponseHeaders).ToList()
         };
     }

@@ -76,8 +76,10 @@ internal static class ConfigurationTests
             }
         };
         var removeRequestHeaders = new List<string> { "X-Remove" };
+        var siteSetRequestHeader = new ProxyHeaderSetOptions { Name = "X-Site", Value = "site" };
         var cacheMethods = new List<string> { "GET" };
         var retryStatusCodes = new List<int> { 502 };
+        var routeSetResponseHeader = new ProxyHeaderSetOptions { Name = "X-Route", Value = "route" };
         var routeCacheMethods = new List<string> { "HEAD" };
         var routeRetryStatusCodes = new List<int> { 504 };
         var site = new SiteOptions
@@ -95,6 +97,7 @@ internal static class ConfigurationTests
             Upstreams = upstreams,
             HeaderPolicy = new ProxyHeaderPolicyOptions
             {
+                SetRequestHeaders = [siteSetRequestHeader],
                 RemoveRequestHeaders = removeRequestHeaders
             },
             Cache = new ProxyCachePolicyOptions
@@ -110,6 +113,10 @@ internal static class ConfigurationTests
                 new ProxyRouteOptions
                 {
                     Name = "explicit",
+                    HeaderPolicy = new ProxyHeaderPolicyOptions
+                    {
+                        SetResponseHeaders = [routeSetResponseHeader]
+                    },
                     Cache = new ProxyCachePolicyOptions
                     {
                         Enabled = true,
@@ -146,6 +153,12 @@ internal static class ConfigurationTests
         AssertEx.Equal(503, aggregated.Routes[0].Upstreams[0].CircuitBreaker.FailureStatusCodes[0]);
         AssertEx.Equal(1, aggregated.Routes[0].HeaderPolicy.RemoveRequestHeaders.Count);
         AssertEx.Equal("X-Remove", aggregated.Routes[0].HeaderPolicy.RemoveRequestHeaders[0]);
+        AssertEx.Equal(1, aggregated.Routes[0].HeaderPolicy.SetRequestHeaders.Count);
+        AssertEx.Equal("X-Site", aggregated.Routes[0].HeaderPolicy.SetRequestHeaders[0].Name);
+        AssertEx.False(ReferenceEquals(siteSetRequestHeader, aggregated.Routes[0].HeaderPolicy.SetRequestHeaders[0]));
+        AssertEx.Equal(1, aggregated.Routes[0].HeaderPolicy.SetResponseHeaders.Count);
+        AssertEx.Equal("X-Route", aggregated.Routes[0].HeaderPolicy.SetResponseHeaders[0].Name);
+        AssertEx.False(ReferenceEquals(routeSetResponseHeader, aggregated.Routes[0].HeaderPolicy.SetResponseHeaders[0]));
         AssertEx.Equal(1, aggregated.Routes[0].Cache.Methods.Count);
         AssertEx.Equal("HEAD", aggregated.Routes[0].Cache.Methods[0]);
         AssertEx.Equal(1, aggregated.Routes[0].Retry.RetryOnStatusCodes.Count);
