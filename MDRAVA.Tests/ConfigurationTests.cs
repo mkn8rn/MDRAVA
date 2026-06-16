@@ -756,8 +756,12 @@ internal static class ConfigurationTests
         AssertEx.Equal(14, acmeProjection.Certificates[0].RenewBeforeDays);
         AssertEx.Equal("http://127.0.0.1:18081", admin.Urls[0]);
         AssertEx.Equal("http://127.0.0.1:18082", adminProjection.Urls[0]);
+        AssertEx.Equal("***", adminProjection.Token);
+        AssertEx.Equal("environment", adminProjection.TokenSource);
+        AssertEx.Equal(128, adminProjection.RecentAuditCapacity);
         AssertEx.Equal("127.0.0.1", forwardedHeaders.TrustedProxies[0]);
         AssertEx.Equal("127.0.0.1", forwardedHeadersProjection.TrustedProxies[0]);
+        AssertEx.True(forwardedHeadersProjection.Enabled);
         AssertEx.Equal("X-Tenant", cache.VaryByHeaders[0]);
         AssertEx.Equal(200, cache.CacheableStatusCodes[0]);
         AssertEx.Equal("GET", cache.Methods[0]);
@@ -897,6 +901,33 @@ internal static class ConfigurationTests
             Thumbprint: null,
             NotBefore: DateTime.UnixEpoch,
             NotAfter: DateTime.UnixEpoch.AddDays(30)));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeAdminSecurityProjection(
+            Urls: null!,
+            RequireAuthentication: true,
+            HasConfiguredToken: true,
+            Token: "***",
+            TokenEnvironmentVariable: "MDRAVA_ADMIN_TOKEN",
+            TokenSource: "environment",
+            RecentAuditCapacity: 128));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeAdminSecurityProjection(
+            Urls: [],
+            RequireAuthentication: true,
+            HasConfiguredToken: true,
+            Token: "***",
+            TokenEnvironmentVariable: null!,
+            TokenSource: "environment",
+            RecentAuditCapacity: 128));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeAdminSecurityProjection(
+            Urls: [],
+            RequireAuthentication: true,
+            HasConfiguredToken: true,
+            Token: "***",
+            TokenEnvironmentVariable: "MDRAVA_ADMIN_TOKEN",
+            TokenSource: null!,
+            RecentAuditCapacity: 128));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeForwardedHeadersProjection(
+            Enabled: true,
+            TrustedProxies: null!));
         AssertEx.False(admin.Urls is string[]);
         AssertEx.False(adminProjection.Urls is string[]);
         AssertEx.False(forwardedHeaders.TrustedProxies is string[]);

@@ -11,6 +11,9 @@ public sealed record RuntimeAdminSecurityProjection
         string TokenSource,
         int RecentAuditCapacity)
     {
+        ArgumentNullException.ThrowIfNull(TokenEnvironmentVariable);
+        ArgumentNullException.ThrowIfNull(TokenSource);
+
         this.Urls = RuntimeList.Copy(Urls);
         this.RequireAuthentication = RequireAuthentication;
         this.HasConfiguredToken = HasConfiguredToken;
@@ -22,15 +25,15 @@ public sealed record RuntimeAdminSecurityProjection
 
     public IReadOnlyList<string> Urls { get; }
 
-    public bool RequireAuthentication { get; init; }
+    public bool RequireAuthentication { get; }
 
-    public bool HasConfiguredToken { get; init; }
+    public bool HasConfiguredToken { get; }
 
-    public string? Token { get; init; }
+    public string? Token { get; }
 
-    public string TokenEnvironmentVariable { get; init; }
+    public string TokenEnvironmentVariable { get; }
 
-    public string TokenSource { get; init; }
+    public string TokenSource { get; }
 
-    public int RecentAuditCapacity { get; init; }
+    public int RecentAuditCapacity { get; }
 }
