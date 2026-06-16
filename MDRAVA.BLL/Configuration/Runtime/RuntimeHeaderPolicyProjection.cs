@@ -3,10 +3,10 @@ namespace MDRAVA.BLL.Configuration;
 public sealed record RuntimeHeaderPolicyProjection
 {
     public RuntimeHeaderPolicyProjection(
-        IReadOnlyList<RuntimeHeaderFieldProjection> SetRequestHeaders,
-        IReadOnlyList<string> RemoveRequestHeaders,
-        IReadOnlyList<RuntimeHeaderFieldProjection> SetResponseHeaders,
-        IReadOnlyList<string> RemoveResponseHeaders)
+        IEnumerable<RuntimeHeaderFieldProjection> SetRequestHeaders,
+        IEnumerable<string> RemoveRequestHeaders,
+        IEnumerable<RuntimeHeaderFieldProjection> SetResponseHeaders,
+        IEnumerable<string> RemoveResponseHeaders)
     {
         this.SetRequestHeaders = RuntimeList.Copy(SetRequestHeaders);
         this.RemoveRequestHeaders = RuntimeList.Copy(RemoveRequestHeaders);

@@ -8,9 +8,9 @@ public sealed record RuntimeCacheProjection
         long MaxTotalBytes,
         TimeSpan DefaultTtl,
         bool RespectOriginCacheControl,
-        IReadOnlyList<string> VaryByHeaders,
-        IReadOnlyList<int> CacheableStatusCodes,
-        IReadOnlyList<string> Methods)
+        IEnumerable<string> VaryByHeaders,
+        IEnumerable<int> CacheableStatusCodes,
+        IEnumerable<string> Methods)
     {
         this.Enabled = Enabled;
         this.MaxEntryBytes = MaxEntryBytes;

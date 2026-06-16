@@ -8,8 +8,8 @@ public sealed record RuntimeRetryPolicy
         TimeSpan? PerAttemptTimeout,
         bool RetryOnConnectFailure,
         bool RetryOnUpstreamResponseHeadTimeout,
-        IReadOnlyList<int> RetryOnStatusCodes,
-        IReadOnlyList<string> RetryMethods,
+        IEnumerable<int> RetryOnStatusCodes,
+        IEnumerable<string> RetryMethods,
         TimeSpan RetryBackoff)
     {
         this.Enabled = Enabled;

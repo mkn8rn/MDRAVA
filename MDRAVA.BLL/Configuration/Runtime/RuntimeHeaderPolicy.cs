@@ -5,10 +5,10 @@ namespace MDRAVA.BLL.Configuration;
 public sealed record RuntimeHeaderPolicy
 {
     public RuntimeHeaderPolicy(
-        IReadOnlyList<ProxyHeaderField> SetRequestHeaders,
-        IReadOnlyList<string> RemoveRequestHeaders,
-        IReadOnlyList<ProxyHeaderField> SetResponseHeaders,
-        IReadOnlyList<string> RemoveResponseHeaders)
+        IEnumerable<ProxyHeaderField> SetRequestHeaders,
+        IEnumerable<string> RemoveRequestHeaders,
+        IEnumerable<ProxyHeaderField> SetResponseHeaders,
+        IEnumerable<string> RemoveResponseHeaders)
     {
         this.SetRequestHeaders = RuntimeList.Copy(SetRequestHeaders);
         this.RemoveRequestHeaders = RuntimeList.Copy(RemoveRequestHeaders);

@@ -388,18 +388,18 @@ internal static class ConfigurationTests
             MaxTotalBytes: 4096,
             DefaultTtl: TimeSpan.FromSeconds(60),
             RespectOriginCacheControl: true,
-            VaryByHeaders: cacheVaryHeaders,
-            CacheableStatusCodes: cacheStatusCodes,
-            Methods: cacheMethods);
+            VaryByHeaders: cacheVaryHeaders.Select(static header => header),
+            CacheableStatusCodes: cacheStatusCodes.Select(static statusCode => statusCode),
+            Methods: cacheMethods.Select(static method => method));
         var cacheProjection = new RuntimeCacheProjection(
             Enabled: true,
             MaxEntryBytes: 1024,
             MaxTotalBytes: 4096,
             DefaultTtl: TimeSpan.FromSeconds(60),
             RespectOriginCacheControl: true,
-            VaryByHeaders: cacheVaryHeaders,
-            CacheableStatusCodes: cacheStatusCodes,
-            Methods: cacheMethods);
+            VaryByHeaders: cacheVaryHeaders.Select(static header => header),
+            CacheableStatusCodes: cacheStatusCodes.Select(static statusCode => statusCode),
+            Methods: cacheMethods.Select(static method => method));
         var runtimeCertificate = new RuntimeCertificate(
             "home-cert",
             "certs/home.pfx",
@@ -427,23 +427,23 @@ internal static class ConfigurationTests
             HalfOpenMaxAttempts: 1,
             FailureStatusCodes: circuitBreakerCodes);
         var headerPolicy = new RuntimeHeaderPolicy(
-            setRequestHeaders,
-            removeRequestHeaders,
-            setResponseHeaders,
-            removeResponseHeaders);
+            setRequestHeaders.Select(static header => header),
+            removeRequestHeaders.Select(static header => header),
+            setResponseHeaders.Select(static header => header),
+            removeResponseHeaders.Select(static header => header));
         var headerPolicyProjection = new RuntimeHeaderPolicyProjection(
-            setRequestHeaderProjections,
-            removeRequestHeaders,
-            setResponseHeaderProjections,
-            removeResponseHeaders);
+            setRequestHeaderProjections.Select(static header => header),
+            removeRequestHeaders.Select(static header => header),
+            setResponseHeaderProjections.Select(static header => header),
+            removeResponseHeaders.Select(static header => header));
         var retry = new RuntimeRetryPolicy(
             Enabled: true,
             MaxAttempts: 2,
             PerAttemptTimeout: TimeSpan.FromSeconds(1),
             RetryOnConnectFailure: true,
             RetryOnUpstreamResponseHeadTimeout: true,
-            RetryOnStatusCodes: retryStatusCodes,
-            RetryMethods: retryMethods,
+            RetryOnStatusCodes: retryStatusCodes.Select(static statusCode => statusCode),
+            RetryMethods: retryMethods.Select(static method => method),
             RetryBackoff: TimeSpan.FromMilliseconds(50));
         var retryProjection = new RuntimeRetryProjection(
             Enabled: true,
@@ -451,8 +451,8 @@ internal static class ConfigurationTests
             PerAttemptTimeout: TimeSpan.FromSeconds(1),
             RetryOnConnectFailure: true,
             RetryOnUpstreamResponseHeadTimeout: true,
-            RetryOnStatusCodes: retryStatusCodes,
-            RetryMethods: retryMethods,
+            RetryOnStatusCodes: retryStatusCodes.Select(static statusCode => statusCode),
+            RetryMethods: retryMethods.Select(static method => method),
             RetryBackoff: TimeSpan.FromMilliseconds(50));
 
         acmeDomains.Clear();
