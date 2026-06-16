@@ -22,15 +22,15 @@ public sealed record RuntimeCachePolicy
         this.Methods = RuntimeList.Copy(Methods);
     }
 
-    public bool Enabled { get; init; }
+    public bool Enabled { get; }
 
-    public long MaxEntryBytes { get; init; }
+    public long MaxEntryBytes { get; }
 
-    public long MaxTotalBytes { get; init; }
+    public long MaxTotalBytes { get; }
 
-    public TimeSpan DefaultTtl { get; init; }
+    public TimeSpan DefaultTtl { get; }
 
-    public bool RespectOriginCacheControl { get; init; }
+    public bool RespectOriginCacheControl { get; }
 
     public IReadOnlyList<string> VaryByHeaders { get; }
 

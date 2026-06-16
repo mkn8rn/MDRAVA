@@ -10,7 +10,7 @@ public sealed record RuntimeForwardedHeadersOptions
         this.TrustedProxies = RuntimeList.Copy(TrustedProxies);
     }
 
-    public bool Enabled { get; init; }
+    public bool Enabled { get; }
 
     public IReadOnlyList<string> TrustedProxies { get; }
 }
