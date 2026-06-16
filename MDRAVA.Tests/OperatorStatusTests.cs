@@ -565,7 +565,21 @@ internal static class OperatorStatusTests
             NextAttemptNotBeforeUtc: null,
             LastResult: "loaded",
             ErrorSummary: null);
-        var replacementAcme = acme with { CertificateId = "cert-b" };
+        var replacementAcme = new AcmeCertificateLifecycleStatus(
+            CertificateId: "cert-b",
+            Enabled: acme.Enabled,
+            Domains: acme.Domains,
+            Active: acme.Active,
+            Source: acme.Source,
+            NotBeforeUtc: acme.NotBeforeUtc,
+            NotAfterUtc: acme.NotAfterUtc,
+            RenewalDueAtUtc: acme.RenewalDueAtUtc,
+            LastAttemptAtUtc: acme.LastAttemptAtUtc,
+            LastSucceededAtUtc: acme.LastSucceededAtUtc,
+            LastFailedAtUtc: acme.LastFailedAtUtc,
+            NextAttemptNotBeforeUtc: acme.NextAttemptNotBeforeUtc,
+            LastResult: acme.LastResult,
+            ErrorSummary: acme.ErrorSummary);
         var acmeStatuses = new List<AcmeCertificateLifecycleStatus> { acme };
         var metrics = new ProxyMetrics().Snapshot();
         var observedAtUtc = new DateTimeOffset(2026, 6, 13, 21, 20, 0, TimeSpan.Zero);
@@ -656,7 +670,21 @@ internal static class OperatorStatusTests
             NextAttemptNotBeforeUtc: null,
             LastResult: "loaded",
             ErrorSummary: null);
-        var acmeReplacement = acme with { CertificateId = "cert-b" };
+        var acmeReplacement = new AcmeCertificateLifecycleStatus(
+            CertificateId: "cert-b",
+            Enabled: acme.Enabled,
+            Domains: acme.Domains,
+            Active: acme.Active,
+            Source: acme.Source,
+            NotBeforeUtc: acme.NotBeforeUtc,
+            NotAfterUtc: acme.NotAfterUtc,
+            RenewalDueAtUtc: acme.RenewalDueAtUtc,
+            LastAttemptAtUtc: acme.LastAttemptAtUtc,
+            LastSucceededAtUtc: acme.LastSucceededAtUtc,
+            LastFailedAtUtc: acme.LastFailedAtUtc,
+            NextAttemptNotBeforeUtc: acme.NextAttemptNotBeforeUtc,
+            LastResult: acme.LastResult,
+            ErrorSummary: acme.ErrorSummary);
         var acmeStatuses = new List<AcmeCertificateLifecycleStatus> { acme };
         var referencedCertificates = new List<string> { "cert-a" };
         var loadedCertificate = new ProxyCertificateValiditySource(

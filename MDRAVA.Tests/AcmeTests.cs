@@ -197,7 +197,21 @@ internal static class AcmeTests
             DirectoryUrl: "https://acme.example.test/directory",
             UseStaging: false,
             Certificates: certificates);
-        var replacementLifecycle = lifecycle with { CertificateId = "replacement" };
+        var replacementLifecycle = new AcmeCertificateLifecycleStatus(
+            CertificateId: "replacement",
+            Enabled: lifecycle.Enabled,
+            Domains: lifecycle.Domains,
+            Active: lifecycle.Active,
+            Source: lifecycle.Source,
+            NotBeforeUtc: lifecycle.NotBeforeUtc,
+            NotAfterUtc: lifecycle.NotAfterUtc,
+            RenewalDueAtUtc: lifecycle.RenewalDueAtUtc,
+            LastAttemptAtUtc: lifecycle.LastAttemptAtUtc,
+            LastSucceededAtUtc: lifecycle.LastSucceededAtUtc,
+            LastFailedAtUtc: lifecycle.LastFailedAtUtc,
+            NextAttemptNotBeforeUtc: lifecycle.NextAttemptNotBeforeUtc,
+            LastResult: lifecycle.LastResult,
+            ErrorSummary: lifecycle.ErrorSummary);
 
         issueDomains[0] = "replacement.example.test";
         contactEmails[0] = "security@example.test";
@@ -218,6 +232,11 @@ internal static class AcmeTests
         var returnedWritePfxBytes = write.PfxBytes;
         returnedWritePfxBytes[0] = 88;
         AssertEx.Equal(1, write.PfxBytes[0]);
+        AssertEx.Equal("home-acme", lifecycle.CertificateId);
+        AssertEx.True(lifecycle.Enabled);
+        AssertEx.True(lifecycle.Active);
+        AssertEx.Equal("acme", lifecycle.Source);
+        AssertEx.Equal("loaded", lifecycle.LastResult);
         AssertEx.Equal("home.example.test", lifecycle.Domains[0]);
         AssertEx.Equal("home-acme", status.Certificates[0].CertificateId);
         var apiStatus = AcmeStatusResponse.FromStatus(status);
@@ -285,6 +304,66 @@ internal static class AcmeTests
             directoryUrl: "https://acme.example.test/directory",
             useStaging: false,
             certificates: null!));
+        AssertEx.Throws<ArgumentNullException>(() => new AcmeCertificateLifecycleStatus(
+            CertificateId: null!,
+            Enabled: true,
+            Domains: [],
+            Active: true,
+            Source: "acme",
+            NotBeforeUtc: null,
+            NotAfterUtc: null,
+            RenewalDueAtUtc: null,
+            LastAttemptAtUtc: null,
+            LastSucceededAtUtc: null,
+            LastFailedAtUtc: null,
+            NextAttemptNotBeforeUtc: null,
+            LastResult: "loaded",
+            ErrorSummary: null));
+        AssertEx.Throws<ArgumentNullException>(() => new AcmeCertificateLifecycleStatus(
+            CertificateId: "home-acme",
+            Enabled: true,
+            Domains: null!,
+            Active: true,
+            Source: "acme",
+            NotBeforeUtc: null,
+            NotAfterUtc: null,
+            RenewalDueAtUtc: null,
+            LastAttemptAtUtc: null,
+            LastSucceededAtUtc: null,
+            LastFailedAtUtc: null,
+            NextAttemptNotBeforeUtc: null,
+            LastResult: "loaded",
+            ErrorSummary: null));
+        AssertEx.Throws<ArgumentNullException>(() => new AcmeCertificateLifecycleStatus(
+            CertificateId: "home-acme",
+            Enabled: true,
+            Domains: [],
+            Active: true,
+            Source: null!,
+            NotBeforeUtc: null,
+            NotAfterUtc: null,
+            RenewalDueAtUtc: null,
+            LastAttemptAtUtc: null,
+            LastSucceededAtUtc: null,
+            LastFailedAtUtc: null,
+            NextAttemptNotBeforeUtc: null,
+            LastResult: "loaded",
+            ErrorSummary: null));
+        AssertEx.Throws<ArgumentNullException>(() => new AcmeCertificateLifecycleStatus(
+            CertificateId: "home-acme",
+            Enabled: true,
+            Domains: [],
+            Active: true,
+            Source: "acme",
+            NotBeforeUtc: null,
+            NotAfterUtc: null,
+            RenewalDueAtUtc: null,
+            LastAttemptAtUtc: null,
+            LastSucceededAtUtc: null,
+            LastFailedAtUtc: null,
+            NextAttemptNotBeforeUtc: null,
+            LastResult: null!,
+            ErrorSummary: null));
         AssertEx.Equal("home.example.test", responseLifecycle.Domains[0]);
         AssertEx.Equal("home-acme", directStatus.Certificates[0].CertificateId);
         AssertEx.Equal("home.example.test", directStatus.Certificates[0].Domains[0]);

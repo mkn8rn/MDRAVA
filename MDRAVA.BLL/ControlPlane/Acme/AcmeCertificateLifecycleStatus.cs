@@ -2,8 +2,6 @@ namespace MDRAVA.BLL.ControlPlane.Acme;
 
 public sealed record AcmeCertificateLifecycleStatus
 {
-    private IReadOnlyList<string> _domains = AcmeList.Copy<string>([]);
-
     public AcmeCertificateLifecycleStatus(
         string CertificateId,
         bool Enabled,
@@ -20,11 +18,14 @@ public sealed record AcmeCertificateLifecycleStatus
         string LastResult,
         string? ErrorSummary)
     {
+        ArgumentNullException.ThrowIfNull(CertificateId);
         ArgumentNullException.ThrowIfNull(Domains);
+        ArgumentNullException.ThrowIfNull(Source);
+        ArgumentNullException.ThrowIfNull(LastResult);
 
         this.CertificateId = CertificateId;
         this.Enabled = Enabled;
-        this.Domains = Domains;
+        this.Domains = AcmeList.Copy(Domains);
         this.Active = Active;
         this.Source = Source;
         this.NotBeforeUtc = NotBeforeUtc;
@@ -38,37 +39,33 @@ public sealed record AcmeCertificateLifecycleStatus
         this.ErrorSummary = ErrorSummary;
     }
 
-    public string CertificateId { get; init; }
+    public string CertificateId { get; }
 
-    public bool Enabled { get; init; }
+    public bool Enabled { get; }
 
-    public IReadOnlyList<string> Domains
-    {
-        get => _domains;
-        init => _domains = AcmeList.Copy(value);
-    }
+    public IReadOnlyList<string> Domains { get; }
 
-    public bool Active { get; init; }
+    public bool Active { get; }
 
-    public string Source { get; init; }
+    public string Source { get; }
 
-    public DateTimeOffset? NotBeforeUtc { get; init; }
+    public DateTimeOffset? NotBeforeUtc { get; }
 
-    public DateTimeOffset? NotAfterUtc { get; init; }
+    public DateTimeOffset? NotAfterUtc { get; }
 
-    public DateTimeOffset? RenewalDueAtUtc { get; init; }
+    public DateTimeOffset? RenewalDueAtUtc { get; }
 
-    public DateTimeOffset? LastAttemptAtUtc { get; init; }
+    public DateTimeOffset? LastAttemptAtUtc { get; }
 
-    public DateTimeOffset? LastSucceededAtUtc { get; init; }
+    public DateTimeOffset? LastSucceededAtUtc { get; }
 
-    public DateTimeOffset? LastFailedAtUtc { get; init; }
+    public DateTimeOffset? LastFailedAtUtc { get; }
 
-    public DateTimeOffset? NextAttemptNotBeforeUtc { get; init; }
+    public DateTimeOffset? NextAttemptNotBeforeUtc { get; }
 
-    public string LastResult { get; init; }
+    public string LastResult { get; }
 
-    public string? ErrorSummary { get; init; }
+    public string? ErrorSummary { get; }
 
     public static AcmeCertificateLifecycleStatus FromConfiguredCertificate(
         ProxyAcmeConfiguredCertificateStatus certificate,
