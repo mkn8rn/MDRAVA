@@ -972,6 +972,10 @@ internal static class RouteDiagnosticsTests
 
         listeners.Clear();
 
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyConfigLintRuntimeListenerStateMapper.FromListenerStatuses(null!));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyConfigLintRuntimeListenerStateMapper.FromListenerStatuses([null!]));
         AssertEx.Equal(2, states.Count);
         AssertEx.Equal("main|tcp", states[0].Identity);
         AssertEx.Equal("tcp", states[0].Kind);
@@ -979,6 +983,7 @@ internal static class RouteDiagnosticsTests
         AssertEx.Equal("main|quic", states[1].Identity);
         AssertEx.Equal("quic", states[1].Kind);
         AssertEx.False(states[1].Active);
+        AssertEx.False(states is ProxyConfigLintRuntimeListenerState[], "Config lint runtime listener states should not expose a mutable array.");
     }
 
     public static void RouteDiagnosticsRuntimeRouteCopiesPolicyMethodLists()

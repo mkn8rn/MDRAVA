@@ -19,11 +19,16 @@ public static class ProxyConfigLintRuntimeListenerStateMapper
     {
         ArgumentNullException.ThrowIfNull(listeners);
 
-        return listeners
-            .Select(static listener => new ProxyConfigLintRuntimeListenerState(
-                listener.Identity,
-                listener.Kind,
-                listener.State == ProxyListenerState.Active))
-            .ToArray();
+        return ConfigLintList.Copy(listeners.Select(ToListenerState));
+    }
+
+    private static ProxyConfigLintRuntimeListenerState ToListenerState(ProxyListenerStatus listener)
+    {
+        ArgumentNullException.ThrowIfNull(listener);
+
+        return new ProxyConfigLintRuntimeListenerState(
+            listener.Identity,
+            listener.Kind,
+            listener.State == ProxyListenerState.Active);
     }
 }
