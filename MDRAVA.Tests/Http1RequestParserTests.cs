@@ -71,6 +71,38 @@ internal static class Http1RequestParserTests
         AssertEx.False(responseHead.Headers is ProxyHeaderField[], "HTTP/1 response headers should not expose a mutable array.");
         AssertEx.Equal("X-Debug", diagnosticsHead.Headers[0].Name);
         AssertEx.False(diagnosticsHead.Headers is ProxyHeaderField[], "Route diagnostics headers should not expose a mutable array.");
+        AssertEx.Throws<ArgumentNullException>(() => new Http1RequestHead(
+            "GET",
+            "/",
+            "/",
+            "HTTP/1.1",
+            "example.test",
+            Http1RequestFraming.None,
+            [null!]));
+        AssertEx.Throws<ArgumentNullException>(() => new Http1ResponseHead(
+            "HTTP/1.1",
+            200,
+            "OK",
+            Http1ResponseFraming.None,
+            [null!]));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRouteDiagnosticsRequestHead(
+            "GET",
+            "/",
+            "/",
+            "HTTP/1.1",
+            "example.test",
+            ProxyRouteDiagnosticsRequestFraming.None,
+            [null!]));
+        AssertEx.Throws<ArgumentNullException>(() => new FramedUpstreamResponseTranslationInput(
+            200,
+            [null!],
+            ResponseEndedWithHead: false));
+        AssertEx.Throws<ArgumentNullException>(() => new GeneratedRouteResponse(
+            200,
+            "OK",
+            null,
+            "",
+            [null!]));
     }
 
     public static void RejectsMissingHost()

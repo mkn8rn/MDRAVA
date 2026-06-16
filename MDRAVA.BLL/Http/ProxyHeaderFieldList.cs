@@ -8,6 +8,13 @@ internal static class ProxyHeaderFieldList
     {
         ArgumentNullException.ThrowIfNull(headers);
 
-        return new ReadOnlyCollection<ProxyHeaderField>(headers.ToArray());
+        var copy = new List<ProxyHeaderField>();
+        foreach (var header in headers)
+        {
+            ArgumentNullException.ThrowIfNull(header);
+            copy.Add(header);
+        }
+
+        return new ReadOnlyCollection<ProxyHeaderField>(copy);
     }
 }
