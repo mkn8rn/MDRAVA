@@ -6,10 +6,12 @@ namespace MDRAVA.BLL.ControlPlane.Status;
 
 public static class ProxyRuntimeListenerSummarySourceMapper
 {
-    public static IReadOnlyList<ProxyRuntimeListenerSummarySource> FromRuntimeSummary(
-        ProxyStatusRuntimeSummary runtime)
+    public static IReadOnlyList<ProxyRuntimeListenerSummarySource> FromSources(
+        IEnumerable<ProxyListenerStatus> listeners)
     {
-        return runtime.Listeners
+        ArgumentNullException.ThrowIfNull(listeners);
+
+        return listeners
             .Select(static listener => new ProxyRuntimeListenerSummarySource(
                 string.Equals(listener.Kind, "quic", StringComparison.OrdinalIgnoreCase),
                 listener.State))
@@ -34,14 +36,19 @@ public static class ProxyUpstreamSummarySourceMapper
 
 public static class ProxyLimitSummarySourceMapper
 {
-    public static ProxyLimitRuntimeSummarySource FromMetrics(ProxyMetricsSnapshot metrics)
+    public static ProxyLimitRuntimeSummarySource FromSources(
+        long activeConnections,
+        long activeTlsHandshakes,
+        long activeHttp2Streams,
+        long activeHttp3Streams,
+        long activeUpstreamHttp3Streams)
     {
         return new ProxyLimitRuntimeSummarySource(
-            metrics.ClientConnections.Active,
-            metrics.Tls.ActiveHandshakes,
-            metrics.Http2.ActiveStreams,
-            metrics.Http3.ActiveStreams,
-            metrics.UpstreamHttp3.ActiveStreams);
+            activeConnections,
+            activeTlsHandshakes,
+            activeHttp2Streams,
+            activeHttp3Streams,
+            activeUpstreamHttp3Streams);
     }
 }
 
@@ -59,12 +66,16 @@ public static class ProxyLogSummarySourceMapper
 
 public static class ProxyShutdownSummarySourceMapper
 {
-    public static ProxyShutdownSummarySource FromRuntimeSummary(ProxyStatusRuntimeSummary runtime)
+    public static ProxyShutdownSummarySource FromSources(
+        bool isRunning,
+        bool isShuttingDown,
+        DateTimeOffset? shutdownStartedAtUtc,
+        DateTimeOffset? shutdownDeadlineUtc)
     {
         return new ProxyShutdownSummarySource(
-            runtime.ListenerLive,
-            runtime.IsShuttingDown,
-            runtime.ShutdownStartedAtUtc,
-            runtime.ShutdownDeadlineUtc);
+            isRunning,
+            isShuttingDown,
+            shutdownStartedAtUtc,
+            shutdownDeadlineUtc);
     }
 }

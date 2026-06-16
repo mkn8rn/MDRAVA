@@ -155,17 +155,26 @@ public static class ProxyStatusReadinessSourceMapper
             runtime.LastListenerReload is ProxyListenerReloadResult.AppliedResult,
             runtime.LastListenerReload is ProxyListenerReloadResult.FailedResult,
             configuration.ConfiguredListeners,
-            ProxyRuntimeListenerSummarySourceMapper.FromRuntimeSummary(runtime),
+            ProxyRuntimeListenerSummarySourceMapper.FromSources(runtime.Listeners),
             configuration.Routes,
             configuration.Certificates,
             configuration.Acme,
             ProxyUpstreamSummarySourceMapper.FromStatusResponses(upstreams),
             configuration.LimitConfiguration,
-            ProxyLimitSummarySourceMapper.FromMetrics(metrics),
+            ProxyLimitSummarySourceMapper.FromSources(
+                metrics.ClientConnections.Active,
+                metrics.Tls.ActiveHandshakes,
+                metrics.Http2.ActiveStreams,
+                metrics.Http3.ActiveStreams,
+                metrics.UpstreamHttp3.ActiveStreams),
             http3.EnabledForTraffic,
             http3.QuicListenerReady,
             ProxyLogSummarySourceMapper.FromStatus(logPersistence),
-            ProxyShutdownSummarySourceMapper.FromRuntimeSummary(runtime));
+            ProxyShutdownSummarySourceMapper.FromSources(
+                runtime.ListenerLive,
+                runtime.IsShuttingDown,
+                runtime.ShutdownStartedAtUtc,
+                runtime.ShutdownDeadlineUtc));
     }
 }
 
