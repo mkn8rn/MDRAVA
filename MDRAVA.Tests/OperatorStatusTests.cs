@@ -148,7 +148,18 @@ internal static class OperatorStatusTests
             LastListenerReload = reload
         };
 
-        var summary = ProxyStatusRuntimeSummaryMapper.FromRuntime(runtime);
+        var summary = ProxyStatusRuntimeSummaryMapper.FromSources(
+            runtime.IsRunning,
+            runtime.ListenerName,
+            runtime.Endpoint,
+            runtime.StartedAt,
+            runtime.StoppedAt,
+            runtime.LastError,
+            runtime.IsShuttingDown,
+            runtime.ShutdownStartedAtUtc,
+            runtime.ShutdownDeadlineUtc,
+            runtime.Listeners,
+            runtime.LastListenerReload);
 
         AssertEx.False(summary.ListenerLive);
         AssertEx.Equal("main", summary.ListenerName);
@@ -291,7 +302,18 @@ internal static class OperatorStatusTests
         };
         var metrics = new ProxyMetrics().Snapshot();
         var observedAtUtc = new DateTimeOffset(2026, 6, 10, 9, 5, 0, TimeSpan.Zero);
-        var runtimeSummary = ProxyStatusRuntimeSummaryMapper.FromRuntime(runtime);
+        var runtimeSummary = ProxyStatusRuntimeSummaryMapper.FromSources(
+            runtime.IsRunning,
+            runtime.ListenerName,
+            runtime.Endpoint,
+            runtime.StartedAt,
+            runtime.StoppedAt,
+            runtime.LastError,
+            runtime.IsShuttingDown,
+            runtime.ShutdownStartedAtUtc,
+            runtime.ShutdownDeadlineUtc,
+            runtime.Listeners,
+            runtime.LastListenerReload);
         var http3 = Http3RuntimeSupport.ProjectRuntime(
             ProxyHttp3SupportConfigurationSourceMapper.FromSources(snapshot.Listeners, snapshot.Routes),
             TestHttp3PlatformSupport.Supported,

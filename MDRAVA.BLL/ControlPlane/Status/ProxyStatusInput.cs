@@ -123,20 +123,31 @@ public sealed record ProxyStatusRuntimeSummary
 
 public static class ProxyStatusRuntimeSummaryMapper
 {
-    public static ProxyStatusRuntimeSummary FromRuntime(ProxyRuntimeSnapshot runtime)
+    public static ProxyStatusRuntimeSummary FromSources(
+        bool listenerLive,
+        string? listenerName,
+        string? endpoint,
+        DateTimeOffset? startedAt,
+        DateTimeOffset? stoppedAt,
+        string? lastError,
+        bool isShuttingDown,
+        DateTimeOffset? shutdownStartedAtUtc,
+        DateTimeOffset? shutdownDeadlineUtc,
+        IReadOnlyList<ProxyListenerStatus> listeners,
+        ProxyListenerReloadResult? lastListenerReload)
     {
         return new ProxyStatusRuntimeSummary(
-            runtime.IsRunning,
-            runtime.ListenerName,
-            runtime.Endpoint,
-            runtime.StartedAt,
-            runtime.StoppedAt,
-            runtime.LastError,
-            runtime.IsShuttingDown,
-            runtime.ShutdownStartedAtUtc,
-            runtime.ShutdownDeadlineUtc,
-            runtime.Listeners,
-            runtime.LastListenerReload);
+            listenerLive,
+            listenerName,
+            endpoint,
+            startedAt,
+            stoppedAt,
+            lastError,
+            isShuttingDown,
+            shutdownStartedAtUtc,
+            shutdownDeadlineUtc,
+            listeners,
+            lastListenerReload);
     }
 }
 

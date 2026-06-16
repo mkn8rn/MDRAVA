@@ -47,7 +47,19 @@ public sealed class ProxyRuntimeState : IProxyStatusRuntimeStateSource, IHttp3Al
 
     public ProxyStatusRuntimeSummary ReadRuntimeSummary()
     {
-        return ProxyStatusRuntimeSummaryMapper.FromRuntime(Snapshot());
+        var snapshot = Snapshot();
+        return ProxyStatusRuntimeSummaryMapper.FromSources(
+            snapshot.IsRunning,
+            snapshot.ListenerName,
+            snapshot.Endpoint,
+            snapshot.StartedAt,
+            snapshot.StoppedAt,
+            snapshot.LastError,
+            snapshot.IsShuttingDown,
+            snapshot.ShutdownStartedAtUtc,
+            snapshot.ShutdownDeadlineUtc,
+            snapshot.Listeners,
+            snapshot.LastListenerReload);
     }
 
     public IReadOnlyList<ProxyListenerStatus> ReadRuntimeListeners()
