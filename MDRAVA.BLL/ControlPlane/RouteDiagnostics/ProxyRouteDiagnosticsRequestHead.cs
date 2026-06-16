@@ -11,7 +11,7 @@ public sealed class ProxyRouteDiagnosticsRequestHead
         string version,
         string host,
         ProxyRouteDiagnosticsRequestFraming framing,
-        IReadOnlyList<ProxyHeaderField> headers)
+        IEnumerable<ProxyHeaderField> headers)
     {
         ArgumentNullException.ThrowIfNull(headers);
 

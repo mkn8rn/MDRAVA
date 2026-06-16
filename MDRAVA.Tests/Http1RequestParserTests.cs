@@ -45,13 +45,13 @@ internal static class Http1RequestParserTests
             "HTTP/1.1",
             "example.test",
             Http1RequestFraming.None,
-            requestHeaders);
+            requestHeaders.Select(static header => header));
         var responseHead = new Http1ResponseHead(
             "HTTP/1.1",
             200,
             "OK",
             Http1ResponseFraming.None,
-            responseHeaders);
+            responseHeaders.Select(static header => header));
         var diagnosticsHead = new ProxyRouteDiagnosticsRequestHead(
             "GET",
             "/",
@@ -59,7 +59,7 @@ internal static class Http1RequestParserTests
             "HTTP/1.1",
             "example.test",
             ProxyRouteDiagnosticsRequestFraming.None,
-            diagnosticsHeaders);
+            diagnosticsHeaders.Select(static header => header));
 
         requestHeaders.Clear();
         responseHeaders.Clear();

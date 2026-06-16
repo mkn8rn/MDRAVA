@@ -11,7 +11,7 @@ public sealed class Http1RequestHead
         string version,
         string host,
         Http1RequestFraming framing,
-        IReadOnlyList<ProxyHeaderField> headers)
+        IEnumerable<ProxyHeaderField> headers)
     {
         ArgumentNullException.ThrowIfNull(headers);
 

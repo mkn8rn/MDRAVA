@@ -9,7 +9,7 @@ public sealed class Http1ResponseHead
         int statusCode,
         string reasonPhrase,
         Http1ResponseFraming framing,
-        IReadOnlyList<ProxyHeaderField> headers)
+        IEnumerable<ProxyHeaderField> headers)
     {
         ArgumentNullException.ThrowIfNull(headers);
 
