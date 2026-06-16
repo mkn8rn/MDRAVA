@@ -10,18 +10,29 @@ public static class UpstreamHealthCheckTargetMapper
         ArgumentNullException.ThrowIfNull(routes);
 
         return HealthCheckList.Copy(routes
-            .Where(static route => route.HealthCheck.Enabled)
-            .SelectMany(static route => route.Upstreams.Select(upstream => new UpstreamHealthCheckTarget(
-                route.Name,
-                upstream.Name,
-                upstream.Endpoint,
-                upstream.Identity,
-                UpstreamTransportEndpointMapper.FromUpstream(upstream),
-                route.HealthCheck.Path,
-                route.HealthCheck.Interval,
-                route.HealthCheck.Timeout,
-                route.HealthCheck.HealthyThreshold,
-                route.HealthCheck.UnhealthyThreshold)))
+            .Where(static route =>
+            {
+                ArgumentNullException.ThrowIfNull(route);
+                return route.HealthCheck.Enabled;
+            })
+            .SelectMany(static route => route.Upstreams.Select(upstream => ToTarget(route, upstream)))
             );
+    }
+
+    private static UpstreamHealthCheckTarget ToTarget(RuntimeRoute route, RuntimeUpstream upstream)
+    {
+        ArgumentNullException.ThrowIfNull(upstream);
+
+        return new UpstreamHealthCheckTarget(
+            route.Name,
+            upstream.Name,
+            upstream.Endpoint,
+            upstream.Identity,
+            UpstreamTransportEndpointMapper.FromUpstream(upstream),
+            route.HealthCheck.Path,
+            route.HealthCheck.Interval,
+            route.HealthCheck.Timeout,
+            route.HealthCheck.HealthyThreshold,
+            route.HealthCheck.UnhealthyThreshold);
     }
 }

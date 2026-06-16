@@ -7,6 +7,8 @@ public static class CircuitBreakerStatusSourceMapper
 {
     public static CircuitBreakerStatusSource FromUpstream(RuntimeUpstream upstream)
     {
+        ArgumentNullException.ThrowIfNull(upstream);
+
         return new CircuitBreakerStatusSource(
             upstream.Identity,
             new CircuitBreakerPolicyInput(

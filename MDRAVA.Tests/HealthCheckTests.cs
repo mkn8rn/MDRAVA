@@ -212,6 +212,9 @@ internal static class HealthCheckTests
     public static void HealthCheckTargetMapperReadsRoutesWithoutConfigurationSnapshot()
     {
         AssertEx.Throws<ArgumentNullException>(() => UpstreamHealthCheckTargetMapper.FromRoutes(null!));
+        AssertEx.Throws<ArgumentNullException>(() => UpstreamHealthCheckTargetMapper.FromRoutes([null!]));
+        AssertEx.Throws<ArgumentNullException>(() => UpstreamHealthCheckTargetMapper.FromRoutes([Route([null!])]));
+        AssertEx.Throws<ArgumentNullException>(() => UpstreamTransportEndpointMapper.FromUpstream(null!));
 
         var first = Upstream(5001);
         var second = Upstream(5002);
@@ -238,6 +241,10 @@ internal static class HealthCheckTests
     public static void UpstreamHealthSourceMapperReadsRoutesWithoutConfigurationSnapshot()
     {
         AssertEx.Throws<ArgumentNullException>(() => ProxyUpstreamHealthSourceMapper.FromRoutes(null!));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyUpstreamHealthSourceMapper.FromRoutes([null!]));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyUpstreamHealthSourceMapper.FromRoutes([Route([null!])]));
+        AssertEx.Throws<ArgumentNullException>(() => UpstreamHealthStateSourceMapper.FromUpstream(null!));
+        AssertEx.Throws<ArgumentNullException>(() => CircuitBreakerStatusSourceMapper.FromUpstream(null!));
 
         var http = Upstream(5001);
         var https = new RuntimeUpstream(

@@ -24,6 +24,8 @@ public static class UpstreamHealthStateSourceMapper
 {
     public static UpstreamHealthStateSource FromUpstream(RuntimeUpstream upstream)
     {
+        ArgumentNullException.ThrowIfNull(upstream);
+
         return new UpstreamHealthStateSource(
             upstream.Identity,
             upstream.RouteName,

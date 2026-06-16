@@ -22,6 +22,8 @@ public static class UpstreamTransportEndpointMapper
 {
     public static UpstreamTransportEndpoint FromUpstream(RuntimeUpstream upstream)
     {
+        ArgumentNullException.ThrowIfNull(upstream);
+
         return new UpstreamTransportEndpoint(
             upstream.Name,
             upstream.Scheme,
