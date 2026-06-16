@@ -292,16 +292,20 @@ internal static class RouteDiagnosticsTests
 
     public static void GeneratedRouteResponseHeaderPolicyBuildsFramedHeaders()
     {
+        var responseHeaders = new List<ProxyHeaderField>
+        {
+            new("Location", "/next"),
+            new("Connection", "close"),
+            new("Keep-Alive", "timeout=5")
+        };
         var response = new GeneratedRouteResponse(
             302,
             "Found",
             "text/plain",
             "go",
-            [
-                new ProxyHeaderField("Location", "/next"),
-                new ProxyHeaderField("Connection", "close"),
-                new ProxyHeaderField("Keep-Alive", "timeout=5")
-            ]);
+            responseHeaders);
+
+        responseHeaders.Clear();
 
         var headers = GeneratedRouteResponseHeaderPolicy.BuildFramedResponseHeaders(
             response,
@@ -314,6 +318,13 @@ internal static class RouteDiagnosticsTests
         AssertEx.True(headers.Any(static header => header.Name == "Location" && header.Value == "/next"));
         AssertEx.False(headers.Any(static header => string.Equals(header.Name, "Connection", StringComparison.OrdinalIgnoreCase)));
         AssertEx.False(headers.Any(static header => string.Equals(header.Name, "Keep-Alive", StringComparison.OrdinalIgnoreCase)));
+        AssertEx.False(response.Headers is ProxyHeaderField[], "Generated route response headers should not expose a mutable array.");
+        AssertEx.Throws<ArgumentNullException>(() => new GeneratedRouteResponse(
+            200,
+            "OK",
+            null,
+            "",
+            null!));
     }
 
     public static void RequestContextRecordsGeneratedFailureResponse()
