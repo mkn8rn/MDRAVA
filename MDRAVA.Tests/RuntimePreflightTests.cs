@@ -1,4 +1,5 @@
 using System.Text.Json;
+using MDRAVA.API.Controllers;
 using MDRAVA.INF.Configuration.Paths;
 
 namespace MDRAVA.Tests;
@@ -218,6 +219,11 @@ internal static class RuntimePreflightTests
         AssertEx.Equal(3, status.Checks.Count);
         AssertEx.False(status.Reasons is string[], "Runtime preflight reasons should not expose a mutable array.");
         AssertEx.False(status.Checks is ProxyRuntimePreflightCheck[], "Runtime preflight checks should not expose a mutable array.");
+        var response = ProxyRuntimePreflightStatusResponse.FromStatus(status);
+        AssertEx.False(ReferenceEquals(status.Reasons, response.Reasons), "Runtime preflight API reasons should be transport-owned.");
+        AssertEx.False(response.Reasons is string[], "Runtime preflight API reasons should not expose a mutable array.");
+        AssertEx.False(response.Checks is List<ProxyRuntimePreflightCheckResponse>, "Runtime preflight API checks should not expose a mutable list.");
+        AssertEx.False(response.Checks is ProxyRuntimePreflightCheckResponse[], "Runtime preflight API checks should not expose a mutable array.");
     }
 
     public static void RuntimePreflightCheckFactoryBuildsUnsafeAndProbedChecks()

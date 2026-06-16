@@ -16,7 +16,7 @@ public sealed record ProxyRuntimePreflightStatusResponse(
         return new ProxyRuntimePreflightStatusResponse(
             status.State,
             status.GeneratedAtUtc,
-            status.Reasons,
+            ApiResponseList.Copy(status.Reasons),
             ProxyRuntimePreflightCheckResponse.FromChecks(status.Checks));
     }
 }
@@ -32,22 +32,9 @@ public sealed record ProxyRuntimePreflightCheckResponse(
     string Reason)
 {
     public static IReadOnlyList<ProxyRuntimePreflightCheckResponse> FromChecks(
-        IReadOnlyList<BusinessProxyRuntimePreflightCheck> checks)
+        IEnumerable<BusinessProxyRuntimePreflightCheck> checks)
     {
-        ArgumentNullException.ThrowIfNull(checks);
-
-        if (checks.Count == 0)
-        {
-            return [];
-        }
-
-        var responses = new List<ProxyRuntimePreflightCheckResponse>(checks.Count);
-        foreach (var check in checks)
-        {
-            responses.Add(FromCheck(check));
-        }
-
-        return responses;
+        return ApiResponseList.Copy(checks.Select(FromCheck));
     }
 
     public static ProxyRuntimePreflightCheckResponse FromCheck(BusinessProxyRuntimePreflightCheck check)
