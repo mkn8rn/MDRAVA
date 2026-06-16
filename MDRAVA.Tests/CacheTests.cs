@@ -796,10 +796,7 @@ internal static class CacheTests
     public static void CacheStatusRouteSourceMapperReadsRoutesWithoutConfigurationSnapshot()
     {
         var disabled = Route(RuntimeCachePolicy.Disabled);
-        var enabled = Route(CachePolicy(maxEntryBytes: 4096, maxTotalBytes: 8192)) with
-        {
-            Name = "enabled-cache"
-        };
+        var enabled = Route(CachePolicy(maxEntryBytes: 4096, maxTotalBytes: 8192), name: "enabled-cache");
         RuntimeRoute[] routes = [disabled, enabled];
 
         var sources = ProxyCacheStatusRouteSourceMapper.ToRouteSources(routes.Select(static route => route));
@@ -890,7 +887,7 @@ internal static class CacheTests
     {
         var request = Request("GET", "/seed", "cache.test");
         var response = Response("200 OK", []);
-        cache.Store(Scope(route with { Cache = CachePolicy() }, listener), request, "/seed", response, response.Headers, Encoding.ASCII.GetBytes("seed"));
+        cache.Store(Scope(CreateRoute(route, cache: CachePolicy()), listener), request, "/seed", response, response.Headers, Encoding.ASCII.GetBytes("seed"));
     }
 
     private static ProxyCacheStatus CacheStatus(
@@ -1153,10 +1150,10 @@ internal static class CacheTests
         return store;
     }
 
-    private static RuntimeRoute Route(RuntimeCachePolicy cache)
+    private static RuntimeRoute Route(RuntimeCachePolicy cache, string name = "cache")
     {
         return new RuntimeRoute(
-            "cache",
+            name,
             "*",
             "/",
             RuntimeRouteAction.Proxy,
@@ -1172,6 +1169,29 @@ internal static class CacheTests
             new RuntimeMaintenancePolicy(false, null, "text/plain; charset=utf-8", "Service Unavailable"),
             cache,
             new RuntimeRouteResolvedOptions(104857600, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30), true));
+    }
+
+    private static RuntimeRoute CreateRoute(RuntimeRoute source, RuntimeCachePolicy? cache = null)
+    {
+        return new RuntimeRoute(
+            source.Name,
+            source.Host,
+            source.PathPrefix,
+            source.Action,
+            source.LoadBalancingPolicy,
+            source.HealthCheck,
+            source.Upstreams,
+            source.HttpsRedirect,
+            source.CanonicalHost,
+            source.HeaderPolicy,
+            source.PathRewrite,
+            source.Redirect,
+            source.StaticResponse,
+            source.Maintenance,
+            cache ?? source.Cache,
+            source.ResolvedOptions,
+            source.SiteName,
+            source.Retry);
     }
 
     private static RuntimeCachePolicy CachePolicy(

@@ -912,10 +912,9 @@ internal static class RouteDiagnosticsTests
             new RuntimeStaticResponse(200, "text/plain; charset=utf-8", ""),
             new RuntimeMaintenancePolicy(false, null, "text/plain; charset=utf-8", "Service Unavailable"),
             new RuntimeCachePolicy(true, 1024, 4096, TimeSpan.FromSeconds(60), true, [], [200], cacheMethods),
-            new RuntimeRouteResolvedOptions(104857600, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30), true))
-        {
-            Retry = new RuntimeRetryPolicy(true, 2, null, true, false, [], retryMethods, TimeSpan.Zero)
-        };
+            new RuntimeRouteResolvedOptions(104857600, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30), true),
+            SiteName: "",
+            Retry: new RuntimeRetryPolicy(true, 2, null, true, false, [], retryMethods, TimeSpan.Zero));
         var store = new ProxyConfigurationStore();
         store.Replace(RuntimeSnapshot([route]));
         var source = new ProxyRouteDiagnosticsConfigurationSource(store);

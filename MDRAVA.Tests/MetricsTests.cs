@@ -1025,10 +1025,9 @@ internal static class MetricsTests
             new RuntimeStaticResponse(200, "text/plain; charset=utf-8", ""),
             new RuntimeMaintenancePolicy(false, null, "text/plain; charset=utf-8", "Service Unavailable"),
             cache,
-            new RuntimeRouteResolvedOptions(104857600, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30), true))
-        {
-            SiteName = "cache"
-        };
+            new RuntimeRouteResolvedOptions(104857600, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30), true),
+            SiteName: "cache",
+            Retry: RuntimeRetryPolicy.Disabled);
     }
 
     private static RuntimeCachePolicy CachePolicy()

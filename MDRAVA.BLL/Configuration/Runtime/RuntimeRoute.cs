@@ -19,7 +19,62 @@ public sealed record RuntimeRoute
         RuntimeMaintenancePolicy Maintenance,
         RuntimeCachePolicy Cache,
         RuntimeRouteResolvedOptions ResolvedOptions)
+        : this(
+            Name,
+            Host,
+            PathPrefix,
+            Action,
+            LoadBalancingPolicy,
+            HealthCheck,
+            Upstreams,
+            HttpsRedirect,
+            CanonicalHost,
+            HeaderPolicy,
+            PathRewrite,
+            Redirect,
+            StaticResponse,
+            Maintenance,
+            Cache,
+            ResolvedOptions,
+            SiteName: "",
+            Retry: RuntimeRetryPolicy.Disabled)
     {
+    }
+
+    public RuntimeRoute(
+        string Name,
+        string Host,
+        string PathPrefix,
+        RuntimeRouteAction Action,
+        string LoadBalancingPolicy,
+        RuntimeHealthCheckOptions HealthCheck,
+        IReadOnlyList<RuntimeUpstream> Upstreams,
+        RuntimeHttpsRedirectPolicy HttpsRedirect,
+        RuntimeCanonicalHostPolicy CanonicalHost,
+        RuntimeHeaderPolicy HeaderPolicy,
+        RuntimePathRewritePolicy PathRewrite,
+        RuntimeRedirectPolicy Redirect,
+        RuntimeStaticResponse StaticResponse,
+        RuntimeMaintenancePolicy Maintenance,
+        RuntimeCachePolicy Cache,
+        RuntimeRouteResolvedOptions ResolvedOptions,
+        string SiteName,
+        RuntimeRetryPolicy Retry)
+    {
+        ArgumentNullException.ThrowIfNull(Upstreams);
+        ArgumentNullException.ThrowIfNull(HealthCheck);
+        ArgumentNullException.ThrowIfNull(HttpsRedirect);
+        ArgumentNullException.ThrowIfNull(CanonicalHost);
+        ArgumentNullException.ThrowIfNull(HeaderPolicy);
+        ArgumentNullException.ThrowIfNull(PathRewrite);
+        ArgumentNullException.ThrowIfNull(Redirect);
+        ArgumentNullException.ThrowIfNull(StaticResponse);
+        ArgumentNullException.ThrowIfNull(Maintenance);
+        ArgumentNullException.ThrowIfNull(Cache);
+        ArgumentNullException.ThrowIfNull(ResolvedOptions);
+        ArgumentNullException.ThrowIfNull(SiteName);
+        ArgumentNullException.ThrowIfNull(Retry);
+
         this.Name = Name;
         this.Host = Host;
         this.PathPrefix = PathPrefix;
@@ -36,43 +91,45 @@ public sealed record RuntimeRoute
         this.Maintenance = Maintenance;
         this.Cache = Cache;
         this.ResolvedOptions = ResolvedOptions;
+        this.SiteName = SiteName;
+        this.Retry = Retry;
     }
 
-    public string Name { get; init; }
+    public string Name { get; }
 
-    public string Host { get; init; }
+    public string Host { get; }
 
-    public string PathPrefix { get; init; }
+    public string PathPrefix { get; }
 
-    public RuntimeRouteAction Action { get; init; }
+    public RuntimeRouteAction Action { get; }
 
-    public string LoadBalancingPolicy { get; init; }
+    public string LoadBalancingPolicy { get; }
 
-    public RuntimeHealthCheckOptions HealthCheck { get; init; }
+    public RuntimeHealthCheckOptions HealthCheck { get; }
 
     public IReadOnlyList<RuntimeUpstream> Upstreams { get; }
 
-    public RuntimeHttpsRedirectPolicy HttpsRedirect { get; init; }
+    public RuntimeHttpsRedirectPolicy HttpsRedirect { get; }
 
-    public RuntimeCanonicalHostPolicy CanonicalHost { get; init; }
+    public RuntimeCanonicalHostPolicy CanonicalHost { get; }
 
-    public RuntimeHeaderPolicy HeaderPolicy { get; init; }
+    public RuntimeHeaderPolicy HeaderPolicy { get; }
 
-    public RuntimePathRewritePolicy PathRewrite { get; init; }
+    public RuntimePathRewritePolicy PathRewrite { get; }
 
-    public RuntimeRedirectPolicy Redirect { get; init; }
+    public RuntimeRedirectPolicy Redirect { get; }
 
-    public RuntimeStaticResponse StaticResponse { get; init; }
+    public RuntimeStaticResponse StaticResponse { get; }
 
-    public RuntimeMaintenancePolicy Maintenance { get; init; }
+    public RuntimeMaintenancePolicy Maintenance { get; }
 
-    public RuntimeCachePolicy Cache { get; init; }
+    public RuntimeCachePolicy Cache { get; }
 
-    public RuntimeRouteResolvedOptions ResolvedOptions { get; init; }
+    public RuntimeRouteResolvedOptions ResolvedOptions { get; }
 
-    public string SiteName { get; init; } = "";
+    public string SiteName { get; }
 
-    public RuntimeRetryPolicy Retry { get; init; } = RuntimeRetryPolicy.Disabled;
+    public RuntimeRetryPolicy Retry { get; }
 
     public RuntimeRoute WithUpstreams(IReadOnlyList<RuntimeUpstream> upstreams)
     {
@@ -92,10 +149,8 @@ public sealed record RuntimeRoute
             StaticResponse,
             Maintenance,
             Cache,
-            ResolvedOptions)
-        {
-            SiteName = SiteName,
-            Retry = Retry
-        };
+            ResolvedOptions,
+            SiteName,
+            Retry);
     }
 }

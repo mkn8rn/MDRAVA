@@ -1350,10 +1350,9 @@ internal static class ConfigurationTests
             new RuntimeStaticResponse(200, "text/plain; charset=utf-8", "ok"),
             new RuntimeMaintenancePolicy(false, null, "text/plain; charset=utf-8", "Service Unavailable"),
             RuntimeCachePolicy.Disabled,
-            new RuntimeRouteResolvedOptions(104857600, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30), true))
-        {
-            SiteName = "home"
-        };
+            new RuntimeRouteResolvedOptions(104857600, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30), true),
+            SiteName: "home",
+            Retry: RuntimeRetryPolicy.Disabled);
         var listeners = new List<RuntimeListener> { listener };
         var routes = new List<RuntimeRoute> { route };
         var snapshot = new ProxyConfigurationSnapshot(

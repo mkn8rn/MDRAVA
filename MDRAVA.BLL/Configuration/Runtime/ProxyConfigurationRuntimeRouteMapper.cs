@@ -93,11 +93,9 @@ public static partial class ProxyConfigurationRuntimeMapper
                 route.Overrides.MaxRequestBodyBytes ?? operationalOptions.Limits.MaxRequestBodyBytes,
                 TimeSpan.FromMilliseconds(route.Overrides.ClientRequestHeadTimeoutMs ?? operationalOptions.Timeouts.ClientRequestHeadTimeoutMs),
                 TimeSpan.FromMilliseconds(route.Overrides.UpstreamResponseHeadTimeoutMs ?? operationalOptions.Timeouts.UpstreamResponseHeadTimeoutMs),
-                route.Overrides.AccessLogEnabled ?? operationalOptions.Observability.AccessLogEnabled))
-        {
-            SiteName = route.SiteName,
-            Retry = ToRuntimeRetry(route.Retry)
-        };
+                route.Overrides.AccessLogEnabled ?? operationalOptions.Observability.AccessLogEnabled),
+            route.SiteName,
+            ToRuntimeRetry(route.Retry));
     }
 
     private static RuntimeRetryPolicy ToRuntimeRetry(ProxyRetryPolicyOptions retry)

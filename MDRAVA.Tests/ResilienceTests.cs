@@ -597,10 +597,9 @@ internal static class ResilienceTests
     {
         using var fixture = SelectorFixture.Create();
         var upstream = Upstream("first", weight: 2, circuit: Circuit(threshold: 1));
-        var route = Route([upstream]) with
-        {
-            Retry = new RuntimeRetryPolicy(true, 2, null, true, false, [], ["GET", "HEAD"], TimeSpan.Zero)
-        };
+        var route = Route(
+            [upstream],
+            retry: new RuntimeRetryPolicy(true, 2, null, true, false, [], ["GET", "HEAD"], TimeSpan.Zero));
         fixture.Store.Replace(fixture.Store.Snapshot.WithListenersAndRoutes(
             fixture.Store.Snapshot.Listeners,
             [route]));
@@ -1122,7 +1121,10 @@ internal static class ResilienceTests
             .Build();
     }
 
-    private static RuntimeRoute Route(IReadOnlyList<RuntimeUpstream> upstreams, bool healthEnabled = false)
+    private static RuntimeRoute Route(
+        IReadOnlyList<RuntimeUpstream> upstreams,
+        bool healthEnabled = false,
+        RuntimeRetryPolicy? retry = null)
     {
         return new RuntimeRoute(
             "route",
@@ -1140,10 +1142,9 @@ internal static class ResilienceTests
             new RuntimeStaticResponse(200, "text/plain; charset=utf-8", ""),
             new RuntimeMaintenancePolicy(false, null, "text/plain; charset=utf-8", "Service Unavailable"),
             RuntimeCachePolicy.Disabled,
-            new RuntimeRouteResolvedOptions(104857600, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30), true))
-        {
-            SiteName = "site"
-        };
+            new RuntimeRouteResolvedOptions(104857600, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30), true),
+            SiteName: "site",
+            Retry: retry ?? RuntimeRetryPolicy.Disabled);
     }
 
     private static UpstreamSelectionRoute SelectionRoute(RuntimeRoute route)

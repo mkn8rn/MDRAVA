@@ -1267,10 +1267,7 @@ internal static class OperatorStatusTests
         var upstream = Upstream(
             scheme: "https",
             protocol: RuntimeUpstreamProtocol.Http3);
-        var route = ProxyRoute(upstream) with
-        {
-            Cache = CachePolicy()
-        };
+        var route = BaseRoute(RuntimeRouteAction.Proxy, [upstream], CachePolicy());
 
         RuntimeListener[] listenerSources = [listener];
         RuntimeRoute[] routeSources = [route];
@@ -2027,10 +2024,9 @@ internal static class OperatorStatusTests
             new RuntimeStaticResponse(200, "text/plain; charset=utf-8", "ok"),
             new RuntimeMaintenancePolicy(false, null, "text/plain; charset=utf-8", "Service Unavailable"),
             cache,
-            new RuntimeRouteResolvedOptions(104857600, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30), true))
-        {
-            SiteName = "main"
-        };
+            new RuntimeRouteResolvedOptions(104857600, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30), true),
+            SiteName: "main",
+            Retry: RuntimeRetryPolicy.Disabled);
     }
 
     private static RuntimeUpstream Upstream(
