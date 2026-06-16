@@ -479,6 +479,48 @@ internal static class ConfigurationTests
         AssertEx.False(discoveryResponse.Files is ProxyConfigurationFileDiscoveryResponse[], "Discovery API files should not expose a mutable array.");
         AssertEx.False(discoveryResponse.CreatedPaths is string[], "Discovery API created paths should not expose a mutable array.");
         AssertEx.False(discoveryResponse.ExistingPaths is string[], "Discovery API existing paths should not expose a mutable array.");
+        var discoveryResponseFiles = new List<ProxyConfigurationFileDiscoveryResponse> { discoveryResponse.Files[0] };
+        var discoveryResponseCreatedPaths = new List<string> { discoveryResponse.CreatedPaths[0] };
+        var discoveryResponseExistingPaths = new List<string> { discoveryResponse.ExistingPaths[0] };
+        var directDiscoveryResponse = new ProxyConfigurationDiscoveryResponse(
+            layout: discoveryResponse.Layout,
+            files: discoveryResponseFiles,
+            createdPaths: discoveryResponseCreatedPaths,
+            existingPaths: discoveryResponseExistingPaths);
+
+        discoveryResponseFiles[0] = discoveryResponseFiles[0] with { Path = "sites/replacement.json" };
+        discoveryResponseCreatedPaths[0] = "tests/replacement-created";
+        discoveryResponseExistingPaths[0] = "tests/replacement-existing";
+        discoveryResponseFiles.Clear();
+        discoveryResponseCreatedPaths.Clear();
+        discoveryResponseExistingPaths.Clear();
+
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyConfigurationDiscoveryResponse(
+            layout: null!,
+            files: [],
+            createdPaths: [],
+            existingPaths: []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyConfigurationDiscoveryResponse(
+            layout: discoveryResponse.Layout,
+            files: null!,
+            createdPaths: [],
+            existingPaths: []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyConfigurationDiscoveryResponse(
+            layout: discoveryResponse.Layout,
+            files: [],
+            createdPaths: null!,
+            existingPaths: []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyConfigurationDiscoveryResponse(
+            layout: discoveryResponse.Layout,
+            files: [],
+            createdPaths: [],
+            existingPaths: null!));
+        AssertEx.Equal("sites/home.json", directDiscoveryResponse.Files[0].Path);
+        AssertEx.Equal("tests/config", directDiscoveryResponse.CreatedPaths[0]);
+        AssertEx.Equal("tests/config/sites", directDiscoveryResponse.ExistingPaths[0]);
+        AssertEx.False(directDiscoveryResponse.Files is ProxyConfigurationFileDiscoveryResponse[], "Direct discovery API files should not expose a mutable array.");
+        AssertEx.False(directDiscoveryResponse.CreatedPaths is string[], "Direct discovery API created paths should not expose a mutable array.");
+        AssertEx.False(directDiscoveryResponse.ExistingPaths is string[], "Direct discovery API existing paths should not expose a mutable array.");
     }
 
     public static void RuntimeConfigurationPolicyRecordsCopyInputCollections()

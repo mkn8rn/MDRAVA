@@ -5,21 +5,39 @@ using BusinessProxyFilesystemLayout = MDRAVA.BLL.Configuration.ProxyFilesystemLa
 
 namespace MDRAVA.API.Controllers;
 
-public sealed record ProxyConfigurationDiscoveryResponse(
-    ProxyFilesystemLayoutResponse Layout,
-    IReadOnlyList<ProxyConfigurationFileDiscoveryResponse> Files,
-    IReadOnlyList<string> CreatedPaths,
-    IReadOnlyList<string> ExistingPaths)
+public sealed record ProxyConfigurationDiscoveryResponse
 {
+    public ProxyConfigurationDiscoveryResponse(
+        ProxyFilesystemLayoutResponse layout,
+        IReadOnlyList<ProxyConfigurationFileDiscoveryResponse> files,
+        IReadOnlyList<string> createdPaths,
+        IReadOnlyList<string> existingPaths)
+    {
+        ArgumentNullException.ThrowIfNull(layout);
+
+        Layout = layout;
+        Files = ApiResponseList.Copy(files);
+        CreatedPaths = ApiResponseList.Copy(createdPaths);
+        ExistingPaths = ApiResponseList.Copy(existingPaths);
+    }
+
+    public ProxyFilesystemLayoutResponse Layout { get; }
+
+    public IReadOnlyList<ProxyConfigurationFileDiscoveryResponse> Files { get; }
+
+    public IReadOnlyList<string> CreatedPaths { get; }
+
+    public IReadOnlyList<string> ExistingPaths { get; }
+
     public static ProxyConfigurationDiscoveryResponse FromDiscovery(BusinessProxyConfigurationDiscovery discovery)
     {
         ArgumentNullException.ThrowIfNull(discovery);
 
         return new ProxyConfigurationDiscoveryResponse(
-            ProxyFilesystemLayoutResponse.FromLayout(discovery.Layout),
-            ProxyConfigurationFileDiscoveryResponse.FromFiles(discovery.Files),
-            ApiResponseList.Copy(discovery.CreatedPaths),
-            ApiResponseList.Copy(discovery.ExistingPaths));
+            layout: ProxyFilesystemLayoutResponse.FromLayout(discovery.Layout),
+            files: ProxyConfigurationFileDiscoveryResponse.FromFiles(discovery.Files),
+            createdPaths: discovery.CreatedPaths,
+            existingPaths: discovery.ExistingPaths);
     }
 }
 
