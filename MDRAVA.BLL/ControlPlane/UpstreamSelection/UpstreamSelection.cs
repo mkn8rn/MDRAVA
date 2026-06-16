@@ -10,14 +10,16 @@ public sealed record UpstreamSelectionRoute
         bool HealthCheckEnabled,
         IReadOnlyList<RuntimeUpstream> Upstreams)
     {
+        ArgumentNullException.ThrowIfNull(Name);
+
         this.Name = Name;
         this.HealthCheckEnabled = HealthCheckEnabled;
         this.Upstreams = RuntimeList.Copy(Upstreams);
     }
 
-    public string Name { get; init; }
+    public string Name { get; }
 
-    public bool HealthCheckEnabled { get; init; }
+    public bool HealthCheckEnabled { get; }
 
     public IReadOnlyList<RuntimeUpstream> Upstreams { get; }
 }

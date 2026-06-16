@@ -477,7 +477,13 @@ internal static class ResilienceTests
         var selection = AssertEx.NotNull(fixture.Selector.Select(route));
 
         AssertEx.Equal("first", selection.Upstream.Name);
+        AssertEx.Equal("route", route.Name);
+        AssertEx.False(route.HealthCheckEnabled);
         AssertEx.False(route.Upstreams is RuntimeUpstream[], "Upstream selection route should not expose a mutable array.");
+        AssertEx.Throws<ArgumentNullException>(() => new UpstreamSelectionRoute(
+            null!,
+            HealthCheckEnabled: false,
+            []));
         AssertEx.Throws<ArgumentNullException>(() => new UpstreamSelectionRoute(
             "route",
             HealthCheckEnabled: false,
