@@ -65,6 +65,19 @@ internal static class ArchitectureBoundaryTests
             ]);
     }
 
+    public static void RuntimeConfigurationModelsDoNotExposeInitSetters()
+    {
+        var root = FindRepositoryRoot();
+        var directory = Path.Combine(root, NormalizePath("MDRAVA.BLL/Configuration/Runtime"));
+        var violations = Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories)
+            .Where(static path => !IsGeneratedOrBuildOutput(path))
+            .SelectMany(path => InitSettersInFile(root, path))
+            .OrderBy(static violation => violation, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        AssertEx.Equal("", string.Join(Environment.NewLine, violations));
+    }
+
     private static void AssertReferences(
         string root,
         string projectPath,
@@ -112,6 +125,19 @@ internal static class ArchitectureBoundaryTests
             if (text.Contains(token, StringComparison.Ordinal))
             {
                 yield return $"{NormalizePath(Path.GetRelativePath(root, path))} contains forbidden boundary token '{token}'.";
+            }
+        }
+    }
+
+    private static IEnumerable<string> InitSettersInFile(string root, string path)
+    {
+        var lineNumber = 0;
+        foreach (var line in File.ReadLines(path))
+        {
+            lineNumber++;
+            if (line.Contains("init;", StringComparison.Ordinal))
+            {
+                yield return $"{NormalizePath(Path.GetRelativePath(root, path))}:{lineNumber} exposes an init setter in runtime configuration.";
             }
         }
     }

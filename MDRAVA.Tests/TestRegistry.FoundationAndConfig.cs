@@ -8,6 +8,7 @@ internal static partial class TestRegistry
     Test("BLL source does not reference outer layers", Sync(ArchitectureBoundaryTests.BusinessLayerSourceDoesNotReferenceOuterLayers), TestTaxonomy.Config),
     Test("Infrastructure source does not reference API layer", Sync(ArchitectureBoundaryTests.InfrastructureSourceDoesNotReferenceApiLayer), TestTaxonomy.Config),
     Test("API controllers do not reference infrastructure layer", Sync(ArchitectureBoundaryTests.ApiControllersDoNotReferenceInfrastructureLayer), TestTaxonomy.Config),
+    Test("Runtime configuration models do not expose init setters", Sync(ArchitectureBoundaryTests.RuntimeConfigurationModelsDoNotExposeInitSetters), TestTaxonomy.Config),
     Test("Configuration file error names global and path errors", Sync(ConfigurationTests.ConfigurationFileErrorNamesGlobalAndPathErrors), TestTaxonomy.Config),
     Test("Normalize site parse result names parsed and failed states", Sync(ConfigurationTests.NormalizeSiteParseResultNamesParsedAndFailedStates), TestTaxonomy.Config),
     Test("Site configuration source factories own paths and validate inputs", Sync(ConfigurationTests.SiteConfigurationSourceFactoriesOwnPathsAndValidateInputs), TestTaxonomy.Config),
