@@ -55,6 +55,9 @@ public static class Http3RuntimeSupport
         Http3SupportConfigurationSource source,
         RuntimeHttp3PlatformSupport platformSupport)
     {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(platformSupport);
+
         return ProjectCore(source, platformSupport, [], hasRuntimeState: false);
     }
 
@@ -63,6 +66,10 @@ public static class Http3RuntimeSupport
         RuntimeHttp3PlatformSupport platformSupport,
         IReadOnlyList<Http3SupportRuntimeListenerSource> runtimeListeners)
     {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(platformSupport);
+        ArgumentNullException.ThrowIfNull(runtimeListeners);
+
         return ProjectCore(source, platformSupport, runtimeListeners, hasRuntimeState: true);
     }
 

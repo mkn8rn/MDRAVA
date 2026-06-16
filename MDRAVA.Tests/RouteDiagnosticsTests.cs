@@ -771,6 +771,10 @@ internal static class RouteDiagnosticsTests
             http3Support,
             listeners,
             routes);
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyConfigLintConfigurationSnapshotMapper.ToLintSnapshot(null!, TestHttp3PlatformSupport.Supported));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyConfigLintConfigurationSnapshotMapper.ToLintSnapshot(source, null!));
         var mappedSourceFiles = new List<string> { "mapped.json" };
         var mappedAdminUrls = new List<string> { AdminBindPolicy.DefaultAdminUrl };
         var mappedSource = ProxyConfigLintRuntimeConfigurationSourceMapper.FromSources(

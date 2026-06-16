@@ -216,6 +216,9 @@ public static class ProxyConfigLintConfigurationSnapshotMapper
         ProxyConfigLintRuntimeConfigurationSource source,
         RuntimeHttp3PlatformSupport platformSupport)
     {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(platformSupport);
+
         var http3 = Http3RuntimeSupport.ProjectConfiguration(source.Http3Support, platformSupport);
         return new ProxyConfigLintConfigurationSnapshot(
             source.SourceFiles,

@@ -491,6 +491,15 @@ internal static class Http3InfrastructureTests
 
     public static void Http3SupportSourcesAndProjectionCopyInputLists()
     {
+        AssertEx.Throws<ArgumentNullException>(() =>
+            _ = new Http3SupportConfigurationSource(null!, UpstreamHttp3Configured: false));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            Http3RuntimeSupport.ProjectConfiguration(null!, TestHttp3PlatformSupport.Supported));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            Http3RuntimeSupport.ProjectConfiguration(Http3SupportConfigurationSource.Empty, null!));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            Http3RuntimeSupport.ProjectRuntime(Http3SupportConfigurationSource.Empty, TestHttp3PlatformSupport.Supported, null!));
+
         var listener = new Http3SupportListenerSource(
             Configured: true,
             EnabledForTraffic: true,
