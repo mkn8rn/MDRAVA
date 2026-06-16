@@ -765,6 +765,9 @@ internal static class OperatorStatusTests
             "client_http3_default_enabled_for_eligible_tls_proxy_listeners");
         var logPersistence = ProxyLogPersistenceStatus.Unknown;
 
+        AssertEx.Throws<ArgumentNullException>(() => ProxyUpstreamSummarySourceMapper.FromStatusResponses(null!));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyLogSummarySourceMapper.FromStatus(null!));
+
         var sources = ProxyStatusReadinessSourceMapper.FromSources(
             ProxyStatusReadinessConfigurationSourceSet.Missing,
             runtime,

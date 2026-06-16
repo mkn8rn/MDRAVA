@@ -24,6 +24,8 @@ public static class ProxyUpstreamSummarySourceMapper
     public static IReadOnlyList<ProxyUpstreamSummarySource> FromStatusResponses(
         IReadOnlyList<ProxyUpstreamStatus> upstreams)
     {
+        ArgumentNullException.ThrowIfNull(upstreams);
+
         return upstreams
             .Select(static upstream => new ProxyUpstreamSummarySource(
                 upstream.HealthState,
@@ -56,6 +58,8 @@ public static class ProxyLogSummarySourceMapper
 {
     public static ProxyLogSummarySource FromStatus(ProxyLogPersistenceStatus logPersistence)
     {
+        ArgumentNullException.ThrowIfNull(logPersistence);
+
         return new ProxyLogSummarySource(
             logPersistence.AccessLogEnabled,
             logPersistence.AdminAuditEnabled,
