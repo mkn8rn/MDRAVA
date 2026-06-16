@@ -1043,6 +1043,17 @@ internal static class RouteDiagnosticsTests
         AssertEx.Equal("active.json", result.Findings.First(static finding => finding.Code == "route_shadowed").Source);
         AssertEx.Equal(result.Summary, service.LastActiveStatus.LastActiveLintSummary);
         AssertEx.Equal(result.Findings.Count, metrics.LastFindings.Count);
+
+        var missingResult = new ConfigLintService(
+            new FixedConfigLintActiveConfigurationSource(null),
+            new FixedConfigLintSubmittedConfigurationSource(null),
+            new FixedConfigLintRuntimeStateSource([]),
+            metrics,
+            new ProxyConfigLintSourceNameFormatter(),
+            new ProxyAdminUrlPolicy(),
+            TimeProvider.System).LintActive();
+        var missingFinding = missingResult.Findings.First(static finding => finding.Code == "no_active_config");
+        AssertEx.Equal("Load a valid config before linting the active configuration source.", missingFinding.SuggestedFix);
     }
 
     public static void ConfigLintStatusNamesEmptyAndCompletedStates()

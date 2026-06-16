@@ -11,7 +11,7 @@ public static class ConfigLintServiceFailureFindingFactory
             "No active proxy configuration is loaded.",
             null,
             null,
-            "Load a valid config before linting the active runtime snapshot.");
+            "Load a valid config before linting the active configuration source.");
     }
 
     public static ConfigLintFinding EmptySubmittedConfig()
