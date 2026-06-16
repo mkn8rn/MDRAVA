@@ -13,7 +13,7 @@ public static class AcmeRenewalConfigurationSourceMapper
 
         var activeCertificates = runtimeCertificates.ToDictionary(
             static certificate => certificate.Key,
-            static certificate => certificate.Value,
+            static certificate => RequireRuntimeCertificate(certificate.Value),
             StringComparer.OrdinalIgnoreCase);
 
         return new AcmeRenewalConfigurationSourceSet(
@@ -23,13 +23,28 @@ public static class AcmeRenewalConfigurationSourceMapper
             acme.ContactEmails,
             acme.TermsAccepted,
             acme.RetryAfterMinutes,
-            acme.Certificates
-                .Select(certificate => new AcmeRenewalCertificateSource(
-                    certificate.Id,
-                    certificate.Enabled,
-                    certificate.Domains,
-                    certificate.RenewBeforeDays,
-                    ReadActiveAcmeCertificate(activeCertificates, certificate.Id))));
+            acme.Certificates.Select(certificate => ToCertificateSource(certificate, activeCertificates)));
+    }
+
+    private static AcmeRenewalCertificateSource ToCertificateSource(
+        RuntimeAcmeCertificateOptions certificate,
+        IReadOnlyDictionary<string, RuntimeCertificate> activeCertificates)
+    {
+        ArgumentNullException.ThrowIfNull(certificate);
+
+        return new AcmeRenewalCertificateSource(
+            certificate.Id,
+            certificate.Enabled,
+            certificate.Domains,
+            certificate.RenewBeforeDays,
+            ReadActiveAcmeCertificate(activeCertificates, certificate.Id));
+    }
+
+    private static RuntimeCertificate RequireRuntimeCertificate(RuntimeCertificate certificate)
+    {
+        ArgumentNullException.ThrowIfNull(certificate);
+
+        return certificate;
     }
 
     private static AcmeRenewalActiveCertificate? ReadActiveAcmeCertificate(

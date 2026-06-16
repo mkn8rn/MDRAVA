@@ -892,6 +892,21 @@ internal static class AcmeTests
             acme,
             runtimeCertificates.Select(static certificate => certificate));
 
+        AssertEx.Throws<ArgumentNullException>(() =>
+            AcmeRenewalConfigurationSourceMapper.FromSources(null!, runtimeCertificates));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            AcmeRenewalConfigurationSourceMapper.FromSources(acme, null!));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            AcmeRenewalConfigurationSourceMapper.FromSources(
+                AcmeWithCertificates([null!]),
+                runtimeCertificates));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            AcmeRenewalConfigurationSourceMapper.FromSources(
+                acme,
+                new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["broken"] = null!
+                }));
         runtimeCertificates.Clear();
 
         AssertEx.True(source.Enabled);
@@ -912,6 +927,21 @@ internal static class AcmeTests
         AssertEx.Equal(null, source.Certificates[1].ActiveCertificate);
         AssertEx.False(source.Certificates is AcmeRenewalCertificateSource[], "ACME renewal source mapper certificates should not expose a mutable array.");
         AssertEx.False(source.Certificates[0].Domains is string[], "ACME renewal source mapper domains should not expose a mutable array.");
+
+        RuntimeAcmeOptions AcmeWithCertificates(IReadOnlyList<RuntimeAcmeCertificateOptions> certificates)
+        {
+            return new RuntimeAcmeOptions(
+                acme.Enabled,
+                acme.UseStaging,
+                acme.DirectoryUrl,
+                acme.ContactEmails,
+                acme.TermsAccepted,
+                acme.StoragePath,
+                acme.RenewBeforeDays,
+                acme.CheckIntervalMinutes,
+                acme.RetryAfterMinutes,
+                certificates);
+        }
     }
 
     public static void AcmeRenewalConfigurationInputMapperConsumesSourceSetWithoutRuntimeConfiguration()
@@ -951,6 +981,22 @@ internal static class AcmeTests
         certificateDomains.Clear();
         certificates.Clear();
 
+        AssertEx.Throws<ArgumentNullException>(() => new AcmeRenewalConfigurationSourceSet(
+            Enabled: true,
+            StoragePath: "acme",
+            DirectoryUrl: "https://acme.example.test/directory",
+            ContactEmails: ["ops@example.test"],
+            TermsAccepted: true,
+            RetryAfterMinutes: 15,
+            Certificates: [null!]));
+        AssertEx.Throws<ArgumentNullException>(() => new AcmeRenewalConfigurationInput(
+            Enabled: true,
+            StoragePath: "acme",
+            DirectoryUrl: "https://acme.example.test/directory",
+            ContactEmails: ["ops@example.test"],
+            TermsAccepted: true,
+            RetryAfterMinutes: 15,
+            Certificates: [null!]));
         AssertEx.True(input.Enabled);
         AssertEx.Equal("acme", input.StoragePath);
         AssertEx.Equal("https://acme.example.test/directory", input.DirectoryUrl);

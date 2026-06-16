@@ -22,7 +22,7 @@ public sealed record AcmeRenewalConfigurationInput
         this.ContactEmails = AcmeList.Copy(ContactEmails);
         this.TermsAccepted = TermsAccepted;
         this.RetryAfterMinutes = RetryAfterMinutes;
-        this.Certificates = AcmeList.Copy(Certificates);
+        this.Certificates = AcmeList.Copy(Certificates.Select(RequireCertificate));
     }
 
     public bool Enabled { get; }
@@ -38,6 +38,13 @@ public sealed record AcmeRenewalConfigurationInput
     public int RetryAfterMinutes { get; }
 
     public IReadOnlyList<AcmeRenewalCertificateInput> Certificates { get; }
+
+    private static AcmeRenewalCertificateInput RequireCertificate(AcmeRenewalCertificateInput certificate)
+    {
+        ArgumentNullException.ThrowIfNull(certificate);
+
+        return certificate;
+    }
 }
 
 public sealed record AcmeRenewalCertificateInput
@@ -93,7 +100,7 @@ public sealed record AcmeRenewalConfigurationSourceSet
         this.ContactEmails = AcmeList.Copy(ContactEmails);
         this.TermsAccepted = TermsAccepted;
         this.RetryAfterMinutes = RetryAfterMinutes;
-        this.Certificates = AcmeList.Copy(Certificates);
+        this.Certificates = AcmeList.Copy(Certificates.Select(RequireCertificate));
     }
 
     public bool Enabled { get; }
@@ -109,6 +116,13 @@ public sealed record AcmeRenewalConfigurationSourceSet
     public int RetryAfterMinutes { get; }
 
     public IReadOnlyList<AcmeRenewalCertificateSource> Certificates { get; }
+
+    private static AcmeRenewalCertificateSource RequireCertificate(AcmeRenewalCertificateSource certificate)
+    {
+        ArgumentNullException.ThrowIfNull(certificate);
+
+        return certificate;
+    }
 }
 
 public sealed record AcmeRenewalCertificateSource
@@ -195,12 +209,18 @@ public static class AcmeRenewalConfigurationInputMapper
             source.ContactEmails,
             source.TermsAccepted,
             source.RetryAfterMinutes,
-            source.Certificates
-                .Select(static certificate => new AcmeRenewalCertificateInput(
-                    certificate.Id,
-                    certificate.Enabled,
-                    certificate.Domains,
-                    certificate.RenewBeforeDays,
-                    certificate.ActiveCertificate)));
+            source.Certificates.Select(ToCertificateInput));
+    }
+
+    private static AcmeRenewalCertificateInput ToCertificateInput(AcmeRenewalCertificateSource certificate)
+    {
+        ArgumentNullException.ThrowIfNull(certificate);
+
+        return new AcmeRenewalCertificateInput(
+            certificate.Id,
+            certificate.Enabled,
+            certificate.Domains,
+            certificate.RenewBeforeDays,
+            certificate.ActiveCertificate);
     }
 }
