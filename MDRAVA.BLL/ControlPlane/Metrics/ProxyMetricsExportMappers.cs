@@ -54,16 +54,42 @@ public static class ProxyMetricsExportLabelOptionsMapper
 
 public static class ProxyMetricsExportHttp3FactsMapper
 {
-    public static ProxyMetricsExportHttp3Facts FromRuntimeConfiguration(
+    public static ProxyMetricsExportHttp3Facts FromSources(
         IEnumerable<RuntimeListener> listeners,
         IEnumerable<RuntimeRoute> routes)
     {
+        ArgumentNullException.ThrowIfNull(listeners);
+        ArgumentNullException.ThrowIfNull(routes);
+
+        var defaultEnabledListenerCount = 0;
+        var requestBodyStreamingEnabled = false;
+        foreach (var listener in listeners)
+        {
+            if (!listener.Http3.EnabledForTraffic)
+            {
+                continue;
+            }
+
+            requestBodyStreamingEnabled = true;
+            if (string.Equals(listener.Http3.EnablementLevel, "default", StringComparison.OrdinalIgnoreCase))
+            {
+                defaultEnabledListenerCount++;
+            }
+        }
+
+        var upstreamMultiplexingConfigured = false;
+        foreach (var route in routes)
+        {
+            if (route.Upstreams.Any(static upstream => RuntimeUpstreamProtocol.IsHttp3(upstream.Protocol)))
+            {
+                upstreamMultiplexingConfigured = true;
+                break;
+            }
+        }
+
         return new ProxyMetricsExportHttp3Facts(
-            listeners.Count(static listener =>
-                listener.Http3.EnabledForTraffic
-                && string.Equals(listener.Http3.EnablementLevel, "default", StringComparison.OrdinalIgnoreCase)),
-            listeners.Any(static listener => listener.Http3.EnabledForTraffic),
-            routes.Any(static route =>
-                route.Upstreams.Any(static upstream => RuntimeUpstreamProtocol.IsHttp3(upstream.Protocol))));
+            defaultEnabledListenerCount,
+            requestBodyStreamingEnabled,
+            upstreamMultiplexingConfigured);
     }
 }

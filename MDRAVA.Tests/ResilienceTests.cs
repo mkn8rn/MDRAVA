@@ -1316,7 +1316,7 @@ internal static class ResilienceTests
             return ProxyMetricsExportInputMapper.FromSources(
                 metrics,
                 ProxyMetricsExportLabelOptionsMapper.FromMetrics(snapshot.Metrics),
-                ProxyMetricsExportHttp3FactsMapper.FromRuntimeConfiguration(snapshot.Listeners, snapshot.Routes),
+                ProxyMetricsExportHttp3FactsMapper.FromSources(snapshot.Listeners, snapshot.Routes),
                 ProxyCacheStatusReader.Project(
                     ProxyCacheStatusRouteSourceMapper.ToRouteSources(snapshot.Routes),
                     cacheRuntime),

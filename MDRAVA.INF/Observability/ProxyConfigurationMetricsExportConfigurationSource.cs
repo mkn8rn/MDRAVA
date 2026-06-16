@@ -27,6 +27,6 @@ public sealed class ProxyConfigurationMetricsExportConfigurationSource
             ProxyMetricsExportConfigurationMapper.FromSources(
                 snapshot.Metrics.Enabled,
                 ProxyMetricsExportLabelOptionsMapper.FromMetrics(snapshot.Metrics),
-                ProxyMetricsExportHttp3FactsMapper.FromRuntimeConfiguration(snapshot.Listeners, snapshot.Routes)));
+                ProxyMetricsExportHttp3FactsMapper.FromSources(snapshot.Listeners, snapshot.Routes)));
     }
 }

@@ -374,9 +374,9 @@ internal static class MetricsTests
         var labelOptions = ProxyMetricsExportLabelOptionsMapper.FromMetrics(metrics);
         RuntimeListener[] listeners = [listener];
         RuntimeRoute[] routes = [route];
-        var http3Facts = ProxyMetricsExportHttp3FactsMapper.FromRuntimeConfiguration(
-            listeners.Select(static listener => listener),
-            routes.Select(static route => route));
+        var http3Facts = ProxyMetricsExportHttp3FactsMapper.FromSources(
+            new SinglePassEnumerable<RuntimeListener>(listeners),
+            new SinglePassEnumerable<RuntimeRoute>(routes));
 
         AssertEx.False(labelOptions.IncludePerRouteLabels);
         AssertEx.True(labelOptions.IncludePerUpstreamLabels);
@@ -1165,7 +1165,7 @@ internal static class MetricsTests
             return ProxyMetricsExportInputMapper.FromSources(
                 metrics,
                 ProxyMetricsExportLabelOptionsMapper.FromMetrics(snapshot.Metrics),
-                ProxyMetricsExportHttp3FactsMapper.FromRuntimeConfiguration(snapshot.Listeners, snapshot.Routes),
+                ProxyMetricsExportHttp3FactsMapper.FromSources(snapshot.Listeners, snapshot.Routes),
                 ProxyCacheStatusReader.Project(
                     ProxyCacheStatusRouteSourceMapper.ToRouteSources(snapshot.Routes),
                     cacheRuntime),
@@ -1222,6 +1222,31 @@ internal static class MetricsTests
         public ProxyMetricsExportConfigurationReadResult ReadConfiguration()
         {
             return ProxyMetricsExportConfigurationReadResult.MissingConfiguration;
+        }
+    }
+
+    private sealed class SinglePassEnumerable<T> : IEnumerable<T>
+    {
+        private readonly IEnumerable<T> _source;
+        private bool _enumerated;
+
+        public SinglePassEnumerable(IEnumerable<T> source)
+        {
+            ArgumentNullException.ThrowIfNull(source);
+
+            _source = source;
+        }
+
+        public IEnumerator<T> GetEnumerator()
+        {
+            AssertEx.False(_enumerated, "Metrics HTTP/3 source facts should be enumerated once.");
+            _enumerated = true;
+            return _source.GetEnumerator();
+        }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
         }
     }
 
