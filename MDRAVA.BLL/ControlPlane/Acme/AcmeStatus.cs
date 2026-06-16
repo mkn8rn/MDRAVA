@@ -24,17 +24,18 @@ public sealed record AcmeStatus
 
     public IReadOnlyList<AcmeCertificateLifecycleStatus> Certificates { get; }
 
-    public static AcmeStatus FromSnapshot(
-        ProxyAcmeStatusSnapshot snapshot,
+    public static AcmeStatus FromSources(
+        bool enabled,
+        string directoryUrl,
+        bool useStaging,
         IEnumerable<AcmeCertificateLifecycleStatus> certificates)
     {
-        ArgumentNullException.ThrowIfNull(snapshot);
         ArgumentNullException.ThrowIfNull(certificates);
 
         return new AcmeStatus(
-            snapshot.Enabled,
-            snapshot.DirectoryUrl,
-            snapshot.UseStaging,
+            enabled,
+            directoryUrl,
+            useStaging,
             certificates);
     }
 }
