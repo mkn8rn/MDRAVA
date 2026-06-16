@@ -4,7 +4,7 @@ namespace MDRAVA.BLL.ControlPlane.Listeners;
 
 internal static class ProxyListenerList
 {
-    public static IReadOnlyList<T> Copy<T>(IReadOnlyList<T> values)
+    public static IReadOnlyList<T> Copy<T>(IEnumerable<T> values)
     {
         ArgumentNullException.ThrowIfNull(values);
 

@@ -69,7 +69,7 @@ public sealed class ProxyRuntimeState : IProxyStatusRuntimeStateSource, IHttp3Al
     }
 
     public void ReplaceListeners(
-        IReadOnlyList<ProxyListenerStatus> listeners,
+        IEnumerable<ProxyListenerStatus> listeners,
         ProxyListenerReloadResult? lastReload)
     {
         var listenerSnapshot = listeners.ToArray();

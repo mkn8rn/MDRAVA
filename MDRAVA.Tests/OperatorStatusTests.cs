@@ -188,7 +188,7 @@ internal static class OperatorStatusTests
         var listeners = new List<ProxyListenerStatus> { active };
         var runtime = new ProxyRuntimeState(TimeProvider.System);
 
-        runtime.ReplaceListeners(listeners, null);
+        runtime.ReplaceListeners(listeners.Select(static listener => listener), null);
         listeners.Clear();
 
         var afterInputMutation = runtime.Snapshot();
