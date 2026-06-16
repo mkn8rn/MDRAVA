@@ -332,6 +332,75 @@ internal static class BackupRestoreTests
         var validationResponse = ProxyRestoreValidationResponseBody.FromResult(restoreValidation);
         AssertEx.False(validationResponse.Errors is ProxyRestoreValidationFindingResponse[], "Restore validation API errors should not expose a mutable array.");
         AssertEx.False(validationResponse.Warnings is ProxyRestoreValidationFindingResponse[], "Restore validation API warnings should not expose a mutable array.");
+        var responseDirectories = new List<ProxyBackupDirectoryStatusResponse> { response.Directories[0] };
+        var responseEntries = new List<ProxyBackupManifestEntryResponse> { response.Entries[0] };
+        var responseCounts = new List<ProxyBackupManifestCountResponse> { response.Counts[0] };
+        var responseWarnings = new List<ProxyBackupWarningResponse> { response.Warnings[0] };
+        var directManifestResponse = new ProxyBackupManifestResponse(
+            generatedAtUtc: generatedAtUtc,
+            directories: responseDirectories,
+            entries: responseEntries,
+            counts: responseCounts,
+            warnings: responseWarnings,
+            truncated: false);
+        var responseErrors = new List<ProxyRestoreValidationFindingResponse> { validationResponse.Errors[0] };
+        var restoreResponseWarnings = new List<ProxyRestoreValidationFindingResponse> { validationResponse.Warnings[0] };
+        var directValidationResponse = new ProxyRestoreValidationResponseBody(
+            succeeded: false,
+            generatedAtUtc,
+            activeConfigVersion: 3,
+            configValidationSucceeded: false,
+            wouldBeConfigVersion: null,
+            manifest: directManifestResponse,
+            errors: responseErrors,
+            warnings: restoreResponseWarnings);
+
+        responseDirectories[0] = responseDirectories[0] with { RelativePath = "replacement-config" };
+        responseEntries[0] = responseEntries[0] with { RelativePath = "replacement-entry" };
+        responseCounts[0] = responseCounts[0] with { Category = "replacement-count" };
+        responseWarnings[0] = responseWarnings[0] with { Code = "replacement-warning" };
+        responseErrors[0] = responseErrors[0] with { Code = "replacement-error" };
+        restoreResponseWarnings[0] = restoreResponseWarnings[0] with { Code = "replacement-restore-warning" };
+        responseDirectories.Clear();
+        responseEntries.Clear();
+        responseCounts.Clear();
+        responseWarnings.Clear();
+        responseErrors.Clear();
+        restoreResponseWarnings.Clear();
+
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyBackupManifestResponse(
+            generatedAtUtc: generatedAtUtc,
+            directories: null!,
+            entries: [],
+            counts: [],
+            warnings: [],
+            truncated: false));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRestoreValidationResponseBody(
+            succeeded: false,
+            generatedAtUtc,
+            activeConfigVersion: 3,
+            configValidationSucceeded: false,
+            wouldBeConfigVersion: null,
+            manifest: null!,
+            [],
+            []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRestoreValidationResponseBody(
+            succeeded: false,
+            generatedAtUtc,
+            activeConfigVersion: 3,
+            configValidationSucceeded: false,
+            wouldBeConfigVersion: null,
+            manifest: directManifestResponse,
+            errors: null!,
+            warnings: []));
+        AssertEx.Equal("config", directManifestResponse.Directories[0].RelativePath);
+        AssertEx.Equal("config/proxy.json", directManifestResponse.Entries[0].RelativePath);
+        AssertEx.Equal("config", directManifestResponse.Counts[0].Category);
+        AssertEx.Equal("manifest_warning", directManifestResponse.Warnings[0].Code);
+        AssertEx.Equal("config_invalid", directValidationResponse.Errors[0].Code);
+        AssertEx.Equal("manifest_warning", directValidationResponse.Warnings[0].Code);
+        AssertEx.False(directManifestResponse.Directories is ProxyBackupDirectoryStatusResponse[], "Direct backup manifest API directories should not expose a mutable array.");
+        AssertEx.False(directValidationResponse.Errors is ProxyRestoreValidationFindingResponse[], "Direct restore validation API errors should not expose a mutable array.");
     }
 
     public static void BackupPathSafetyRejectsTraversalOutsideDataDirectory()

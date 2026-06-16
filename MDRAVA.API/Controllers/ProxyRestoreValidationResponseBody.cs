@@ -3,16 +3,46 @@ using BusinessProxyRestoreValidationResult = MDRAVA.BLL.ControlPlane.Backup.Prox
 
 namespace MDRAVA.API.Controllers;
 
-public sealed record ProxyRestoreValidationResponseBody(
-    bool Succeeded,
-    DateTimeOffset GeneratedAtUtc,
-    int? ActiveConfigVersion,
-    bool ConfigValidationSucceeded,
-    int? WouldBeConfigVersion,
-    ProxyBackupManifestResponse Manifest,
-    IReadOnlyList<ProxyRestoreValidationFindingResponse> Errors,
-    IReadOnlyList<ProxyRestoreValidationFindingResponse> Warnings)
+public sealed record ProxyRestoreValidationResponseBody
 {
+    public ProxyRestoreValidationResponseBody(
+        bool succeeded,
+        DateTimeOffset generatedAtUtc,
+        int? activeConfigVersion,
+        bool configValidationSucceeded,
+        int? wouldBeConfigVersion,
+        ProxyBackupManifestResponse manifest,
+        IReadOnlyList<ProxyRestoreValidationFindingResponse> errors,
+        IReadOnlyList<ProxyRestoreValidationFindingResponse> warnings)
+    {
+        ArgumentNullException.ThrowIfNull(manifest);
+
+        Succeeded = succeeded;
+        GeneratedAtUtc = generatedAtUtc;
+        ActiveConfigVersion = activeConfigVersion;
+        ConfigValidationSucceeded = configValidationSucceeded;
+        WouldBeConfigVersion = wouldBeConfigVersion;
+        Manifest = manifest;
+        Errors = ApiResponseList.Copy(errors);
+        Warnings = ApiResponseList.Copy(warnings);
+    }
+
+    public bool Succeeded { get; }
+
+    public DateTimeOffset GeneratedAtUtc { get; }
+
+    public int? ActiveConfigVersion { get; }
+
+    public bool ConfigValidationSucceeded { get; }
+
+    public int? WouldBeConfigVersion { get; }
+
+    public ProxyBackupManifestResponse Manifest { get; }
+
+    public IReadOnlyList<ProxyRestoreValidationFindingResponse> Errors { get; }
+
+    public IReadOnlyList<ProxyRestoreValidationFindingResponse> Warnings { get; }
+
     public static ProxyRestoreValidationResponseBody FromResult(BusinessProxyRestoreValidationResult result)
     {
         ArgumentNullException.ThrowIfNull(result);
@@ -32,14 +62,14 @@ public sealed record ProxyRestoreValidationResponseBody(
         ArgumentNullException.ThrowIfNull(result);
 
         return new ProxyRestoreValidationResponseBody(
-            Succeeded: succeeded,
-            GeneratedAtUtc: result.GeneratedAtUtc,
-            ActiveConfigVersion: result.ActiveConfigVersion,
-            ConfigValidationSucceeded: result.ConfigValidationSucceeded,
-            WouldBeConfigVersion: result.WouldBeConfigVersion,
-            Manifest: ProxyBackupManifestResponse.FromManifest(result.Manifest),
-            Errors: ProxyRestoreValidationFindingResponse.FromFindings(result.Errors),
-            Warnings: ProxyRestoreValidationFindingResponse.FromFindings(result.Warnings));
+            succeeded: succeeded,
+            generatedAtUtc: result.GeneratedAtUtc,
+            activeConfigVersion: result.ActiveConfigVersion,
+            configValidationSucceeded: result.ConfigValidationSucceeded,
+            wouldBeConfigVersion: result.WouldBeConfigVersion,
+            manifest: ProxyBackupManifestResponse.FromManifest(result.Manifest),
+            errors: ProxyRestoreValidationFindingResponse.FromFindings(result.Errors),
+            warnings: ProxyRestoreValidationFindingResponse.FromFindings(result.Warnings));
     }
 }
 
