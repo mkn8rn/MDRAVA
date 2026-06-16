@@ -31,10 +31,8 @@ public static partial class ProxyConfigurationRuntimeMapper
                     upstream.Weight,
                     new RuntimeUpstreamTlsOptions(
                         upstream.UpstreamTls.ValidateCertificate,
-                        string.IsNullOrWhiteSpace(upstream.UpstreamTls.SniHost) ? null : upstream.UpstreamTls.SniHost.Trim()))
-                    {
-                        CircuitBreaker = ToRuntimeCircuitBreaker(upstream.CircuitBreaker)
-                    })
+                        string.IsNullOrWhiteSpace(upstream.UpstreamTls.SniHost) ? null : upstream.UpstreamTls.SniHost.Trim()),
+                    ToRuntimeCircuitBreaker(upstream.CircuitBreaker)))
                 .ToArray(),
             new RuntimeHttpsRedirectPolicy(
                 route.HttpsRedirect.Enabled ?? false,

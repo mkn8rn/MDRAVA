@@ -514,12 +514,13 @@ internal static class ResilienceTests
     {
         using var fixture = SelectorFixture.Create();
         var http1 = Upstream("http1", weight: 1, circuit: Circuit(threshold: 1));
-        var http3 = Upstream("http3", weight: 1, circuit: Circuit(threshold: 1)) with
-        {
-            Scheme = "https",
-            Protocol = RuntimeUpstreamProtocol.Http3,
-            Tls = new RuntimeUpstreamTlsOptions(true, "h3.internal")
-        };
+        var http3 = Upstream(
+            "http3",
+            weight: 1,
+            circuit: Circuit(threshold: 1),
+            scheme: "https",
+            protocol: RuntimeUpstreamProtocol.Http3,
+            tls: new RuntimeUpstreamTlsOptions(true, "h3.internal"));
         var route = Route([http1, http3]);
         var first = AssertEx.NotNull(fixture.Selector.Select(SelectionRoute(route)));
         fixture.Circuit.RecordFailure(first.CircuitBreakerLease, "connect_failure");
@@ -1156,20 +1157,21 @@ internal static class ResilienceTests
     private static RuntimeUpstream Upstream(
         string name,
         int weight,
-        RuntimeCircuitBreakerPolicy? circuit = null)
+        RuntimeCircuitBreakerPolicy? circuit = null,
+        string scheme = "http",
+        string protocol = RuntimeUpstreamProtocol.Http1,
+        RuntimeUpstreamTlsOptions? tls = null)
     {
         return new RuntimeUpstream(
             "route",
             name,
-            "http",
-            RuntimeUpstreamProtocol.Http1,
+            scheme,
+            protocol,
             "127.0.0.1",
             name == "first" ? 15000 : 15001,
             weight,
-            new RuntimeUpstreamTlsOptions(true, null))
-        {
-            CircuitBreaker = circuit ?? RuntimeCircuitBreakerPolicy.Disabled
-        };
+            tls ?? new RuntimeUpstreamTlsOptions(true, null),
+            circuit ?? RuntimeCircuitBreakerPolicy.Disabled);
     }
 
     private static RuntimeCircuitBreakerPolicy Circuit(

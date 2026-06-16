@@ -1264,11 +1264,9 @@ internal static class OperatorStatusTests
             DefaultCertificateId = "status-cert",
             Protocols = RuntimeListenerProtocols.Http1AndHttp3
         };
-        var upstream = Upstream() with
-        {
-            Scheme = "https",
-            Protocol = RuntimeUpstreamProtocol.Http3
-        };
+        var upstream = Upstream(
+            scheme: "https",
+            protocol: RuntimeUpstreamProtocol.Http3);
         var route = ProxyRoute(upstream) with
         {
             Cache = CachePolicy()
@@ -1702,16 +1700,14 @@ internal static class OperatorStatusTests
     {
         using var fixture = StatusFixture.Create();
         var listener = Listener();
-        var upstream = Upstream() with
-        {
-            CircuitBreaker = new RuntimeCircuitBreakerPolicy(
+        var upstream = Upstream(
+            new RuntimeCircuitBreakerPolicy(
                 true,
                 1,
                 TimeSpan.FromSeconds(60),
                 TimeSpan.FromSeconds(30),
                 1,
-                [])
-        };
+                []));
         var route = ProxyRoute(upstream);
         fixture.Store.Replace(Snapshot([listener], [route]));
         fixture.Runtime.ReplaceListeners([ListenerStatus(listener, ProxyListenerState.Active)], null);
@@ -2037,17 +2033,21 @@ internal static class OperatorStatusTests
         };
     }
 
-    private static RuntimeUpstream Upstream()
+    private static RuntimeUpstream Upstream(
+        RuntimeCircuitBreakerPolicy? circuitBreaker = null,
+        string scheme = "http",
+        string protocol = RuntimeUpstreamProtocol.Http1)
     {
         return new RuntimeUpstream(
             "main",
             "upstream",
-            "http",
-            RuntimeUpstreamProtocol.Http1,
+            scheme,
+            protocol,
             "127.0.0.1",
             5000,
             1,
-            RuntimeUpstreamTlsOptions.Default);
+            RuntimeUpstreamTlsOptions.Default,
+            circuitBreaker ?? RuntimeCircuitBreakerPolicy.Disabled);
     }
 
     private static UpstreamHealthCheckTarget HealthTarget(RuntimeRoute route, RuntimeUpstream upstream)

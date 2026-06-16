@@ -1,15 +1,75 @@
 namespace MDRAVA.BLL.Configuration;
 
-public sealed record RuntimeUpstream(
-    string RouteName,
-    string Name,
-    string Scheme,
-    string Protocol,
-    string Address,
-    int Port,
-    int Weight,
-    RuntimeUpstreamTlsOptions Tls)
+public sealed record RuntimeUpstream
 {
+    public RuntimeUpstream(
+        string RouteName,
+        string Name,
+        string Scheme,
+        string Protocol,
+        string Address,
+        int Port,
+        int Weight,
+        RuntimeUpstreamTlsOptions Tls)
+        : this(
+            RouteName,
+            Name,
+            Scheme,
+            Protocol,
+            Address,
+            Port,
+            Weight,
+            Tls,
+            RuntimeCircuitBreakerPolicy.Disabled)
+    {
+    }
+
+    public RuntimeUpstream(
+        string RouteName,
+        string Name,
+        string Scheme,
+        string Protocol,
+        string Address,
+        int Port,
+        int Weight,
+        RuntimeUpstreamTlsOptions Tls,
+        RuntimeCircuitBreakerPolicy CircuitBreaker)
+    {
+        ArgumentNullException.ThrowIfNull(RouteName);
+        ArgumentNullException.ThrowIfNull(Name);
+        ArgumentNullException.ThrowIfNull(Scheme);
+        ArgumentNullException.ThrowIfNull(Protocol);
+        ArgumentNullException.ThrowIfNull(Address);
+        ArgumentNullException.ThrowIfNull(Tls);
+        ArgumentNullException.ThrowIfNull(CircuitBreaker);
+
+        this.RouteName = RouteName;
+        this.Name = Name;
+        this.Scheme = Scheme;
+        this.Protocol = Protocol;
+        this.Address = Address;
+        this.Port = Port;
+        this.Weight = Weight;
+        this.Tls = Tls;
+        this.CircuitBreaker = CircuitBreaker;
+    }
+
+    public string RouteName { get; }
+
+    public string Name { get; }
+
+    public string Scheme { get; }
+
+    public string Protocol { get; }
+
+    public string Address { get; }
+
+    public int Port { get; }
+
+    public int Weight { get; }
+
+    public RuntimeUpstreamTlsOptions Tls { get; }
+
     public string Endpoint => $"{Address}:{Port}";
 
     public string UriEndpoint => $"{Scheme}://{Address}:{Port}";
@@ -18,5 +78,5 @@ public sealed record RuntimeUpstream(
 
     public string Identity => $"{RouteName}|{Name}|{Scheme}|{Protocol}|{Address}|{Port}|{EffectiveSniHost}|{Tls.ValidateCertificate}";
 
-    public RuntimeCircuitBreakerPolicy CircuitBreaker { get; init; } = RuntimeCircuitBreakerPolicy.Disabled;
+    public RuntimeCircuitBreakerPolicy CircuitBreaker { get; }
 }
