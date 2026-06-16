@@ -422,6 +422,61 @@ internal static class CacheTests
         AssertEx.False(runtime.Rejections is ProxyCacheRuntimeRejectionSnapshot[], "Cache runtime rejections should not expose a mutable array.");
         AssertEx.False(status.Rejections is ProxyCacheRejectionStatus[], "Cache status rejections should not expose a mutable array.");
         AssertEx.False(status.Routes is ProxyCacheRouteStatus[], "Cache status routes should not expose a mutable array.");
+        AssertEx.Throws<ArgumentNullException>(() => new CachedProxyResponse(
+            200,
+            "OK",
+            [null!],
+            body,
+            storedAtUtc,
+            storedAtUtc.AddMinutes(1)));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyCacheRuntimeStatusSnapshot(
+            EntryCount: 0,
+            ApproximateBytes: 0,
+            HitCount: 0,
+            MissCount: 0,
+            StoreCount: 0,
+            EvictionCount: 0,
+            StoreRejectionCount: 0,
+            LastClearedAtUtc: null,
+            LastClearReason: null,
+            Rejections: [null!],
+            Entries: []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyCacheRuntimeStatusSnapshot(
+            EntryCount: 0,
+            ApproximateBytes: 0,
+            HitCount: 0,
+            MissCount: 0,
+            StoreCount: 0,
+            EvictionCount: 0,
+            StoreRejectionCount: 0,
+            LastClearedAtUtc: null,
+            LastClearReason: null,
+            Rejections: [],
+            Entries: [null!]));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyCacheStatus.FromSources(
+            entryCount: 0,
+            approximateBytes: 0,
+            hitCount: 0,
+            missCount: 0,
+            storeCount: 0,
+            evictionCount: 0,
+            storeRejectionCount: 0,
+            lastClearedAtUtc: null,
+            lastClearReason: null,
+            rejections: [null!],
+            routes: []));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyCacheStatus.FromSources(
+            entryCount: 0,
+            approximateBytes: 0,
+            hitCount: 0,
+            missCount: 0,
+            storeCount: 0,
+            evictionCount: 0,
+            storeRejectionCount: 0,
+            lastClearedAtUtc: null,
+            lastClearReason: null,
+            rejections: [],
+            routes: [null!]));
         var statusResponse = ProxyCacheStatusResponse.FromStatus(status);
         AssertEx.False(statusResponse.Rejections is ProxyCacheRejectionStatusResponse[], "Cache API rejections should not expose a mutable array.");
         AssertEx.False(statusResponse.Routes is ProxyCacheRouteStatusResponse[], "Cache API routes should not expose a mutable array.");
