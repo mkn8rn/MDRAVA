@@ -429,10 +429,16 @@ internal static class OperatorStatusTests
             configuredListeners: 1,
             configuredRoutes: 1,
             metrics: new ProxyMetrics().Snapshot(),
-            upstreams: upstreams)
-        {
-            Listeners = listeners
-        };
+            upstreams: upstreams,
+            listeners: listeners,
+            lastListenerReload: null,
+            http3: UnknownHttp3(),
+            routeDiagnostics: RouteDiagnosticsStatus.Enabled,
+            configLint: ConfigLintStatus.Empty,
+            logPersistence: ProxyLogPersistenceStatus.Unknown,
+            readiness: ProxyReadinessStatus.Unknown,
+            subsystems: ProxySubsystemSummaries.Unknown,
+            runtimePreflight: ProxyRuntimePreflightStatus.Unknown);
 
         upstreams[0] = replacement;
         listeners[0] = failed;
@@ -448,6 +454,56 @@ internal static class OperatorStatusTests
         AssertEx.Equal(ProxyListenerState.Active, status.Listeners[0].State);
         AssertEx.False(status.Upstreams is ProxyUpstreamStatus[], "Status upstreams should not expose a mutable array.");
         AssertEx.False(status.Listeners is ProxyListenerStatus[], "Status listeners should not expose a mutable array.");
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyStatus(
+            listenerLive: true,
+            listenerName: "main",
+            endpoint: "127.0.0.1:18080",
+            startedAt: DateTimeOffset.UnixEpoch,
+            stoppedAt: null,
+            lastError: null,
+            isShuttingDown: false,
+            shutdownStartedAtUtc: null,
+            shutdownDeadlineUtc: null,
+            configVersion: 7,
+            configLoadedAtUtc: DateTimeOffset.UnixEpoch,
+            configuredListeners: 1,
+            configuredRoutes: 1,
+            metrics: new ProxyMetrics().Snapshot(),
+            upstreams: upstreams,
+            listeners: null!,
+            lastListenerReload: null,
+            http3: UnknownHttp3(),
+            routeDiagnostics: RouteDiagnosticsStatus.Enabled,
+            configLint: ConfigLintStatus.Empty,
+            logPersistence: ProxyLogPersistenceStatus.Unknown,
+            readiness: ProxyReadinessStatus.Unknown,
+            subsystems: ProxySubsystemSummaries.Unknown,
+            runtimePreflight: ProxyRuntimePreflightStatus.Unknown));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyStatus(
+            listenerLive: true,
+            listenerName: "main",
+            endpoint: "127.0.0.1:18080",
+            startedAt: DateTimeOffset.UnixEpoch,
+            stoppedAt: null,
+            lastError: null,
+            isShuttingDown: false,
+            shutdownStartedAtUtc: null,
+            shutdownDeadlineUtc: null,
+            configVersion: 7,
+            configLoadedAtUtc: DateTimeOffset.UnixEpoch,
+            configuredListeners: 1,
+            configuredRoutes: 1,
+            metrics: new ProxyMetrics().Snapshot(),
+            upstreams: [],
+            listeners: [],
+            lastListenerReload: null,
+            http3: null!,
+            routeDiagnostics: RouteDiagnosticsStatus.Enabled,
+            configLint: ConfigLintStatus.Empty,
+            logPersistence: ProxyLogPersistenceStatus.Unknown,
+            readiness: ProxyReadinessStatus.Unknown,
+            subsystems: ProxySubsystemSummaries.Unknown,
+            runtimePreflight: ProxyRuntimePreflightStatus.Unknown));
         AssertEx.Throws<ArgumentNullException>(() => new ProxyUpstreamStatus(
             RouteName: null!,
             UpstreamName: "primary",

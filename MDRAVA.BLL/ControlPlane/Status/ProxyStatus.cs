@@ -8,8 +8,6 @@ namespace MDRAVA.BLL.ControlPlane.Status;
 
 public sealed record ProxyStatus
 {
-    private IReadOnlyList<ProxyListenerStatus> _listeners = [];
-
     public ProxyStatus(
         bool listenerLive,
         string? listenerName,
@@ -26,8 +24,70 @@ public sealed record ProxyStatus
         int configuredRoutes,
         ProxyMetricsSnapshot metrics,
         IReadOnlyList<ProxyUpstreamStatus> upstreams)
+        : this(
+            listenerLive,
+            listenerName,
+            endpoint,
+            startedAt,
+            stoppedAt,
+            lastError,
+            isShuttingDown,
+            shutdownStartedAtUtc,
+            shutdownDeadlineUtc,
+            configVersion,
+            configLoadedAtUtc,
+            configuredListeners,
+            configuredRoutes,
+            metrics,
+            upstreams,
+            listeners: [],
+            lastListenerReload: null,
+            http3: UnknownHttp3Support(),
+            routeDiagnostics: RouteDiagnosticsStatus.Enabled,
+            configLint: ConfigLintStatus.Empty,
+            logPersistence: ProxyLogPersistenceStatus.Unknown,
+            readiness: ProxyReadinessStatus.Unknown,
+            subsystems: ProxySubsystemSummaries.Unknown,
+            runtimePreflight: ProxyRuntimePreflightStatus.Unknown)
     {
+    }
+
+    public ProxyStatus(
+        bool listenerLive,
+        string? listenerName,
+        string? endpoint,
+        DateTimeOffset? startedAt,
+        DateTimeOffset? stoppedAt,
+        string? lastError,
+        bool isShuttingDown,
+        DateTimeOffset? shutdownStartedAtUtc,
+        DateTimeOffset? shutdownDeadlineUtc,
+        int? configVersion,
+        DateTimeOffset? configLoadedAtUtc,
+        int configuredListeners,
+        int configuredRoutes,
+        ProxyMetricsSnapshot metrics,
+        IReadOnlyList<ProxyUpstreamStatus> upstreams,
+        IReadOnlyList<ProxyListenerStatus> listeners,
+        ProxyListenerReloadResult? lastListenerReload,
+        RuntimeHttp3SupportProjection http3,
+        RouteDiagnosticsStatus routeDiagnostics,
+        ConfigLintStatus configLint,
+        ProxyLogPersistenceStatus logPersistence,
+        ProxyReadinessStatus readiness,
+        ProxySubsystemSummaries subsystems,
+        ProxyRuntimePreflightStatus runtimePreflight)
+    {
+        ArgumentNullException.ThrowIfNull(metrics);
         ArgumentNullException.ThrowIfNull(upstreams);
+        ArgumentNullException.ThrowIfNull(listeners);
+        ArgumentNullException.ThrowIfNull(http3);
+        ArgumentNullException.ThrowIfNull(routeDiagnostics);
+        ArgumentNullException.ThrowIfNull(configLint);
+        ArgumentNullException.ThrowIfNull(logPersistence);
+        ArgumentNullException.ThrowIfNull(readiness);
+        ArgumentNullException.ThrowIfNull(subsystems);
+        ArgumentNullException.ThrowIfNull(runtimePreflight);
 
         ListenerLive = listenerLive;
         ListenerName = listenerName;
@@ -44,6 +104,15 @@ public sealed record ProxyStatus
         ConfiguredRoutes = configuredRoutes;
         Metrics = metrics;
         Upstreams = ProxyStatusList.Copy(upstreams);
+        Listeners = ProxyStatusList.Copy(listeners);
+        LastListenerReload = lastListenerReload;
+        Http3 = http3;
+        RouteDiagnostics = routeDiagnostics;
+        ConfigLint = configLint;
+        LogPersistence = logPersistence;
+        Readiness = readiness;
+        Subsystems = subsystems;
+        RuntimePreflight = runtimePreflight;
     }
 
     public bool ListenerLive { get; }
@@ -76,42 +145,39 @@ public sealed record ProxyStatus
 
     public IReadOnlyList<ProxyUpstreamStatus> Upstreams { get; }
 
-    public IReadOnlyList<ProxyListenerStatus> Listeners
+    public IReadOnlyList<ProxyListenerStatus> Listeners { get; }
+
+    public ProxyListenerReloadResult? LastListenerReload { get; }
+
+    public RuntimeHttp3SupportProjection Http3 { get; }
+
+    public RouteDiagnosticsStatus RouteDiagnostics { get; }
+
+    public ConfigLintStatus ConfigLint { get; }
+
+    public ProxyLogPersistenceStatus LogPersistence { get; }
+
+    public ProxyReadinessStatus Readiness { get; }
+
+    public ProxySubsystemSummaries Subsystems { get; }
+
+    public ProxyRuntimePreflightStatus RuntimePreflight { get; }
+
+    private static RuntimeHttp3SupportProjection UnknownHttp3Support()
     {
-        get => _listeners;
-        init
-        {
-            ArgumentNullException.ThrowIfNull(value);
-            _listeners = ProxyStatusList.Copy(value);
-        }
+        return new RuntimeHttp3SupportProjection(
+            "unknown",
+            QuicListenerSupported: false,
+            QuicConnectionSupported: false,
+            "disabled",
+            "disabled",
+            EnabledForTraffic: false,
+            QuicListenerReady: false,
+            AltSvcConfigured: false,
+            AltSvcActive: false,
+            AltSvcMaxAgeSeconds: null,
+            "not_configured",
+            UdpQuicListenerIdentityModeled: true,
+            "client_http3_default_enabled_for_eligible_tls_proxy_listeners");
     }
-
-    public ProxyListenerReloadResult? LastListenerReload { get; init; }
-
-    public RuntimeHttp3SupportProjection Http3 { get; init; } = new(
-        "unknown",
-        QuicListenerSupported: false,
-        QuicConnectionSupported: false,
-        "disabled",
-        "disabled",
-        EnabledForTraffic: false,
-        QuicListenerReady: false,
-        AltSvcConfigured: false,
-        AltSvcActive: false,
-        AltSvcMaxAgeSeconds: null,
-        "not_configured",
-        UdpQuicListenerIdentityModeled: true,
-        "client_http3_default_enabled_for_eligible_tls_proxy_listeners");
-
-    public RouteDiagnosticsStatus RouteDiagnostics { get; init; } = RouteDiagnosticsStatus.Enabled;
-
-    public ConfigLintStatus ConfigLint { get; init; } = ConfigLintStatus.Empty;
-
-    public ProxyLogPersistenceStatus LogPersistence { get; init; } = ProxyLogPersistenceStatus.Unknown;
-
-    public ProxyReadinessStatus Readiness { get; init; } = ProxyReadinessStatus.Unknown;
-
-    public ProxySubsystemSummaries Subsystems { get; init; } = ProxySubsystemSummaries.Unknown;
-
-    public ProxyRuntimePreflightStatus RuntimePreflight { get; init; } = ProxyRuntimePreflightStatus.Unknown;
 }

@@ -29,17 +29,15 @@ public static class ProxyStatusBuilder
             listenerCount,
             routeCount,
             input.Metrics,
-            input.Upstreams)
-        {
-            Listeners = runtime.Listeners,
-            LastListenerReload = runtime.LastListenerReload,
-            Http3 = input.Http3,
-            RouteDiagnostics = RouteDiagnosticsStatus.Enabled,
-            ConfigLint = input.ConfigLint,
-            LogPersistence = input.LogPersistence,
-            Readiness = readiness,
-            Subsystems = subsystems,
-            RuntimePreflight = input.RuntimePreflight
-        };
+            input.Upstreams,
+            runtime.Listeners,
+            runtime.LastListenerReload,
+            input.Http3,
+            RouteDiagnosticsStatus.Enabled,
+            input.ConfigLint,
+            input.LogPersistence,
+            readiness,
+            subsystems,
+            input.RuntimePreflight);
     }
 }
