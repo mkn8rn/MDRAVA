@@ -26,22 +26,9 @@ public sealed record ProxyUpstreamStatusResponse(
         CircuitBreakerStatusResponse.Disabled;
 
     public static IReadOnlyList<ProxyUpstreamStatusResponse> FromStatuses(
-        IReadOnlyList<BusinessProxyUpstreamStatus> statuses)
+        IEnumerable<BusinessProxyUpstreamStatus> statuses)
     {
-        ArgumentNullException.ThrowIfNull(statuses);
-
-        if (statuses.Count == 0)
-        {
-            return [];
-        }
-
-        var responses = new List<ProxyUpstreamStatusResponse>(statuses.Count);
-        foreach (var status in statuses)
-        {
-            responses.Add(FromStatus(status));
-        }
-
-        return responses;
+        return ApiResponseList.Copy(statuses.Select(FromStatus));
     }
 
     public static ProxyUpstreamStatusResponse FromStatus(BusinessProxyUpstreamStatus status)

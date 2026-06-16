@@ -412,6 +412,10 @@ internal static class OperatorStatusTests
         AssertEx.Equal(ProxyListenerState.Active, status.Listeners[0].State);
         AssertEx.False(status.Upstreams is ProxyUpstreamStatus[], "Status upstreams should not expose a mutable array.");
         AssertEx.False(status.Listeners is ProxyListenerStatus[], "Status listeners should not expose a mutable array.");
+        var response = ProxyStatusResponse.FromBusinessResponse(status);
+        AssertEx.Equal("primary", response.Upstreams[0].UpstreamName);
+        AssertEx.False(response.Upstreams is List<ProxyUpstreamStatusResponse>, "Status API upstreams should not expose a mutable list.");
+        AssertEx.False(response.Upstreams is ProxyUpstreamStatusResponse[], "Status API upstreams should not expose a mutable array.");
     }
 
     public static void StatusInputCopiesRuntimeUpstreamAndAcmeLists()
