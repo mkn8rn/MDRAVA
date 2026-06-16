@@ -15,6 +15,43 @@ public sealed record RuntimeListener
         int MaxResponseHeadBytes,
         int MaxChunkLineBytes,
         int ForwardingBufferBytes)
+        : this(
+            Name,
+            Address,
+            Port,
+            Enabled,
+            Transport,
+            DefaultCertificateId,
+            SniCertificates,
+            Backlog,
+            MaxRequestHeadBytes,
+            MaxResponseHeadBytes,
+            MaxChunkLineBytes,
+            ForwardingBufferBytes,
+            RuntimeListenerProtocols.Http1,
+            RuntimeHttp3Enablement.Default,
+            RuntimeHttp3AltSvcOptions.Disabled,
+            RuntimeHttp2Limits.Default)
+    {
+    }
+
+    public RuntimeListener(
+        string Name,
+        string Address,
+        int Port,
+        bool Enabled,
+        RuntimeListenerTransport Transport,
+        string? DefaultCertificateId,
+        IReadOnlyList<RuntimeSniCertificateBinding> SniCertificates,
+        int Backlog,
+        int MaxRequestHeadBytes,
+        int MaxResponseHeadBytes,
+        int MaxChunkLineBytes,
+        int ForwardingBufferBytes,
+        RuntimeListenerProtocols Protocols,
+        RuntimeHttp3Enablement Http3Enablement,
+        RuntimeHttp3AltSvcOptions Http3AltSvc,
+        RuntimeHttp2Limits Http2Limits)
     {
         this.Name = Name;
         this.Address = Address;
@@ -28,41 +65,45 @@ public sealed record RuntimeListener
         this.MaxResponseHeadBytes = MaxResponseHeadBytes;
         this.MaxChunkLineBytes = MaxChunkLineBytes;
         this.ForwardingBufferBytes = ForwardingBufferBytes;
+        this.Protocols = Protocols;
+        this.Http3Enablement = Http3Enablement;
+        this.Http3AltSvc = Http3AltSvc;
+        this.Http2Limits = Http2Limits;
     }
 
-    public string Name { get; init; }
+    public string Name { get; }
 
-    public string Address { get; init; }
+    public string Address { get; }
 
-    public int Port { get; init; }
+    public int Port { get; }
 
-    public bool Enabled { get; init; }
+    public bool Enabled { get; }
 
-    public RuntimeListenerTransport Transport { get; init; }
+    public RuntimeListenerTransport Transport { get; }
 
-    public string? DefaultCertificateId { get; init; }
+    public string? DefaultCertificateId { get; }
 
     public IReadOnlyList<RuntimeSniCertificateBinding> SniCertificates { get; }
 
-    public int Backlog { get; init; }
+    public int Backlog { get; }
 
-    public int MaxRequestHeadBytes { get; init; }
+    public int MaxRequestHeadBytes { get; }
 
-    public int MaxResponseHeadBytes { get; init; }
+    public int MaxResponseHeadBytes { get; }
 
-    public int MaxChunkLineBytes { get; init; }
+    public int MaxChunkLineBytes { get; }
 
-    public int ForwardingBufferBytes { get; init; }
+    public int ForwardingBufferBytes { get; }
 
     public RuntimeListenerIdentity Identity => RuntimeListenerIdentity.From(this);
 
-    public RuntimeListenerProtocols Protocols { get; init; } = RuntimeListenerProtocols.Http1;
+    public RuntimeListenerProtocols Protocols { get; }
 
-    public RuntimeHttp3Enablement Http3Enablement { get; init; } = RuntimeHttp3Enablement.Default;
+    public RuntimeHttp3Enablement Http3Enablement { get; }
 
-    public RuntimeHttp3AltSvcOptions Http3AltSvc { get; init; } = RuntimeHttp3AltSvcOptions.Disabled;
+    public RuntimeHttp3AltSvcOptions Http3AltSvc { get; }
 
-    public RuntimeHttp2Limits Http2Limits { get; init; } = RuntimeHttp2Limits.Default;
+    public RuntimeHttp2Limits Http2Limits { get; }
 
     public bool TcpTrafficEnabled => Protocols.HasTcpProtocols();
 
@@ -89,12 +130,10 @@ public sealed record RuntimeListener
             MaxRequestHeadBytes,
             MaxResponseHeadBytes,
             MaxChunkLineBytes,
-            ForwardingBufferBytes)
-        {
-            Protocols = Protocols,
-            Http3Enablement = Http3Enablement,
-            Http3AltSvc = Http3AltSvc,
-            Http2Limits = Http2Limits
-        };
+            ForwardingBufferBytes,
+            Protocols,
+            Http3Enablement,
+            Http3AltSvc,
+            Http2Limits);
     }
 }

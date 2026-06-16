@@ -359,12 +359,10 @@ internal static class MetricsTests
             false,
             true,
             false);
-        var listener = Listener() with
-        {
-            Transport = RuntimeListenerTransport.Https,
-            DefaultCertificateId = "metrics-cert",
-            Protocols = RuntimeListenerProtocols.Http3
-        };
+        var listener = Listener(
+            RuntimeListenerTransport.Https,
+            "metrics-cert",
+            RuntimeListenerProtocols.Http3);
         var upstream = new RuntimeUpstream(
             "metrics",
             "h3",
@@ -1043,21 +1041,28 @@ internal static class MetricsTests
             ["GET", "HEAD"]);
     }
 
-    private static RuntimeListener Listener()
+    private static RuntimeListener Listener(
+        RuntimeListenerTransport transport = RuntimeListenerTransport.Http,
+        string? defaultCertificateId = null,
+        RuntimeListenerProtocols protocols = RuntimeListenerProtocols.Http1)
     {
         return new RuntimeListener(
             "main",
             "127.0.0.1",
             18080,
             true,
-            RuntimeListenerTransport.Http,
-            null,
+            transport,
+            defaultCertificateId,
             [],
             512,
             32768,
             32768,
             8192,
-            8192);
+            8192,
+            protocols,
+            RuntimeHttp3Enablement.Default,
+            RuntimeHttp3AltSvcOptions.Disabled,
+            RuntimeHttp2Limits.Default);
     }
 
     private static ProxyCacheRequestScope Scope(RuntimeRoute route, RuntimeListener listener)

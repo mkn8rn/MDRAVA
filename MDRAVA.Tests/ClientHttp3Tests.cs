@@ -89,10 +89,11 @@ internal static class ClientHttp3Tests
             32 * 1024,
             32 * 1024,
             1024,
-            64 * 1024)
-        {
-            Http3Enablement = RuntimeHttp3Enablement.Disabled
-        };
+            64 * 1024,
+            RuntimeListenerProtocols.Http1,
+            RuntimeHttp3Enablement.Disabled,
+            RuntimeHttp3AltSvcOptions.Disabled,
+            RuntimeHttp2Limits.Default);
 
         AssertEx.False(validation.Failed, string.Join("; ", validation.Failures ?? []));
         AssertEx.False(listener.Http3.Configured);
@@ -476,10 +477,9 @@ internal static class ClientHttp3Tests
 
     public static void AltSvcPolicyReadsNarrowRuntimeListenerSource()
     {
-        var listener = TestHttp3Listener("http1AndHttp3") with
-        {
-            Http3AltSvc = new RuntimeHttp3AltSvcOptions(Enabled: true, MaxAgeSeconds: 60)
-        };
+        var listener = TestHttp3Listener(
+            "http1AndHttp3",
+            new RuntimeHttp3AltSvcOptions(Enabled: true, MaxAgeSeconds: 60));
         var source = new FixedHttp3AltSvcRuntimeListenerSource([ActiveQuicListenerStatus(listener)]);
         var metrics = new ProxyMetrics();
         var policy = new Http3AltSvcPolicy(source, metrics);
@@ -2553,7 +2553,9 @@ internal static class ClientHttp3Tests
             .Build();
     }
 
-    private static RuntimeListener TestHttp3Listener(string protocols)
+    private static RuntimeListener TestHttp3Listener(
+        string protocols,
+        RuntimeHttp3AltSvcOptions? http3AltSvc = null)
     {
         return new RuntimeListener(
             "main",
@@ -2567,16 +2569,17 @@ internal static class ClientHttp3Tests
             32 * 1024,
             32 * 1024,
             1024,
-            64 * 1024)
-        {
-            Protocols = protocols.ToLowerInvariant() switch
+            64 * 1024,
+            protocols.ToLowerInvariant() switch
             {
                 "http1andhttp2andhttp3" => RuntimeListenerProtocols.Http1AndHttp2AndHttp3,
                 "http1andhttp3" => RuntimeListenerProtocols.Http1AndHttp3,
                 "http2andhttp3" => RuntimeListenerProtocols.Http2AndHttp3,
                 _ => RuntimeListenerProtocols.Http3
-            }
-        };
+            },
+            RuntimeHttp3Enablement.Default,
+            http3AltSvc ?? RuntimeHttp3AltSvcOptions.Disabled,
+            RuntimeHttp2Limits.Default);
     }
 
     private static ProxyListenerStatus ActiveQuicListenerStatus(RuntimeListener listener)

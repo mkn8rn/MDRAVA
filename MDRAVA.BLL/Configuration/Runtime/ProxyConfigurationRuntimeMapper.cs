@@ -96,18 +96,16 @@ public static partial class ProxyConfigurationRuntimeMapper
                     listener.MaxRequestHeadBytes,
                     listener.MaxResponseHeadBytes,
                     listener.MaxChunkLineBytes,
-                    listener.ForwardingBufferBytes)
-                {
-                    Protocols = http3Compatibility.Protocols,
-                    Http3Enablement = http3Compatibility.EffectiveEnablement,
-                    Http3AltSvc = new RuntimeHttp3AltSvcOptions(
+                    listener.ForwardingBufferBytes,
+                    http3Compatibility.Protocols,
+                    http3Compatibility.EffectiveEnablement,
+                    new RuntimeHttp3AltSvcOptions(
                         listener.Http3AltSvcEnabled,
                         listener.Http3AltSvcMaxAgeSeconds),
-                    Http2Limits = new RuntimeHttp2Limits(
+                    new RuntimeHttp2Limits(
                         listener.Http2MaxConcurrentStreams,
                         listener.Http2MaxHeaderListBytes,
-                        listener.Http2MaxFrameSize)
-                };
+                        listener.Http2MaxFrameSize));
             })
             .ToArray();
     }

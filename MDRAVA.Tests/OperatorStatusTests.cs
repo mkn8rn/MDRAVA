@@ -1152,11 +1152,10 @@ internal static class OperatorStatusTests
         using var certificate = X509CertificateLoader.LoadPkcs12(
             TestCertificates.CreateSelfSignedPfxBytes("readiness-cert.example.test"),
             null);
-        var listener = (Listener() with
-        {
-            DefaultCertificateId = "default",
-            Protocols = RuntimeListenerProtocols.Http1AndHttp2
-        }).WithSniCertificates([new RuntimeSniCertificateBinding("alt.example.test", "alt")]);
+        var listener = Listener(
+                defaultCertificateId: "default",
+                protocols: RuntimeListenerProtocols.Http1AndHttp2)
+            .WithSniCertificates([new RuntimeSniCertificateBinding("alt.example.test", "alt")]);
         var route = StaticRoute(cache: CachePolicy());
         var runtimeCertificate = new RuntimeCertificate(
             "default",
@@ -1258,12 +1257,10 @@ internal static class OperatorStatusTests
 
     public static void StatusListenerAndRouteSourceMappersReadCollectionsWithoutConfigurationSnapshot()
     {
-        var listener = Listener() with
-        {
-            Transport = RuntimeListenerTransport.Https,
-            DefaultCertificateId = "status-cert",
-            Protocols = RuntimeListenerProtocols.Http1AndHttp3
-        };
+        var listener = Listener(
+            RuntimeListenerTransport.Https,
+            "status-cert",
+            RuntimeListenerProtocols.Http1AndHttp3);
         var upstream = Upstream(
             scheme: "https",
             protocol: RuntimeUpstreamProtocol.Http3);
@@ -1327,7 +1324,7 @@ internal static class OperatorStatusTests
             certificate,
             "manualPfx",
             ["status-cert.example.test"]);
-        var listener = (Listener() with { DefaultCertificateId = "default" })
+        var listener = Listener(defaultCertificateId: "default")
             .WithSniCertificates([new RuntimeSniCertificateBinding("alt.example.test", "alt")]);
         var listenerSources = new List<RuntimeListener> { listener };
         var certificateSources = new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase)
@@ -1796,12 +1793,11 @@ internal static class OperatorStatusTests
     {
         const string missingCertificateId = "public-cert";
         using var fixture = StatusFixture.Create();
-        var listener = Listener() with
-        {
-            Transport = RuntimeListenerTransport.Https,
-            DefaultCertificateId = missingCertificateId,
-            Http3Enablement = RuntimeHttp3Enablement.Disabled
-        };
+        var listener = Listener(
+            RuntimeListenerTransport.Https,
+            missingCertificateId,
+            RuntimeListenerProtocols.Http1,
+            RuntimeHttp3Enablement.Disabled);
         fixture.Store.Replace(Snapshot([listener], [StaticRoute()]));
         fixture.Runtime.ReplaceListeners([ListenerStatus(listener, ProxyListenerState.Active)], null);
 
@@ -1951,21 +1947,29 @@ internal static class OperatorStatusTests
             routes);
     }
 
-    private static RuntimeListener Listener()
+    private static RuntimeListener Listener(
+        RuntimeListenerTransport transport = RuntimeListenerTransport.Http,
+        string? defaultCertificateId = null,
+        RuntimeListenerProtocols protocols = RuntimeListenerProtocols.Http1,
+        RuntimeHttp3Enablement http3Enablement = RuntimeHttp3Enablement.Default)
     {
         return new RuntimeListener(
             "main",
             "127.0.0.1",
             18080,
             true,
-            RuntimeListenerTransport.Http,
-            null,
+            transport,
+            defaultCertificateId,
             [],
             512,
             32768,
             32768,
             8192,
-            8192);
+            8192,
+            protocols,
+            http3Enablement,
+            RuntimeHttp3AltSvcOptions.Disabled,
+            RuntimeHttp2Limits.Default);
     }
 
     private static ProxyListenerStatus ListenerStatus(RuntimeListener listener, ProxyListenerState state)

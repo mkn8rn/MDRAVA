@@ -878,10 +878,11 @@ internal static class Http3InfrastructureTests
             32 * 1024,
             32 * 1024,
             1024,
-            64 * 1024)
-        {
-            Protocols = ParseProtocols(protocols)
-        };
+            64 * 1024,
+            ParseProtocols(protocols),
+            RuntimeHttp3Enablement.Default,
+            RuntimeHttp3AltSvcOptions.Disabled,
+            RuntimeHttp2Limits.Default);
     }
 
     private static RuntimeListenerProtocols ParseProtocols(string protocols)
