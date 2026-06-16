@@ -1,5 +1,6 @@
 using System.Net.Security;
 using System.Net.Quic;
+using MDRAVA.API.Controllers;
 using MDRAVA.INF.Configuration;
 using MDRAVA.INF.Configuration.Loading;
 using MDRAVA.INF.Proxy.Http3;
@@ -566,6 +567,18 @@ internal static class Http3InfrastructureTests
         AssertEx.False(source.Listeners is Http3SupportListenerSource[], "HTTP/3 configuration source listeners should not expose a mutable array.");
         AssertEx.False(projection.ClientProtocols is string[], "HTTP/3 projection protocol lists should not expose mutable arrays.");
         AssertEx.False(projection.UnsupportedFeatures is string[], "HTTP/3 projection unsupported-feature lists should not expose mutable arrays.");
+
+        var response = RuntimeHttp3SupportResponse.FromProjection(projection);
+        AssertEx.Equal("runtime_quic_unsupported", response.DefaultReadinessBlockers[0]);
+        AssertEx.Equal("http1", response.ClientProtocols[0]);
+        AssertEx.Equal("http1", response.UpstreamProtocols[0]);
+        AssertEx.Equal("proxy", response.SupportedRouteActions[0]);
+        AssertEx.Equal("cache_get_head", response.SupportedPolicyFeatures[0]);
+        AssertEx.Equal("webtransport_over_http3", response.UnsupportedFeatures[0]);
+        AssertEx.False(ReferenceEquals(projection.DefaultReadinessBlockers, response.DefaultReadinessBlockers), "HTTP/3 API blockers should not reuse the BLL projection list.");
+        AssertEx.False(ReferenceEquals(projection.ClientProtocols, response.ClientProtocols), "HTTP/3 API client protocols should not reuse the BLL projection list.");
+        AssertEx.False(response.ClientProtocols is string[], "HTTP/3 API protocol lists should not expose mutable arrays.");
+        AssertEx.False(response.UnsupportedFeatures is string[], "HTTP/3 API unsupported-feature lists should not expose mutable arrays.");
     }
 
     public static void UpstreamProtocolAcceptsExplicitHttp3()
