@@ -190,5 +190,6 @@ internal static partial class TestRegistry
     Test("Metrics count listener reload outcomes", ListenerRebindingTests.MetricsCountListenerReloadOutcomes, TestTaxonomy.Config, TestTaxonomy.Metrics),
     Test("Listener reload planner classifies TCP listener diff", Sync(ProxyListenerReloadPlannerTests.ClassifiesTcpListenerDiff), TestTaxonomy.Config),
     Test("Listener reload planner replaces failed QUIC listener", Sync(ProxyListenerReloadPlannerTests.ReplacesFailedQuicListener), TestTaxonomy.Config, TestTaxonomy.Http3),
+    Test("Listener reload diff copies input lists", Sync(ProxyListenerReloadPlannerTests.ListenerDiffCopiesInputLists), TestTaxonomy.Config),
     ];
 }

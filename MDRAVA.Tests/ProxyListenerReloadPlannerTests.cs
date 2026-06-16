@@ -48,6 +48,31 @@ internal static class ProxyListenerReloadPlannerTests
         AssertSequence(plan.QuicDiff.Unchanged, "same|quic");
     }
 
+    public static void ListenerDiffCopiesInputLists()
+    {
+        var added = new List<string> { "added" };
+        var removed = new List<string> { "removed" };
+        var changed = new List<string> { "changed" };
+        var unchanged = new List<string> { "unchanged" };
+
+        var diff = new ProxyListenerDiff(added, removed, changed, unchanged);
+
+        added.Clear();
+        removed.Clear();
+        changed.Clear();
+        unchanged.Clear();
+
+        AssertSequence(diff.Added, "added");
+        AssertSequence(diff.Removed, "removed");
+        AssertSequence(diff.Changed, "changed");
+        AssertSequence(diff.Unchanged, "unchanged");
+        AssertEx.False(diff.Added is string[], "Listener reload diff added list should not expose a mutable array.");
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyListenerDiff(null!, [], [], []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyListenerDiff([], null!, [], []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyListenerDiff([], [], null!, []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyListenerDiff([], [], [], null!));
+    }
+
     private static Dictionary<string, ProxyTcpListenerReloadTarget> Tcp(params ProxyTcpListenerReloadTarget[] targets)
     {
         return targets.ToDictionary(static target => target.Key, static target => target, StringComparer.OrdinalIgnoreCase);
