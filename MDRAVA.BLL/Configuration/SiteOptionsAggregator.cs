@@ -96,13 +96,7 @@ public static partial class SiteOptionsAggregator
             Http3AltSvcEnabled = source.Http3AltSvcEnabled,
             Http3AltSvcMaxAgeSeconds = source.Http3AltSvcMaxAgeSeconds,
             DefaultCertificateId = source.DefaultCertificateId,
-            SniCertificates = source.SniCertificates
-                .Select(static binding => new SniCertificateOptions
-                {
-                    HostName = binding.HostName,
-                    CertificateId = binding.CertificateId
-                })
-                .ToList(),
+            SniCertificates = CopySniCertificates(source.SniCertificates),
             Backlog = source.Backlog,
             MaxRequestHeadBytes = source.MaxRequestHeadBytes,
             MaxResponseHeadBytes = source.MaxResponseHeadBytes,
@@ -112,6 +106,17 @@ public static partial class SiteOptionsAggregator
             Http2MaxHeaderListBytes = source.Http2MaxHeaderListBytes,
             Http2MaxFrameSize = source.Http2MaxFrameSize
         };
+    }
+
+    private static List<SniCertificateOptions> CopySniCertificates(IEnumerable<SniCertificateOptions> source)
+    {
+        return source
+            .Select(static binding => new SniCertificateOptions
+            {
+                HostName = binding.HostName,
+                CertificateId = binding.CertificateId
+            })
+            .ToList();
     }
 
     private static List<UpstreamOptions> CopyUpstreams(IEnumerable<UpstreamOptions> source)

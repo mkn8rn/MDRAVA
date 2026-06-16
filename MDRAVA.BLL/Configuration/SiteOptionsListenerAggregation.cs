@@ -9,9 +9,7 @@ public static partial class SiteOptionsAggregator
 
     private static ListenerOptions MergeListeners(ListenerOptions existing, ListenerOptions next)
     {
-        var sniCertificates = existing.SniCertificates
-            .Concat(next.SniCertificates)
-            .ToList();
+        var sniCertificates = CopySniCertificates(existing.SniCertificates.Concat(next.SniCertificates));
 
         return new ListenerOptions
         {

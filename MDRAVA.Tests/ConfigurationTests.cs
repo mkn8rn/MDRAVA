@@ -165,6 +165,65 @@ internal static class ConfigurationTests
         AssertEx.Equal(504, aggregated.Routes[0].Retry.RetryOnStatusCodes[0]);
     }
 
+    public static void SiteOptionsAggregatorCopiesMergedListenerSniEntries()
+    {
+        var firstSni = new SniCertificateOptions
+        {
+            HostName = "home.test",
+            CertificateId = "home-cert"
+        };
+        var secondSni = new SniCertificateOptions
+        {
+            HostName = "api.test",
+            CertificateId = "api-cert"
+        };
+        var first = new SiteOptions
+        {
+            Name = "home",
+            Host = "home.test",
+            Listeners =
+            [
+                new ListenerOptions
+                {
+                    Name = "shared",
+                    Address = "0.0.0.0",
+                    Port = 443,
+                    Transport = "tls",
+                    SniCertificates = [firstSni]
+                }
+            ]
+        };
+        var second = new SiteOptions
+        {
+            Name = "api",
+            Host = "api.test",
+            Listeners =
+            [
+                new ListenerOptions
+                {
+                    Name = "shared",
+                    Address = "0.0.0.0",
+                    Port = 443,
+                    Transport = "tls",
+                    SniCertificates = [secondSni]
+                }
+            ]
+        };
+
+        var aggregated = SiteOptionsAggregator.ToProxyOptions(
+            [
+                SiteConfigurationSource.FromFile("sites/home.json", first),
+                SiteConfigurationSource.FromFile("sites/api.json", second)
+            ]);
+
+        AssertEx.Equal(1, aggregated.Listeners.Count);
+        AssertEx.Equal(2, aggregated.Listeners[0].SniCertificates.Count);
+        AssertEx.Equal("home.test", aggregated.Listeners[0].SniCertificates[0].HostName);
+        AssertEx.Equal("api.test", aggregated.Listeners[0].SniCertificates[1].HostName);
+        AssertEx.False(ReferenceEquals(firstSni, aggregated.Listeners[0].SniCertificates[0]));
+        AssertEx.False(ReferenceEquals(secondSni, aggregated.Listeners[0].SniCertificates[1]));
+    }
+
     public static void ConfigurationNormalizeResultNamesNormalizedAndFailedOutcomes()
     {
         var normalized = ProxyConfigurationNormalizeResult.Normalized("json", "{}");

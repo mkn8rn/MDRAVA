@@ -13,6 +13,7 @@ internal static partial class TestRegistry
     Test("Normalize site parse result names parsed and failed states", Sync(ConfigurationTests.NormalizeSiteParseResultNamesParsedAndFailedStates), TestTaxonomy.Config),
     Test("Site configuration source factories own paths and validate inputs", Sync(ConfigurationTests.SiteConfigurationSourceFactoriesOwnPathsAndValidateInputs), TestTaxonomy.Config),
     Test("Site options aggregator copies input collections", Sync(ConfigurationTests.SiteOptionsAggregatorCopiesInputCollections), TestTaxonomy.Config),
+    Test("Site options aggregator copies merged listener SNI entries", Sync(ConfigurationTests.SiteOptionsAggregatorCopiesMergedListenerSniEntries), TestTaxonomy.Config),
     Test("Configuration normalize result names normalized and failed outcomes", Sync(ConfigurationTests.ConfigurationNormalizeResultNamesNormalizedAndFailedOutcomes), TestTaxonomy.Config),
     Test("Configuration reload result names reload outcomes", Sync(ConfigurationTests.ConfigurationReloadResultNamesReloadOutcomes), TestTaxonomy.Config),
     Test("Listener reload result copies changes and errors", Sync(ConfigurationTests.ListenerReloadResultCopiesChangesAndErrors), TestTaxonomy.Config),
