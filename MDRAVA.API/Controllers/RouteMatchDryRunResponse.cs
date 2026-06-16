@@ -5,25 +5,84 @@ using BusinessRouteMatchDryRunUpstream = MDRAVA.BLL.ControlPlane.RouteDiagnostic
 
 namespace MDRAVA.API.Controllers;
 
-public sealed record RouteMatchDryRunResponse(
-    bool Succeeded,
-    DateTimeOffset EvaluatedAtUtc,
-    string? FailureReason,
-    string? NoMatchReason,
-    RouteMatchDryRunListenerResponse? Listener,
-    RouteMatchDryRunRouteResponse? Route,
-    string? ConfiguredAction,
-    string? EffectiveAction,
-    bool WouldProxy,
-    int? GeneratedStatusCode,
-    string? OriginalTarget,
-    string? RewrittenTarget,
-    RouteMatchDryRunUpstreamResponse? Upstream,
-    RouteMatchDryRunPolicyResponse Cache,
-    RouteMatchDryRunPolicyResponse Retry,
-    RouteMatchDryRunPolicyResponse CircuitBreaker,
-    IReadOnlyList<RouteMatchDryRunFindingResponse> Findings)
+public sealed record RouteMatchDryRunResponse
 {
+    public RouteMatchDryRunResponse(
+        bool succeeded,
+        DateTimeOffset evaluatedAtUtc,
+        string? failureReason,
+        string? noMatchReason,
+        RouteMatchDryRunListenerResponse? listener,
+        RouteMatchDryRunRouteResponse? route,
+        string? configuredAction,
+        string? effectiveAction,
+        bool wouldProxy,
+        int? generatedStatusCode,
+        string? originalTarget,
+        string? rewrittenTarget,
+        RouteMatchDryRunUpstreamResponse? upstream,
+        RouteMatchDryRunPolicyResponse cache,
+        RouteMatchDryRunPolicyResponse retry,
+        RouteMatchDryRunPolicyResponse circuitBreaker,
+        IReadOnlyList<RouteMatchDryRunFindingResponse> findings)
+    {
+        ArgumentNullException.ThrowIfNull(cache);
+        ArgumentNullException.ThrowIfNull(retry);
+        ArgumentNullException.ThrowIfNull(circuitBreaker);
+
+        Succeeded = succeeded;
+        EvaluatedAtUtc = evaluatedAtUtc;
+        FailureReason = failureReason;
+        NoMatchReason = noMatchReason;
+        Listener = listener;
+        Route = route;
+        ConfiguredAction = configuredAction;
+        EffectiveAction = effectiveAction;
+        WouldProxy = wouldProxy;
+        GeneratedStatusCode = generatedStatusCode;
+        OriginalTarget = originalTarget;
+        RewrittenTarget = rewrittenTarget;
+        Upstream = upstream;
+        Cache = cache;
+        Retry = retry;
+        CircuitBreaker = circuitBreaker;
+        Findings = ApiResponseList.Copy(findings);
+    }
+
+    public bool Succeeded { get; }
+
+    public DateTimeOffset EvaluatedAtUtc { get; }
+
+    public string? FailureReason { get; }
+
+    public string? NoMatchReason { get; }
+
+    public RouteMatchDryRunListenerResponse? Listener { get; }
+
+    public RouteMatchDryRunRouteResponse? Route { get; }
+
+    public string? ConfiguredAction { get; }
+
+    public string? EffectiveAction { get; }
+
+    public bool WouldProxy { get; }
+
+    public int? GeneratedStatusCode { get; }
+
+    public string? OriginalTarget { get; }
+
+    public string? RewrittenTarget { get; }
+
+    public RouteMatchDryRunUpstreamResponse? Upstream { get; }
+
+    public RouteMatchDryRunPolicyResponse Cache { get; }
+
+    public RouteMatchDryRunPolicyResponse Retry { get; }
+
+    public RouteMatchDryRunPolicyResponse CircuitBreaker { get; }
+
+    public IReadOnlyList<RouteMatchDryRunFindingResponse> Findings { get; }
+
     public static RouteMatchDryRunResponse FromResult(BusinessRouteMatchDryRunResult result)
     {
         ArgumentNullException.ThrowIfNull(result);
@@ -108,22 +167,22 @@ public sealed record RouteMatchDryRunResponse(
         ArgumentNullException.ThrowIfNull(result);
 
         return new RouteMatchDryRunResponse(
-            Succeeded: succeeded,
-            EvaluatedAtUtc: result.EvaluatedAtUtc,
-            FailureReason: failureReason,
-            NoMatchReason: noMatchReason,
-            Listener: listener is null ? null : RouteMatchDryRunListenerResponse.FromListener(listener),
-            Route: route is null ? null : RouteMatchDryRunRouteResponse.FromRoute(route),
-            ConfiguredAction: configuredAction,
-            EffectiveAction: effectiveAction,
-            WouldProxy: wouldProxy,
-            GeneratedStatusCode: generatedStatusCode,
-            OriginalTarget: originalTarget,
-            RewrittenTarget: rewrittenTarget,
-            Upstream: upstream is null ? null : RouteMatchDryRunUpstreamResponse.FromUpstream(upstream),
-            Cache: RouteMatchDryRunPolicyResponse.FromPolicy(result.Cache),
-            Retry: RouteMatchDryRunPolicyResponse.FromPolicy(result.Retry),
-            CircuitBreaker: RouteMatchDryRunPolicyResponse.FromPolicy(result.CircuitBreaker),
-            Findings: RouteMatchDryRunFindingResponse.FromFindings(result.Findings));
+            succeeded: succeeded,
+            evaluatedAtUtc: result.EvaluatedAtUtc,
+            failureReason: failureReason,
+            noMatchReason: noMatchReason,
+            listener: listener is null ? null : RouteMatchDryRunListenerResponse.FromListener(listener),
+            route: route is null ? null : RouteMatchDryRunRouteResponse.FromRoute(route),
+            configuredAction: configuredAction,
+            effectiveAction: effectiveAction,
+            wouldProxy: wouldProxy,
+            generatedStatusCode: generatedStatusCode,
+            originalTarget: originalTarget,
+            rewrittenTarget: rewrittenTarget,
+            upstream: upstream is null ? null : RouteMatchDryRunUpstreamResponse.FromUpstream(upstream),
+            cache: RouteMatchDryRunPolicyResponse.FromPolicy(result.Cache),
+            retry: RouteMatchDryRunPolicyResponse.FromPolicy(result.Retry),
+            circuitBreaker: RouteMatchDryRunPolicyResponse.FromPolicy(result.CircuitBreaker),
+            findings: RouteMatchDryRunFindingResponse.FromFindings(result.Findings));
     }
 }

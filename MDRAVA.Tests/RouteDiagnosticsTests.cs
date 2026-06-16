@@ -1280,6 +1280,72 @@ internal static class RouteDiagnosticsTests
         AssertEx.True(result.Findings.Any(static finding =>
             finding.Code == "missing_request" && finding.Severity == "error"));
         AssertEx.False(result.Findings is RouteMatchDryRunFindingResponse[], "Route diagnostics API findings should not expose a mutable array.");
+        var findings = new List<RouteMatchDryRunFindingResponse>
+        {
+            new("error", "missing_request", "Request body is required.")
+        };
+        var policy = new RouteMatchDryRunPolicyResponse(false, false, "no_route");
+        var directResponse = new RouteMatchDryRunResponse(
+            succeeded: false,
+            evaluatedAtUtc: DateTimeOffset.UnixEpoch,
+            failureReason: "missing_request",
+            noMatchReason: null,
+            listener: null,
+            route: null,
+            configuredAction: null,
+            effectiveAction: null,
+            wouldProxy: false,
+            generatedStatusCode: null,
+            originalTarget: null,
+            rewrittenTarget: null,
+            upstream: null,
+            cache: policy,
+            retry: policy,
+            circuitBreaker: policy,
+            findings: findings);
+
+        findings[0] = new RouteMatchDryRunFindingResponse("warning", "replacement", "Replacement.");
+        findings.Clear();
+
+        AssertEx.Throws<ArgumentNullException>(() => new RouteMatchDryRunResponse(
+            succeeded: false,
+            evaluatedAtUtc: DateTimeOffset.UnixEpoch,
+            failureReason: "missing_request",
+            noMatchReason: null,
+            listener: null,
+            route: null,
+            configuredAction: null,
+            effectiveAction: null,
+            wouldProxy: false,
+            generatedStatusCode: null,
+            originalTarget: null,
+            rewrittenTarget: null,
+            upstream: null,
+            cache: null!,
+            retry: policy,
+            circuitBreaker: policy,
+            findings: []));
+        AssertEx.Throws<ArgumentNullException>(() => new RouteMatchDryRunResponse(
+            succeeded: false,
+            evaluatedAtUtc: DateTimeOffset.UnixEpoch,
+            failureReason: "missing_request",
+            noMatchReason: null,
+            listener: null,
+            route: null,
+            configuredAction: null,
+            effectiveAction: null,
+            wouldProxy: false,
+            generatedStatusCode: null,
+            originalTarget: null,
+            rewrittenTarget: null,
+            upstream: null,
+            cache: policy,
+            retry: policy,
+            circuitBreaker: policy,
+            findings: null!));
+        AssertEx.Equal("missing_request", directResponse.Findings[0].Code);
+        AssertEx.Equal("no_route", directResponse.Cache.Reason);
+        AssertEx.False(directResponse.Findings is RouteMatchDryRunFindingResponse[], "Direct route diagnostics API findings should not expose a mutable array.");
     }
 
     public static void RouteDiagnosticsRequestReaderAcceptsNormalizedInput()
