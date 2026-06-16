@@ -8,17 +8,19 @@ public sealed record RuntimeAcmeCertificateProjection
         IReadOnlyList<string> Domains,
         int RenewBeforeDays)
     {
+        ArgumentNullException.ThrowIfNull(Id);
+
         this.Id = Id;
         this.Enabled = Enabled;
         this.Domains = RuntimeList.Copy(Domains);
         this.RenewBeforeDays = RenewBeforeDays;
     }
 
-    public string Id { get; init; }
+    public string Id { get; }
 
-    public bool Enabled { get; init; }
+    public bool Enabled { get; }
 
     public IReadOnlyList<string> Domains { get; }
 
-    public int RenewBeforeDays { get; init; }
+    public int RenewBeforeDays { get; }
 }

@@ -752,6 +752,8 @@ internal static class ConfigurationTests
         AssertEx.Equal("admin@home.test", acme.ContactEmails[0]);
         AssertEx.Equal("api.home.test", acmeProjection.Certificates[0].Domains[0]);
         AssertEx.Equal("ops@home.test", acmeProjection.ContactEmails[0]);
+        AssertEx.Equal("api-cert", acmeProjection.Certificates[0].Id);
+        AssertEx.Equal(14, acmeProjection.Certificates[0].RenewBeforeDays);
         AssertEx.Equal("http://127.0.0.1:18081", admin.Urls[0]);
         AssertEx.Equal("http://127.0.0.1:18082", adminProjection.Urls[0]);
         AssertEx.Equal("127.0.0.1", forwardedHeaders.TrustedProxies[0]);
@@ -783,6 +785,60 @@ internal static class ConfigurationTests
         AssertEx.False(acmeProjection.ContactEmails is string[]);
         AssertEx.False(acmeProjection.Certificates is RuntimeAcmeCertificateProjection[]);
         AssertEx.False(acmeProjection.Certificates[0].Domains is string[]);
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeAcmeProjection(
+            true,
+            false,
+            null!,
+            [],
+            true,
+            "acme",
+            14,
+            60,
+            10,
+            []));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeAcmeProjection(
+            true,
+            false,
+            "https://acme.test/directory",
+            [],
+            true,
+            null!,
+            14,
+            60,
+            10,
+            []));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeAcmeProjection(
+            true,
+            false,
+            "https://acme.test/directory",
+            null!,
+            true,
+            "acme",
+            14,
+            60,
+            10,
+            []));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeAcmeProjection(
+            true,
+            false,
+            "https://acme.test/directory",
+            [],
+            true,
+            "acme",
+            14,
+            60,
+            10,
+            null!));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeAcmeCertificateProjection(
+            null!,
+            true,
+            [],
+            14));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeAcmeCertificateProjection(
+            "api-cert",
+            true,
+            null!,
+            14));
         AssertEx.False(admin.Urls is string[]);
         AssertEx.False(adminProjection.Urls is string[]);
         AssertEx.False(forwardedHeaders.TrustedProxies is string[]);
