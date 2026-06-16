@@ -3,12 +3,28 @@ using BusinessProxyRuntimePreflightStatus = MDRAVA.BLL.ControlPlane.Status.Proxy
 
 namespace MDRAVA.API.Controllers;
 
-public sealed record ProxyRuntimePreflightStatusResponse(
-    string State,
-    DateTimeOffset? GeneratedAtUtc,
-    IReadOnlyList<string> Reasons,
-    IReadOnlyList<ProxyRuntimePreflightCheckResponse> Checks)
+public sealed record ProxyRuntimePreflightStatusResponse
 {
+    public ProxyRuntimePreflightStatusResponse(
+        string state,
+        DateTimeOffset? generatedAtUtc,
+        IReadOnlyList<string> reasons,
+        IReadOnlyList<ProxyRuntimePreflightCheckResponse> checks)
+    {
+        State = state;
+        GeneratedAtUtc = generatedAtUtc;
+        Reasons = ApiResponseList.Copy(reasons);
+        Checks = ApiResponseList.Copy(checks);
+    }
+
+    public string State { get; }
+
+    public DateTimeOffset? GeneratedAtUtc { get; }
+
+    public IReadOnlyList<string> Reasons { get; }
+
+    public IReadOnlyList<ProxyRuntimePreflightCheckResponse> Checks { get; }
+
     public static ProxyRuntimePreflightStatusResponse FromStatus(BusinessProxyRuntimePreflightStatus status)
     {
         ArgumentNullException.ThrowIfNull(status);
@@ -16,7 +32,7 @@ public sealed record ProxyRuntimePreflightStatusResponse(
         return new ProxyRuntimePreflightStatusResponse(
             status.State,
             status.GeneratedAtUtc,
-            ApiResponseList.Copy(status.Reasons),
+            status.Reasons,
             ProxyRuntimePreflightCheckResponse.FromChecks(status.Checks));
     }
 }

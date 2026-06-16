@@ -224,6 +224,33 @@ internal static class RuntimePreflightTests
         AssertEx.False(response.Reasons is string[], "Runtime preflight API reasons should not expose a mutable array.");
         AssertEx.False(response.Checks is List<ProxyRuntimePreflightCheckResponse>, "Runtime preflight API checks should not expose a mutable list.");
         AssertEx.False(response.Checks is ProxyRuntimePreflightCheckResponse[], "Runtime preflight API checks should not expose a mutable array.");
+        var directReasons = new List<string> { "direct_reason" };
+        var directChecks = new List<ProxyRuntimePreflightCheckResponse> { response.Checks[0] };
+        var directResponse = new ProxyRuntimePreflightStatusResponse(
+            "degraded",
+            generatedAtUtc,
+            directReasons,
+            directChecks);
+
+        directReasons[0] = "replacement_reason";
+        directChecks[0] = directChecks[0] with { Reason = "replacement_check" };
+        directReasons.Clear();
+        directChecks.Clear();
+
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRuntimePreflightStatusResponse(
+            "degraded",
+            generatedAtUtc,
+            null!,
+            []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRuntimePreflightStatusResponse(
+            "degraded",
+            generatedAtUtc,
+            [],
+            null!));
+        AssertEx.Equal("direct_reason", directResponse.Reasons[0]);
+        AssertEx.Equal("missing_directory", directResponse.Checks[0].Reason);
+        AssertEx.False(directResponse.Reasons is string[], "Direct runtime preflight API reasons should not expose a mutable array.");
+        AssertEx.False(directResponse.Checks is ProxyRuntimePreflightCheckResponse[], "Direct runtime preflight API checks should not expose a mutable array.");
     }
 
     public static void RuntimePreflightCheckFactoryBuildsUnsafeAndProbedChecks()
