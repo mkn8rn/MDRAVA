@@ -76,6 +76,7 @@ internal static partial class TestRegistry
     Test("Header policy classifies managed stored response headers", Sync(HeaderPolicyTests.ClassifiesManagedStoredResponseHeaders), TestTaxonomy.Headers, TestTaxonomy.Caching),
     Test("Header mutation policy applies request changes", Sync(HeaderPolicyTests.AppliesRequestHeaderMutationPolicy), TestTaxonomy.Headers),
     Test("Header mutation policy input copies collections", Sync(HeaderPolicyTests.HeaderMutationPolicyInputCopiesCollections), TestTaxonomy.Headers),
+    Test("Forwarded headers context copies headers", Sync(HeaderPolicyTests.ForwardedHeadersContextCopiesHeaders), TestTaxonomy.Headers),
     Test("Forwarded address policy names normalized address", Sync(HeaderPolicyTests.ForwardedAddressPolicyNamesNormalizedAddress), TestTaxonomy.Headers),
     Test("Forwarded address policy names missing address", Sync(HeaderPolicyTests.ForwardedAddressPolicyNamesMissingAddress), TestTaxonomy.Headers, TestTaxonomy.SecurityNegativePaths),
     Test("Header mutation policy applies response changes", Sync(HeaderPolicyTests.AppliesResponseHeaderMutationPolicy), TestTaxonomy.Headers),

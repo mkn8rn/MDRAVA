@@ -117,6 +117,27 @@ internal static class HeaderPolicyTests
         AssertEx.False(result.Any(static header => header.Name == "Forwarded" && header.Value == "for=10.0.0.1"));
     }
 
+    public static void ForwardedHeadersContextCopiesHeaders()
+    {
+        var headers = new List<ProxyHeaderField>
+        {
+            new("Forwarded", "for=203.0.113.10;proto=https")
+        };
+
+        var context = new ForwardedHeadersContext(
+            "203.0.113.10",
+            "203.0.113.10:443",
+            headers);
+
+        headers.Clear();
+
+        AssertEx.Equal("203.0.113.10", context.ResolvedClientAddress);
+        AssertEx.Equal("203.0.113.10:443", context.ResolvedClientEndpoint);
+        AssertEx.Equal("Forwarded", context.Headers[0].Name);
+        AssertEx.False(context.Headers is ProxyHeaderField[], "Forwarded header context should not expose a mutable array.");
+        AssertEx.Throws<ArgumentNullException>(() => new ForwardedHeadersContext(null, null, null!));
+    }
+
     public static void ForwardedAddressPolicyNamesNormalizedAddress()
     {
         var policy = new ProxyForwardedHeadersAddressPolicy();
