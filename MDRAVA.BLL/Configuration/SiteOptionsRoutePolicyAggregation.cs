@@ -60,14 +60,14 @@ public static partial class SiteOptionsAggregator
         ProxyCachePolicyOptions site,
         ProxyCachePolicyOptions route)
     {
-        return route.Enabled ? route : site;
+        return route.Enabled ? CopyCache(route) : CopyCache(site);
     }
 
     private static ProxyRetryPolicyOptions MergeRetry(
         ProxyRetryPolicyOptions site,
         ProxyRetryPolicyOptions route)
     {
-        return route.Enabled ? route : site;
+        return route.Enabled ? CopyRetry(route) : CopyRetry(site);
     }
 
     private static ProxyRouteOverrideOptions MergeOverrides(

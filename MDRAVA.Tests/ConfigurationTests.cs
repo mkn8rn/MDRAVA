@@ -78,6 +78,8 @@ internal static class ConfigurationTests
         var removeRequestHeaders = new List<string> { "X-Remove" };
         var cacheMethods = new List<string> { "GET" };
         var retryStatusCodes = new List<int> { 502 };
+        var routeCacheMethods = new List<string> { "HEAD" };
+        var routeRetryStatusCodes = new List<int> { 504 };
         var site = new SiteOptions
         {
             Name = "home",
@@ -102,7 +104,24 @@ internal static class ConfigurationTests
             Retry = new ProxyRetryPolicyOptions
             {
                 RetryOnStatusCodes = retryStatusCodes
-            }
+            },
+            Routes =
+            [
+                new ProxyRouteOptions
+                {
+                    Name = "explicit",
+                    Cache = new ProxyCachePolicyOptions
+                    {
+                        Enabled = true,
+                        Methods = routeCacheMethods
+                    },
+                    Retry = new ProxyRetryPolicyOptions
+                    {
+                        Enabled = true,
+                        RetryOnStatusCodes = routeRetryStatusCodes
+                    }
+                }
+            ]
         };
 
         var aggregated = SiteOptionsAggregator.ToProxyOptions(
@@ -115,6 +134,8 @@ internal static class ConfigurationTests
         removeRequestHeaders.Add("X-Late");
         cacheMethods.Add("POST");
         retryStatusCodes.Add(503);
+        routeCacheMethods.Add("PUT");
+        routeRetryStatusCodes.Add(500);
 
         AssertEx.Equal(1, aggregated.Listeners.Count);
         AssertEx.Equal(1, aggregated.Listeners[0].SniCertificates.Count);
@@ -126,9 +147,9 @@ internal static class ConfigurationTests
         AssertEx.Equal(1, aggregated.Routes[0].HeaderPolicy.RemoveRequestHeaders.Count);
         AssertEx.Equal("X-Remove", aggregated.Routes[0].HeaderPolicy.RemoveRequestHeaders[0]);
         AssertEx.Equal(1, aggregated.Routes[0].Cache.Methods.Count);
-        AssertEx.Equal("GET", aggregated.Routes[0].Cache.Methods[0]);
+        AssertEx.Equal("HEAD", aggregated.Routes[0].Cache.Methods[0]);
         AssertEx.Equal(1, aggregated.Routes[0].Retry.RetryOnStatusCodes.Count);
-        AssertEx.Equal(502, aggregated.Routes[0].Retry.RetryOnStatusCodes[0]);
+        AssertEx.Equal(504, aggregated.Routes[0].Retry.RetryOnStatusCodes[0]);
     }
 
     public static void ConfigurationNormalizeResultNamesNormalizedAndFailedOutcomes()
