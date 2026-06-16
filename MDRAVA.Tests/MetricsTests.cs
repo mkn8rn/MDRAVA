@@ -411,6 +411,22 @@ internal static class MetricsTests
         AssertEx.False(configuration.Http3Facts.UpstreamMultiplexingConfigured);
     }
 
+    public static void MetricsExportConfigurationMapperRejectsNullNamedFacts()
+    {
+        var labelOptions = new ProxyMetricsExportLabelOptions(
+            IncludePerRouteLabels: false,
+            IncludePerUpstreamLabels: true);
+        var http3Facts = new ProxyMetricsExportHttp3Facts(
+            DefaultEnabledListenerCount: 2,
+            RequestBodyStreamingEnabled: true,
+            UpstreamMultiplexingConfigured: false);
+
+        AssertEx.Throws<ArgumentNullException>(
+            () => ProxyMetricsExportConfigurationMapper.FromSources(true, null!, http3Facts));
+        AssertEx.Throws<ArgumentNullException>(
+            () => ProxyMetricsExportConfigurationMapper.FromSources(true, labelOptions, null!));
+    }
+
     public static void MetricsExportInputMapperCopiesSourceLists()
     {
         var upstreamHealth = new List<ProxyUpstreamStatus>
@@ -489,6 +505,49 @@ internal static class MetricsTests
         AssertEx.True(input.UpstreamHttp3MultiplexingConfigured);
         AssertEx.False(input.UpstreamHealth is ProxyUpstreamStatus[]);
         AssertEx.False(input.AcmeCertificates is AcmeCertificateLifecycleStatus[]);
+    }
+
+    public static void MetricsExportInputMapperRejectsNullNamedFacts()
+    {
+        var metrics = new ProxyMetrics().Snapshot();
+        var labelOptions = new ProxyMetricsExportLabelOptions(
+            IncludePerRouteLabels: true,
+            IncludePerUpstreamLabels: true);
+        var http3Facts = new ProxyMetricsExportHttp3Facts(
+            DefaultEnabledListenerCount: 1,
+            RequestBodyStreamingEnabled: true,
+            UpstreamMultiplexingConfigured: true);
+        var cacheStatus = ProxyCacheStatus.FromSources(
+            entryCount: 0,
+            approximateBytes: 0,
+            hitCount: 0,
+            missCount: 0,
+            storeCount: 0,
+            evictionCount: 0,
+            storeRejectionCount: 0,
+            lastClearedAtUtc: null,
+            lastClearReason: null,
+            rejections: [],
+            routes: []);
+        IReadOnlyList<ProxyUpstreamStatus> upstreamHealth = [];
+        IReadOnlyList<AcmeCertificateLifecycleStatus> acmeCertificates = [];
+
+        AssertEx.Throws<ArgumentNullException>(
+            () => ProxyMetricsExportInputMapper.FromSources(
+                metrics,
+                null!,
+                http3Facts,
+                cacheStatus,
+                upstreamHealth,
+                acmeCertificates));
+        AssertEx.Throws<ArgumentNullException>(
+            () => ProxyMetricsExportInputMapper.FromSources(
+                metrics,
+                labelOptions,
+                null!,
+                cacheStatus,
+                upstreamHealth,
+                acmeCertificates));
     }
 
     public static void MetricsEndpointReturnsNotFoundWhenMetricsDisabled()

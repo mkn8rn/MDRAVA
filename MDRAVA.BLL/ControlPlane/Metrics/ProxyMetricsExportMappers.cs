@@ -12,6 +12,9 @@ public static class ProxyMetricsExportConfigurationMapper
         ProxyMetricsExportLabelOptions labelOptions,
         ProxyMetricsExportHttp3Facts http3Facts)
     {
+        ArgumentNullException.ThrowIfNull(labelOptions);
+        ArgumentNullException.ThrowIfNull(http3Facts);
+
         return new ProxyMetricsExportConfiguration(
             metricsEnabled,
             labelOptions,
@@ -29,6 +32,13 @@ public static class ProxyMetricsExportInputMapper
         IReadOnlyList<ProxyUpstreamStatus> upstreamHealth,
         IReadOnlyList<AcmeCertificateLifecycleStatus> acmeCertificates)
     {
+        ArgumentNullException.ThrowIfNull(metrics);
+        ArgumentNullException.ThrowIfNull(labelOptions);
+        ArgumentNullException.ThrowIfNull(http3Facts);
+        ArgumentNullException.ThrowIfNull(cacheStatus);
+        ArgumentNullException.ThrowIfNull(upstreamHealth);
+        ArgumentNullException.ThrowIfNull(acmeCertificates);
+
         return new ProxyMetricsExportInput(
             metrics,
             labelOptions.IncludePerRouteLabels,
