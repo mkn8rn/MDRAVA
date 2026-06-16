@@ -3,21 +3,37 @@ using BusinessRuntimeHeaderPolicyProjection = MDRAVA.BLL.Configuration.RuntimeHe
 
 namespace MDRAVA.API.Controllers;
 
-public sealed record RuntimeHeaderPolicyResponse(
-    IReadOnlyList<RuntimeHeaderFieldResponse> SetRequestHeaders,
-    IReadOnlyList<string> RemoveRequestHeaders,
-    IReadOnlyList<RuntimeHeaderFieldResponse> SetResponseHeaders,
-    IReadOnlyList<string> RemoveResponseHeaders)
+public sealed record RuntimeHeaderPolicyResponse
 {
+    public RuntimeHeaderPolicyResponse(
+        IReadOnlyList<RuntimeHeaderFieldResponse> setRequestHeaders,
+        IReadOnlyList<string> removeRequestHeaders,
+        IReadOnlyList<RuntimeHeaderFieldResponse> setResponseHeaders,
+        IReadOnlyList<string> removeResponseHeaders)
+    {
+        SetRequestHeaders = ApiResponseList.Copy(setRequestHeaders);
+        RemoveRequestHeaders = ApiResponseList.Copy(removeRequestHeaders);
+        SetResponseHeaders = ApiResponseList.Copy(setResponseHeaders);
+        RemoveResponseHeaders = ApiResponseList.Copy(removeResponseHeaders);
+    }
+
+    public IReadOnlyList<RuntimeHeaderFieldResponse> SetRequestHeaders { get; }
+
+    public IReadOnlyList<string> RemoveRequestHeaders { get; }
+
+    public IReadOnlyList<RuntimeHeaderFieldResponse> SetResponseHeaders { get; }
+
+    public IReadOnlyList<string> RemoveResponseHeaders { get; }
+
     public static RuntimeHeaderPolicyResponse FromProjection(BusinessRuntimeHeaderPolicyProjection projection)
     {
         ArgumentNullException.ThrowIfNull(projection);
 
         return new RuntimeHeaderPolicyResponse(
-            RuntimeHeaderFieldResponse.FromFields(projection.SetRequestHeaders),
-            ApiResponseList.Copy(projection.RemoveRequestHeaders),
-            RuntimeHeaderFieldResponse.FromFields(projection.SetResponseHeaders),
-            ApiResponseList.Copy(projection.RemoveResponseHeaders));
+            setRequestHeaders: RuntimeHeaderFieldResponse.FromFields(projection.SetRequestHeaders),
+            removeRequestHeaders: projection.RemoveRequestHeaders,
+            setResponseHeaders: RuntimeHeaderFieldResponse.FromFields(projection.SetResponseHeaders),
+            removeResponseHeaders: projection.RemoveResponseHeaders);
     }
 }
 

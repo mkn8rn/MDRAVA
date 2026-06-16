@@ -804,6 +804,53 @@ internal static class ConfigurationTests
         AssertEx.False(headerPolicyResponse.RemoveRequestHeaders is string[], "Header policy API remove request headers should not expose a mutable array.");
         AssertEx.False(headerPolicyResponse.SetResponseHeaders is RuntimeHeaderFieldResponse[], "Header policy API set response headers should not expose a mutable array.");
         AssertEx.False(headerPolicyResponse.RemoveResponseHeaders is string[], "Header policy API remove response headers should not expose a mutable array.");
+        var headerSetRequest = new List<RuntimeHeaderFieldResponse> { headerPolicyResponse.SetRequestHeaders[0] };
+        var headerRemoveRequest = new List<string> { headerPolicyResponse.RemoveRequestHeaders[0] };
+        var headerSetResponse = new List<RuntimeHeaderFieldResponse> { headerPolicyResponse.SetResponseHeaders[0] };
+        var headerRemoveResponse = new List<string> { headerPolicyResponse.RemoveResponseHeaders[0] };
+        var directHeaderPolicyResponse = new RuntimeHeaderPolicyResponse(
+            setRequestHeaders: headerSetRequest,
+            removeRequestHeaders: headerRemoveRequest,
+            setResponseHeaders: headerSetResponse,
+            removeResponseHeaders: headerRemoveResponse);
+
+        headerSetRequest[0] = headerSetRequest[0] with { Name = "X-Replacement-Request" };
+        headerRemoveRequest[0] = "X-Replacement-Remove-Request";
+        headerSetResponse[0] = headerSetResponse[0] with { Name = "X-Replacement-Response" };
+        headerRemoveResponse[0] = "X-Replacement-Remove-Response";
+        headerSetRequest.Clear();
+        headerRemoveRequest.Clear();
+        headerSetResponse.Clear();
+        headerRemoveResponse.Clear();
+
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeHeaderPolicyResponse(
+            setRequestHeaders: null!,
+            removeRequestHeaders: [],
+            setResponseHeaders: [],
+            removeResponseHeaders: []));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeHeaderPolicyResponse(
+            setRequestHeaders: [],
+            removeRequestHeaders: null!,
+            setResponseHeaders: [],
+            removeResponseHeaders: []));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeHeaderPolicyResponse(
+            setRequestHeaders: [],
+            removeRequestHeaders: [],
+            setResponseHeaders: null!,
+            removeResponseHeaders: []));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeHeaderPolicyResponse(
+            setRequestHeaders: [],
+            removeRequestHeaders: [],
+            setResponseHeaders: [],
+            removeResponseHeaders: null!));
+        AssertEx.Equal("X-Trace", directHeaderPolicyResponse.SetRequestHeaders[0].Name);
+        AssertEx.Equal("X-Remove-Request", directHeaderPolicyResponse.RemoveRequestHeaders[0]);
+        AssertEx.Equal("X-Frame-Options", directHeaderPolicyResponse.SetResponseHeaders[0].Name);
+        AssertEx.Equal("Server", directHeaderPolicyResponse.RemoveResponseHeaders[0]);
+        AssertEx.False(directHeaderPolicyResponse.SetRequestHeaders is RuntimeHeaderFieldResponse[], "Direct header policy API set request headers should not expose a mutable array.");
+        AssertEx.False(directHeaderPolicyResponse.RemoveRequestHeaders is string[], "Direct header policy API remove request headers should not expose a mutable array.");
+        AssertEx.False(directHeaderPolicyResponse.SetResponseHeaders is RuntimeHeaderFieldResponse[], "Direct header policy API set response headers should not expose a mutable array.");
+        AssertEx.False(directHeaderPolicyResponse.RemoveResponseHeaders is string[], "Direct header policy API remove response headers should not expose a mutable array.");
         var cacheResponse = RuntimeCachePolicyResponse.FromProjection(cacheProjection);
         AssertEx.False(cacheResponse.VaryByHeaders is string[], "Cache API vary headers should not expose a mutable array.");
         AssertEx.False(cacheResponse.CacheableStatusCodes is int[], "Cache API cacheable status codes should not expose a mutable array.");
