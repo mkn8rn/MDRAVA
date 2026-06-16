@@ -16,11 +16,16 @@ public sealed record ProxyConfigurationDiscovery
         ExistingPaths = RuntimeList.Copy(existingPaths);
     }
 
-    public ProxyFilesystemLayout Layout { get; init; }
+    public ProxyFilesystemLayout Layout { get; }
 
-    public IReadOnlyList<ProxyConfigurationFileDiscovery> Files { get; init; }
+    public IReadOnlyList<ProxyConfigurationFileDiscovery> Files { get; }
 
-    public IReadOnlyList<string> CreatedPaths { get; init; }
+    public IReadOnlyList<string> CreatedPaths { get; }
 
-    public IReadOnlyList<string> ExistingPaths { get; init; }
+    public IReadOnlyList<string> ExistingPaths { get; }
+
+    public ProxyConfigurationDiscovery WithFiles(IReadOnlyList<ProxyConfigurationFileDiscovery> files)
+    {
+        return new ProxyConfigurationDiscovery(Layout, files, CreatedPaths, ExistingPaths);
+    }
 }

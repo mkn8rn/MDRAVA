@@ -198,6 +198,11 @@ internal static class ConfigurationTests
             discoveredFiles,
             createdPaths,
             existingPaths);
+        var replacementFiles = new List<ProxyConfigurationFileDiscovery>
+        {
+            new("sites/replacement.json", "json", "loaded", null)
+        };
+        var discoveryWithReplacementFiles = discovery.WithFiles(replacementFiles);
         var sourceFiles = new List<string> { "sites/home.json" };
         var errors = new List<string> { "parse failed" };
         var fileErrors = new List<ProxyConfigurationFileError>
@@ -259,6 +264,7 @@ internal static class ConfigurationTests
         discoveredFiles.Clear();
         createdPaths.Clear();
         existingPaths.Clear();
+        replacementFiles.Clear();
         sourceFiles.Clear();
         errors.Clear();
         fileErrors.Clear();
@@ -269,6 +275,10 @@ internal static class ConfigurationTests
         AssertEx.False(discovery.Files is ProxyConfigurationFileDiscovery[], "Discovery files should not expose a mutable array.");
         AssertEx.False(discovery.CreatedPaths is string[], "Discovery created paths should not expose a mutable array.");
         AssertEx.False(discovery.ExistingPaths is string[], "Discovery existing paths should not expose a mutable array.");
+        AssertEx.Equal("sites/replacement.json", discoveryWithReplacementFiles.Files[0].Path);
+        AssertEx.Equal("tests/config", discoveryWithReplacementFiles.CreatedPaths[0]);
+        AssertEx.Equal("tests/config/sites", discoveryWithReplacementFiles.ExistingPaths[0]);
+        AssertEx.False(discoveryWithReplacementFiles.Files is ProxyConfigurationFileDiscovery[], "Discovery replacement files should not expose a mutable array.");
         AssertEx.Equal("sites/home.json", valid.SourceFiles[0]);
         AssertEx.False(valid.SourceFiles is string[], "Validation source files should not expose a mutable array.");
         AssertEx.Equal("sites/home.json", invalid.SourceFiles[0]);

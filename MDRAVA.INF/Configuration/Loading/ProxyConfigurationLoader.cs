@@ -104,7 +104,7 @@ public sealed class ProxyConfigurationLoader : IProxyConfigurationLoader, IProxy
 
         ProxyConfigurationDiscovery BuildDiscovery()
         {
-            return bootstrapDiscovery with { Files = discoveredFiles.ToArray() };
+            return bootstrapDiscovery.WithFiles(discoveredFiles);
         }
 
         if (errors.Count > 0)
