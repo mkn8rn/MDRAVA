@@ -835,8 +835,67 @@ internal static class RouteDiagnosticsTests
             ProxyConfigLintConfigurationSnapshotMapper.ToLintSnapshot(null!, TestHttp3PlatformSupport.Supported));
         AssertEx.Throws<ArgumentNullException>(() =>
             ProxyConfigLintConfigurationSnapshotMapper.ToLintSnapshot(source, null!));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            new ProxyConfigLintRuntimeConfigurationSource(
+                sourceFiles,
+                adminUrls,
+                snapshot.AdminSecurity.RequireAuthentication,
+                snapshot.Metrics.PublicMetricsEnabled,
+                http3Support,
+                [null!],
+                routes));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            new ProxyConfigLintRuntimeConfigurationSource(
+                sourceFiles,
+                adminUrls,
+                snapshot.AdminSecurity.RequireAuthentication,
+                snapshot.Metrics.PublicMetricsEnabled,
+                http3Support,
+                listeners,
+                [null!]));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            new ProxyConfigLintRuntimeRouteSource(
+                "api",
+                "diag",
+                "diag.test",
+                "/api",
+                RuntimeRouteAction.Proxy.ToString(),
+                false,
+                false,
+                "",
+                true,
+                cacheVaryByHeaders,
+                true,
+                retryMethods,
+                false,
+                [null!],
+                ""));
         var mappedSourceFiles = new List<string> { "mapped.json" };
         var mappedAdminUrls = new List<string> { AdminBindPolicy.DefaultAdminUrl };
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyConfigLintRuntimeConfigurationSourceMapper.FromSources(
+                mappedSourceFiles,
+                mappedAdminUrls,
+                snapshot.AdminSecurity.RequireAuthentication,
+                snapshot.Metrics.PublicMetricsEnabled,
+                [null!],
+                snapshot.Routes));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyConfigLintRuntimeConfigurationSourceMapper.FromSources(
+                mappedSourceFiles,
+                mappedAdminUrls,
+                snapshot.AdminSecurity.RequireAuthentication,
+                snapshot.Metrics.PublicMetricsEnabled,
+                snapshot.Listeners,
+                [null!]));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyConfigLintRuntimeConfigurationSourceMapper.FromSources(
+                mappedSourceFiles,
+                mappedAdminUrls,
+                snapshot.AdminSecurity.RequireAuthentication,
+                snapshot.Metrics.PublicMetricsEnabled,
+                snapshot.Listeners,
+                [snapshot.Routes[0].WithUpstreams([null!])]));
         var mappedSource = ProxyConfigLintRuntimeConfigurationSourceMapper.FromSources(
             mappedSourceFiles.Select(static sourceFile => sourceFile),
             mappedAdminUrls.Select(static adminUrl => adminUrl),

@@ -26,8 +26,8 @@ public sealed record ProxyConfigLintRuntimeConfigurationSource
         this.AdminRequiresAuthentication = AdminRequiresAuthentication;
         this.PublicMetricsEnabled = PublicMetricsEnabled;
         this.Http3Support = Http3Support;
-        this.Listeners = ConfigLintList.Copy(Listeners);
-        this.Routes = ConfigLintList.Copy(Routes);
+        this.Listeners = ConfigLintList.Copy(Listeners.Select(RequireListenerSource));
+        this.Routes = ConfigLintList.Copy(Routes.Select(RequireRouteSource));
     }
 
     public IReadOnlyList<string> SourceFiles { get; }
@@ -44,6 +44,21 @@ public sealed record ProxyConfigLintRuntimeConfigurationSource
 
     public IReadOnlyList<ProxyConfigLintRuntimeRouteSource> Routes { get; }
 
+    private static ProxyConfigLintRuntimeListenerSource RequireListenerSource(
+        ProxyConfigLintRuntimeListenerSource listener)
+    {
+        ArgumentNullException.ThrowIfNull(listener);
+
+        return listener;
+    }
+
+    private static ProxyConfigLintRuntimeRouteSource RequireRouteSource(
+        ProxyConfigLintRuntimeRouteSource route)
+    {
+        ArgumentNullException.ThrowIfNull(route);
+
+        return route;
+    }
 }
 
 public sealed record ProxyConfigLintRuntimeListenerSource(
@@ -95,7 +110,7 @@ public sealed record ProxyConfigLintRuntimeRouteSource
         this.RetryEnabled = RetryEnabled;
         this.RetryMethods = ConfigLintList.Copy(RetryMethods);
         this.HealthCheckEnabled = HealthCheckEnabled;
-        this.Upstreams = ConfigLintList.Copy(Upstreams);
+        this.Upstreams = ConfigLintList.Copy(Upstreams.Select(RequireUpstreamSource));
         this.StaticResponseBody = StaticResponseBody;
     }
 
@@ -129,6 +144,13 @@ public sealed record ProxyConfigLintRuntimeRouteSource
 
     public string StaticResponseBody { get; }
 
+    private static ProxyConfigLintRuntimeUpstreamSource RequireUpstreamSource(
+        ProxyConfigLintRuntimeUpstreamSource upstream)
+    {
+        ArgumentNullException.ThrowIfNull(upstream);
+
+        return upstream;
+    }
 }
 
 public sealed record ProxyConfigLintRuntimeUpstreamSource(
@@ -164,49 +186,67 @@ public static class ProxyConfigLintRuntimeConfigurationSourceMapper
             ProxyHttp3SupportConfigurationSourceMapper.FromSources(
                 listenerSources,
                 routeSources),
-            listenerSources
-                .Select(static listener => new ProxyConfigLintRuntimeListenerSource(
-                    listener.Name,
-                    listener.Address,
-                    listener.Port,
-                    listener.Enabled,
-                    RuntimeListenerTransportText.FromTransport(listener.Transport),
-                    listener.Http3.Configured,
-                    listener.Http3.EnabledForTraffic,
-                    listener.Http3.DisabledReason,
-                    listener.Http3.EnablementLevel,
-                    Http3AltSvcListenerPolicy.IsEnabled(new Http3AltSvcListenerInput(
-                        listener.Http3.EnabledForTraffic,
-                        listener.Http3.EnablementLevel,
-                        listener.Http3AltSvc.Enabled,
-                        listener.Http3AltSvc.MaxAgeSeconds,
-                        listener.Port,
-                        listener.QuicIdentity?.Key)),
-                    listener.QuicIdentity?.Key)),
-            routeSources
-                .Select(static route => new ProxyConfigLintRuntimeRouteSource(
-                    route.Name,
-                    route.SiteName,
-                    route.Host,
-                    route.PathPrefix,
-                    ProxyRouteActionKindMapper.FromRuntimeActionText(route.Action),
-                    route.HttpsRedirect.Enabled,
-                    route.CanonicalHost.Enabled,
-                    route.CanonicalHost.TargetHost,
-                    route.Cache.Enabled,
-                    route.Cache.VaryByHeaders,
-                    route.Retry.Enabled,
-                    route.Retry.RetryMethods,
-                    route.HealthCheck.Enabled,
-                    route.Upstreams
-                        .Select(static upstream => new ProxyConfigLintRuntimeUpstreamSource(
-                            upstream.Name,
-                            upstream.Scheme,
-                            upstream.Protocol,
-                            upstream.Tls.ValidateCertificate,
-                            upstream.CircuitBreaker.Enabled)),
-                    route.StaticResponse.Body))
+            listenerSources.Select(ToListenerSource),
+            routeSources.Select(ToRouteSource)
                 );
+    }
+
+    private static ProxyConfigLintRuntimeListenerSource ToListenerSource(RuntimeListener listener)
+    {
+        ArgumentNullException.ThrowIfNull(listener);
+
+        return new ProxyConfigLintRuntimeListenerSource(
+            listener.Name,
+            listener.Address,
+            listener.Port,
+            listener.Enabled,
+            RuntimeListenerTransportText.FromTransport(listener.Transport),
+            listener.Http3.Configured,
+            listener.Http3.EnabledForTraffic,
+            listener.Http3.DisabledReason,
+            listener.Http3.EnablementLevel,
+            Http3AltSvcListenerPolicy.IsEnabled(new Http3AltSvcListenerInput(
+                listener.Http3.EnabledForTraffic,
+                listener.Http3.EnablementLevel,
+                listener.Http3AltSvc.Enabled,
+                listener.Http3AltSvc.MaxAgeSeconds,
+                listener.Port,
+                listener.QuicIdentity?.Key)),
+            listener.QuicIdentity?.Key);
+    }
+
+    private static ProxyConfigLintRuntimeRouteSource ToRouteSource(RuntimeRoute route)
+    {
+        ArgumentNullException.ThrowIfNull(route);
+
+        return new ProxyConfigLintRuntimeRouteSource(
+            route.Name,
+            route.SiteName,
+            route.Host,
+            route.PathPrefix,
+            ProxyRouteActionKindMapper.FromRuntimeActionText(route.Action),
+            route.HttpsRedirect.Enabled,
+            route.CanonicalHost.Enabled,
+            route.CanonicalHost.TargetHost,
+            route.Cache.Enabled,
+            route.Cache.VaryByHeaders,
+            route.Retry.Enabled,
+            route.Retry.RetryMethods,
+            route.HealthCheck.Enabled,
+            route.Upstreams.Select(ToUpstreamSource),
+            route.StaticResponse.Body);
+    }
+
+    private static ProxyConfigLintRuntimeUpstreamSource ToUpstreamSource(RuntimeUpstream upstream)
+    {
+        ArgumentNullException.ThrowIfNull(upstream);
+
+        return new ProxyConfigLintRuntimeUpstreamSource(
+            upstream.Name,
+            upstream.Scheme,
+            upstream.Protocol,
+            upstream.Tls.ValidateCertificate,
+            upstream.CircuitBreaker.Enabled);
     }
 }
 
@@ -227,42 +267,60 @@ public static class ProxyConfigLintConfigurationSnapshotMapper
                 source.AdminRequiresAuthentication),
             new ProxyConfigLintMetricsOptions(source.PublicMetricsEnabled),
             http3.QuicConnectionSupported,
-            source.Listeners
-                .Select(static listener => new ProxyConfigLintListener(
-                    listener.Name,
-                    listener.Address,
-                    listener.Port,
-                    listener.Enabled,
-                    listener.Transport,
-                    listener.Http3Configured,
-                    listener.Http3EnabledForTraffic,
-                    listener.Http3DisabledReason,
-                    listener.Http3EnablementLevel,
-                    listener.Http3AltSvcEnabled,
-                    listener.QuicIdentityKey)),
-            source.Routes
-                .Select(static route => new ProxyConfigLintRoute(
-                    route.Name,
-                    route.SiteName,
-                    route.Host,
-                    route.PathPrefix,
-                    route.Action,
-                    route.HttpsRedirectEnabled,
-                    route.CanonicalHostEnabled,
-                    route.CanonicalHostTargetHost,
-                    route.CacheEnabled,
-                    route.CacheVaryByHeaders,
-                    route.RetryEnabled,
-                    route.RetryMethods,
-                    route.HealthCheckEnabled,
-                    route.Upstreams
-                        .Select(static upstream => new ProxyConfigLintUpstream(
-                            upstream.Name,
-                            upstream.Scheme,
-                            upstream.Protocol,
-                            upstream.TlsValidateCertificate,
-                            upstream.CircuitBreakerEnabled)),
-                    route.StaticResponseBody))
+            source.Listeners.Select(ToLintListener),
+            source.Routes.Select(ToLintRoute)
                 );
+    }
+
+    private static ProxyConfigLintListener ToLintListener(ProxyConfigLintRuntimeListenerSource listener)
+    {
+        ArgumentNullException.ThrowIfNull(listener);
+
+        return new ProxyConfigLintListener(
+            listener.Name,
+            listener.Address,
+            listener.Port,
+            listener.Enabled,
+            listener.Transport,
+            listener.Http3Configured,
+            listener.Http3EnabledForTraffic,
+            listener.Http3DisabledReason,
+            listener.Http3EnablementLevel,
+            listener.Http3AltSvcEnabled,
+            listener.QuicIdentityKey);
+    }
+
+    private static ProxyConfigLintRoute ToLintRoute(ProxyConfigLintRuntimeRouteSource route)
+    {
+        ArgumentNullException.ThrowIfNull(route);
+
+        return new ProxyConfigLintRoute(
+            route.Name,
+            route.SiteName,
+            route.Host,
+            route.PathPrefix,
+            route.Action,
+            route.HttpsRedirectEnabled,
+            route.CanonicalHostEnabled,
+            route.CanonicalHostTargetHost,
+            route.CacheEnabled,
+            route.CacheVaryByHeaders,
+            route.RetryEnabled,
+            route.RetryMethods,
+            route.HealthCheckEnabled,
+            route.Upstreams.Select(ToLintUpstream),
+            route.StaticResponseBody);
+    }
+
+    private static ProxyConfigLintUpstream ToLintUpstream(ProxyConfigLintRuntimeUpstreamSource upstream)
+    {
+        ArgumentNullException.ThrowIfNull(upstream);
+
+        return new ProxyConfigLintUpstream(
+            upstream.Name,
+            upstream.Scheme,
+            upstream.Protocol,
+            upstream.TlsValidateCertificate,
+            upstream.CircuitBreakerEnabled);
     }
 }
