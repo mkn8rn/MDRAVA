@@ -26,23 +26,23 @@ public sealed record RuntimeAcmeOptions
         this.Certificates = RuntimeList.Copy(Certificates);
     }
 
-    public bool Enabled { get; init; }
+    public bool Enabled { get; }
 
-    public bool UseStaging { get; init; }
+    public bool UseStaging { get; }
 
-    public string DirectoryUrl { get; init; }
+    public string DirectoryUrl { get; }
 
     public IReadOnlyList<string> ContactEmails { get; }
 
-    public bool TermsAccepted { get; init; }
+    public bool TermsAccepted { get; }
 
-    public string StoragePath { get; init; }
+    public string StoragePath { get; }
 
-    public int RenewBeforeDays { get; init; }
+    public int RenewBeforeDays { get; }
 
-    public int CheckIntervalMinutes { get; init; }
+    public int CheckIntervalMinutes { get; }
 
-    public int RetryAfterMinutes { get; init; }
+    public int RetryAfterMinutes { get; }
 
     public IReadOnlyList<RuntimeAcmeCertificateOptions> Certificates { get; }
 }
