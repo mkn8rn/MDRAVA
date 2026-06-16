@@ -63,29 +63,27 @@ public static class ProxyStatusReadinessConfigurationSourceMapper
 public static class ProxyConfiguredListenerSummarySourceMapper
 {
     public static IReadOnlyList<ProxyConfiguredListenerSummarySource> FromListeners(
-        IReadOnlyList<RuntimeListener> listeners)
+        IEnumerable<RuntimeListener> listeners)
     {
-        return listeners
+        return ProxyStatusList.Copy(listeners
             .Select(static listener => new ProxyConfiguredListenerSummarySource(
                 listener.Enabled,
                 listener.Protocols.HasFlag(RuntimeListenerProtocols.Http1),
                 listener.Protocols.HasFlag(RuntimeListenerProtocols.Http2),
-                listener.Http3.EnabledForTraffic))
-            .ToArray();
+                listener.Http3.EnabledForTraffic)));
     }
 }
 
 public static class ProxyRouteSummarySourceMapper
 {
-    public static IReadOnlyList<ProxyRouteSummarySource> FromRoutes(IReadOnlyList<RuntimeRoute> routes)
+    public static IReadOnlyList<ProxyRouteSummarySource> FromRoutes(IEnumerable<RuntimeRoute> routes)
     {
-        return routes
+        return ProxyStatusList.Copy(routes
             .Select(static route => new ProxyRouteSummarySource(
                 route.SiteName,
                 route.Action == RuntimeRouteAction.Proxy,
                 route.Cache.Enabled,
-                route.Upstreams.Any(static upstream => RuntimeUpstreamProtocol.IsHttp3(upstream.Protocol))))
-            .ToArray();
+                route.Upstreams.Any(static upstream => RuntimeUpstreamProtocol.IsHttp3(upstream.Protocol)))));
     }
 }
 

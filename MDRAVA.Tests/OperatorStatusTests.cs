@@ -839,19 +839,23 @@ internal static class OperatorStatusTests
             Cache = CachePolicy()
         };
 
-        var listeners = ProxyConfiguredListenerSummarySourceMapper.FromListeners([listener]);
-        var routes = ProxyRouteSummarySourceMapper.FromRoutes([route]);
+        RuntimeListener[] listenerSources = [listener];
+        RuntimeRoute[] routeSources = [route];
+        var listeners = ProxyConfiguredListenerSummarySourceMapper.FromListeners(listenerSources.Select(static source => source));
+        var routes = ProxyRouteSummarySourceMapper.FromRoutes(routeSources.Select(static source => source));
 
         AssertEx.Equal(1, listeners.Count);
         AssertEx.True(listeners[0].Enabled);
         AssertEx.True(listeners[0].Http1Enabled);
         AssertEx.False(listeners[0].Http2Enabled);
         AssertEx.True(listeners[0].Http3EnabledForTraffic);
+        AssertEx.False(listeners is ProxyConfiguredListenerSummarySource[], "Status configured listener sources should not expose a mutable array.");
         AssertEx.Equal(1, routes.Count);
         AssertEx.Equal("main", routes[0].SiteName);
         AssertEx.True(routes[0].IsProxyRoute);
         AssertEx.True(routes[0].CacheEnabled);
         AssertEx.True(routes[0].HasHttp3Upstream);
+        AssertEx.False(routes is ProxyRouteSummarySource[], "Status route summary sources should not expose a mutable array.");
     }
 
     public static void StatusAcmeSummaryConfigurationMapperReadsAcmeOptionsWithoutConfigurationSnapshot()
