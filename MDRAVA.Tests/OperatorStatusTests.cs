@@ -1430,6 +1430,33 @@ internal static class OperatorStatusTests
         AssertEx.False(protocols.UnsupportedHttp3Features is string[], "Protocol subsystem summary should not expose a mutable array.");
     }
 
+    public static void StatusProtocolSubsystemResponseOwnsUnsupportedFeatureList()
+    {
+        var unsupportedFeatures = new List<string> { "datagrams", "webtransport" };
+        var response = new ProxyProtocolSubsystemSummaryResponse(
+            clientHttp1Enabled: true,
+            clientHttp2Enabled: true,
+            clientHttp3Enabled: false,
+            clientHttp3Ready: false,
+            upstreamHttp3Configured: true,
+            unsupportedHttp3Features: unsupportedFeatures);
+
+        unsupportedFeatures.Clear();
+
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyProtocolSubsystemSummaryResponse(
+            clientHttp1Enabled: true,
+            clientHttp2Enabled: true,
+            clientHttp3Enabled: false,
+            clientHttp3Ready: false,
+            upstreamHttp3Configured: true,
+            unsupportedHttp3Features: null!));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyProtocolSubsystemSummaryResponse.FromSummary(null!));
+        AssertEx.Equal(2, response.UnsupportedHttp3Features.Count);
+        AssertEx.Equal("datagrams", response.UnsupportedHttp3Features[0]);
+        AssertEx.Equal("webtransport", response.UnsupportedHttp3Features[1]);
+        AssertEx.False(response.UnsupportedHttp3Features is string[], "Protocol subsystem response should not expose a mutable array.");
+    }
+
     public static void StatusReadinessReportsCertificateIssueSummaryWithoutSecrets()
     {
         const string missingCertificateId = "public-cert";
