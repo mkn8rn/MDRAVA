@@ -3,50 +3,112 @@ using BusinessProxyConfigurationProjection =
 
 namespace MDRAVA.API.Controllers;
 
-public sealed record ProxyConfigurationResponse(
-    int Version,
-    DateTimeOffset LoadedAtUtc,
-    string SourceDirectory,
-    IReadOnlyList<string> SourceFiles,
-    ProxyConfigurationDiscoveryResponse Discovery,
-    RuntimeAdminSecurityResponse AdminSecurity,
-    RuntimeAcmeResponse Acme,
-    RuntimeTimeoutsResponse Timeouts,
-    RuntimeConnectionLimitsResponse ConnectionLimits,
-    RuntimeObservabilityResponse Observability,
-    RuntimeLimitsResponse Limits,
-    RuntimeForwardedHeadersResponse ForwardedHeaders,
-    IReadOnlyList<RuntimeCertificateResponse> Certificates,
-    IReadOnlyList<RuntimeListenerResponse> Listeners,
-    IReadOnlyList<RuntimeRouteResponse> Routes)
+public sealed record ProxyConfigurationResponse
 {
-    public RuntimeMetricsResponse Metrics { get; init; } = null!;
+    public ProxyConfigurationResponse(
+        int version,
+        DateTimeOffset loadedAtUtc,
+        string sourceDirectory,
+        IReadOnlyList<string> sourceFiles,
+        ProxyConfigurationDiscoveryResponse discovery,
+        RuntimeAdminSecurityResponse adminSecurity,
+        RuntimeAcmeResponse acme,
+        RuntimeTimeoutsResponse timeouts,
+        RuntimeConnectionLimitsResponse connectionLimits,
+        RuntimeObservabilityResponse observability,
+        RuntimeLimitsResponse limits,
+        RuntimeForwardedHeadersResponse forwardedHeaders,
+        RuntimeMetricsResponse metrics,
+        RuntimeHttp3SupportResponse http3,
+        IReadOnlyList<RuntimeCertificateResponse> certificates,
+        IReadOnlyList<RuntimeListenerResponse> listeners,
+        IReadOnlyList<RuntimeRouteResponse> routes)
+    {
+        ArgumentNullException.ThrowIfNull(discovery);
+        ArgumentNullException.ThrowIfNull(adminSecurity);
+        ArgumentNullException.ThrowIfNull(acme);
+        ArgumentNullException.ThrowIfNull(timeouts);
+        ArgumentNullException.ThrowIfNull(connectionLimits);
+        ArgumentNullException.ThrowIfNull(observability);
+        ArgumentNullException.ThrowIfNull(limits);
+        ArgumentNullException.ThrowIfNull(forwardedHeaders);
+        ArgumentNullException.ThrowIfNull(metrics);
+        ArgumentNullException.ThrowIfNull(http3);
 
-    public RuntimeHttp3SupportResponse Http3 { get; init; } = null!;
+        Version = version;
+        LoadedAtUtc = loadedAtUtc;
+        SourceDirectory = sourceDirectory;
+        SourceFiles = ApiResponseList.Copy(sourceFiles);
+        Discovery = discovery;
+        AdminSecurity = adminSecurity;
+        Acme = acme;
+        Timeouts = timeouts;
+        ConnectionLimits = connectionLimits;
+        Observability = observability;
+        Limits = limits;
+        ForwardedHeaders = forwardedHeaders;
+        Metrics = metrics;
+        Http3 = http3;
+        Certificates = ApiResponseList.Copy(certificates);
+        Listeners = ApiResponseList.Copy(listeners);
+        Routes = ApiResponseList.Copy(routes);
+    }
+
+    public int Version { get; }
+
+    public DateTimeOffset LoadedAtUtc { get; }
+
+    public string SourceDirectory { get; }
+
+    public IReadOnlyList<string> SourceFiles { get; }
+
+    public ProxyConfigurationDiscoveryResponse Discovery { get; }
+
+    public RuntimeAdminSecurityResponse AdminSecurity { get; }
+
+    public RuntimeAcmeResponse Acme { get; }
+
+    public RuntimeTimeoutsResponse Timeouts { get; }
+
+    public RuntimeConnectionLimitsResponse ConnectionLimits { get; }
+
+    public RuntimeObservabilityResponse Observability { get; }
+
+    public RuntimeLimitsResponse Limits { get; }
+
+    public RuntimeForwardedHeadersResponse ForwardedHeaders { get; }
+
+    public RuntimeMetricsResponse Metrics { get; }
+
+    public RuntimeHttp3SupportResponse Http3 { get; }
+
+    public IReadOnlyList<RuntimeCertificateResponse> Certificates { get; }
+
+    public IReadOnlyList<RuntimeListenerResponse> Listeners { get; }
+
+    public IReadOnlyList<RuntimeRouteResponse> Routes { get; }
 
     public static ProxyConfigurationResponse FromProjection(BusinessProxyConfigurationProjection projection)
     {
         ArgumentNullException.ThrowIfNull(projection);
 
         return new ProxyConfigurationResponse(
-            projection.Version,
-            projection.LoadedAtUtc,
-            projection.SourceDirectory,
-            ApiResponseList.Copy(projection.SourceFiles),
-            ProxyConfigurationDiscoveryResponse.FromDiscovery(projection.Discovery),
-            RuntimeAdminSecurityResponse.FromProjection(projection.AdminSecurity),
-            RuntimeAcmeResponse.FromProjection(projection.Acme),
-            RuntimeTimeoutsResponse.FromProjection(projection.Timeouts),
-            RuntimeConnectionLimitsResponse.FromProjection(projection.ConnectionLimits),
-            RuntimeObservabilityResponse.FromProjection(projection.Observability),
-            RuntimeLimitsResponse.FromProjection(projection.Limits),
-            RuntimeForwardedHeadersResponse.FromProjection(projection.ForwardedHeaders),
-            RuntimeCertificateResponse.FromCertificates(projection.Certificates),
-            RuntimeListenerResponse.FromListeners(projection.Listeners),
-            RuntimeRouteResponse.FromRoutes(projection.Routes))
-        {
-            Metrics = RuntimeMetricsResponse.FromProjection(projection.Metrics),
-            Http3 = RuntimeHttp3SupportResponse.FromProjection(projection.Http3)
-        };
+            version: projection.Version,
+            loadedAtUtc: projection.LoadedAtUtc,
+            sourceDirectory: projection.SourceDirectory,
+            sourceFiles: projection.SourceFiles,
+            discovery: ProxyConfigurationDiscoveryResponse.FromDiscovery(projection.Discovery),
+            adminSecurity: RuntimeAdminSecurityResponse.FromProjection(projection.AdminSecurity),
+            acme: RuntimeAcmeResponse.FromProjection(projection.Acme),
+            timeouts: RuntimeTimeoutsResponse.FromProjection(projection.Timeouts),
+            connectionLimits: RuntimeConnectionLimitsResponse.FromProjection(projection.ConnectionLimits),
+            observability: RuntimeObservabilityResponse.FromProjection(projection.Observability),
+            limits: RuntimeLimitsResponse.FromProjection(projection.Limits),
+            forwardedHeaders: RuntimeForwardedHeadersResponse.FromProjection(projection.ForwardedHeaders),
+            metrics: RuntimeMetricsResponse.FromProjection(projection.Metrics),
+            http3: RuntimeHttp3SupportResponse.FromProjection(projection.Http3),
+            certificates: RuntimeCertificateResponse.FromCertificates(projection.Certificates),
+            listeners: RuntimeListenerResponse.FromListeners(projection.Listeners),
+            routes: RuntimeRouteResponse.FromRoutes(projection.Routes));
     }
 }

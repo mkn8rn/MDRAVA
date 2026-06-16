@@ -947,6 +947,175 @@ internal static class ConfigurationTests
         AssertEx.False(projection.Routes is RuntimeRouteProjection[]);
         var response = ProxyConfigurationResponse.FromProjection(projection);
         AssertEx.False(response.SourceFiles is string[], "Configuration API source files should not expose a mutable array.");
+        AssertEx.False(response.Certificates is RuntimeCertificateResponse[], "Configuration API certificates should not expose a mutable array.");
+        AssertEx.False(response.Listeners is RuntimeListenerResponse[], "Configuration API listeners should not expose a mutable array.");
+        AssertEx.False(response.Routes is RuntimeRouteResponse[], "Configuration API routes should not expose a mutable array.");
+        var responseSourceFiles = new List<string> { response.SourceFiles[0] };
+        var responseCertificates = new List<RuntimeCertificateResponse> { response.Certificates[0] };
+        var responseListeners = new List<RuntimeListenerResponse> { response.Listeners[0] };
+        var responseRoutes = new List<RuntimeRouteResponse> { response.Routes[0] };
+        var directResponse = new ProxyConfigurationResponse(
+            version: response.Version,
+            loadedAtUtc: response.LoadedAtUtc,
+            sourceDirectory: response.SourceDirectory,
+            sourceFiles: responseSourceFiles,
+            discovery: response.Discovery,
+            adminSecurity: response.AdminSecurity,
+            acme: response.Acme,
+            timeouts: response.Timeouts,
+            connectionLimits: response.ConnectionLimits,
+            observability: response.Observability,
+            limits: response.Limits,
+            forwardedHeaders: response.ForwardedHeaders,
+            metrics: response.Metrics,
+            http3: response.Http3,
+            certificates: responseCertificates,
+            listeners: responseListeners,
+            routes: responseRoutes);
+
+        responseSourceFiles[0] = "sites/replacement.json";
+        responseCertificates[0] = responseCertificates[0] with { Id = "replacement-cert" };
+        responseListeners[0] = responseListeners[0] with { Name = "replacement-listener" };
+        responseRoutes[0] = responseRoutes[0] with { Name = "replacement-route" };
+        responseSourceFiles.Clear();
+        responseCertificates.Clear();
+        responseListeners.Clear();
+        responseRoutes.Clear();
+
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyConfigurationResponse(
+            version: response.Version,
+            loadedAtUtc: response.LoadedAtUtc,
+            sourceDirectory: response.SourceDirectory,
+            sourceFiles: null!,
+            discovery: response.Discovery,
+            adminSecurity: response.AdminSecurity,
+            acme: response.Acme,
+            timeouts: response.Timeouts,
+            connectionLimits: response.ConnectionLimits,
+            observability: response.Observability,
+            limits: response.Limits,
+            forwardedHeaders: response.ForwardedHeaders,
+            metrics: response.Metrics,
+            http3: response.Http3,
+            certificates: [],
+            listeners: [],
+            routes: []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyConfigurationResponse(
+            version: response.Version,
+            loadedAtUtc: response.LoadedAtUtc,
+            sourceDirectory: response.SourceDirectory,
+            sourceFiles: [],
+            discovery: null!,
+            adminSecurity: response.AdminSecurity,
+            acme: response.Acme,
+            timeouts: response.Timeouts,
+            connectionLimits: response.ConnectionLimits,
+            observability: response.Observability,
+            limits: response.Limits,
+            forwardedHeaders: response.ForwardedHeaders,
+            metrics: response.Metrics,
+            http3: response.Http3,
+            certificates: [],
+            listeners: [],
+            routes: []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyConfigurationResponse(
+            version: response.Version,
+            loadedAtUtc: response.LoadedAtUtc,
+            sourceDirectory: response.SourceDirectory,
+            sourceFiles: [],
+            discovery: response.Discovery,
+            adminSecurity: response.AdminSecurity,
+            acme: response.Acme,
+            timeouts: response.Timeouts,
+            connectionLimits: response.ConnectionLimits,
+            observability: response.Observability,
+            limits: response.Limits,
+            forwardedHeaders: response.ForwardedHeaders,
+            metrics: null!,
+            http3: response.Http3,
+            certificates: [],
+            listeners: [],
+            routes: []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyConfigurationResponse(
+            version: response.Version,
+            loadedAtUtc: response.LoadedAtUtc,
+            sourceDirectory: response.SourceDirectory,
+            sourceFiles: [],
+            discovery: response.Discovery,
+            adminSecurity: response.AdminSecurity,
+            acme: response.Acme,
+            timeouts: response.Timeouts,
+            connectionLimits: response.ConnectionLimits,
+            observability: response.Observability,
+            limits: response.Limits,
+            forwardedHeaders: response.ForwardedHeaders,
+            metrics: response.Metrics,
+            http3: null!,
+            certificates: [],
+            listeners: [],
+            routes: []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyConfigurationResponse(
+            version: response.Version,
+            loadedAtUtc: response.LoadedAtUtc,
+            sourceDirectory: response.SourceDirectory,
+            sourceFiles: [],
+            discovery: response.Discovery,
+            adminSecurity: response.AdminSecurity,
+            acme: response.Acme,
+            timeouts: response.Timeouts,
+            connectionLimits: response.ConnectionLimits,
+            observability: response.Observability,
+            limits: response.Limits,
+            forwardedHeaders: response.ForwardedHeaders,
+            metrics: response.Metrics,
+            http3: response.Http3,
+            certificates: null!,
+            listeners: [],
+            routes: []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyConfigurationResponse(
+            version: response.Version,
+            loadedAtUtc: response.LoadedAtUtc,
+            sourceDirectory: response.SourceDirectory,
+            sourceFiles: [],
+            discovery: response.Discovery,
+            adminSecurity: response.AdminSecurity,
+            acme: response.Acme,
+            timeouts: response.Timeouts,
+            connectionLimits: response.ConnectionLimits,
+            observability: response.Observability,
+            limits: response.Limits,
+            forwardedHeaders: response.ForwardedHeaders,
+            metrics: response.Metrics,
+            http3: response.Http3,
+            certificates: [],
+            listeners: null!,
+            routes: []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyConfigurationResponse(
+            version: response.Version,
+            loadedAtUtc: response.LoadedAtUtc,
+            sourceDirectory: response.SourceDirectory,
+            sourceFiles: [],
+            discovery: response.Discovery,
+            adminSecurity: response.AdminSecurity,
+            acme: response.Acme,
+            timeouts: response.Timeouts,
+            connectionLimits: response.ConnectionLimits,
+            observability: response.Observability,
+            limits: response.Limits,
+            forwardedHeaders: response.ForwardedHeaders,
+            metrics: response.Metrics,
+            http3: response.Http3,
+            certificates: [],
+            listeners: [],
+            routes: null!));
+        AssertEx.Equal("sites/home.json", directResponse.SourceFiles[0]);
+        AssertEx.Equal("home-cert", directResponse.Certificates[0].Id);
+        AssertEx.Equal("web", directResponse.Listeners[0].Name);
+        AssertEx.Equal("home", directResponse.Routes[0].Name);
+        AssertEx.False(directResponse.SourceFiles is string[], "Direct configuration API source files should not expose a mutable array.");
+        AssertEx.False(directResponse.Certificates is RuntimeCertificateResponse[], "Direct configuration API certificates should not expose a mutable array.");
+        AssertEx.False(directResponse.Listeners is RuntimeListenerResponse[], "Direct configuration API listeners should not expose a mutable array.");
+        AssertEx.False(directResponse.Routes is RuntimeRouteResponse[], "Direct configuration API routes should not expose a mutable array.");
         var listenerResponses = RuntimeListenerResponse.FromListeners(projection.Listeners);
         AssertEx.False(listenerResponses is RuntimeListenerResponse[], "Configuration API listeners should not expose a mutable array.");
         AssertEx.False(listenerResponses[0].SniCertificates is RuntimeSniCertificateBindingResponse[], "Configuration API listener SNI certificates should not expose a mutable array.");
