@@ -49,7 +49,7 @@ public sealed record ProxyStatusConfigurationSourceSet
 {
     public ProxyStatusConfigurationSourceSet(
         ProxyStatusConfigurationSummary ConfigurationSummary,
-        IReadOnlyList<ProxyUpstreamHealthSource> UpstreamHealthSources,
+        IEnumerable<ProxyUpstreamHealthSource> UpstreamHealthSources,
         Http3SupportConfigurationSource Http3Configuration,
         ProxyStatusReadinessConfigurationSourceSet ReadinessConfiguration)
     {

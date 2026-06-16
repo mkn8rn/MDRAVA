@@ -237,15 +237,28 @@ internal static class OperatorStatusTests
         AssertEx.Equal(3, summary.RouteCount);
     }
 
-    public static void StatusConfigurationSourceMapperShapesStatusFactsFromActiveConfiguration()
+    public static void StatusConfigurationSourceMapperShapesStatusFactsFromRuntimeFactsWithoutSnapshot()
     {
         var listener = Listener();
         var route = StaticRoute();
         var snapshot = Snapshot([listener], [route]);
+        var listenerSources = new List<RuntimeListener> { listener };
+        var routeSources = new List<RuntimeRoute> { route };
+        var certificateSources = new List<RuntimeCertificate>(snapshot.Certificates.Values);
 
-        var source = ProxyStatusConfigurationSourceMapper.FromConfiguration(
-            snapshot,
-            ProxyUpstreamHealthSourceMapper.FromRoutes(snapshot.Routes));
+        var source = ProxyStatusConfigurationSourceMapper.FromSources(
+            snapshot.Version,
+            snapshot.LoadedAtUtc,
+            listenerSources.Select(static source => source),
+            routeSources.Select(static source => source),
+            certificateSources.Select(static source => source),
+            snapshot.Acme,
+            snapshot.Limits,
+            ProxyUpstreamHealthSourceMapper.FromRoutes(routeSources));
+
+        listenerSources.Clear();
+        routeSources.Clear();
+        certificateSources.Clear();
 
         AssertEx.Equal(snapshot.Version, source.ConfigurationSummary.Version);
         AssertEx.Equal(snapshot.LoadedAtUtc, source.ConfigurationSummary.LoadedAtUtc);
@@ -258,6 +271,7 @@ internal static class OperatorStatusTests
         AssertEx.Equal(snapshot.LoadedAtUtc, source.ReadinessConfiguration.ConfigurationLoadedAtUtc!.Value);
         AssertEx.Equal(1, source.ReadinessConfiguration.ConfiguredListeners.Count);
         AssertEx.Equal(1, source.ReadinessConfiguration.Routes.Count);
+        AssertEx.False(source.UpstreamHealthSources is ProxyUpstreamHealthSource[], "Status configuration upstream health sources should not expose a mutable array.");
     }
 
     public static void StatusResponseBuilderBuildsResponseFromNamedInput()

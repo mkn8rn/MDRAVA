@@ -6,26 +6,42 @@ namespace MDRAVA.BLL.ControlPlane.Status;
 
 public static class ProxyStatusConfigurationSourceMapper
 {
-    public static ProxyStatusConfigurationSourceSet FromConfiguration(
-        ProxyConfigurationSnapshot configuration,
-        IReadOnlyList<ProxyUpstreamHealthSource> upstreamHealthSources)
+    public static ProxyStatusConfigurationSourceSet FromSources(
+        int version,
+        DateTimeOffset loadedAtUtc,
+        IEnumerable<RuntimeListener> listeners,
+        IEnumerable<RuntimeRoute> routes,
+        IEnumerable<RuntimeCertificate> certificates,
+        RuntimeAcmeOptions acme,
+        RuntimeLimits limits,
+        IEnumerable<ProxyUpstreamHealthSource> upstreamHealthSources)
     {
+        ArgumentNullException.ThrowIfNull(listeners);
+        ArgumentNullException.ThrowIfNull(routes);
+        ArgumentNullException.ThrowIfNull(certificates);
+        ArgumentNullException.ThrowIfNull(acme);
+        ArgumentNullException.ThrowIfNull(limits);
+        ArgumentNullException.ThrowIfNull(upstreamHealthSources);
+
+        var listenerSources = ProxyStatusList.Copy(listeners);
+        var routeSources = ProxyStatusList.Copy(routes);
+
         return new ProxyStatusConfigurationSourceSet(
             ProxyStatusConfigurationSummaryMapper.FromCounts(
-                configuration.Version,
-                configuration.LoadedAtUtc,
-                configuration.Listeners.Count,
-                configuration.Routes.Count),
+                version,
+                loadedAtUtc,
+                listenerSources.Count,
+                routeSources.Count),
             upstreamHealthSources,
-            ProxyHttp3SupportConfigurationSourceMapper.FromConfiguration(configuration.Listeners, configuration.Routes),
+            ProxyHttp3SupportConfigurationSourceMapper.FromConfiguration(listenerSources, routeSources),
             ProxyStatusReadinessConfigurationSourceMapper.FromConfiguration(
-                configuration.Version,
-                configuration.LoadedAtUtc,
-                configuration.Listeners,
-                configuration.Routes,
-                configuration.Certificates.Values,
-                configuration.Acme,
-                configuration.Limits));
+                version,
+                loadedAtUtc,
+                listenerSources,
+                routeSources,
+                certificates,
+                acme,
+                limits));
     }
 }
 

@@ -37,8 +37,14 @@ public sealed class ProxyConfigurationStore
         }
 
         return ProxyStatusConfigurationReadResult.Available(
-            ProxyStatusConfigurationSourceMapper.FromConfiguration(
-                available.Snapshot,
+            ProxyStatusConfigurationSourceMapper.FromSources(
+                available.Snapshot.Version,
+                available.Snapshot.LoadedAtUtc,
+                available.Snapshot.Listeners,
+                available.Snapshot.Routes,
+                available.Snapshot.Certificates.Values,
+                available.Snapshot.Acme,
+                available.Snapshot.Limits,
                 ProxyUpstreamHealthSourceMapper.FromRoutes(available.Snapshot.Routes)));
     }
 
