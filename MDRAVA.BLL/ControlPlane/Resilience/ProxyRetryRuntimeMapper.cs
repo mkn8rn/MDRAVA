@@ -9,6 +9,9 @@ public static class ProxyRetryRuntimeMapper
         RuntimeRoute route,
         Http1RequestHead requestHead)
     {
+        ArgumentNullException.ThrowIfNull(route);
+        ArgumentNullException.ThrowIfNull(requestHead);
+
         return new ProxyRetryAdmissionInput(
             route.Retry.Enabled,
             route.Retry.MaxAttempts,
@@ -19,6 +22,8 @@ public static class ProxyRetryRuntimeMapper
 
     public static ProxyRetryOutcomeInput ToOutcomeInput(RuntimeRetryPolicy retry)
     {
+        ArgumentNullException.ThrowIfNull(retry);
+
         return new ProxyRetryOutcomeInput(
             retry.Enabled,
             retry.RetryOnConnectFailure,

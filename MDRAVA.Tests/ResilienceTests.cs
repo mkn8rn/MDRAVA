@@ -490,6 +490,32 @@ internal static class ResilienceTests
             null!));
     }
 
+    public static void ResilienceRuntimeMappersRejectNullInputs()
+    {
+        var retry = new RuntimeRetryPolicy(
+            true,
+            2,
+            TimeSpan.FromSeconds(1),
+            true,
+            true,
+            [503],
+            ["GET", "HEAD"],
+            TimeSpan.Zero);
+        var route = Route([Upstream("first", weight: 1)], retry: retry);
+        var requestHead = RequestHead("GET", Http1RequestFraming.None);
+
+        AssertEx.Throws<ArgumentNullException>(
+            () => ProxyRetryRuntimeMapper.ToAdmissionInput(null!, requestHead));
+        AssertEx.Throws<ArgumentNullException>(
+            () => ProxyRetryRuntimeMapper.ToAdmissionInput(route, null!));
+        AssertEx.Throws<ArgumentNullException>(
+            () => ProxyRetryRuntimeMapper.ToOutcomeInput(null!));
+        AssertEx.Throws<ArgumentNullException>(
+            () => ProxyTimeoutRuntimeMapper.ToPolicyInput(null!));
+        AssertEx.Throws<ArgumentNullException>(
+            () => ProxyUpstreamSelectionRuntimeMapper.ToSelectionRoute(null!));
+    }
+
     public static void UnhealthyAndOpenCircuitUpstreamsAreSkipped()
     {
         var first = Upstream("first", weight: 1, circuit: Circuit(threshold: 1));

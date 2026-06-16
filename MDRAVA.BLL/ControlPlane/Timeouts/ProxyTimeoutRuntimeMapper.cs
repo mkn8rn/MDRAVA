@@ -6,6 +6,8 @@ public static class ProxyTimeoutRuntimeMapper
 {
     public static ProxyRouteTimeoutPolicyInput ToPolicyInput(RuntimeRoute route)
     {
+        ArgumentNullException.ThrowIfNull(route);
+
         return new ProxyRouteTimeoutPolicyInput(
             route.ResolvedOptions.UpstreamResponseHeadTimeout,
             route.Retry.PerAttemptTimeout);
