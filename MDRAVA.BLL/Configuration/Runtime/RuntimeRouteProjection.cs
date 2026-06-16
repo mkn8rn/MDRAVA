@@ -22,6 +22,18 @@ public sealed record RuntimeRouteProjection
         string SiteName,
         RuntimeRetryProjection Retry)
     {
+        ArgumentNullException.ThrowIfNull(HealthCheck);
+        ArgumentNullException.ThrowIfNull(HttpsRedirect);
+        ArgumentNullException.ThrowIfNull(CanonicalHost);
+        ArgumentNullException.ThrowIfNull(HeaderPolicy);
+        ArgumentNullException.ThrowIfNull(PathRewrite);
+        ArgumentNullException.ThrowIfNull(Redirect);
+        ArgumentNullException.ThrowIfNull(StaticResponse);
+        ArgumentNullException.ThrowIfNull(Maintenance);
+        ArgumentNullException.ThrowIfNull(Cache);
+        ArgumentNullException.ThrowIfNull(ResolvedOptions);
+        ArgumentNullException.ThrowIfNull(Retry);
+
         this.Name = Name;
         this.Host = Host;
         this.PathPrefix = PathPrefix;
@@ -42,39 +54,39 @@ public sealed record RuntimeRouteProjection
         this.Retry = Retry;
     }
 
-    public string Name { get; init; }
+    public string Name { get; }
 
-    public string Host { get; init; }
+    public string Host { get; }
 
-    public string PathPrefix { get; init; }
+    public string PathPrefix { get; }
 
-    public RuntimeRouteAction Action { get; init; }
+    public RuntimeRouteAction Action { get; }
 
-    public string LoadBalancingPolicy { get; init; }
+    public string LoadBalancingPolicy { get; }
 
-    public RuntimeHealthCheckProjection HealthCheck { get; init; }
+    public RuntimeHealthCheckProjection HealthCheck { get; }
 
     public IReadOnlyList<RuntimeUpstreamProjection> Upstreams { get; }
 
-    public RuntimeHttpsRedirectProjection HttpsRedirect { get; init; }
+    public RuntimeHttpsRedirectProjection HttpsRedirect { get; }
 
-    public RuntimeCanonicalHostProjection CanonicalHost { get; init; }
+    public RuntimeCanonicalHostProjection CanonicalHost { get; }
 
-    public RuntimeHeaderPolicyProjection HeaderPolicy { get; init; }
+    public RuntimeHeaderPolicyProjection HeaderPolicy { get; }
 
-    public RuntimePathRewriteProjection PathRewrite { get; init; }
+    public RuntimePathRewriteProjection PathRewrite { get; }
 
-    public RuntimeRedirectProjection Redirect { get; init; }
+    public RuntimeRedirectProjection Redirect { get; }
 
-    public RuntimeStaticResponseProjection StaticResponse { get; init; }
+    public RuntimeStaticResponseProjection StaticResponse { get; }
 
-    public RuntimeMaintenanceProjection Maintenance { get; init; }
+    public RuntimeMaintenanceProjection Maintenance { get; }
 
-    public RuntimeCacheProjection Cache { get; init; }
+    public RuntimeCacheProjection Cache { get; }
 
-    public RuntimeRouteResolvedOptionsProjection ResolvedOptions { get; init; }
+    public RuntimeRouteResolvedOptionsProjection ResolvedOptions { get; }
 
-    public string SiteName { get; init; }
+    public string SiteName { get; }
 
-    public RuntimeRetryProjection Retry { get; init; }
+    public RuntimeRetryProjection Retry { get; }
 }

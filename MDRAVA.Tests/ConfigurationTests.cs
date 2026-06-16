@@ -2500,6 +2500,90 @@ internal static class ConfigurationTests
         AssertEx.Equal(503, directUpstream.CircuitBreaker.FailureStatusCodes[0]);
         AssertEx.Equal("home/local-test", directUpstream.Identity);
         AssertEx.False(directCircuitBreaker.FailureStatusCodes is int[]);
+        var directRouteUpstreams = new List<RuntimeUpstreamProjection> { directUpstream };
+        var directRoute = new RuntimeRouteProjection(
+            Name: "home",
+            Host: route.Host,
+            PathPrefix: route.PathPrefix,
+            Action: route.Action,
+            LoadBalancingPolicy: route.LoadBalancingPolicy,
+            HealthCheck: route.HealthCheck,
+            Upstreams: directRouteUpstreams,
+            HttpsRedirect: route.HttpsRedirect,
+            CanonicalHost: route.CanonicalHost,
+            HeaderPolicy: route.HeaderPolicy,
+            PathRewrite: route.PathRewrite,
+            Redirect: route.Redirect,
+            StaticResponse: route.StaticResponse,
+            Maintenance: route.Maintenance,
+            Cache: route.Cache,
+            ResolvedOptions: route.ResolvedOptions,
+            SiteName: "home",
+            Retry: route.Retry);
+
+        directRouteUpstreams[0] = upstream;
+        directRouteUpstreams.Clear();
+
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeRouteProjection(
+            Name: "home",
+            Host: route.Host,
+            PathPrefix: route.PathPrefix,
+            Action: route.Action,
+            LoadBalancingPolicy: route.LoadBalancingPolicy,
+            HealthCheck: null!,
+            Upstreams: [],
+            HttpsRedirect: route.HttpsRedirect,
+            CanonicalHost: route.CanonicalHost,
+            HeaderPolicy: route.HeaderPolicy,
+            PathRewrite: route.PathRewrite,
+            Redirect: route.Redirect,
+            StaticResponse: route.StaticResponse,
+            Maintenance: route.Maintenance,
+            Cache: route.Cache,
+            ResolvedOptions: route.ResolvedOptions,
+            SiteName: "home",
+            Retry: route.Retry));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeRouteProjection(
+            Name: "home",
+            Host: route.Host,
+            PathPrefix: route.PathPrefix,
+            Action: route.Action,
+            LoadBalancingPolicy: route.LoadBalancingPolicy,
+            HealthCheck: route.HealthCheck,
+            Upstreams: null!,
+            HttpsRedirect: route.HttpsRedirect,
+            CanonicalHost: route.CanonicalHost,
+            HeaderPolicy: route.HeaderPolicy,
+            PathRewrite: route.PathRewrite,
+            Redirect: route.Redirect,
+            StaticResponse: route.StaticResponse,
+            Maintenance: route.Maintenance,
+            Cache: route.Cache,
+            ResolvedOptions: route.ResolvedOptions,
+            SiteName: "home",
+            Retry: route.Retry));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeRouteProjection(
+            Name: "home",
+            Host: route.Host,
+            PathPrefix: route.PathPrefix,
+            Action: route.Action,
+            LoadBalancingPolicy: route.LoadBalancingPolicy,
+            HealthCheck: route.HealthCheck,
+            Upstreams: [],
+            HttpsRedirect: route.HttpsRedirect,
+            CanonicalHost: route.CanonicalHost,
+            HeaderPolicy: route.HeaderPolicy,
+            PathRewrite: route.PathRewrite,
+            Redirect: route.Redirect,
+            StaticResponse: route.StaticResponse,
+            Maintenance: route.Maintenance,
+            Cache: route.Cache,
+            ResolvedOptions: route.ResolvedOptions,
+            SiteName: "home",
+            Retry: null!));
+        AssertEx.Equal("local-test", directRoute.Upstreams[0].Name);
+        AssertEx.Equal("home", directRoute.SiteName);
+        AssertEx.False(directRoute.Upstreams is RuntimeUpstreamProjection[]);
     }
 
     public static async Task ConfigReloadControllerReturnsConfigurationResponse()
