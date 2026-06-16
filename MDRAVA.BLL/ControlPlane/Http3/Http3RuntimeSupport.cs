@@ -42,10 +42,17 @@ public static class Http3SupportSourceMapper
         ArgumentNullException.ThrowIfNull(listeners);
 
         return Http3List.Copy(listeners
-            .Select(static listener => new Http3SupportRuntimeListenerSource(
-                string.Equals(listener.Kind, "quic", StringComparison.OrdinalIgnoreCase),
-                listener.Identity,
-                listener.State)));
+            .Select(ToSource));
+    }
+
+    private static Http3SupportRuntimeListenerSource ToSource(ProxyListenerStatus listener)
+    {
+        ArgumentNullException.ThrowIfNull(listener);
+
+        return new Http3SupportRuntimeListenerSource(
+            string.Equals(listener.Kind, "quic", StringComparison.OrdinalIgnoreCase),
+            listener.Identity,
+            listener.State);
     }
 }
 

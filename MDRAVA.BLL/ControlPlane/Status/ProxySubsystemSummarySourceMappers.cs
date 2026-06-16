@@ -12,9 +12,16 @@ public static class ProxyRuntimeListenerSummarySourceMapper
         ArgumentNullException.ThrowIfNull(listeners);
 
         return ProxyStatusList.Copy(listeners
-            .Select(static listener => new ProxyRuntimeListenerSummarySource(
-                string.Equals(listener.Kind, "quic", StringComparison.OrdinalIgnoreCase),
-                listener.State)));
+            .Select(ToSource));
+    }
+
+    private static ProxyRuntimeListenerSummarySource ToSource(ProxyListenerStatus listener)
+    {
+        ArgumentNullException.ThrowIfNull(listener);
+
+        return new ProxyRuntimeListenerSummarySource(
+            string.Equals(listener.Kind, "quic", StringComparison.OrdinalIgnoreCase),
+            listener.State);
     }
 }
 
@@ -26,11 +33,18 @@ public static class ProxyUpstreamSummarySourceMapper
         ArgumentNullException.ThrowIfNull(upstreams);
 
         return ProxyStatusList.Copy(upstreams
-            .Select(static upstream => new ProxyUpstreamSummarySource(
-                upstream.HealthState,
-                upstream.HealthCheckEnabled,
-                upstream.CircuitBreaker.Enabled,
-                upstream.CircuitBreaker.State)));
+            .Select(ToSource));
+    }
+
+    private static ProxyUpstreamSummarySource ToSource(ProxyUpstreamStatus upstream)
+    {
+        ArgumentNullException.ThrowIfNull(upstream);
+
+        return new ProxyUpstreamSummarySource(
+            upstream.HealthState,
+            upstream.HealthCheckEnabled,
+            upstream.CircuitBreaker.Enabled,
+            upstream.CircuitBreaker.State);
     }
 }
 

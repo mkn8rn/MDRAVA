@@ -1270,6 +1270,9 @@ internal static class OperatorStatusTests
         RuntimeRoute[] routeSources = [route];
         AssertEx.Throws<ArgumentNullException>(() => ProxyConfiguredListenerSummarySourceMapper.FromListeners(null!));
         AssertEx.Throws<ArgumentNullException>(() => ProxyRouteSummarySourceMapper.FromRoutes(null!));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyConfiguredListenerSummarySourceMapper.FromListeners([null!]));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyRouteSummarySourceMapper.FromRoutes([null!]));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyRouteSummarySourceMapper.FromRoutes([route.WithUpstreams([null!])]));
         var listeners = ProxyConfiguredListenerSummarySourceMapper.FromListeners(listenerSources.Select(static source => source));
         var routes = ProxyRouteSummarySourceMapper.FromRoutes(routeSources.Select(static source => source));
 
@@ -1331,6 +1334,12 @@ internal static class OperatorStatusTests
         {
             ["default"] = runtimeCertificate
         };
+
+        AssertEx.Throws<ArgumentNullException>(() => ProxyCertificateSummarySourceMapper.FromSources(null!, certificateSources.Values));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyCertificateSummarySourceMapper.FromSources(listenerSources, null!));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyCertificateSummarySourceMapper.FromSources([null!], certificateSources.Values));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyCertificateSummarySourceMapper.FromSources([listener.WithSniCertificates([null!])], certificateSources.Values));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyCertificateSummarySourceMapper.FromSources(listenerSources, [null!]));
 
         var source = ProxyCertificateSummarySourceMapper.FromSources(
             listenerSources.Select(static source => source),
@@ -1522,6 +1531,8 @@ internal static class OperatorStatusTests
         AssertEx.False(upstreams is ProxyUpstreamSummarySource[], "Subsystem upstream sources should not expose a mutable array.");
         AssertEx.Throws<ArgumentNullException>(() => ProxyRuntimeListenerSummarySourceMapper.FromSources(null!));
         AssertEx.Throws<ArgumentNullException>(() => ProxyUpstreamSummarySourceMapper.FromStatusResponses(null!));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyRuntimeListenerSummarySourceMapper.FromSources([null!]));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyUpstreamSummarySourceMapper.FromStatusResponses([null!]));
     }
 
     public static void SubsystemSummaryBuilderCountsNarrowListenerRouteAndUpstreamSources()

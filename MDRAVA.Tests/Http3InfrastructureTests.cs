@@ -500,6 +500,32 @@ internal static class Http3InfrastructureTests
             Http3RuntimeSupport.ProjectConfiguration(Http3SupportConfigurationSource.Empty, null!));
         AssertEx.Throws<ArgumentNullException>(() =>
             Http3RuntimeSupport.ProjectRuntime(Http3SupportConfigurationSource.Empty, TestHttp3PlatformSupport.Supported, null!));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            Http3SupportSourceMapper.FromListenerStatuses([null!]));
+
+        var operationalOptions = new ProxyOperationalOptions();
+        var snapshot = ProxyConfigurationRuntimeMapper.ToRuntimeSnapshot(
+            ValidProxyOptions(Http3Listener("source", "http1AndHttp3")),
+            operationalOptions,
+            ProxyAdminSecurityTokenPolicy.Resolve(operationalOptions.Admin, static _ => null),
+            new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase),
+            1,
+            DateTimeOffset.UtcNow,
+            "memory",
+            [],
+            Discovery());
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyHttp3SupportConfigurationSourceMapper.FromSources(null!, snapshot.Routes));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyHttp3SupportConfigurationSourceMapper.FromSources(snapshot.Listeners, null!));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyHttp3SupportConfigurationSourceMapper.FromSources([null!], snapshot.Routes));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyHttp3SupportConfigurationSourceMapper.FromSources(snapshot.Listeners, [null!]));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ProxyHttp3SupportConfigurationSourceMapper.FromSources(
+                snapshot.Listeners,
+                [snapshot.Routes[0].WithUpstreams([null!])]));
 
         var listener = new Http3SupportListenerSource(
             Configured: true,

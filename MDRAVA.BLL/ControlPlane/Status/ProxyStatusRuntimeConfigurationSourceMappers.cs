@@ -87,11 +87,18 @@ public static class ProxyConfiguredListenerSummarySourceMapper
         ArgumentNullException.ThrowIfNull(listeners);
 
         return ProxyStatusList.Copy(listeners
-            .Select(static listener => new ProxyConfiguredListenerSummarySource(
-                listener.Enabled,
-                listener.Protocols.HasFlag(RuntimeListenerProtocols.Http1),
-                listener.Protocols.HasFlag(RuntimeListenerProtocols.Http2),
-                listener.Http3.EnabledForTraffic)));
+            .Select(ToSource));
+    }
+
+    private static ProxyConfiguredListenerSummarySource ToSource(RuntimeListener listener)
+    {
+        ArgumentNullException.ThrowIfNull(listener);
+
+        return new ProxyConfiguredListenerSummarySource(
+            listener.Enabled,
+            listener.Protocols.HasFlag(RuntimeListenerProtocols.Http1),
+            listener.Protocols.HasFlag(RuntimeListenerProtocols.Http2),
+            listener.Http3.EnabledForTraffic);
     }
 }
 
@@ -102,11 +109,22 @@ public static class ProxyRouteSummarySourceMapper
         ArgumentNullException.ThrowIfNull(routes);
 
         return ProxyStatusList.Copy(routes
-            .Select(static route => new ProxyRouteSummarySource(
-                route.SiteName,
-                route.Action == RuntimeRouteAction.Proxy,
-                route.Cache.Enabled,
-                route.Upstreams.Any(static upstream => RuntimeUpstreamProtocol.IsHttp3(upstream.Protocol)))));
+            .Select(ToSource));
+    }
+
+    private static ProxyRouteSummarySource ToSource(RuntimeRoute route)
+    {
+        ArgumentNullException.ThrowIfNull(route);
+
+        return new ProxyRouteSummarySource(
+            route.SiteName,
+            route.Action == RuntimeRouteAction.Proxy,
+            route.Cache.Enabled,
+            route.Upstreams.Any(static upstream =>
+            {
+                ArgumentNullException.ThrowIfNull(upstream);
+                return RuntimeUpstreamProtocol.IsHttp3(upstream.Protocol);
+            }));
     }
 }
 
@@ -122,6 +140,8 @@ public static class ProxyCertificateSummarySourceMapper
         List<string> referenced = [];
         foreach (var listener in listeners)
         {
+            ArgumentNullException.ThrowIfNull(listener);
+
             if (!string.IsNullOrWhiteSpace(listener.DefaultCertificateId))
             {
                 referenced.Add(listener.DefaultCertificateId);
@@ -129,6 +149,8 @@ public static class ProxyCertificateSummarySourceMapper
 
             foreach (var binding in listener.SniCertificates)
             {
+                ArgumentNullException.ThrowIfNull(binding);
+
                 referenced.Add(binding.CertificateId);
             }
         }
@@ -136,11 +158,18 @@ public static class ProxyCertificateSummarySourceMapper
         return new ProxyCertificateSummarySource(
             referenced,
             certificates
-                .Select(static certificate => new ProxyCertificateValiditySource(
-                    certificate.Id,
-                    certificate.Certificate.NotBefore,
-                    certificate.Certificate.NotAfter))
+                .Select(ToValiditySource)
                 .ToArray());
+    }
+
+    private static ProxyCertificateValiditySource ToValiditySource(RuntimeCertificate certificate)
+    {
+        ArgumentNullException.ThrowIfNull(certificate);
+
+        return new ProxyCertificateValiditySource(
+            certificate.Id,
+            certificate.Certificate.NotBefore,
+            certificate.Certificate.NotAfter);
     }
 }
 
