@@ -1,0 +1,13 @@
+using System.Collections.ObjectModel;
+
+namespace MDRAVA.BLL.ControlPlane.HealthChecks;
+
+internal static class HealthCheckList
+{
+    public static ReadOnlyCollection<T> Copy<T>(IEnumerable<T> values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+
+        return new ReadOnlyCollection<T>(values.ToArray());
+    }
+}

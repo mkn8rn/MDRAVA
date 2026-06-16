@@ -5,9 +5,9 @@ namespace MDRAVA.BLL.ControlPlane.HealthChecks;
 
 public static class UpstreamHealthCheckTargetMapper
 {
-    public static IReadOnlyList<UpstreamHealthCheckTarget> FromRoutes(IReadOnlyList<RuntimeRoute> routes)
+    public static IReadOnlyList<UpstreamHealthCheckTarget> FromRoutes(IEnumerable<RuntimeRoute> routes)
     {
-        return routes
+        return HealthCheckList.Copy(routes
             .Where(static route => route.HealthCheck.Enabled)
             .SelectMany(static route => route.Upstreams.Select(upstream => new UpstreamHealthCheckTarget(
                 route.Name,
@@ -20,6 +20,6 @@ public static class UpstreamHealthCheckTargetMapper
                 route.HealthCheck.Timeout,
                 route.HealthCheck.HealthyThreshold,
                 route.HealthCheck.UnhealthyThreshold)))
-            .ToArray();
+            );
     }
 }

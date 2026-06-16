@@ -5,9 +5,9 @@ namespace MDRAVA.BLL.ControlPlane.HealthChecks;
 
 public static class ProxyUpstreamHealthSourceMapper
 {
-    public static IReadOnlyList<ProxyUpstreamHealthSource> FromRoutes(IReadOnlyList<RuntimeRoute> routes)
+    public static IReadOnlyList<ProxyUpstreamHealthSource> FromRoutes(IEnumerable<RuntimeRoute> routes)
     {
-        return routes
+        return HealthCheckList.Copy(routes
             .SelectMany(static route => route.Upstreams.Select(upstream => new ProxyUpstreamHealthSource(
                 UpstreamHealthStateSourceMapper.FromUpstream(upstream),
                 CircuitBreakerStatusSourceMapper.FromUpstream(upstream),
@@ -20,6 +20,6 @@ public static class ProxyUpstreamHealthSourceMapper
                     ? upstream.EffectiveSniHost
                     : null,
                 route.HealthCheck.Enabled)))
-            .ToArray();
+            );
     }
 }

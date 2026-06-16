@@ -219,7 +219,7 @@ internal static class HealthCheckTests
             Route([Upstream(5003)], healthEnabled: false)
         };
 
-        var targets = UpstreamHealthCheckTargetMapper.FromRoutes(routes);
+        var targets = UpstreamHealthCheckTargetMapper.FromRoutes(routes.Select(static route => route));
 
         AssertEx.Equal(2, targets.Count);
         AssertEx.Equal("test", targets[0].RouteName);
@@ -230,6 +230,7 @@ internal static class HealthCheckTests
         AssertEx.Equal(1, targets[0].HealthyThreshold);
         AssertEx.Equal(4, targets[0].UnhealthyThreshold);
         AssertEx.Equal(second.Name, targets[1].UpstreamName);
+        AssertEx.False(targets is UpstreamHealthCheckTarget[], "Health check targets should not expose a mutable array.");
     }
 
     public static void UpstreamHealthSourceMapperReadsRoutesWithoutConfigurationSnapshot()
@@ -250,7 +251,7 @@ internal static class HealthCheckTests
             Route([https], healthEnabled: false)
         };
 
-        var sources = ProxyUpstreamHealthSourceMapper.FromRoutes(routes);
+        var sources = ProxyUpstreamHealthSourceMapper.FromRoutes(routes.Select(static route => route));
 
         AssertEx.Equal(2, sources.Count);
         AssertEx.Equal(http.Identity, sources[0].HealthState.UpstreamIdentity);
@@ -266,6 +267,7 @@ internal static class HealthCheckTests
         AssertEx.False(sources[1].ValidateCertificate);
         AssertEx.Equal("sni.internal", sources[1].EffectiveSniHost);
         AssertEx.False(sources[1].HealthCheckEnabled);
+        AssertEx.False(sources is ProxyUpstreamHealthSource[], "Upstream health sources should not expose a mutable array.");
     }
 
     public static void HealthCheckSampleNamesStatusesAndExplicitResults()
