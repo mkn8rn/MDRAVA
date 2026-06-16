@@ -7,6 +7,8 @@ public static class ProxyUpstreamHealthSourceMapper
 {
     public static IReadOnlyList<ProxyUpstreamHealthSource> FromRoutes(IEnumerable<RuntimeRoute> routes)
     {
+        ArgumentNullException.ThrowIfNull(routes);
+
         return HealthCheckList.Copy(routes
             .SelectMany(static route => route.Upstreams.Select(upstream => new ProxyUpstreamHealthSource(
                 UpstreamHealthStateSourceMapper.FromUpstream(upstream),

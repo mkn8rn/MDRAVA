@@ -926,6 +926,8 @@ internal static class OperatorStatusTests
 
         RuntimeListener[] listenerSources = [listener];
         RuntimeRoute[] routeSources = [route];
+        AssertEx.Throws<ArgumentNullException>(() => ProxyConfiguredListenerSummarySourceMapper.FromListeners(null!));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyRouteSummarySourceMapper.FromRoutes(null!));
         var listeners = ProxyConfiguredListenerSummarySourceMapper.FromListeners(listenerSources.Select(static source => source));
         var routes = ProxyRouteSummarySourceMapper.FromRoutes(routeSources.Select(static source => source));
 

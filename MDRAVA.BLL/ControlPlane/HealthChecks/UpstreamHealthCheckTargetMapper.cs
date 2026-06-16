@@ -7,6 +7,8 @@ public static class UpstreamHealthCheckTargetMapper
 {
     public static IReadOnlyList<UpstreamHealthCheckTarget> FromRoutes(IEnumerable<RuntimeRoute> routes)
     {
+        ArgumentNullException.ThrowIfNull(routes);
+
         return HealthCheckList.Copy(routes
             .Where(static route => route.HealthCheck.Enabled)
             .SelectMany(static route => route.Upstreams.Select(upstream => new UpstreamHealthCheckTarget(

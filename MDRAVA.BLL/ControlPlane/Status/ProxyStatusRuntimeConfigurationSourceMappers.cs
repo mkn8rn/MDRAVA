@@ -84,6 +84,8 @@ public static class ProxyConfiguredListenerSummarySourceMapper
     public static IReadOnlyList<ProxyConfiguredListenerSummarySource> FromListeners(
         IEnumerable<RuntimeListener> listeners)
     {
+        ArgumentNullException.ThrowIfNull(listeners);
+
         return ProxyStatusList.Copy(listeners
             .Select(static listener => new ProxyConfiguredListenerSummarySource(
                 listener.Enabled,
@@ -97,6 +99,8 @@ public static class ProxyRouteSummarySourceMapper
 {
     public static IReadOnlyList<ProxyRouteSummarySource> FromRoutes(IEnumerable<RuntimeRoute> routes)
     {
+        ArgumentNullException.ThrowIfNull(routes);
+
         return ProxyStatusList.Copy(routes
             .Select(static route => new ProxyRouteSummarySource(
                 route.SiteName,
