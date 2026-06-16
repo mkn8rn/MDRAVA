@@ -177,6 +177,55 @@ internal static class ConfigurationTests
         var response = ProxyListenerReloadResponse.FromResult(result);
         AssertEx.False(response.Changes is ProxyListenerReloadChangeResponse[], "Listener reload API changes should not expose a mutable array.");
         AssertEx.False(response.Errors is string[], "Listener reload API errors should not expose a mutable array.");
+        var responseChanges = new List<ProxyListenerReloadChangeResponse>
+        {
+            new("changed", "main", "main|tcp", "127.0.0.1|18080|tcp", "active", null)
+        };
+        var responseErrors = new List<string> { "bind failed" };
+        var directResponse = new ProxyListenerReloadResponse(
+            succeeded: false,
+            attemptedAtUtc: DateTimeOffset.UnixEpoch,
+            added: 0,
+            removed: 0,
+            changed: 1,
+            unchanged: 0,
+            changes: responseChanges,
+            errors: responseErrors);
+
+        responseChanges[0] = new ProxyListenerReloadChangeResponse(
+            "removed",
+            "replacement",
+            "replacement|tcp",
+            "127.0.0.1|19090|tcp",
+            "stopped",
+            null);
+        responseErrors[0] = "replacement error";
+        responseChanges.Clear();
+        responseErrors.Clear();
+
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyListenerReloadResponse(
+            succeeded: false,
+            attemptedAtUtc: DateTimeOffset.UnixEpoch,
+            added: 0,
+            removed: 0,
+            changed: 1,
+            unchanged: 0,
+            changes: null!,
+            errors: []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyListenerReloadResponse(
+            succeeded: false,
+            attemptedAtUtc: DateTimeOffset.UnixEpoch,
+            added: 0,
+            removed: 0,
+            changed: 1,
+            unchanged: 0,
+            changes: [],
+            errors: null!));
+        AssertEx.Equal("changed", directResponse.Changes[0].Action);
+        AssertEx.Equal("main", directResponse.Changes[0].Name);
+        AssertEx.Equal("bind failed", directResponse.Errors[0]);
+        AssertEx.False(directResponse.Changes is ProxyListenerReloadChangeResponse[], "Direct listener reload API changes should not expose a mutable array.");
+        AssertEx.False(directResponse.Errors is string[], "Direct listener reload API errors should not expose a mutable array.");
     }
 
     public static void ApiResultResponseMappersRejectNullResults()
