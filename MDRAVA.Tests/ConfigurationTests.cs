@@ -1227,7 +1227,25 @@ internal static class ConfigurationTests
             notBefore: responseCertificates[0].NotBefore,
             notAfter: responseCertificates[0].NotAfter);
         responseListeners[0] = responseListeners[0] with { Name = "replacement-listener" };
-        responseRoutes[0] = responseRoutes[0] with { Name = "replacement-route" };
+        responseRoutes[0] = new RuntimeRouteResponse(
+            name: "replacement-route",
+            host: responseRoutes[0].Host,
+            pathPrefix: responseRoutes[0].PathPrefix,
+            action: responseRoutes[0].Action,
+            loadBalancingPolicy: responseRoutes[0].LoadBalancingPolicy,
+            healthCheck: responseRoutes[0].HealthCheck,
+            upstreams: responseRoutes[0].Upstreams,
+            httpsRedirect: responseRoutes[0].HttpsRedirect,
+            canonicalHost: responseRoutes[0].CanonicalHost,
+            headerPolicy: responseRoutes[0].HeaderPolicy,
+            pathRewrite: responseRoutes[0].PathRewrite,
+            redirect: responseRoutes[0].Redirect,
+            staticResponse: responseRoutes[0].StaticResponse,
+            maintenance: responseRoutes[0].Maintenance,
+            cache: responseRoutes[0].Cache,
+            resolvedOptions: responseRoutes[0].ResolvedOptions,
+            siteName: responseRoutes[0].SiteName,
+            retry: responseRoutes[0].Retry);
         responseSourceFiles.Clear();
         responseCertificates.Clear();
         responseListeners.Clear();
@@ -1440,6 +1458,71 @@ internal static class ConfigurationTests
         AssertEx.Equal(503, directUpstreamResponse.CircuitBreaker.FailureStatusCodes[0]);
         AssertEx.Equal("home/local", directUpstreamResponse.Identity);
         AssertEx.False(directCircuitBreakerResponse.FailureStatusCodes is int[], "Direct configuration API circuit breaker status codes should not expose a mutable array.");
+        var directRouteUpstreams = new List<RuntimeUpstreamResponse> { directUpstreamResponse };
+        var directRouteResponse = new RuntimeRouteResponse(
+            name: "home",
+            host: routeResponses[0].Host,
+            pathPrefix: routeResponses[0].PathPrefix,
+            action: routeResponses[0].Action,
+            loadBalancingPolicy: routeResponses[0].LoadBalancingPolicy,
+            healthCheck: routeResponses[0].HealthCheck,
+            upstreams: directRouteUpstreams,
+            httpsRedirect: routeResponses[0].HttpsRedirect,
+            canonicalHost: routeResponses[0].CanonicalHost,
+            headerPolicy: routeResponses[0].HeaderPolicy,
+            pathRewrite: routeResponses[0].PathRewrite,
+            redirect: routeResponses[0].Redirect,
+            staticResponse: routeResponses[0].StaticResponse,
+            maintenance: routeResponses[0].Maintenance,
+            cache: routeResponses[0].Cache,
+            resolvedOptions: routeResponses[0].ResolvedOptions,
+            siteName: "home",
+            retry: routeResponses[0].Retry);
+
+        directRouteUpstreams[0] = routeResponses[0].Upstreams[0];
+        directRouteUpstreams.Clear();
+
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeRouteResponse(
+            name: "home",
+            host: routeResponses[0].Host,
+            pathPrefix: routeResponses[0].PathPrefix,
+            action: routeResponses[0].Action,
+            loadBalancingPolicy: routeResponses[0].LoadBalancingPolicy,
+            healthCheck: routeResponses[0].HealthCheck,
+            upstreams: null!,
+            httpsRedirect: routeResponses[0].HttpsRedirect,
+            canonicalHost: routeResponses[0].CanonicalHost,
+            headerPolicy: routeResponses[0].HeaderPolicy,
+            pathRewrite: routeResponses[0].PathRewrite,
+            redirect: routeResponses[0].Redirect,
+            staticResponse: routeResponses[0].StaticResponse,
+            maintenance: routeResponses[0].Maintenance,
+            cache: routeResponses[0].Cache,
+            resolvedOptions: routeResponses[0].ResolvedOptions,
+            siteName: "home",
+            retry: routeResponses[0].Retry));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeRouteResponse(
+            name: "home",
+            host: routeResponses[0].Host,
+            pathPrefix: routeResponses[0].PathPrefix,
+            action: routeResponses[0].Action,
+            loadBalancingPolicy: routeResponses[0].LoadBalancingPolicy,
+            healthCheck: routeResponses[0].HealthCheck,
+            upstreams: [],
+            httpsRedirect: routeResponses[0].HttpsRedirect,
+            canonicalHost: routeResponses[0].CanonicalHost,
+            headerPolicy: routeResponses[0].HeaderPolicy,
+            pathRewrite: routeResponses[0].PathRewrite,
+            redirect: routeResponses[0].Redirect,
+            staticResponse: routeResponses[0].StaticResponse,
+            maintenance: routeResponses[0].Maintenance,
+            cache: routeResponses[0].Cache,
+            resolvedOptions: routeResponses[0].ResolvedOptions,
+            siteName: "home",
+            retry: null!));
+        AssertEx.Equal("local", directRouteResponse.Upstreams[0].Name);
+        AssertEx.Equal("home", directRouteResponse.SiteName);
+        AssertEx.False(directRouteResponse.Upstreams is RuntimeUpstreamResponse[], "Direct configuration API route upstreams should not expose a mutable array.");
     }
 
     public static void ConfigurationValidationResultNamesValidationOutcomes()

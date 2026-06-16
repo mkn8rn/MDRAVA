@@ -5,27 +5,95 @@ using BusinessRuntimeRouteResolvedOptionsProjection = MDRAVA.BLL.Configuration.R
 
 namespace MDRAVA.API.Controllers;
 
-public sealed record RuntimeRouteResponse(
-    string Name,
-    string Host,
-    string PathPrefix,
-    RuntimeRouteActionResponse Action,
-    string LoadBalancingPolicy,
-    RuntimeHealthCheckResponse HealthCheck,
-    IReadOnlyList<RuntimeUpstreamResponse> Upstreams,
-    RuntimeHttpsRedirectResponse HttpsRedirect,
-    RuntimeCanonicalHostResponse CanonicalHost,
-    RuntimeHeaderPolicyResponse HeaderPolicy,
-    RuntimePathRewriteResponse PathRewrite,
-    RuntimeRedirectResponse Redirect,
-    RuntimeStaticResponseResponse StaticResponse,
-    RuntimeMaintenanceResponse Maintenance,
-    RuntimeCachePolicyResponse Cache,
-    RuntimeRouteResolvedOptionsResponse ResolvedOptions)
+public sealed record RuntimeRouteResponse
 {
-    public string SiteName { get; init; } = "";
+    public RuntimeRouteResponse(
+        string name,
+        string host,
+        string pathPrefix,
+        RuntimeRouteActionResponse action,
+        string loadBalancingPolicy,
+        RuntimeHealthCheckResponse healthCheck,
+        IReadOnlyList<RuntimeUpstreamResponse> upstreams,
+        RuntimeHttpsRedirectResponse httpsRedirect,
+        RuntimeCanonicalHostResponse canonicalHost,
+        RuntimeHeaderPolicyResponse headerPolicy,
+        RuntimePathRewriteResponse pathRewrite,
+        RuntimeRedirectResponse redirect,
+        RuntimeStaticResponseResponse staticResponse,
+        RuntimeMaintenanceResponse maintenance,
+        RuntimeCachePolicyResponse cache,
+        RuntimeRouteResolvedOptionsResponse resolvedOptions,
+        string siteName,
+        RuntimeRetryPolicyResponse retry)
+    {
+        ArgumentNullException.ThrowIfNull(healthCheck);
+        ArgumentNullException.ThrowIfNull(httpsRedirect);
+        ArgumentNullException.ThrowIfNull(canonicalHost);
+        ArgumentNullException.ThrowIfNull(headerPolicy);
+        ArgumentNullException.ThrowIfNull(pathRewrite);
+        ArgumentNullException.ThrowIfNull(redirect);
+        ArgumentNullException.ThrowIfNull(staticResponse);
+        ArgumentNullException.ThrowIfNull(maintenance);
+        ArgumentNullException.ThrowIfNull(cache);
+        ArgumentNullException.ThrowIfNull(resolvedOptions);
+        ArgumentNullException.ThrowIfNull(retry);
 
-    public RuntimeRetryPolicyResponse Retry { get; init; } = null!;
+        Name = name;
+        Host = host;
+        PathPrefix = pathPrefix;
+        Action = action;
+        LoadBalancingPolicy = loadBalancingPolicy;
+        HealthCheck = healthCheck;
+        Upstreams = ApiResponseList.Copy(upstreams);
+        HttpsRedirect = httpsRedirect;
+        CanonicalHost = canonicalHost;
+        HeaderPolicy = headerPolicy;
+        PathRewrite = pathRewrite;
+        Redirect = redirect;
+        StaticResponse = staticResponse;
+        Maintenance = maintenance;
+        Cache = cache;
+        ResolvedOptions = resolvedOptions;
+        SiteName = siteName;
+        Retry = retry;
+    }
+
+    public string Name { get; }
+
+    public string Host { get; }
+
+    public string PathPrefix { get; }
+
+    public RuntimeRouteActionResponse Action { get; }
+
+    public string LoadBalancingPolicy { get; }
+
+    public RuntimeHealthCheckResponse HealthCheck { get; }
+
+    public IReadOnlyList<RuntimeUpstreamResponse> Upstreams { get; }
+
+    public RuntimeHttpsRedirectResponse HttpsRedirect { get; }
+
+    public RuntimeCanonicalHostResponse CanonicalHost { get; }
+
+    public RuntimeHeaderPolicyResponse HeaderPolicy { get; }
+
+    public RuntimePathRewriteResponse PathRewrite { get; }
+
+    public RuntimeRedirectResponse Redirect { get; }
+
+    public RuntimeStaticResponseResponse StaticResponse { get; }
+
+    public RuntimeMaintenanceResponse Maintenance { get; }
+
+    public RuntimeCachePolicyResponse Cache { get; }
+
+    public RuntimeRouteResolvedOptionsResponse ResolvedOptions { get; }
+
+    public string SiteName { get; }
+
+    public RuntimeRetryPolicyResponse Retry { get; }
 
     public static IReadOnlyList<RuntimeRouteResponse> FromRoutes(IEnumerable<BusinessRuntimeRouteProjection> routes)
     {
@@ -39,26 +107,24 @@ public sealed record RuntimeRouteResponse(
         ArgumentNullException.ThrowIfNull(route);
 
         return new RuntimeRouteResponse(
-            route.Name,
-            route.Host,
-            route.PathPrefix,
-            RuntimeRouteActionResponseMapper.FromAction(route.Action),
-            route.LoadBalancingPolicy,
-            RuntimeHealthCheckResponse.FromProjection(route.HealthCheck),
-            RuntimeUpstreamResponse.FromUpstreams(route.Upstreams),
-            RuntimeHttpsRedirectResponse.FromProjection(route.HttpsRedirect),
-            RuntimeCanonicalHostResponse.FromProjection(route.CanonicalHost),
-            RuntimeHeaderPolicyResponse.FromProjection(route.HeaderPolicy),
-            RuntimePathRewriteResponse.FromProjection(route.PathRewrite),
-            RuntimeRedirectResponse.FromProjection(route.Redirect),
-            RuntimeStaticResponseResponse.FromProjection(route.StaticResponse),
-            RuntimeMaintenanceResponse.FromProjection(route.Maintenance),
-            RuntimeCachePolicyResponse.FromProjection(route.Cache),
-            RuntimeRouteResolvedOptionsResponse.FromProjection(route.ResolvedOptions))
-        {
-            SiteName = route.SiteName,
-            Retry = RuntimeRetryPolicyResponse.FromProjection(route.Retry)
-        };
+            name: route.Name,
+            host: route.Host,
+            pathPrefix: route.PathPrefix,
+            action: RuntimeRouteActionResponseMapper.FromAction(route.Action),
+            loadBalancingPolicy: route.LoadBalancingPolicy,
+            healthCheck: RuntimeHealthCheckResponse.FromProjection(route.HealthCheck),
+            upstreams: RuntimeUpstreamResponse.FromUpstreams(route.Upstreams),
+            httpsRedirect: RuntimeHttpsRedirectResponse.FromProjection(route.HttpsRedirect),
+            canonicalHost: RuntimeCanonicalHostResponse.FromProjection(route.CanonicalHost),
+            headerPolicy: RuntimeHeaderPolicyResponse.FromProjection(route.HeaderPolicy),
+            pathRewrite: RuntimePathRewriteResponse.FromProjection(route.PathRewrite),
+            redirect: RuntimeRedirectResponse.FromProjection(route.Redirect),
+            staticResponse: RuntimeStaticResponseResponse.FromProjection(route.StaticResponse),
+            maintenance: RuntimeMaintenanceResponse.FromProjection(route.Maintenance),
+            cache: RuntimeCachePolicyResponse.FromProjection(route.Cache),
+            resolvedOptions: RuntimeRouteResolvedOptionsResponse.FromProjection(route.ResolvedOptions),
+            siteName: route.SiteName,
+            retry: RuntimeRetryPolicyResponse.FromProjection(route.Retry));
     }
 }
 
