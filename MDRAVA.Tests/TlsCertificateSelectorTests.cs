@@ -61,6 +61,31 @@ internal static class TlsCertificateSelectorTests
         AssertEx.Equal("home.test", input.SniCertificates[0].HostName);
         AssertEx.Equal("Home.Test", input.HostName);
         AssertEx.False(input.SniCertificates is RuntimeSniCertificateBinding[], "TLS selection SNI certificates should not expose a mutable array.");
+        AssertEx.Throws<ArgumentNullException>(() => TlsCertificateSelectionInputMapper.FromSources(
+            null!,
+            "default",
+            [],
+            "home.test"));
+        AssertEx.Throws<ArgumentNullException>(() => TlsCertificateSelectionInputMapper.FromSources(
+            certificates,
+            "default",
+            null!,
+            "home.test"));
+        AssertEx.Throws<ArgumentNullException>(() => TlsCertificateSelectionInputMapper.FromSources(
+            [new KeyValuePair<string, RuntimeCertificate>(null!, RuntimeCertificate("broken", defaultCertificate))],
+            "default",
+            [],
+            "home.test"));
+        AssertEx.Throws<ArgumentNullException>(() => TlsCertificateSelectionInputMapper.FromSources(
+            [new KeyValuePair<string, RuntimeCertificate>("broken", null!)],
+            "default",
+            [],
+            "home.test"));
+        AssertEx.Throws<ArgumentNullException>(() => TlsCertificateSelectionInputMapper.FromSources(
+            certificates,
+            "default",
+            [null!],
+            "home.test"));
     }
 
     public static void SelectsSniCertificateBeforeDefaultAndFallsBackSafely()

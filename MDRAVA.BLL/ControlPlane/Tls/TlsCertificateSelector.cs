@@ -41,13 +41,9 @@ public sealed record TlsCertificateSelectionInput
         ArgumentNullException.ThrowIfNull(certificates);
         ArgumentNullException.ThrowIfNull(sniCertificates);
 
-        Certificates = new ReadOnlyDictionary<string, RuntimeCertificate>(
-            certificates.ToDictionary(
-                static certificate => certificate.Key,
-                static certificate => certificate.Value,
-                StringComparer.OrdinalIgnoreCase));
+        Certificates = CopyCertificates(certificates);
         DefaultCertificateId = defaultCertificateId;
-        SniCertificates = new ReadOnlyCollection<RuntimeSniCertificateBinding>(sniCertificates.ToArray());
+        SniCertificates = RuntimeList.Copy(sniCertificates);
         HostName = hostName;
     }
 
@@ -58,6 +54,20 @@ public sealed record TlsCertificateSelectionInput
     public IReadOnlyList<RuntimeSniCertificateBinding> SniCertificates { get; }
 
     public string? HostName { get; }
+
+    private static IReadOnlyDictionary<string, RuntimeCertificate> CopyCertificates(
+        IEnumerable<KeyValuePair<string, RuntimeCertificate>> certificates)
+    {
+        var copy = new Dictionary<string, RuntimeCertificate>(StringComparer.OrdinalIgnoreCase);
+        foreach (var certificate in certificates)
+        {
+            ArgumentNullException.ThrowIfNull(certificate.Key);
+            ArgumentNullException.ThrowIfNull(certificate.Value);
+            copy.Add(certificate.Key, certificate.Value);
+        }
+
+        return new ReadOnlyDictionary<string, RuntimeCertificate>(copy);
+    }
 }
 
 public static class TlsCertificateSelectionInputMapper
