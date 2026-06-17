@@ -153,10 +153,11 @@ public sealed record ProxyRetryAdmissionInput
         bool HasRequestBody)
     {
         ArgumentNullException.ThrowIfNull(RetryMethods);
+        ArgumentNullException.ThrowIfNull(RequestMethod);
 
         this.Enabled = Enabled;
         this.MaxAttempts = MaxAttempts;
-        this.RetryMethods = new ReadOnlyCollection<string>(RetryMethods.ToArray());
+        this.RetryMethods = CopyRetryMethods(RetryMethods);
         this.RequestMethod = RequestMethod;
         this.HasRequestBody = HasRequestBody;
     }
@@ -170,6 +171,18 @@ public sealed record ProxyRetryAdmissionInput
     public string RequestMethod { get; }
 
     public bool HasRequestBody { get; }
+
+    private static IReadOnlyList<string> CopyRetryMethods(IReadOnlyList<string> methods)
+    {
+        var copy = new List<string>();
+        foreach (var method in methods)
+        {
+            ArgumentNullException.ThrowIfNull(method);
+            copy.Add(method);
+        }
+
+        return new ReadOnlyCollection<string>(copy);
+    }
 }
 
 public sealed record ProxyRetryPlan(

@@ -772,6 +772,24 @@ internal static class ResilienceTests
         AssertEx.True(bodySkipped is ProxyRetryAdmissionDecision.SkippedDecision);
         AssertEx.Equal("request_body", ((ProxyRetryAdmissionDecision.SkippedDecision)bodySkipped).Reason);
         AssertEx.Equal(ProxyRetryAdmissionDecision.Allowed, allowed);
+        AssertEx.Throws<ArgumentNullException>(() => RetryAdmissionInput(
+            enabled: true,
+            maxAttempts: 2,
+            retryMethods: null!,
+            requestMethod: "GET",
+            hasRequestBody: false));
+        AssertEx.Throws<ArgumentNullException>(() => RetryAdmissionInput(
+            enabled: true,
+            maxAttempts: 2,
+            retryMethods: [null!],
+            requestMethod: "GET",
+            hasRequestBody: false));
+        AssertEx.Throws<ArgumentNullException>(() => RetryAdmissionInput(
+            enabled: true,
+            maxAttempts: 2,
+            retryMethods: ["GET"],
+            requestMethod: null!,
+            hasRequestBody: false));
     }
 
     public static void RetryPolicyCreatesExecutionPlanFromAdmission()
