@@ -320,6 +320,12 @@ internal static class ResilienceTests
         fixture.Circuit.RecordFailure(second.CircuitBreakerLease, "connect_failure");
 
         AssertEx.Equal(CircuitBreakerRuntimeState.Open, fixture.Circuit.Snapshot(StatusSource(route.Upstreams[0])).State);
+        AssertEx.Throws<ArgumentNullException>(() => new CircuitBreakerStatusSource(
+            null!,
+            CircuitBreakerPolicyInput.Disabled));
+        AssertEx.Throws<ArgumentNullException>(() => new CircuitBreakerStatusSource(
+            "route/upstream",
+            null!));
     }
 
     public static void UpstreamAttemptRecorderRecordsConfiguredStatusFailuresWithoutHealthFailure()
