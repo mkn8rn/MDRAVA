@@ -4099,6 +4099,12 @@ internal static class ConfigurationTests
         AssertRuntimeRouteProjectionRejects(loadBalancingPolicy: null!);
         AssertRuntimeRouteProjectionRejects(loadBalancingPolicy: " ");
         AssertRuntimeRouteProjectionRejects(siteName: null!);
+        AssertRuntimePathRewriteRejects(stripPrefix: null!);
+        AssertRuntimePathRewriteRejects(replacePrefix: null!);
+        AssertRuntimePathRewriteRejects(replacement: null!);
+        AssertRuntimePathRewriteProjectionRejects(stripPrefix: null!);
+        AssertRuntimePathRewriteProjectionRejects(replacePrefix: null!);
+        AssertRuntimePathRewriteProjectionRejects(replacement: null!);
         AssertEx.Equal("local-test", directRoute.Upstreams[0].Name);
         AssertEx.Equal("home", directRoute.SiteName);
         AssertEx.False(directRoute.Upstreams is RuntimeUpstreamProjection[]);
@@ -4282,6 +4288,28 @@ internal static class ConfigurationTests
                     RetryOnStatusCodes: [],
                     RetryMethods: [],
                     RetryBackoff: TimeSpan.Zero)));
+        }
+
+        static void AssertRuntimePathRewriteRejects(
+            string stripPrefix = "",
+            string replacePrefix = "",
+            string replacement = "")
+        {
+            AssertEx.Throws<ArgumentNullException>(() => new RuntimePathRewritePolicy(
+                stripPrefix,
+                replacePrefix,
+                replacement));
+        }
+
+        static void AssertRuntimePathRewriteProjectionRejects(
+            string stripPrefix = "",
+            string replacePrefix = "",
+            string replacement = "")
+        {
+            AssertEx.Throws<ArgumentNullException>(() => new RuntimePathRewriteProjection(
+                stripPrefix,
+                replacePrefix,
+                replacement));
         }
     }
 
