@@ -4163,6 +4163,14 @@ internal static class ConfigurationTests
         AssertRuntimeMaintenanceProjectionRejects(contentType: "text/plain\r\nX-Bad: value");
         AssertRuntimeMaintenanceProjectionRejects(body: null!);
         AssertRuntimeMaintenanceProjectionRejects(body: new string('x', 64 * 1024 + 1));
+        AssertRuntimeLogPersistenceRejects(maxFileBytes: 4095);
+        AssertRuntimeLogPersistenceRejects(maxFileBytes: 1024L * 1024 * 1024 + 1);
+        AssertRuntimeLogPersistenceRejects(maxFiles: 0);
+        AssertRuntimeLogPersistenceRejects(maxFiles: 129);
+        AssertRuntimeLogPersistenceProjectionRejects(maxFileBytes: 4095);
+        AssertRuntimeLogPersistenceProjectionRejects(maxFileBytes: 1024L * 1024 * 1024 + 1);
+        AssertRuntimeLogPersistenceProjectionRejects(maxFiles: 0);
+        AssertRuntimeLogPersistenceProjectionRejects(maxFiles: 129);
         AssertRuntimeRouteResolvedOptionsRejects(maxRequestBodyBytes: -1);
         AssertRuntimeRouteResolvedOptionsRejects(maxRequestBodyBytes: 1L * 1024 * 1024 * 1024 * 1024 + 1);
         AssertRuntimeRouteResolvedOptionsRejects(clientRequestHeadTimeout: TimeSpan.FromMilliseconds(99));
@@ -4516,6 +4524,28 @@ internal static class ConfigurationTests
                 clientRequestHeadTimeout ?? TimeSpan.FromSeconds(10),
                 upstreamResponseHeadTimeout ?? TimeSpan.FromSeconds(30),
                 AccessLogEnabled: true));
+        }
+
+        static void AssertRuntimeLogPersistenceRejects(
+            long maxFileBytes = 1_048_576,
+            int maxFiles = 8)
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeLogPersistenceOptions(
+                AccessLogEnabled: true,
+                AdminAuditEnabled: true,
+                maxFileBytes,
+                maxFiles));
+        }
+
+        static void AssertRuntimeLogPersistenceProjectionRejects(
+            long maxFileBytes = 1_048_576,
+            int maxFiles = 8)
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeLogPersistenceProjection(
+                AccessLogEnabled: true,
+                AdminAuditEnabled: true,
+                maxFileBytes,
+                maxFiles));
         }
     }
 
