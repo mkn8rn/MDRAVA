@@ -10,6 +10,19 @@ public sealed record RuntimeCircuitBreakerPolicy
         int HalfOpenMaxAttempts,
         IReadOnlyList<int> FailureStatusCodes)
     {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(FailureThreshold);
+        if (SamplingWindow <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(SamplingWindow));
+        }
+
+        if (OpenDuration <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(OpenDuration));
+        }
+
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(HalfOpenMaxAttempts);
+
         this.Enabled = Enabled;
         this.FailureThreshold = FailureThreshold;
         this.SamplingWindow = SamplingWindow;

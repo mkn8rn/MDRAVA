@@ -12,6 +12,18 @@ public sealed record RuntimeRetryPolicy
         IEnumerable<string> RetryMethods,
         TimeSpan RetryBackoff)
     {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaxAttempts);
+        if (PerAttemptTimeout is { } perAttemptTimeout
+            && perAttemptTimeout < TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(PerAttemptTimeout));
+        }
+
+        if (RetryBackoff < TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(RetryBackoff));
+        }
+
         this.Enabled = Enabled;
         this.MaxAttempts = MaxAttempts;
         this.PerAttemptTimeout = PerAttemptTimeout;

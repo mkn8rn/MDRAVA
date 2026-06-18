@@ -1267,6 +1267,33 @@ internal static class ConfigurationTests
             RetryOnStatusCodes: [],
             RetryMethods: null!,
             RetryBackoff: TimeSpan.FromMilliseconds(50)));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new RuntimeRetryProjection(
+            Enabled: true,
+            MaxAttempts: 0,
+            PerAttemptTimeout: TimeSpan.FromSeconds(1),
+            RetryOnConnectFailure: true,
+            RetryOnUpstreamResponseHeadTimeout: true,
+            RetryOnStatusCodes: [],
+            RetryMethods: [],
+            RetryBackoff: TimeSpan.FromMilliseconds(50)));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new RuntimeRetryProjection(
+            Enabled: true,
+            MaxAttempts: 2,
+            PerAttemptTimeout: TimeSpan.FromTicks(-1),
+            RetryOnConnectFailure: true,
+            RetryOnUpstreamResponseHeadTimeout: true,
+            RetryOnStatusCodes: [],
+            RetryMethods: [],
+            RetryBackoff: TimeSpan.FromMilliseconds(50)));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new RuntimeRetryProjection(
+            Enabled: true,
+            MaxAttempts: 2,
+            PerAttemptTimeout: TimeSpan.FromSeconds(1),
+            RetryOnConnectFailure: true,
+            RetryOnUpstreamResponseHeadTimeout: true,
+            RetryOnStatusCodes: [],
+            RetryMethods: [],
+            RetryBackoff: TimeSpan.FromTicks(-1)));
         AssertEx.False(admin.Urls is string[]);
         AssertEx.False(adminProjection.Urls is string[]);
         AssertEx.False(forwardedHeaders.TrustedProxies is string[]);
@@ -1280,6 +1307,34 @@ internal static class ConfigurationTests
         AssertEx.False(runtimeCertificate.Domains is string[]);
         AssertEx.False(certificateProjection.Domains is string[]);
         AssertEx.False(circuitBreaker.FailureStatusCodes is int[]);
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new RuntimeCircuitBreakerPolicy(
+            Enabled: true,
+            FailureThreshold: 0,
+            SamplingWindow: TimeSpan.FromSeconds(30),
+            OpenDuration: TimeSpan.FromSeconds(10),
+            HalfOpenMaxAttempts: 1,
+            FailureStatusCodes: []));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new RuntimeCircuitBreakerPolicy(
+            Enabled: true,
+            FailureThreshold: 2,
+            SamplingWindow: TimeSpan.Zero,
+            OpenDuration: TimeSpan.FromSeconds(10),
+            HalfOpenMaxAttempts: 1,
+            FailureStatusCodes: []));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new RuntimeCircuitBreakerPolicy(
+            Enabled: true,
+            FailureThreshold: 2,
+            SamplingWindow: TimeSpan.FromSeconds(30),
+            OpenDuration: TimeSpan.Zero,
+            HalfOpenMaxAttempts: 1,
+            FailureStatusCodes: []));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new RuntimeCircuitBreakerPolicy(
+            Enabled: true,
+            FailureThreshold: 2,
+            SamplingWindow: TimeSpan.FromSeconds(30),
+            OpenDuration: TimeSpan.FromSeconds(10),
+            HalfOpenMaxAttempts: 0,
+            FailureStatusCodes: []));
         AssertEx.False(headerPolicy.SetRequestHeaders is ProxyHeaderField[]);
         AssertEx.False(headerPolicy.RemoveRequestHeaders is string[]);
         AssertEx.False(headerPolicy.SetResponseHeaders is ProxyHeaderField[]);
@@ -1356,6 +1411,33 @@ internal static class ConfigurationTests
             RetryOnStatusCodes: [],
             RetryMethods: [null!],
             RetryBackoff: TimeSpan.FromMilliseconds(50)));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new RuntimeRetryPolicy(
+            Enabled: true,
+            MaxAttempts: 0,
+            PerAttemptTimeout: TimeSpan.FromSeconds(1),
+            RetryOnConnectFailure: true,
+            RetryOnUpstreamResponseHeadTimeout: true,
+            RetryOnStatusCodes: [],
+            RetryMethods: [],
+            RetryBackoff: TimeSpan.FromMilliseconds(50)));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new RuntimeRetryPolicy(
+            Enabled: true,
+            MaxAttempts: 2,
+            PerAttemptTimeout: TimeSpan.FromTicks(-1),
+            RetryOnConnectFailure: true,
+            RetryOnUpstreamResponseHeadTimeout: true,
+            RetryOnStatusCodes: [],
+            RetryMethods: [],
+            RetryBackoff: TimeSpan.FromMilliseconds(50)));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new RuntimeRetryPolicy(
+            Enabled: true,
+            MaxAttempts: 2,
+            PerAttemptTimeout: TimeSpan.FromSeconds(1),
+            RetryOnConnectFailure: true,
+            RetryOnUpstreamResponseHeadTimeout: true,
+            RetryOnStatusCodes: [],
+            RetryMethods: [],
+            RetryBackoff: TimeSpan.FromTicks(-1)));
         var adminResponse = RuntimeAdminSecurityResponse.FromProjection(adminProjection);
         AssertEx.False(adminResponse.Urls is string[], "Admin security API URLs should not expose a mutable array.");
         var adminResponseUrls = new List<string> { adminResponse.Urls[0] };
@@ -3306,6 +3388,34 @@ internal static class ConfigurationTests
             OpenDuration: TimeSpan.FromSeconds(10),
             HalfOpenMaxAttempts: 1,
             FailureStatusCodes: null!));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new RuntimeCircuitBreakerProjection(
+            Enabled: true,
+            FailureThreshold: 0,
+            SamplingWindow: TimeSpan.FromSeconds(30),
+            OpenDuration: TimeSpan.FromSeconds(10),
+            HalfOpenMaxAttempts: 1,
+            FailureStatusCodes: []));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new RuntimeCircuitBreakerProjection(
+            Enabled: true,
+            FailureThreshold: 2,
+            SamplingWindow: TimeSpan.Zero,
+            OpenDuration: TimeSpan.FromSeconds(10),
+            HalfOpenMaxAttempts: 1,
+            FailureStatusCodes: []));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new RuntimeCircuitBreakerProjection(
+            Enabled: true,
+            FailureThreshold: 2,
+            SamplingWindow: TimeSpan.FromSeconds(30),
+            OpenDuration: TimeSpan.Zero,
+            HalfOpenMaxAttempts: 1,
+            FailureStatusCodes: []));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new RuntimeCircuitBreakerProjection(
+            Enabled: true,
+            FailureThreshold: 2,
+            SamplingWindow: TimeSpan.FromSeconds(30),
+            OpenDuration: TimeSpan.FromSeconds(10),
+            HalfOpenMaxAttempts: 0,
+            FailureStatusCodes: []));
         AssertEx.Throws<ArgumentNullException>(() => new RuntimeUpstreamProjection(
             RouteName: "home",
             Name: "local-test",

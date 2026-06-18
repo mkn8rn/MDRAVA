@@ -102,7 +102,7 @@ public static partial class ProxyConfigurationRuntimeMapper
     {
         return new RuntimeRetryPolicy(
             retry.Enabled,
-            Math.Max(1, retry.MaxAttempts),
+            retry.MaxAttempts,
             retry.PerAttemptTimeoutMs.HasValue && retry.PerAttemptTimeoutMs.Value > 0
                 ? TimeSpan.FromMilliseconds(retry.PerAttemptTimeoutMs.Value)
                 : null,
@@ -117,7 +117,7 @@ public static partial class ProxyConfigurationRuntimeMapper
                 .Select(static method => method.Trim().ToUpperInvariant())
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToArray(),
-            TimeSpan.FromMilliseconds(Math.Max(0, retry.RetryBackoffMilliseconds)));
+            TimeSpan.FromMilliseconds(retry.RetryBackoffMilliseconds));
     }
 
     private static RuntimeCircuitBreakerPolicy ToRuntimeCircuitBreaker(ProxyCircuitBreakerOptions circuitBreaker)
