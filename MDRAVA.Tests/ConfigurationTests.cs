@@ -4163,6 +4163,18 @@ internal static class ConfigurationTests
         AssertRuntimeMaintenanceProjectionRejects(contentType: "text/plain\r\nX-Bad: value");
         AssertRuntimeMaintenanceProjectionRejects(body: null!);
         AssertRuntimeMaintenanceProjectionRejects(body: new string('x', 64 * 1024 + 1));
+        AssertRuntimeRouteResolvedOptionsRejects(maxRequestBodyBytes: -1);
+        AssertRuntimeRouteResolvedOptionsRejects(maxRequestBodyBytes: 1L * 1024 * 1024 * 1024 * 1024 + 1);
+        AssertRuntimeRouteResolvedOptionsRejects(clientRequestHeadTimeout: TimeSpan.FromMilliseconds(99));
+        AssertRuntimeRouteResolvedOptionsRejects(clientRequestHeadTimeout: TimeSpan.FromMilliseconds(600001));
+        AssertRuntimeRouteResolvedOptionsRejects(upstreamResponseHeadTimeout: TimeSpan.FromMilliseconds(99));
+        AssertRuntimeRouteResolvedOptionsRejects(upstreamResponseHeadTimeout: TimeSpan.FromMilliseconds(600001));
+        AssertRuntimeRouteResolvedOptionsProjectionRejects(maxRequestBodyBytes: -1);
+        AssertRuntimeRouteResolvedOptionsProjectionRejects(maxRequestBodyBytes: 1L * 1024 * 1024 * 1024 * 1024 + 1);
+        AssertRuntimeRouteResolvedOptionsProjectionRejects(clientRequestHeadTimeout: TimeSpan.FromMilliseconds(99));
+        AssertRuntimeRouteResolvedOptionsProjectionRejects(clientRequestHeadTimeout: TimeSpan.FromMilliseconds(600001));
+        AssertRuntimeRouteResolvedOptionsProjectionRejects(upstreamResponseHeadTimeout: TimeSpan.FromMilliseconds(99));
+        AssertRuntimeRouteResolvedOptionsProjectionRejects(upstreamResponseHeadTimeout: TimeSpan.FromMilliseconds(600001));
         AssertEx.Equal("local-test", directRoute.Upstreams[0].Name);
         AssertEx.Equal("home", directRoute.SiteName);
         AssertEx.False(directRoute.Upstreams is RuntimeUpstreamProjection[]);
@@ -4480,6 +4492,30 @@ internal static class ConfigurationTests
                 retryAfterSeconds,
                 contentType,
                 body));
+        }
+
+        static void AssertRuntimeRouteResolvedOptionsRejects(
+            long maxRequestBodyBytes = 104857600,
+            TimeSpan? clientRequestHeadTimeout = null,
+            TimeSpan? upstreamResponseHeadTimeout = null)
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeRouteResolvedOptions(
+                maxRequestBodyBytes,
+                clientRequestHeadTimeout ?? TimeSpan.FromSeconds(10),
+                upstreamResponseHeadTimeout ?? TimeSpan.FromSeconds(30),
+                AccessLogEnabled: true));
+        }
+
+        static void AssertRuntimeRouteResolvedOptionsProjectionRejects(
+            long maxRequestBodyBytes = 104857600,
+            TimeSpan? clientRequestHeadTimeout = null,
+            TimeSpan? upstreamResponseHeadTimeout = null)
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeRouteResolvedOptionsProjection(
+                maxRequestBodyBytes,
+                clientRequestHeadTimeout ?? TimeSpan.FromSeconds(10),
+                upstreamResponseHeadTimeout ?? TimeSpan.FromSeconds(30),
+                AccessLogEnabled: true));
         }
     }
 
