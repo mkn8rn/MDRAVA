@@ -3489,6 +3489,14 @@ internal static class ConfigurationTests
             "replacement-cert");
         directSniCertificates.Clear();
 
+        AssertRuntimeSniCertificateBindingRejects(hostName: null!);
+        AssertRuntimeSniCertificateBindingRejects(hostName: " ");
+        AssertRuntimeSniCertificateBindingRejects(certificateId: null!);
+        AssertRuntimeSniCertificateBindingRejects(certificateId: " ");
+        AssertRuntimeSniCertificateBindingProjectionRejects(hostName: null!);
+        AssertRuntimeSniCertificateBindingProjectionRejects(hostName: " ");
+        AssertRuntimeSniCertificateBindingProjectionRejects(certificateId: null!);
+        AssertRuntimeSniCertificateBindingProjectionRejects(certificateId: " ");
         AssertEx.Throws<ArgumentNullException>(() => new RuntimeListenerProjection(
             Name: "main",
             Address: listener.Address,
@@ -3714,6 +3722,24 @@ internal static class ConfigurationTests
                 TlsEnabled: true,
                 key,
                 bindKey));
+        }
+
+        static void AssertRuntimeSniCertificateBindingRejects(
+            string hostName = "owned.example.test",
+            string certificateId = "owned-cert")
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeSniCertificateBinding(
+                hostName,
+                certificateId));
+        }
+
+        static void AssertRuntimeSniCertificateBindingProjectionRejects(
+            string hostName = "owned.example.test",
+            string certificateId = "owned-cert")
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeSniCertificateBindingProjection(
+                hostName,
+                certificateId));
         }
     }
 
