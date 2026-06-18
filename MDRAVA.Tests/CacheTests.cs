@@ -477,6 +477,28 @@ internal static class CacheTests
             lastClearReason: null,
             rejections: [],
             routes: [null!]));
+        AssertEx.Throws<ArgumentException>(() => new ProxyCacheStatusRouteSource(null!, true, 1024, 4096));
+        AssertEx.Throws<ArgumentException>(() => new ProxyCacheStatusRouteSource(" ", true, 1024, 4096));
+        AssertEx.Throws<ArgumentException>(() => new ProxyCacheRuntimeRejectionSnapshot(null!, 1));
+        AssertEx.Throws<ArgumentException>(() => new ProxyCacheRuntimeRejectionSnapshot(" ", 1));
+        AssertEx.Throws<ArgumentException>(() => new ProxyCacheRuntimeEntrySnapshot(null!, 11));
+        AssertEx.Throws<ArgumentException>(() => new ProxyCacheRuntimeEntrySnapshot(" ", 11));
+        AssertEx.Throws<ArgumentException>(() => ProxyCacheRejectionStatus.FromSources(null!, 1));
+        AssertEx.Throws<ArgumentException>(() => ProxyCacheRejectionStatus.FromSources(" ", 1));
+        AssertEx.Throws<ArgumentException>(() => ProxyCacheRouteStatus.FromSources(
+            null!,
+            enabled: true,
+            maxEntryBytes: 1024,
+            maxTotalBytes: 4096,
+            currentEntryCount: 1,
+            currentBytes: 11));
+        AssertEx.Throws<ArgumentException>(() => ProxyCacheRouteStatus.FromSources(
+            " ",
+            enabled: true,
+            maxEntryBytes: 1024,
+            maxTotalBytes: 4096,
+            currentEntryCount: 1,
+            currentBytes: 11));
         var statusResponse = ProxyCacheStatusResponse.FromStatus(status);
         AssertEx.False(statusResponse.Rejections is ProxyCacheRejectionStatusResponse[], "Cache API rejections should not expose a mutable array.");
         AssertEx.False(statusResponse.Routes is ProxyCacheRouteStatusResponse[], "Cache API routes should not expose a mutable array.");

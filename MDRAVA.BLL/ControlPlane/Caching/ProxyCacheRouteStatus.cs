@@ -10,6 +10,8 @@ public sealed record ProxyCacheRouteStatus
         int currentEntryCount,
         long currentBytes)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(routeName);
+
         RouteName = routeName;
         Enabled = enabled;
         MaxEntryBytes = maxEntryBytes;
@@ -38,6 +40,8 @@ public sealed record ProxyCacheRouteStatus
         int currentEntryCount,
         long currentBytes)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(routeName);
+
         return new ProxyCacheRouteStatus(
             routeName,
             enabled,

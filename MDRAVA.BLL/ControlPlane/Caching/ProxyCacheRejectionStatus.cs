@@ -6,6 +6,8 @@ public sealed record ProxyCacheRejectionStatus
         string reason,
         long count)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+
         Reason = reason;
         Count = count;
     }
@@ -18,6 +20,8 @@ public sealed record ProxyCacheRejectionStatus
         string reason,
         long count)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+
         return new ProxyCacheRejectionStatus(
             reason,
             count);

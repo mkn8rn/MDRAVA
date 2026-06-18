@@ -10,11 +10,30 @@ public interface IProxyCacheRuntimeStatusSource
     ProxyCacheRuntimeStatusSnapshot ReadSnapshot();
 }
 
-public sealed record ProxyCacheStatusRouteSource(
-    string RouteName,
-    bool Enabled,
-    long MaxEntryBytes,
-    long MaxTotalBytes);
+public sealed record ProxyCacheStatusRouteSource
+{
+    public ProxyCacheStatusRouteSource(
+        string RouteName,
+        bool Enabled,
+        long MaxEntryBytes,
+        long MaxTotalBytes)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(RouteName);
+
+        this.RouteName = RouteName;
+        this.Enabled = Enabled;
+        this.MaxEntryBytes = MaxEntryBytes;
+        this.MaxTotalBytes = MaxTotalBytes;
+    }
+
+    public string RouteName { get; }
+
+    public bool Enabled { get; }
+
+    public long MaxEntryBytes { get; }
+
+    public long MaxTotalBytes { get; }
+}
 
 public sealed record ProxyCacheRuntimeStatusSnapshot
 {
@@ -70,10 +89,36 @@ public sealed record ProxyCacheRuntimeStatusSnapshot
     public IReadOnlyList<ProxyCacheRuntimeEntrySnapshot> Entries { get; }
 }
 
-public sealed record ProxyCacheRuntimeRejectionSnapshot(
-    string Reason,
-    long Count);
+public sealed record ProxyCacheRuntimeRejectionSnapshot
+{
+    public ProxyCacheRuntimeRejectionSnapshot(
+        string Reason,
+        long Count)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(Reason);
 
-public sealed record ProxyCacheRuntimeEntrySnapshot(
-    string RouteName,
-    long SizeBytes);
+        this.Reason = Reason;
+        this.Count = Count;
+    }
+
+    public string Reason { get; }
+
+    public long Count { get; }
+}
+
+public sealed record ProxyCacheRuntimeEntrySnapshot
+{
+    public ProxyCacheRuntimeEntrySnapshot(
+        string RouteName,
+        long SizeBytes)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(RouteName);
+
+        this.RouteName = RouteName;
+        this.SizeBytes = SizeBytes;
+    }
+
+    public string RouteName { get; }
+
+    public long SizeBytes { get; }
+}
