@@ -499,6 +499,53 @@ internal static class CacheTests
             maxTotalBytes: 4096,
             currentEntryCount: 1,
             currentBytes: 11));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyCacheStatusRouteSource("api", true, -1, 4096));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyCacheStatusRouteSource("api", true, 1024, -1));
+        AssertRuntimeSnapshotRejects(entryCount: -1);
+        AssertRuntimeSnapshotRejects(approximateBytes: -1);
+        AssertRuntimeSnapshotRejects(hitCount: -1);
+        AssertRuntimeSnapshotRejects(missCount: -1);
+        AssertRuntimeSnapshotRejects(storeCount: -1);
+        AssertRuntimeSnapshotRejects(evictionCount: -1);
+        AssertRuntimeSnapshotRejects(storeRejectionCount: -1);
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyCacheRuntimeRejectionSnapshot("authorization", -1));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyCacheRuntimeEntrySnapshot("api", -1));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => ProxyCacheRejectionStatus.FromSources("authorization", -1));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => ProxyCacheRouteStatus.FromSources(
+            "api",
+            enabled: true,
+            maxEntryBytes: -1,
+            maxTotalBytes: 4096,
+            currentEntryCount: 1,
+            currentBytes: 11));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => ProxyCacheRouteStatus.FromSources(
+            "api",
+            enabled: true,
+            maxEntryBytes: 1024,
+            maxTotalBytes: -1,
+            currentEntryCount: 1,
+            currentBytes: 11));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => ProxyCacheRouteStatus.FromSources(
+            "api",
+            enabled: true,
+            maxEntryBytes: 1024,
+            maxTotalBytes: 4096,
+            currentEntryCount: -1,
+            currentBytes: 11));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => ProxyCacheRouteStatus.FromSources(
+            "api",
+            enabled: true,
+            maxEntryBytes: 1024,
+            maxTotalBytes: 4096,
+            currentEntryCount: 1,
+            currentBytes: -1));
+        AssertCacheStatusRejects(entryCount: -1);
+        AssertCacheStatusRejects(approximateBytes: -1);
+        AssertCacheStatusRejects(hitCount: -1);
+        AssertCacheStatusRejects(missCount: -1);
+        AssertCacheStatusRejects(storeCount: -1);
+        AssertCacheStatusRejects(evictionCount: -1);
+        AssertCacheStatusRejects(storeRejectionCount: -1);
         var statusResponse = ProxyCacheStatusResponse.FromStatus(status);
         AssertEx.False(statusResponse.Rejections is ProxyCacheRejectionStatusResponse[], "Cache API rejections should not expose a mutable array.");
         AssertEx.False(statusResponse.Routes is ProxyCacheRouteStatusResponse[], "Cache API routes should not expose a mutable array.");
@@ -550,6 +597,52 @@ internal static class CacheTests
         AssertEx.Equal("api", directStatusResponse.Routes[0].RouteName);
         AssertEx.False(directStatusResponse.Rejections is ProxyCacheRejectionStatusResponse[], "Direct cache API rejections should not expose a mutable array.");
         AssertEx.False(directStatusResponse.Routes is ProxyCacheRouteStatusResponse[], "Direct cache API routes should not expose a mutable array.");
+
+        static void AssertRuntimeSnapshotRejects(
+            int entryCount = 0,
+            long approximateBytes = 0,
+            long hitCount = 0,
+            long missCount = 0,
+            long storeCount = 0,
+            long evictionCount = 0,
+            long storeRejectionCount = 0)
+        {
+            AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyCacheRuntimeStatusSnapshot(
+                entryCount,
+                approximateBytes,
+                hitCount,
+                missCount,
+                storeCount,
+                evictionCount,
+                storeRejectionCount,
+                LastClearedAtUtc: null,
+                LastClearReason: null,
+                Rejections: [],
+                Entries: []));
+        }
+
+        static void AssertCacheStatusRejects(
+            int entryCount = 0,
+            long approximateBytes = 0,
+            long hitCount = 0,
+            long missCount = 0,
+            long storeCount = 0,
+            long evictionCount = 0,
+            long storeRejectionCount = 0)
+        {
+            AssertEx.Throws<ArgumentOutOfRangeException>(() => ProxyCacheStatus.FromSources(
+                entryCount,
+                approximateBytes,
+                hitCount,
+                missCount,
+                storeCount,
+                evictionCount,
+                storeRejectionCount,
+                lastClearedAtUtc: null,
+                lastClearReason: null,
+                rejections: [],
+                routes: []));
+        }
     }
 
     public static async Task OversizedResponseIsStreamedButNotCached()

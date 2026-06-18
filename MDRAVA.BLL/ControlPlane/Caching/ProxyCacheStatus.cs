@@ -17,6 +17,13 @@ public sealed record ProxyCacheStatus
     {
         ArgumentNullException.ThrowIfNull(rejections);
         ArgumentNullException.ThrowIfNull(routes);
+        ArgumentOutOfRangeException.ThrowIfNegative(entryCount);
+        ArgumentOutOfRangeException.ThrowIfNegative(approximateBytes);
+        ArgumentOutOfRangeException.ThrowIfNegative(hitCount);
+        ArgumentOutOfRangeException.ThrowIfNegative(missCount);
+        ArgumentOutOfRangeException.ThrowIfNegative(storeCount);
+        ArgumentOutOfRangeException.ThrowIfNegative(evictionCount);
+        ArgumentOutOfRangeException.ThrowIfNegative(storeRejectionCount);
 
         EntryCount = entryCount;
         ApproximateBytes = approximateBytes;
@@ -68,6 +75,13 @@ public sealed record ProxyCacheStatus
     {
         ArgumentNullException.ThrowIfNull(rejections);
         ArgumentNullException.ThrowIfNull(routes);
+        ArgumentOutOfRangeException.ThrowIfNegative(entryCount);
+        ArgumentOutOfRangeException.ThrowIfNegative(approximateBytes);
+        ArgumentOutOfRangeException.ThrowIfNegative(hitCount);
+        ArgumentOutOfRangeException.ThrowIfNegative(missCount);
+        ArgumentOutOfRangeException.ThrowIfNegative(storeCount);
+        ArgumentOutOfRangeException.ThrowIfNegative(evictionCount);
+        ArgumentOutOfRangeException.ThrowIfNegative(storeRejectionCount);
 
         return new ProxyCacheStatus(
             entryCount,

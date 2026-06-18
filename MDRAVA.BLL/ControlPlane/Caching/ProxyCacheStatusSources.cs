@@ -19,6 +19,8 @@ public sealed record ProxyCacheStatusRouteSource
         long MaxTotalBytes)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(RouteName);
+        ArgumentOutOfRangeException.ThrowIfNegative(MaxEntryBytes);
+        ArgumentOutOfRangeException.ThrowIfNegative(MaxTotalBytes);
 
         this.RouteName = RouteName;
         this.Enabled = Enabled;
@@ -52,6 +54,13 @@ public sealed record ProxyCacheRuntimeStatusSnapshot
     {
         ArgumentNullException.ThrowIfNull(Rejections);
         ArgumentNullException.ThrowIfNull(Entries);
+        ArgumentOutOfRangeException.ThrowIfNegative(EntryCount);
+        ArgumentOutOfRangeException.ThrowIfNegative(ApproximateBytes);
+        ArgumentOutOfRangeException.ThrowIfNegative(HitCount);
+        ArgumentOutOfRangeException.ThrowIfNegative(MissCount);
+        ArgumentOutOfRangeException.ThrowIfNegative(StoreCount);
+        ArgumentOutOfRangeException.ThrowIfNegative(EvictionCount);
+        ArgumentOutOfRangeException.ThrowIfNegative(StoreRejectionCount);
 
         this.EntryCount = EntryCount;
         this.ApproximateBytes = ApproximateBytes;
@@ -96,6 +105,7 @@ public sealed record ProxyCacheRuntimeRejectionSnapshot
         long Count)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(Reason);
+        ArgumentOutOfRangeException.ThrowIfNegative(Count);
 
         this.Reason = Reason;
         this.Count = Count;
@@ -113,6 +123,7 @@ public sealed record ProxyCacheRuntimeEntrySnapshot
         long SizeBytes)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(RouteName);
+        ArgumentOutOfRangeException.ThrowIfNegative(SizeBytes);
 
         this.RouteName = RouteName;
         this.SizeBytes = SizeBytes;

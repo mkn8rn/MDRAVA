@@ -11,6 +11,10 @@ public sealed record ProxyCacheRouteStatus
         long currentBytes)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(routeName);
+        ArgumentOutOfRangeException.ThrowIfNegative(maxEntryBytes);
+        ArgumentOutOfRangeException.ThrowIfNegative(maxTotalBytes);
+        ArgumentOutOfRangeException.ThrowIfNegative(currentEntryCount);
+        ArgumentOutOfRangeException.ThrowIfNegative(currentBytes);
 
         RouteName = routeName;
         Enabled = enabled;
@@ -41,6 +45,10 @@ public sealed record ProxyCacheRouteStatus
         long currentBytes)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(routeName);
+        ArgumentOutOfRangeException.ThrowIfNegative(maxEntryBytes);
+        ArgumentOutOfRangeException.ThrowIfNegative(maxTotalBytes);
+        ArgumentOutOfRangeException.ThrowIfNegative(currentEntryCount);
+        ArgumentOutOfRangeException.ThrowIfNegative(currentBytes);
 
         return new ProxyCacheRouteStatus(
             routeName,

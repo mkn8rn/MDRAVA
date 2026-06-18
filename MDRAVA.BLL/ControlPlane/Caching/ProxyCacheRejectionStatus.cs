@@ -7,6 +7,7 @@ public sealed record ProxyCacheRejectionStatus
         long count)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
 
         Reason = reason;
         Count = count;
@@ -21,6 +22,7 @@ public sealed record ProxyCacheRejectionStatus
         long count)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
 
         return new ProxyCacheRejectionStatus(
             reason,
