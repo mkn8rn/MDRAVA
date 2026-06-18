@@ -898,6 +898,41 @@ internal static class CacheTests
             () => new ProxyCacheRequestScope(route.Name, route.Host, "https", null!));
     }
 
+    public static void CacheStoreRejectsNullInputs()
+    {
+        var route = Route(CachePolicy());
+        var listener = Listener();
+        var scope = Scope(route, listener);
+        var request = Request("GET", "/resource", "cache.test");
+        var response = Response("200 OK", [new ProxyHeaderField("Content-Type", "text/plain")]);
+        var headers = response.Headers;
+        var body = Encoding.ASCII.GetBytes("cached");
+        var policy = CacheFacts(route.Cache);
+        var cache = new ResponseCacheStore(new ManualTimeProvider());
+
+        AssertEx.Throws<ArgumentNullException>(() => new ResponseCacheStore(null!));
+        AssertEx.Throws<ArgumentNullException>(() => cache.Get(null!, request, "/resource"));
+        AssertEx.Throws<ArgumentNullException>(() => cache.Get(scope, null!, "/resource"));
+        AssertEx.Throws<ArgumentNullException>(() => cache.Get(scope, request, null!));
+        AssertEx.Throws<ArgumentNullException>(
+            () => cache.Store(null!, request, "/resource", response, headers, body));
+        AssertEx.Throws<ArgumentNullException>(
+            () => cache.Store(scope, null!, "/resource", response, headers, body));
+        AssertEx.Throws<ArgumentNullException>(
+            () => cache.Store(scope, request, null!, response, headers, body));
+        AssertEx.Throws<ArgumentNullException>(
+            () => cache.Store(scope, request, "/resource", null!, headers, body));
+        AssertEx.Throws<ArgumentNullException>(
+            () => cache.Store(scope, request, "/resource", response, null!, body));
+        AssertEx.Throws<ArgumentNullException>(
+            () => cache.Store(scope, request, "/resource", response, [null!], body));
+        AssertEx.Throws<ArgumentNullException>(
+            () => cache.Store(scope, request, "/resource", response, headers, null!));
+        AssertEx.Throws<ArgumentNullException>(() => cache.RecordUncacheable(null!, "authorization"));
+        AssertEx.Throws<ArgumentNullException>(() => cache.RecordUncacheable(policy, null!));
+        AssertEx.Throws<ArgumentNullException>(() => cache.Clear(null!));
+    }
+
     public static void CacheAdministrationClearReturnsPostClearStatus()
     {
         var clearedAtUtc = new DateTimeOffset(2026, 6, 7, 10, 0, 0, TimeSpan.Zero);

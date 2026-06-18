@@ -20,6 +20,8 @@ public sealed partial class ResponseCacheStore : IProxyCacheControl
 
     public ResponseCacheStore(TimeProvider timeProvider)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
+
         _timeProvider = timeProvider;
     }
 
@@ -28,6 +30,10 @@ public sealed partial class ResponseCacheStore : IProxyCacheControl
         Http1RequestHead requestHead,
         string upstreamTarget)
     {
+        ArgumentNullException.ThrowIfNull(scope);
+        ArgumentNullException.ThrowIfNull(requestHead);
+        ArgumentNullException.ThrowIfNull(upstreamTarget);
+
         if (CreateKey(scope, requestHead, upstreamTarget) is not CacheKeyCreation.Created createdKey)
         {
             return ProxyCacheLookupResult.Miss;
@@ -64,6 +70,13 @@ public sealed partial class ResponseCacheStore : IProxyCacheControl
         IReadOnlyList<ProxyHeaderField> responseHeaders,
         byte[] body)
     {
+        ArgumentNullException.ThrowIfNull(scope);
+        ArgumentNullException.ThrowIfNull(requestHead);
+        ArgumentNullException.ThrowIfNull(upstreamTarget);
+        ArgumentNullException.ThrowIfNull(responseHead);
+        ArgumentNullException.ThrowIfNull(responseHeaders);
+        ArgumentNullException.ThrowIfNull(body);
+
         var keyCreation = CreateKey(scope, requestHead, upstreamTarget);
         if (keyCreation is not CacheKeyCreation.Created createdKey)
         {
@@ -125,6 +138,9 @@ public sealed partial class ResponseCacheStore : IProxyCacheControl
 
     public void RecordUncacheable(ProxyCachePolicyFacts policy, string reason)
     {
+        ArgumentNullException.ThrowIfNull(policy);
+        ArgumentNullException.ThrowIfNull(reason);
+
         if (policy.Enabled)
         {
             RecordRejection(reason);
@@ -156,6 +172,8 @@ public sealed partial class ResponseCacheStore : IProxyCacheControl
 
     public void Clear(string reason)
     {
+        ArgumentNullException.ThrowIfNull(reason);
+
         lock (_gate)
         {
             _entries.Clear();
@@ -167,6 +185,8 @@ public sealed partial class ResponseCacheStore : IProxyCacheControl
 
     private void RecordRejection(string reason)
     {
+        ArgumentNullException.ThrowIfNull(reason);
+
         lock (_gate)
         {
             _storeRejections++;

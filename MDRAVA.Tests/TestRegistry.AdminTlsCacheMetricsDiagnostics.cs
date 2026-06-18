@@ -106,6 +106,7 @@ internal static partial class TestRegistry
     Test("Cache status route source mapper reads routes without configuration snapshot", Sync(CacheTests.CacheStatusRouteSourceMapperReadsRoutesWithoutConfigurationSnapshot), TestTaxonomy.Caching, TestTaxonomy.Config),
     Test("Cache status route source mapper rejects null routes", Sync(CacheTests.CacheStatusRouteSourceMapperRejectsNullRoutes), TestTaxonomy.Caching, TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
     Test("Cache runtime mapper rejects null inputs", Sync(CacheTests.CacheRuntimeMapperRejectsNullInputs), TestTaxonomy.Caching, TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
+    Test("Cache store rejects null inputs", Sync(CacheTests.CacheStoreRejectsNullInputs), TestTaxonomy.Caching, TestTaxonomy.SecurityNegativePaths),
     Test("Cache administration clear returns post-clear status", Sync(CacheTests.CacheAdministrationClearReturnsPostClearStatus), TestTaxonomy.Caching, TestTaxonomy.Admin),
     Test("Metrics endpoint is protected by admin auth", MetricsTests.MetricsEndpointIsProtectedByAdminAuth, TestTaxonomy.Admin, TestTaxonomy.Metrics),
     Test("Metrics endpoint returns Prometheus text", Sync(MetricsTests.MetricsEndpointReturnsPrometheusText), TestTaxonomy.Metrics),

@@ -8,7 +8,11 @@ public sealed partial class ResponseCacheStore
     private static IReadOnlyList<ProxyHeaderField> SanitizeStoredHeaders(IReadOnlyList<ProxyHeaderField> headers)
     {
         return headers
-            .Where(static header => !Http1ManagedHeaderPolicy.IsManagedStoredResponseHeader(header.Name))
+            .Where(static header =>
+            {
+                ArgumentNullException.ThrowIfNull(header);
+                return !Http1ManagedHeaderPolicy.IsManagedStoredResponseHeader(header.Name);
+            })
             .Select(static header => new ProxyHeaderField(header.Name, header.Value))
             .ToArray();
     }
