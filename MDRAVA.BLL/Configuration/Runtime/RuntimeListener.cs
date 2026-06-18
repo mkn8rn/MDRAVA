@@ -53,6 +53,11 @@ public sealed record RuntimeListener
         RuntimeHttp3AltSvcOptions Http3AltSvc,
         RuntimeHttp2Limits Http2Limits)
     {
+        RuntimeListenerFacts.ValidateIdentity(
+            Name,
+            Address,
+            Port,
+            Transport);
         RuntimeListenerFacts.Validate(
             Port,
             Backlog,

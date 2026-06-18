@@ -3355,6 +3355,50 @@ internal static class ConfigurationTests
         AssertRuntimeListenerProjectionRejects(maxChunkLineBytes: 16385);
         AssertRuntimeListenerProjectionRejects(forwardingBufferBytes: 4095);
         AssertRuntimeListenerProjectionRejects(forwardingBufferBytes: 1048577);
+        AssertRuntimeListenerRejects(name: null!);
+        AssertRuntimeListenerRejects(name: " ");
+        AssertRuntimeListenerRejects(address: null!);
+        AssertRuntimeListenerRejects(address: " ");
+        AssertRuntimeListenerRejects(transport: (RuntimeListenerTransport)99);
+        AssertRuntimeListenerIdentityRejects(name: null!);
+        AssertRuntimeListenerIdentityRejects(name: " ");
+        AssertRuntimeListenerIdentityRejects(address: null!);
+        AssertRuntimeListenerIdentityRejects(address: " ");
+        AssertRuntimeListenerIdentityRejects(port: 0);
+        AssertRuntimeListenerIdentityRejects(port: 65536);
+        AssertRuntimeListenerIdentityRejects(transport: (RuntimeListenerTransport)99);
+        AssertRuntimeListenerIdentityProjectionRejects(name: null!);
+        AssertRuntimeListenerIdentityProjectionRejects(name: " ");
+        AssertRuntimeListenerIdentityProjectionRejects(address: null!);
+        AssertRuntimeListenerIdentityProjectionRejects(address: " ");
+        AssertRuntimeListenerIdentityProjectionRejects(port: 0);
+        AssertRuntimeListenerIdentityProjectionRejects(port: 65536);
+        AssertRuntimeListenerIdentityProjectionRejects(transport: (RuntimeListenerTransport)99);
+        AssertRuntimeListenerIdentityProjectionRejects(key: null!);
+        AssertRuntimeListenerIdentityProjectionRejects(key: " ");
+        AssertRuntimeListenerIdentityProjectionRejects(bindKey: null!);
+        AssertRuntimeListenerIdentityProjectionRejects(bindKey: " ");
+        AssertRuntimeListenerProjectionRejects(name: null!);
+        AssertRuntimeListenerProjectionRejects(name: " ");
+        AssertRuntimeListenerProjectionRejects(address: null!);
+        AssertRuntimeListenerProjectionRejects(address: " ");
+        AssertRuntimeListenerProjectionRejects(transport: (RuntimeListenerTransport)99);
+        AssertRuntimeQuicListenerIdentityRejects(name: null!);
+        AssertRuntimeQuicListenerIdentityRejects(name: " ");
+        AssertRuntimeQuicListenerIdentityRejects(address: null!);
+        AssertRuntimeQuicListenerIdentityRejects(address: " ");
+        AssertRuntimeQuicListenerIdentityRejects(port: 0);
+        AssertRuntimeQuicListenerIdentityRejects(port: 65536);
+        AssertRuntimeQuicListenerIdentityProjectionRejects(name: null!);
+        AssertRuntimeQuicListenerIdentityProjectionRejects(name: " ");
+        AssertRuntimeQuicListenerIdentityProjectionRejects(address: null!);
+        AssertRuntimeQuicListenerIdentityProjectionRejects(address: " ");
+        AssertRuntimeQuicListenerIdentityProjectionRejects(port: 0);
+        AssertRuntimeQuicListenerIdentityProjectionRejects(port: 65536);
+        AssertRuntimeQuicListenerIdentityProjectionRejects(key: null!);
+        AssertRuntimeQuicListenerIdentityProjectionRejects(key: " ");
+        AssertRuntimeQuicListenerIdentityProjectionRejects(bindKey: null!);
+        AssertRuntimeQuicListenerIdentityProjectionRejects(bindKey: " ");
         object http3 = listener.Http3;
         AssertEx.True(http3 is RuntimeHttp3ListenerReadinessProjection);
         AssertEx.False(http3 is RuntimeHttp3ListenerReadiness);
@@ -3502,7 +3546,10 @@ internal static class ConfigurationTests
         }
 
         static void AssertRuntimeListenerRejects(
+            string name = "main",
+            string address = "127.0.0.1",
             int port = 18080,
+            RuntimeListenerTransport transport = RuntimeListenerTransport.Http,
             int backlog = 128,
             int maxRequestHeadBytes = 32768,
             int maxResponseHeadBytes = 32768,
@@ -3510,11 +3557,11 @@ internal static class ConfigurationTests
             int forwardingBufferBytes = 8192)
         {
             AssertEx.Throws<ArgumentException>(() => new RuntimeListener(
-                Name: "main",
-                Address: "127.0.0.1",
+                Name: name,
+                Address: address,
                 Port: port,
                 Enabled: true,
-                Transport: RuntimeListenerTransport.Http,
+                Transport: transport,
                 DefaultCertificateId: null,
                 SniCertificates: [],
                 Backlog: backlog,
@@ -3524,8 +3571,43 @@ internal static class ConfigurationTests
                 ForwardingBufferBytes: forwardingBufferBytes));
         }
 
-        void AssertRuntimeListenerProjectionRejects(
+        static void AssertRuntimeListenerIdentityRejects(
+            string name = "main",
+            string address = "127.0.0.1",
             int port = 18080,
+            RuntimeListenerTransport transport = RuntimeListenerTransport.Http)
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeListenerIdentity(
+                name,
+                address,
+                port,
+                transport,
+                TlsEnabled: false));
+        }
+
+        static void AssertRuntimeListenerIdentityProjectionRejects(
+            string name = "main",
+            string address = "127.0.0.1",
+            int port = 18080,
+            RuntimeListenerTransport transport = RuntimeListenerTransport.Http,
+            string key = "main",
+            string bindKey = "127.0.0.1|18080|http")
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeListenerIdentityProjection(
+                name,
+                address,
+                port,
+                transport,
+                TlsEnabled: false,
+                key,
+                bindKey));
+        }
+
+        void AssertRuntimeListenerProjectionRejects(
+            string name = "main",
+            string address = "127.0.0.1",
+            int port = 18080,
+            RuntimeListenerTransport transport = RuntimeListenerTransport.Http,
             int backlog = 128,
             int maxRequestHeadBytes = 32768,
             int maxResponseHeadBytes = 32768,
@@ -3533,11 +3615,11 @@ internal static class ConfigurationTests
             int forwardingBufferBytes = 8192)
         {
             AssertEx.Throws<ArgumentException>(() => new RuntimeListenerProjection(
-                Name: "main",
-                Address: listener.Address,
+                Name: name,
+                Address: address,
                 Port: port,
                 Enabled: listener.Enabled,
-                Transport: listener.Transport,
+                Transport: transport,
                 DefaultCertificateId: listener.DefaultCertificateId,
                 SniCertificates: [],
                 Backlog: backlog,
@@ -3554,6 +3636,34 @@ internal static class ConfigurationTests
                 Http3ProtocolConfigured: listener.Http3ProtocolConfigured,
                 QuicIdentity: listener.QuicIdentity,
                 Http3: listener.Http3));
+        }
+
+        static void AssertRuntimeQuicListenerIdentityRejects(
+            string name = "main",
+            string address = "127.0.0.1",
+            int port = 18080)
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeQuicListenerIdentity(
+                name,
+                address,
+                port,
+                TlsEnabled: true));
+        }
+
+        static void AssertRuntimeQuicListenerIdentityProjectionRejects(
+            string name = "main",
+            string address = "127.0.0.1",
+            int port = 18080,
+            string key = "main|quic",
+            string bindKey = "127.0.0.1|18080|udp|quic")
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeQuicListenerIdentityProjection(
+                name,
+                address,
+                port,
+                TlsEnabled: true,
+                key,
+                bindKey));
         }
     }
 

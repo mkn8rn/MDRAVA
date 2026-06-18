@@ -1,12 +1,37 @@
 namespace MDRAVA.BLL.Configuration;
 
-public sealed record RuntimeListenerIdentity(
-    string Name,
-    string Address,
-    int Port,
-    RuntimeListenerTransport Transport,
-    bool TlsEnabled)
+public sealed record RuntimeListenerIdentity
 {
+    public RuntimeListenerIdentity(
+        string Name,
+        string Address,
+        int Port,
+        RuntimeListenerTransport Transport,
+        bool TlsEnabled)
+    {
+        RuntimeListenerFacts.ValidateIdentity(
+            Name,
+            Address,
+            Port,
+            Transport);
+
+        this.Name = Name;
+        this.Address = Address;
+        this.Port = Port;
+        this.Transport = Transport;
+        this.TlsEnabled = TlsEnabled;
+    }
+
+    public string Name { get; }
+
+    public string Address { get; }
+
+    public int Port { get; }
+
+    public RuntimeListenerTransport Transport { get; }
+
+    public bool TlsEnabled { get; }
+
     public string Key => Normalize(Name);
 
     public string BindKey => $"{Normalize(Address)}|{Port}|{RuntimeListenerTransportScheme.FromTransport(Transport)}";
