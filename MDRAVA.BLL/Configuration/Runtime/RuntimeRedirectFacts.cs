@@ -36,6 +36,23 @@ internal static class RuntimeRedirectFacts
         }
     }
 
+    public static void ValidateRouteRedirect(
+        int statusCode,
+        string targetUrl,
+        string targetPath)
+    {
+        ValidateRedirectStatusCode(statusCode);
+        ArgumentNullException.ThrowIfNull(targetUrl);
+        ArgumentNullException.ThrowIfNull(targetPath);
+
+        if (!string.IsNullOrWhiteSpace(targetPath) && !targetPath.StartsWith('/'))
+        {
+            throw new ArgumentException(
+                "Redirect target path must start with '/'.",
+                nameof(targetPath));
+        }
+    }
+
     private static void ValidateRedirectStatusCode(int statusCode)
     {
         if (statusCode is not (301 or 302 or 303 or 307 or 308))

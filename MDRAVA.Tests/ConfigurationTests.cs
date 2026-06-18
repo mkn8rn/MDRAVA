@@ -4119,6 +4119,16 @@ internal static class ConfigurationTests
         AssertRuntimeCanonicalHostProjectionRejects(targetHost: "https://api.test");
         AssertRuntimeCanonicalHostProjectionRejects(targetHost: "api test");
         AssertRuntimeCanonicalHostProjectionRejects(statusCode: 300);
+        AssertRuntimeRedirectRejects(statusCode: 300);
+        AssertRuntimeRedirectRejects(statusCode: 309);
+        AssertRuntimeRedirectRejects(targetUrl: null!);
+        AssertRuntimeRedirectRejects(targetPath: null!);
+        AssertRuntimeRedirectRejects(targetPath: "redirect");
+        AssertRuntimeRedirectProjectionRejects(statusCode: 300);
+        AssertRuntimeRedirectProjectionRejects(statusCode: 309);
+        AssertRuntimeRedirectProjectionRejects(targetUrl: null!);
+        AssertRuntimeRedirectProjectionRejects(targetPath: null!);
+        AssertRuntimeRedirectProjectionRejects(targetPath: "redirect");
         AssertRuntimePathRewriteRejects(stripPrefix: null!);
         AssertRuntimePathRewriteRejects(replacePrefix: null!);
         AssertRuntimePathRewriteRejects(replacement: null!);
@@ -4378,6 +4388,30 @@ internal static class ConfigurationTests
                 enabled,
                 targetHost,
                 statusCode));
+        }
+
+        static void AssertRuntimeRedirectRejects(
+            int statusCode = 308,
+            string targetUrl = "",
+            string targetPath = "/redirect")
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeRedirectPolicy(
+                statusCode,
+                targetUrl,
+                targetPath,
+                PreserveQuery: true));
+        }
+
+        static void AssertRuntimeRedirectProjectionRejects(
+            int statusCode = 308,
+            string targetUrl = "",
+            string targetPath = "/redirect")
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeRedirectProjection(
+                statusCode,
+                targetUrl,
+                targetPath,
+                PreserveQuery: true));
         }
 
         static void AssertRuntimePathRewriteRejects(
