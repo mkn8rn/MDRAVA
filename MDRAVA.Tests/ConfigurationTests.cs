@@ -4105,6 +4105,34 @@ internal static class ConfigurationTests
         AssertRuntimePathRewriteProjectionRejects(stripPrefix: null!);
         AssertRuntimePathRewriteProjectionRejects(replacePrefix: null!);
         AssertRuntimePathRewriteProjectionRejects(replacement: null!);
+        AssertRuntimeStaticResponseRejects(statusCode: 199);
+        AssertRuntimeStaticResponseRejects(statusCode: 600);
+        AssertRuntimeStaticResponseRejects(contentType: null!);
+        AssertRuntimeStaticResponseRejects(contentType: " ");
+        AssertRuntimeStaticResponseRejects(contentType: "text/plain\r\nX-Bad: value");
+        AssertRuntimeStaticResponseRejects(body: null!);
+        AssertRuntimeStaticResponseRejects(body: new string('x', 64 * 1024 + 1));
+        AssertRuntimeStaticResponseProjectionRejects(statusCode: 199);
+        AssertRuntimeStaticResponseProjectionRejects(statusCode: 600);
+        AssertRuntimeStaticResponseProjectionRejects(contentType: null!);
+        AssertRuntimeStaticResponseProjectionRejects(contentType: " ");
+        AssertRuntimeStaticResponseProjectionRejects(contentType: "text/plain\r\nX-Bad: value");
+        AssertRuntimeStaticResponseProjectionRejects(body: null!);
+        AssertRuntimeStaticResponseProjectionRejects(body: new string('x', 64 * 1024 + 1));
+        AssertRuntimeMaintenanceRejects(retryAfterSeconds: -1);
+        AssertRuntimeMaintenanceRejects(retryAfterSeconds: 86401);
+        AssertRuntimeMaintenanceRejects(contentType: null!);
+        AssertRuntimeMaintenanceRejects(contentType: " ");
+        AssertRuntimeMaintenanceRejects(contentType: "text/plain\r\nX-Bad: value");
+        AssertRuntimeMaintenanceRejects(body: null!);
+        AssertRuntimeMaintenanceRejects(body: new string('x', 64 * 1024 + 1));
+        AssertRuntimeMaintenanceProjectionRejects(retryAfterSeconds: -1);
+        AssertRuntimeMaintenanceProjectionRejects(retryAfterSeconds: 86401);
+        AssertRuntimeMaintenanceProjectionRejects(contentType: null!);
+        AssertRuntimeMaintenanceProjectionRejects(contentType: " ");
+        AssertRuntimeMaintenanceProjectionRejects(contentType: "text/plain\r\nX-Bad: value");
+        AssertRuntimeMaintenanceProjectionRejects(body: null!);
+        AssertRuntimeMaintenanceProjectionRejects(body: new string('x', 64 * 1024 + 1));
         AssertEx.Equal("local-test", directRoute.Upstreams[0].Name);
         AssertEx.Equal("home", directRoute.SiteName);
         AssertEx.False(directRoute.Upstreams is RuntimeUpstreamProjection[]);
@@ -4310,6 +4338,52 @@ internal static class ConfigurationTests
                 stripPrefix,
                 replacePrefix,
                 replacement));
+        }
+
+        static void AssertRuntimeStaticResponseRejects(
+            int statusCode = 200,
+            string contentType = "text/plain; charset=utf-8",
+            string body = "ok")
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeStaticResponse(
+                statusCode,
+                contentType,
+                body));
+        }
+
+        static void AssertRuntimeStaticResponseProjectionRejects(
+            int statusCode = 200,
+            string contentType = "text/plain; charset=utf-8",
+            string body = "ok")
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeStaticResponseProjection(
+                statusCode,
+                contentType,
+                body));
+        }
+
+        static void AssertRuntimeMaintenanceRejects(
+            int? retryAfterSeconds = null,
+            string contentType = "text/plain; charset=utf-8",
+            string body = "Service Unavailable")
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeMaintenancePolicy(
+                Enabled: true,
+                retryAfterSeconds,
+                contentType,
+                body));
+        }
+
+        static void AssertRuntimeMaintenanceProjectionRejects(
+            int? retryAfterSeconds = null,
+            string contentType = "text/plain; charset=utf-8",
+            string body = "Service Unavailable")
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeMaintenanceProjection(
+                Enabled: true,
+                retryAfterSeconds,
+                contentType,
+                body));
         }
     }
 

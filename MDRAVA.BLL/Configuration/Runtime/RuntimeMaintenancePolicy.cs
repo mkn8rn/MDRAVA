@@ -1,7 +1,26 @@
 namespace MDRAVA.BLL.Configuration;
 
-public sealed record RuntimeMaintenancePolicy(
-    bool Enabled,
-    int? RetryAfterSeconds,
-    string ContentType,
-    string Body);
+public sealed record RuntimeMaintenancePolicy
+{
+    public RuntimeMaintenancePolicy(
+        bool Enabled,
+        int? RetryAfterSeconds,
+        string ContentType,
+        string Body)
+    {
+        RuntimeGeneratedResponseFacts.ValidateMaintenance(RetryAfterSeconds, ContentType, Body);
+
+        this.Enabled = Enabled;
+        this.RetryAfterSeconds = RetryAfterSeconds;
+        this.ContentType = ContentType;
+        this.Body = Body;
+    }
+
+    public bool Enabled { get; }
+
+    public int? RetryAfterSeconds { get; }
+
+    public string ContentType { get; }
+
+    public string Body { get; }
+}
