@@ -17,6 +17,18 @@ public sealed record RuntimeUpstreamProjection
         string Identity,
         RuntimeCircuitBreakerProjection CircuitBreaker)
     {
+        RuntimeUpstreamFacts.ValidateProjection(
+            RouteName,
+            Name,
+            Scheme,
+            Protocol,
+            Address,
+            Port,
+            Weight,
+            Endpoint,
+            UriEndpoint,
+            EffectiveSniHost,
+            Identity);
         ArgumentNullException.ThrowIfNull(Tls);
         ArgumentNullException.ThrowIfNull(CircuitBreaker);
 

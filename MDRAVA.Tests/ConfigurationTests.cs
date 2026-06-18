@@ -3736,7 +3736,7 @@ internal static class ConfigurationTests
             Tls: new RuntimeUpstreamTlsProjection(false, null),
             Endpoint: "127.0.0.1:15000",
             UriEndpoint: "http://127.0.0.1:15000",
-            EffectiveSniHost: "",
+            EffectiveSniHost: "127.0.0.1",
             Identity: "home/local-test",
             CircuitBreaker: directCircuitBreaker);
 
@@ -3789,7 +3789,7 @@ internal static class ConfigurationTests
             Tls: null!,
             Endpoint: "127.0.0.1:15000",
             UriEndpoint: "http://127.0.0.1:15000",
-            EffectiveSniHost: "",
+            EffectiveSniHost: "127.0.0.1",
             Identity: "home/local-test",
             CircuitBreaker: directCircuitBreaker));
         AssertEx.Throws<ArgumentNullException>(() => new RuntimeUpstreamProjection(
@@ -3803,9 +3803,53 @@ internal static class ConfigurationTests
             Tls: new RuntimeUpstreamTlsProjection(false, null),
             Endpoint: "127.0.0.1:15000",
             UriEndpoint: "http://127.0.0.1:15000",
-            EffectiveSniHost: "",
+            EffectiveSniHost: "127.0.0.1",
             Identity: "home/local-test",
             CircuitBreaker: null!));
+        AssertRuntimeUpstreamRejects(routeName: null!);
+        AssertRuntimeUpstreamRejects(routeName: " ");
+        AssertRuntimeUpstreamRejects(name: null!);
+        AssertRuntimeUpstreamRejects(name: " ");
+        AssertRuntimeUpstreamRejects(scheme: null!);
+        AssertRuntimeUpstreamRejects(scheme: " ");
+        AssertRuntimeUpstreamRejects(scheme: "ftp");
+        AssertRuntimeUpstreamRejects(protocol: null!);
+        AssertRuntimeUpstreamRejects(protocol: " ");
+        AssertRuntimeUpstreamRejects(protocol: "smtp");
+        AssertRuntimeUpstreamRejects(scheme: "http", protocol: RuntimeUpstreamProtocol.Http2);
+        AssertRuntimeUpstreamRejects(scheme: "http", protocol: RuntimeUpstreamProtocol.Http3);
+        AssertRuntimeUpstreamRejects(address: null!);
+        AssertRuntimeUpstreamRejects(address: " ");
+        AssertRuntimeUpstreamRejects(port: 0);
+        AssertRuntimeUpstreamRejects(port: 65536);
+        AssertRuntimeUpstreamRejects(weight: 0);
+        AssertRuntimeUpstreamRejects(weight: 100001);
+        AssertRuntimeUpstreamProjectionRejects(routeName: null!);
+        AssertRuntimeUpstreamProjectionRejects(routeName: " ");
+        AssertRuntimeUpstreamProjectionRejects(name: null!);
+        AssertRuntimeUpstreamProjectionRejects(name: " ");
+        AssertRuntimeUpstreamProjectionRejects(scheme: null!);
+        AssertRuntimeUpstreamProjectionRejects(scheme: " ");
+        AssertRuntimeUpstreamProjectionRejects(scheme: "ftp");
+        AssertRuntimeUpstreamProjectionRejects(protocol: null!);
+        AssertRuntimeUpstreamProjectionRejects(protocol: " ");
+        AssertRuntimeUpstreamProjectionRejects(protocol: "smtp");
+        AssertRuntimeUpstreamProjectionRejects(scheme: "http", protocol: RuntimeUpstreamProtocol.Http2);
+        AssertRuntimeUpstreamProjectionRejects(scheme: "http", protocol: RuntimeUpstreamProtocol.Http3);
+        AssertRuntimeUpstreamProjectionRejects(address: null!);
+        AssertRuntimeUpstreamProjectionRejects(address: " ");
+        AssertRuntimeUpstreamProjectionRejects(port: 0);
+        AssertRuntimeUpstreamProjectionRejects(port: 65536);
+        AssertRuntimeUpstreamProjectionRejects(weight: 0);
+        AssertRuntimeUpstreamProjectionRejects(weight: 100001);
+        AssertRuntimeUpstreamProjectionRejects(endpoint: null!);
+        AssertRuntimeUpstreamProjectionRejects(endpoint: " ");
+        AssertRuntimeUpstreamProjectionRejects(uriEndpoint: null!);
+        AssertRuntimeUpstreamProjectionRejects(uriEndpoint: " ");
+        AssertRuntimeUpstreamProjectionRejects(effectiveSniHost: null!);
+        AssertRuntimeUpstreamProjectionRejects(effectiveSniHost: " ");
+        AssertRuntimeUpstreamProjectionRejects(identity: null!);
+        AssertRuntimeUpstreamProjectionRejects(identity: " ");
         AssertEx.Equal(503, directCircuitBreaker.FailureStatusCodes[0]);
         AssertEx.Equal(503, directUpstream.CircuitBreaker.FailureStatusCodes[0]);
         AssertEx.Equal("home/local-test", directUpstream.Identity);
@@ -3925,6 +3969,61 @@ internal static class ConfigurationTests
                 timeout ?? TimeSpan.FromSeconds(1),
                 healthyThreshold,
                 unhealthyThreshold));
+        }
+
+        static void AssertRuntimeUpstreamRejects(
+            string routeName = "home",
+            string name = "local-test",
+            string scheme = "http",
+            string protocol = RuntimeUpstreamProtocol.Http1,
+            string address = "127.0.0.1",
+            int port = 15000,
+            int weight = 1)
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeUpstream(
+                routeName,
+                name,
+                scheme,
+                protocol,
+                address,
+                port,
+                weight,
+                RuntimeUpstreamTlsOptions.Default));
+        }
+
+        static void AssertRuntimeUpstreamProjectionRejects(
+            string routeName = "home",
+            string name = "local-test",
+            string scheme = "http",
+            string protocol = RuntimeUpstreamProtocol.Http1,
+            string address = "127.0.0.1",
+            int port = 15000,
+            int weight = 1,
+            string endpoint = "127.0.0.1:15000",
+            string uriEndpoint = "http://127.0.0.1:15000",
+            string effectiveSniHost = "127.0.0.1",
+            string identity = "home/local-test")
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeUpstreamProjection(
+                routeName,
+                name,
+                scheme,
+                protocol,
+                address,
+                port,
+                weight,
+                new RuntimeUpstreamTlsProjection(false, null),
+                endpoint,
+                uriEndpoint,
+                effectiveSniHost,
+                identity,
+                new RuntimeCircuitBreakerProjection(
+                    Enabled: true,
+                    FailureThreshold: 2,
+                    SamplingWindow: TimeSpan.FromSeconds(30),
+                    OpenDuration: TimeSpan.FromSeconds(10),
+                    HalfOpenMaxAttempts: 1,
+                    FailureStatusCodes: [])));
         }
     }
 

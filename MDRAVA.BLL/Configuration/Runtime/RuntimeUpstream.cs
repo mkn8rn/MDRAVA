@@ -35,11 +35,14 @@ public sealed record RuntimeUpstream
         RuntimeUpstreamTlsOptions Tls,
         RuntimeCircuitBreakerPolicy CircuitBreaker)
     {
-        ArgumentNullException.ThrowIfNull(RouteName);
-        ArgumentNullException.ThrowIfNull(Name);
-        ArgumentNullException.ThrowIfNull(Scheme);
-        ArgumentNullException.ThrowIfNull(Protocol);
-        ArgumentNullException.ThrowIfNull(Address);
+        RuntimeUpstreamFacts.Validate(
+            RouteName,
+            Name,
+            Scheme,
+            Protocol,
+            Address,
+            Port,
+            Weight);
         ArgumentNullException.ThrowIfNull(Tls);
         ArgumentNullException.ThrowIfNull(CircuitBreaker);
 
