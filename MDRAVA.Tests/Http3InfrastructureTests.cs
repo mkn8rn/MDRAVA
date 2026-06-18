@@ -110,6 +110,46 @@ internal static class Http3InfrastructureTests
         AssertEx.True(enabled.ExplicitHttp3Requested);
         AssertEx.Equal(RuntimeHttp3Enablement.Disabled, disabled.EffectiveEnablement);
         AssertEx.True(disabled.EnablementExplicitlyConfigured);
+        AssertEx.Throws<ArgumentException>(() => new RuntimeHttp3Compatibility(
+            Protocols: (RuntimeListenerProtocols)8,
+            ProtocolsValid: true,
+            EffectiveEnablement: RuntimeHttp3Enablement.Default,
+            EnablementValid: true,
+            EnablementExplicitlyConfigured: false,
+            ExplicitHttp3Requested: false));
+        AssertEx.Throws<ArgumentException>(() => new RuntimeHttp3Compatibility(
+            Protocols: RuntimeListenerProtocols.Http1,
+            ProtocolsValid: true,
+            EffectiveEnablement: (RuntimeHttp3Enablement)99,
+            EnablementValid: true,
+            EnablementExplicitlyConfigured: false,
+            ExplicitHttp3Requested: false));
+        AssertEx.Throws<ArgumentException>(() => new RuntimeHttp3Compatibility(
+            Protocols: RuntimeListenerProtocols.Http1,
+            ProtocolsValid: true,
+            EffectiveEnablement: RuntimeHttp3Enablement.Default,
+            EnablementValid: true,
+            EnablementExplicitlyConfigured: false,
+            ExplicitHttp3Requested: true));
+        AssertEx.Throws<ArgumentException>(() => new RuntimeHttp3Compatibility(
+            Protocols: RuntimeListenerProtocols.Http3,
+            ProtocolsValid: false,
+            EffectiveEnablement: RuntimeHttp3Enablement.Default,
+            EnablementValid: true,
+            EnablementExplicitlyConfigured: false,
+            ExplicitHttp3Requested: true));
+        AssertEx.Throws<ArgumentException>(() => new RuntimeHttp3Compatibility(
+            Protocols: RuntimeListenerProtocols.Http1,
+            ProtocolsValid: true,
+            EffectiveEnablement: RuntimeHttp3Enablement.Disabled,
+            EnablementValid: false,
+            EnablementExplicitlyConfigured: true,
+            ExplicitHttp3Requested: false));
+        AssertEx.Throws<ArgumentException>(() => RuntimeListenerProtocolParseResult.Accepted(
+            RuntimeListenerProtocols.None));
+        AssertEx.Throws<ArgumentException>(() => RuntimeHttp3EnablementParseResult.Accepted(
+            (RuntimeHttp3Enablement)99,
+            explicitlyConfigured: true));
     }
 
     public static void CurrentHttp3ConfigValidatesMapsAndAggregatesConsistently()

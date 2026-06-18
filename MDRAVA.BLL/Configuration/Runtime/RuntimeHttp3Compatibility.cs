@@ -1,13 +1,43 @@
 namespace MDRAVA.BLL.Configuration;
 
-public sealed record RuntimeHttp3Compatibility(
-    RuntimeListenerProtocols Protocols,
-    bool ProtocolsValid,
-    RuntimeHttp3Enablement EffectiveEnablement,
-    bool EnablementValid,
-    bool EnablementExplicitlyConfigured,
-    bool ExplicitHttp3Requested)
+public sealed record RuntimeHttp3Compatibility
 {
+    public RuntimeHttp3Compatibility(
+        RuntimeListenerProtocols Protocols,
+        bool ProtocolsValid,
+        RuntimeHttp3Enablement EffectiveEnablement,
+        bool EnablementValid,
+        bool EnablementExplicitlyConfigured,
+        bool ExplicitHttp3Requested)
+    {
+        RuntimeHttp3CompatibilityFacts.Validate(
+            Protocols,
+            ProtocolsValid,
+            EffectiveEnablement,
+            EnablementValid,
+            EnablementExplicitlyConfigured,
+            ExplicitHttp3Requested);
+
+        this.Protocols = Protocols;
+        this.ProtocolsValid = ProtocolsValid;
+        this.EffectiveEnablement = EffectiveEnablement;
+        this.EnablementValid = EnablementValid;
+        this.EnablementExplicitlyConfigured = EnablementExplicitlyConfigured;
+        this.ExplicitHttp3Requested = ExplicitHttp3Requested;
+    }
+
+    public RuntimeListenerProtocols Protocols { get; }
+
+    public bool ProtocolsValid { get; }
+
+    public RuntimeHttp3Enablement EffectiveEnablement { get; }
+
+    public bool EnablementValid { get; }
+
+    public bool EnablementExplicitlyConfigured { get; }
+
+    public bool ExplicitHttp3Requested { get; }
+
     public static readonly IReadOnlyList<string> SupportedProtocolConfigValues =
     [
         "http1",
@@ -170,8 +200,17 @@ public abstract record RuntimeListenerProtocolParseResult
         return new AcceptedResult(protocols);
     }
 
-    public sealed record AcceptedResult(RuntimeListenerProtocols Protocols)
-        : RuntimeListenerProtocolParseResult;
+    public sealed record AcceptedResult : RuntimeListenerProtocolParseResult
+    {
+        public AcceptedResult(RuntimeListenerProtocols Protocols)
+        {
+            RuntimeHttp3CompatibilityFacts.ValidateProtocols(Protocols, nameof(Protocols));
+
+            this.Protocols = Protocols;
+        }
+
+        public RuntimeListenerProtocols Protocols { get; }
+    }
 
     private sealed record RejectedResult : RuntimeListenerProtocolParseResult;
 }
@@ -194,10 +233,22 @@ public abstract record RuntimeHttp3EnablementParseResult
         return new RejectedResult(explicitlyConfigured);
     }
 
-    public sealed record AcceptedResult(
-        RuntimeHttp3Enablement Enablement,
-        bool ExplicitlyConfigured)
-        : RuntimeHttp3EnablementParseResult;
+    public sealed record AcceptedResult : RuntimeHttp3EnablementParseResult
+    {
+        public AcceptedResult(
+            RuntimeHttp3Enablement Enablement,
+            bool ExplicitlyConfigured)
+        {
+            RuntimeHttp3CompatibilityFacts.ValidateEnablement(Enablement, nameof(Enablement));
+
+            this.Enablement = Enablement;
+            this.ExplicitlyConfigured = ExplicitlyConfigured;
+        }
+
+        public RuntimeHttp3Enablement Enablement { get; }
+
+        public bool ExplicitlyConfigured { get; }
+    }
 
     public sealed record RejectedResult(bool ExplicitlyConfigured)
         : RuntimeHttp3EnablementParseResult;
