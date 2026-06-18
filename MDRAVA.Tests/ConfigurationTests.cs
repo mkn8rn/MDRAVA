@@ -3317,6 +3317,22 @@ internal static class ConfigurationTests
         object http2Limits = listener.Http2Limits;
         AssertEx.True(http2Limits is RuntimeHttp2LimitsProjection);
         AssertEx.False(http2Limits is RuntimeHttp2Limits);
+        AssertHttp3AltSvcOptionsRejects(maxAgeSeconds: -1);
+        AssertHttp3AltSvcOptionsRejects(maxAgeSeconds: 31536001);
+        AssertHttp3AltSvcProjectionRejects(maxAgeSeconds: -1);
+        AssertHttp3AltSvcProjectionRejects(maxAgeSeconds: 31536001);
+        AssertHttp2LimitsReject(maxConcurrentStreams: 0);
+        AssertHttp2LimitsReject(maxConcurrentStreams: 1001);
+        AssertHttp2LimitsReject(maxHeaderListBytes: 1023);
+        AssertHttp2LimitsReject(maxHeaderListBytes: 1048577);
+        AssertHttp2LimitsReject(maxFrameSize: 16383);
+        AssertHttp2LimitsReject(maxFrameSize: 16777216);
+        AssertHttp2LimitsProjectionReject(maxConcurrentStreams: 0);
+        AssertHttp2LimitsProjectionReject(maxConcurrentStreams: 1001);
+        AssertHttp2LimitsProjectionReject(maxHeaderListBytes: 1023);
+        AssertHttp2LimitsProjectionReject(maxHeaderListBytes: 1048577);
+        AssertHttp2LimitsProjectionReject(maxFrameSize: 16383);
+        AssertHttp2LimitsProjectionReject(maxFrameSize: 16777216);
         object http3 = listener.Http3;
         AssertEx.True(http3 is RuntimeHttp3ListenerReadinessProjection);
         AssertEx.False(http3 is RuntimeHttp3ListenerReadiness);
@@ -3426,6 +3442,42 @@ internal static class ConfigurationTests
         AssertEx.Equal("owned.example.test", directListener.SniCertificates[0].HostName);
         AssertEx.Equal("main", directListener.Name);
         AssertEx.False(directListener.SniCertificates is RuntimeSniCertificateBindingProjection[]);
+
+        static void AssertHttp3AltSvcOptionsRejects(int maxAgeSeconds)
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeHttp3AltSvcOptions(
+                Enabled: true,
+                maxAgeSeconds));
+        }
+
+        static void AssertHttp3AltSvcProjectionRejects(int maxAgeSeconds)
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeHttp3AltSvcProjection(
+                Enabled: true,
+                maxAgeSeconds));
+        }
+
+        static void AssertHttp2LimitsReject(
+            int maxConcurrentStreams = 100,
+            int maxHeaderListBytes = 32768,
+            int maxFrameSize = 16384)
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeHttp2Limits(
+                maxConcurrentStreams,
+                maxHeaderListBytes,
+                maxFrameSize));
+        }
+
+        static void AssertHttp2LimitsProjectionReject(
+            int maxConcurrentStreams = 100,
+            int maxHeaderListBytes = 32768,
+            int maxFrameSize = 16384)
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeHttp2LimitsProjection(
+                maxConcurrentStreams,
+                maxHeaderListBytes,
+                maxFrameSize));
+        }
     }
 
     public static async Task ActiveInspectionProjectionUsesRouteReadModels()
