@@ -3333,6 +3333,28 @@ internal static class ConfigurationTests
         AssertHttp2LimitsProjectionReject(maxHeaderListBytes: 1048577);
         AssertHttp2LimitsProjectionReject(maxFrameSize: 16383);
         AssertHttp2LimitsProjectionReject(maxFrameSize: 16777216);
+        AssertRuntimeListenerRejects(port: 0);
+        AssertRuntimeListenerRejects(port: 65536);
+        AssertRuntimeListenerRejects(backlog: 0);
+        AssertRuntimeListenerRejects(maxRequestHeadBytes: 1023);
+        AssertRuntimeListenerRejects(maxRequestHeadBytes: 1048577);
+        AssertRuntimeListenerRejects(maxResponseHeadBytes: 1023);
+        AssertRuntimeListenerRejects(maxResponseHeadBytes: 1048577);
+        AssertRuntimeListenerRejects(maxChunkLineBytes: 63);
+        AssertRuntimeListenerRejects(maxChunkLineBytes: 16385);
+        AssertRuntimeListenerRejects(forwardingBufferBytes: 4095);
+        AssertRuntimeListenerRejects(forwardingBufferBytes: 1048577);
+        AssertRuntimeListenerProjectionRejects(port: 0);
+        AssertRuntimeListenerProjectionRejects(port: 65536);
+        AssertRuntimeListenerProjectionRejects(backlog: 0);
+        AssertRuntimeListenerProjectionRejects(maxRequestHeadBytes: 1023);
+        AssertRuntimeListenerProjectionRejects(maxRequestHeadBytes: 1048577);
+        AssertRuntimeListenerProjectionRejects(maxResponseHeadBytes: 1023);
+        AssertRuntimeListenerProjectionRejects(maxResponseHeadBytes: 1048577);
+        AssertRuntimeListenerProjectionRejects(maxChunkLineBytes: 63);
+        AssertRuntimeListenerProjectionRejects(maxChunkLineBytes: 16385);
+        AssertRuntimeListenerProjectionRejects(forwardingBufferBytes: 4095);
+        AssertRuntimeListenerProjectionRejects(forwardingBufferBytes: 1048577);
         object http3 = listener.Http3;
         AssertEx.True(http3 is RuntimeHttp3ListenerReadinessProjection);
         AssertEx.False(http3 is RuntimeHttp3ListenerReadiness);
@@ -3477,6 +3499,61 @@ internal static class ConfigurationTests
                 maxConcurrentStreams,
                 maxHeaderListBytes,
                 maxFrameSize));
+        }
+
+        static void AssertRuntimeListenerRejects(
+            int port = 18080,
+            int backlog = 128,
+            int maxRequestHeadBytes = 32768,
+            int maxResponseHeadBytes = 32768,
+            int maxChunkLineBytes = 8192,
+            int forwardingBufferBytes = 8192)
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeListener(
+                Name: "main",
+                Address: "127.0.0.1",
+                Port: port,
+                Enabled: true,
+                Transport: RuntimeListenerTransport.Http,
+                DefaultCertificateId: null,
+                SniCertificates: [],
+                Backlog: backlog,
+                MaxRequestHeadBytes: maxRequestHeadBytes,
+                MaxResponseHeadBytes: maxResponseHeadBytes,
+                MaxChunkLineBytes: maxChunkLineBytes,
+                ForwardingBufferBytes: forwardingBufferBytes));
+        }
+
+        void AssertRuntimeListenerProjectionRejects(
+            int port = 18080,
+            int backlog = 128,
+            int maxRequestHeadBytes = 32768,
+            int maxResponseHeadBytes = 32768,
+            int maxChunkLineBytes = 8192,
+            int forwardingBufferBytes = 8192)
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeListenerProjection(
+                Name: "main",
+                Address: listener.Address,
+                Port: port,
+                Enabled: listener.Enabled,
+                Transport: listener.Transport,
+                DefaultCertificateId: listener.DefaultCertificateId,
+                SniCertificates: [],
+                Backlog: backlog,
+                MaxRequestHeadBytes: maxRequestHeadBytes,
+                MaxResponseHeadBytes: maxResponseHeadBytes,
+                MaxChunkLineBytes: maxChunkLineBytes,
+                ForwardingBufferBytes: forwardingBufferBytes,
+                Identity: listener.Identity,
+                Protocols: listener.Protocols,
+                Http3Enablement: listener.Http3Enablement,
+                Http3AltSvc: listener.Http3AltSvc,
+                Http2Limits: listener.Http2Limits,
+                TcpTrafficEnabled: listener.TcpTrafficEnabled,
+                Http3ProtocolConfigured: listener.Http3ProtocolConfigured,
+                QuicIdentity: listener.QuicIdentity,
+                Http3: listener.Http3));
         }
     }
 

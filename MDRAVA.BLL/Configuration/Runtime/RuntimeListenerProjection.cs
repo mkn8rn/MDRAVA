@@ -29,6 +29,13 @@ public sealed record RuntimeListenerProjection
         ArgumentNullException.ThrowIfNull(Http3AltSvc);
         ArgumentNullException.ThrowIfNull(Http2Limits);
         ArgumentNullException.ThrowIfNull(Http3);
+        RuntimeListenerFacts.Validate(
+            Port,
+            Backlog,
+            MaxRequestHeadBytes,
+            MaxResponseHeadBytes,
+            MaxChunkLineBytes,
+            ForwardingBufferBytes);
 
         this.Name = Name;
         this.Address = Address;

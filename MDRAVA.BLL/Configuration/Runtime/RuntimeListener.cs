@@ -53,6 +53,16 @@ public sealed record RuntimeListener
         RuntimeHttp3AltSvcOptions Http3AltSvc,
         RuntimeHttp2Limits Http2Limits)
     {
+        RuntimeListenerFacts.Validate(
+            Port,
+            Backlog,
+            MaxRequestHeadBytes,
+            MaxResponseHeadBytes,
+            MaxChunkLineBytes,
+            ForwardingBufferBytes);
+        ArgumentNullException.ThrowIfNull(Http3AltSvc);
+        ArgumentNullException.ThrowIfNull(Http2Limits);
+
         this.Name = Name;
         this.Address = Address;
         this.Port = Port;
