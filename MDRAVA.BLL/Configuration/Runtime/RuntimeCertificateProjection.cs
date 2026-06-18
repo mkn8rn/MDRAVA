@@ -14,10 +14,7 @@ public sealed record RuntimeCertificateProjection
         DateTime NotBefore,
         DateTime NotAfter)
     {
-        ArgumentNullException.ThrowIfNull(Id);
-        ArgumentNullException.ThrowIfNull(Path);
-        ArgumentNullException.ThrowIfNull(Format);
-        ArgumentNullException.ThrowIfNull(Source);
+        RuntimeCertificateFacts.ValidateProjection(Id, Path, Format, Source, NotBefore, NotAfter);
 
         this.Id = Id;
         this.Path = Path;

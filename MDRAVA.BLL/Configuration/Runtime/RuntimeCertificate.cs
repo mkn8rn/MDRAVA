@@ -13,6 +13,9 @@ public sealed record RuntimeCertificate
         string Source,
         IReadOnlyList<string> Domains)
     {
+        RuntimeCertificateFacts.Validate(Id, Path, Format, Source);
+        ArgumentNullException.ThrowIfNull(Certificate);
+
         this.Id = Id;
         this.Path = Path;
         this.Format = Format;

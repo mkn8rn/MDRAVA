@@ -1168,6 +1168,72 @@ internal static class ConfigurationTests
             Thumbprint: null,
             NotBefore: DateTime.UnixEpoch,
             NotAfter: DateTime.UnixEpoch.AddDays(30)));
+        AssertEx.Throws<ArgumentException>(() => new RuntimeCertificateProjection(
+            " ",
+            "certs/api.pfx",
+            "pfx",
+            "manual",
+            [],
+            HasConfiguredPassword: false,
+            Subject: null,
+            Thumbprint: null,
+            NotBefore: DateTime.UnixEpoch,
+            NotAfter: DateTime.UnixEpoch.AddDays(30)));
+        AssertEx.Throws<ArgumentException>(() => new RuntimeCertificateProjection(
+            "api-cert",
+            "",
+            "pfx",
+            "manual",
+            [],
+            HasConfiguredPassword: false,
+            Subject: null,
+            Thumbprint: null,
+            NotBefore: DateTime.UnixEpoch,
+            NotAfter: DateTime.UnixEpoch.AddDays(30)));
+        AssertEx.Throws<ArgumentException>(() => new RuntimeCertificateProjection(
+            "api-cert",
+            "certs/api.pfx",
+            "\t",
+            "manual",
+            [],
+            HasConfiguredPassword: false,
+            Subject: null,
+            Thumbprint: null,
+            NotBefore: DateTime.UnixEpoch,
+            NotAfter: DateTime.UnixEpoch.AddDays(30)));
+        AssertEx.Throws<ArgumentException>(() => new RuntimeCertificateProjection(
+            "api-cert",
+            "certs/api.pfx",
+            "pfx",
+            " ",
+            [],
+            HasConfiguredPassword: false,
+            Subject: null,
+            Thumbprint: null,
+            NotBefore: DateTime.UnixEpoch,
+            NotAfter: DateTime.UnixEpoch.AddDays(30)));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeCertificateProjection(
+            "api-cert",
+            "certs/api.pfx",
+            "pfx",
+            "manual",
+            [null!],
+            HasConfiguredPassword: false,
+            Subject: null,
+            Thumbprint: null,
+            NotBefore: DateTime.UnixEpoch,
+            NotAfter: DateTime.UnixEpoch.AddDays(30)));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new RuntimeCertificateProjection(
+            "api-cert",
+            "certs/api.pfx",
+            "pfx",
+            "manual",
+            [],
+            HasConfiguredPassword: false,
+            Subject: null,
+            Thumbprint: null,
+            NotBefore: DateTime.UnixEpoch.AddDays(30),
+            NotAfter: DateTime.UnixEpoch));
         AssertEx.Throws<ArgumentNullException>(() => new RuntimeAdminSecurityProjection(
             Urls: null!,
             RequireAuthentication: true,

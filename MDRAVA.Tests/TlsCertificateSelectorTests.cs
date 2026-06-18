@@ -32,6 +32,63 @@ internal static class TlsCertificateSelectorTests
         AssertEx.False(acme.HasConfiguredPassword);
         AssertEx.Equal(RuntimeCertificateFactory.AcmeSource, acme.Source);
         AssertEx.Equal("acme.test", acme.Domains[0]);
+
+        AssertEx.Throws<ArgumentException>(() => new RuntimeCertificate(
+            null!,
+            "certs/manual.pfx",
+            "pfx",
+            HasConfiguredPassword: false,
+            manualCertificate,
+            "manualPfx",
+            []));
+        AssertEx.Throws<ArgumentException>(() => new RuntimeCertificate(
+            "manual",
+            " ",
+            "pfx",
+            HasConfiguredPassword: false,
+            manualCertificate,
+            "manualPfx",
+            []));
+        AssertEx.Throws<ArgumentException>(() => new RuntimeCertificate(
+            "manual",
+            "certs/manual.pfx",
+            "",
+            HasConfiguredPassword: false,
+            manualCertificate,
+            "manualPfx",
+            []));
+        AssertEx.Throws<ArgumentException>(() => new RuntimeCertificate(
+            "manual",
+            "certs/manual.pfx",
+            "pfx",
+            HasConfiguredPassword: false,
+            manualCertificate,
+            "\t",
+            []));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeCertificate(
+            "manual",
+            "certs/manual.pfx",
+            "pfx",
+            HasConfiguredPassword: false,
+            null!,
+            "manualPfx",
+            []));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeCertificate(
+            "manual",
+            "certs/manual.pfx",
+            "pfx",
+            HasConfiguredPassword: false,
+            manualCertificate,
+            "manualPfx",
+            null!));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeCertificate(
+            "manual",
+            "certs/manual.pfx",
+            "pfx",
+            HasConfiguredPassword: false,
+            manualCertificate,
+            "manualPfx",
+            [null!]));
     }
 
     public static void SelectionInputReadsRuntimeFactsWithoutSnapshot()
