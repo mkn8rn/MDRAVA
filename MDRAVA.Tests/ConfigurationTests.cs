@@ -4163,6 +4163,26 @@ internal static class ConfigurationTests
         AssertRuntimeMaintenanceProjectionRejects(contentType: "text/plain\r\nX-Bad: value");
         AssertRuntimeMaintenanceProjectionRejects(body: null!);
         AssertRuntimeMaintenanceProjectionRejects(body: new string('x', 64 * 1024 + 1));
+        AssertRuntimeTimeoutsRejects(clientRequestHeadTimeout: TimeSpan.FromMilliseconds(99));
+        AssertRuntimeTimeoutsRejects(clientRequestBodyIdleTimeout: TimeSpan.FromMilliseconds(99));
+        AssertRuntimeTimeoutsRejects(upstreamConnectTimeout: TimeSpan.FromMilliseconds(99));
+        AssertRuntimeTimeoutsRejects(upstreamResponseHeadTimeout: TimeSpan.FromMilliseconds(99));
+        AssertRuntimeTimeoutsRejects(upstreamResponseBodyIdleTimeout: TimeSpan.FromMilliseconds(99));
+        AssertRuntimeTimeoutsRejects(downstreamWriteTimeout: TimeSpan.FromMilliseconds(99));
+        AssertRuntimeTimeoutsRejects(tlsHandshakeTimeout: TimeSpan.FromMilliseconds(99));
+        AssertRuntimeTimeoutsRejects(clientKeepAliveIdleTimeout: TimeSpan.FromMilliseconds(99));
+        AssertRuntimeTimeoutsRejects(upstreamIdleConnectionLifetime: TimeSpan.FromMilliseconds(99));
+        AssertRuntimeTimeoutsRejects(tunnelIdleTimeout: TimeSpan.FromMilliseconds(99));
+        AssertRuntimeTimeoutsProjectionRejects(clientRequestHeadTimeout: TimeSpan.FromMilliseconds(600001));
+        AssertRuntimeTimeoutsProjectionRejects(clientRequestBodyIdleTimeout: TimeSpan.FromMilliseconds(600001));
+        AssertRuntimeTimeoutsProjectionRejects(upstreamConnectTimeout: TimeSpan.FromMilliseconds(600001));
+        AssertRuntimeTimeoutsProjectionRejects(upstreamResponseHeadTimeout: TimeSpan.FromMilliseconds(600001));
+        AssertRuntimeTimeoutsProjectionRejects(upstreamResponseBodyIdleTimeout: TimeSpan.FromMilliseconds(600001));
+        AssertRuntimeTimeoutsProjectionRejects(downstreamWriteTimeout: TimeSpan.FromMilliseconds(600001));
+        AssertRuntimeTimeoutsProjectionRejects(tlsHandshakeTimeout: TimeSpan.FromMilliseconds(600001));
+        AssertRuntimeTimeoutsProjectionRejects(clientKeepAliveIdleTimeout: TimeSpan.FromMilliseconds(600001));
+        AssertRuntimeTimeoutsProjectionRejects(upstreamIdleConnectionLifetime: TimeSpan.FromMilliseconds(600001));
+        AssertRuntimeTimeoutsProjectionRejects(tunnelIdleTimeout: TimeSpan.FromMilliseconds(600001));
         AssertRuntimeObservabilityRejects(recentDiagnosticsCapacity: 0);
         AssertRuntimeObservabilityRejects(recentDiagnosticsCapacity: 10001);
         AssertRuntimeObservabilityRejects(useNullLogPersistence: true);
@@ -4530,6 +4550,56 @@ internal static class ConfigurationTests
                 clientRequestHeadTimeout ?? TimeSpan.FromSeconds(10),
                 upstreamResponseHeadTimeout ?? TimeSpan.FromSeconds(30),
                 AccessLogEnabled: true));
+        }
+
+        static void AssertRuntimeTimeoutsRejects(
+            TimeSpan? clientRequestHeadTimeout = null,
+            TimeSpan? clientRequestBodyIdleTimeout = null,
+            TimeSpan? upstreamConnectTimeout = null,
+            TimeSpan? upstreamResponseHeadTimeout = null,
+            TimeSpan? upstreamResponseBodyIdleTimeout = null,
+            TimeSpan? downstreamWriteTimeout = null,
+            TimeSpan? tlsHandshakeTimeout = null,
+            TimeSpan? clientKeepAliveIdleTimeout = null,
+            TimeSpan? upstreamIdleConnectionLifetime = null,
+            TimeSpan? tunnelIdleTimeout = null)
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeTimeouts(
+                clientRequestHeadTimeout ?? TimeSpan.FromSeconds(10),
+                clientRequestBodyIdleTimeout ?? TimeSpan.FromSeconds(10),
+                upstreamConnectTimeout ?? TimeSpan.FromSeconds(10),
+                upstreamResponseHeadTimeout ?? TimeSpan.FromSeconds(10),
+                upstreamResponseBodyIdleTimeout ?? TimeSpan.FromSeconds(10),
+                downstreamWriteTimeout ?? TimeSpan.FromSeconds(10),
+                tlsHandshakeTimeout ?? TimeSpan.FromSeconds(10),
+                clientKeepAliveIdleTimeout ?? TimeSpan.FromSeconds(10),
+                upstreamIdleConnectionLifetime ?? TimeSpan.FromSeconds(10),
+                tunnelIdleTimeout ?? TimeSpan.FromSeconds(10)));
+        }
+
+        static void AssertRuntimeTimeoutsProjectionRejects(
+            TimeSpan? clientRequestHeadTimeout = null,
+            TimeSpan? clientRequestBodyIdleTimeout = null,
+            TimeSpan? upstreamConnectTimeout = null,
+            TimeSpan? upstreamResponseHeadTimeout = null,
+            TimeSpan? upstreamResponseBodyIdleTimeout = null,
+            TimeSpan? downstreamWriteTimeout = null,
+            TimeSpan? tlsHandshakeTimeout = null,
+            TimeSpan? clientKeepAliveIdleTimeout = null,
+            TimeSpan? upstreamIdleConnectionLifetime = null,
+            TimeSpan? tunnelIdleTimeout = null)
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeTimeoutsProjection(
+                clientRequestHeadTimeout ?? TimeSpan.FromSeconds(10),
+                clientRequestBodyIdleTimeout ?? TimeSpan.FromSeconds(10),
+                upstreamConnectTimeout ?? TimeSpan.FromSeconds(10),
+                upstreamResponseHeadTimeout ?? TimeSpan.FromSeconds(10),
+                upstreamResponseBodyIdleTimeout ?? TimeSpan.FromSeconds(10),
+                downstreamWriteTimeout ?? TimeSpan.FromSeconds(10),
+                tlsHandshakeTimeout ?? TimeSpan.FromSeconds(10),
+                clientKeepAliveIdleTimeout ?? TimeSpan.FromSeconds(10),
+                upstreamIdleConnectionLifetime ?? TimeSpan.FromSeconds(10),
+                tunnelIdleTimeout ?? TimeSpan.FromSeconds(10)));
         }
 
         static void AssertRuntimeObservabilityRejects(

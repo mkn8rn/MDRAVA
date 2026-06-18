@@ -44,10 +44,10 @@ public static class ProxyTimeoutPolicy
 
     public static RuntimeTimeouts ApplyRouteTimeouts(ProxyRouteTimeoutPolicyInput input, RuntimeTimeouts timeouts)
     {
-        return timeouts with
-        {
-            UpstreamResponseHeadTimeout = input.UpstreamResponseHeadTimeout
-        };
+        return WithUpstreamTimeouts(
+            timeouts,
+            timeouts.UpstreamConnectTimeout,
+            input.UpstreamResponseHeadTimeout);
     }
 
     public static RuntimeTimeouts ApplyRetryAttemptTimeout(ProxyRouteTimeoutPolicyInput input, RuntimeTimeouts timeouts)
@@ -57,11 +57,25 @@ public static class ProxyTimeoutPolicy
             return timeouts;
         }
 
-        return timeouts with
-        {
-            UpstreamConnectTimeout = perAttemptTimeout,
-            UpstreamResponseHeadTimeout = perAttemptTimeout
-        };
+        return WithUpstreamTimeouts(timeouts, perAttemptTimeout, perAttemptTimeout);
+    }
+
+    private static RuntimeTimeouts WithUpstreamTimeouts(
+        RuntimeTimeouts source,
+        TimeSpan upstreamConnectTimeout,
+        TimeSpan upstreamResponseHeadTimeout)
+    {
+        return new RuntimeTimeouts(
+            source.ClientRequestHeadTimeout,
+            source.ClientRequestBodyIdleTimeout,
+            upstreamConnectTimeout,
+            upstreamResponseHeadTimeout,
+            source.UpstreamResponseBodyIdleTimeout,
+            source.DownstreamWriteTimeout,
+            source.TlsHandshakeTimeout,
+            source.ClientKeepAliveIdleTimeout,
+            source.UpstreamIdleConnectionLifetime,
+            source.TunnelIdleTimeout);
     }
 }
 
