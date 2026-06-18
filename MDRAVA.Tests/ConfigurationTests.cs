@@ -4099,6 +4099,26 @@ internal static class ConfigurationTests
         AssertRuntimeRouteProjectionRejects(loadBalancingPolicy: null!);
         AssertRuntimeRouteProjectionRejects(loadBalancingPolicy: " ");
         AssertRuntimeRouteProjectionRejects(siteName: null!);
+        AssertRuntimeHttpsRedirectRejects(statusCode: 300);
+        AssertRuntimeHttpsRedirectRejects(statusCode: 309);
+        AssertRuntimeHttpsRedirectRejects(httpsPort: 0);
+        AssertRuntimeHttpsRedirectRejects(httpsPort: 65536);
+        AssertRuntimeHttpsRedirectProjectionRejects(statusCode: 300);
+        AssertRuntimeHttpsRedirectProjectionRejects(statusCode: 309);
+        AssertRuntimeHttpsRedirectProjectionRejects(httpsPort: 0);
+        AssertRuntimeHttpsRedirectProjectionRejects(httpsPort: 65536);
+        AssertRuntimeCanonicalHostRejects(enabled: true, targetHost: "");
+        AssertRuntimeCanonicalHostRejects(targetHost: null!);
+        AssertRuntimeCanonicalHostRejects(targetHost: "api.test/path");
+        AssertRuntimeCanonicalHostRejects(targetHost: "https://api.test");
+        AssertRuntimeCanonicalHostRejects(targetHost: "api test");
+        AssertRuntimeCanonicalHostRejects(statusCode: 300);
+        AssertRuntimeCanonicalHostProjectionRejects(enabled: true, targetHost: "");
+        AssertRuntimeCanonicalHostProjectionRejects(targetHost: null!);
+        AssertRuntimeCanonicalHostProjectionRejects(targetHost: "api.test/path");
+        AssertRuntimeCanonicalHostProjectionRejects(targetHost: "https://api.test");
+        AssertRuntimeCanonicalHostProjectionRejects(targetHost: "api test");
+        AssertRuntimeCanonicalHostProjectionRejects(statusCode: 300);
         AssertRuntimePathRewriteRejects(stripPrefix: null!);
         AssertRuntimePathRewriteRejects(replacePrefix: null!);
         AssertRuntimePathRewriteRejects(replacement: null!);
@@ -4316,6 +4336,48 @@ internal static class ConfigurationTests
                     RetryOnStatusCodes: [],
                     RetryMethods: [],
                     RetryBackoff: TimeSpan.Zero)));
+        }
+
+        static void AssertRuntimeHttpsRedirectRejects(
+            int statusCode = 308,
+            int? httpsPort = null)
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeHttpsRedirectPolicy(
+                Enabled: true,
+                statusCode,
+                httpsPort));
+        }
+
+        static void AssertRuntimeHttpsRedirectProjectionRejects(
+            int statusCode = 308,
+            int? httpsPort = null)
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeHttpsRedirectProjection(
+                Enabled: true,
+                statusCode,
+                httpsPort));
+        }
+
+        static void AssertRuntimeCanonicalHostRejects(
+            bool enabled = false,
+            string targetHost = "api.test",
+            int statusCode = 308)
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeCanonicalHostPolicy(
+                enabled,
+                targetHost,
+                statusCode));
+        }
+
+        static void AssertRuntimeCanonicalHostProjectionRejects(
+            bool enabled = false,
+            string targetHost = "api.test",
+            int statusCode = 308)
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeCanonicalHostProjection(
+                enabled,
+                targetHost,
+                statusCode));
         }
 
         static void AssertRuntimePathRewriteRejects(

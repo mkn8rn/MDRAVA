@@ -1,6 +1,22 @@
 namespace MDRAVA.BLL.Configuration;
 
-public sealed record RuntimeCanonicalHostProjection(
-    bool Enabled,
-    string TargetHost,
-    int StatusCode);
+public sealed record RuntimeCanonicalHostProjection
+{
+    public RuntimeCanonicalHostProjection(
+        bool Enabled,
+        string TargetHost,
+        int StatusCode)
+    {
+        RuntimeRedirectFacts.ValidateCanonicalHost(Enabled, TargetHost, StatusCode);
+
+        this.Enabled = Enabled;
+        this.TargetHost = TargetHost;
+        this.StatusCode = StatusCode;
+    }
+
+    public bool Enabled { get; }
+
+    public string TargetHost { get; }
+
+    public int StatusCode { get; }
+}
