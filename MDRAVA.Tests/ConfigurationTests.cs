@@ -1840,6 +1840,32 @@ internal static class ConfigurationTests
         AssertEx.False(snapshot.Certificates is Dictionary<string, RuntimeCertificate>);
         AssertEx.False(snapshot.Listeners is RuntimeListener[]);
         AssertEx.False(snapshot.Routes is RuntimeRoute[]);
+        AssertConnectionLimitsRejects(maxRequestsPerClientConnection: 0);
+        AssertConnectionLimitsRejects(maxIdleUpstreamConnectionsPerUpstream: -1);
+        AssertConnectionLimitsRejects(maxActiveUpgradedTunnels: 0);
+        AssertConnectionLimitsProjectionRejects(maxRequestsPerClientConnection: 0);
+        AssertConnectionLimitsProjectionRejects(maxIdleUpstreamConnectionsPerUpstream: -1);
+        AssertConnectionLimitsProjectionRejects(maxActiveUpgradedTunnels: 0);
+        AssertLimitsRejects(maxActiveClientConnections: 0);
+        AssertLimitsRejects(maxConcurrentTlsHandshakes: 0);
+        AssertLimitsRejects(requestsPerMinutePerIp: 0);
+        AssertLimitsRejects(upgradeRequestsPerMinutePerIp: 0);
+        AssertLimitsRejects(maxRequestHeadBytes: 0);
+        AssertLimitsRejects(maxHeaderCount: 0);
+        AssertLimitsRejects(maxHeaderLineBytes: 0);
+        AssertLimitsRejects(maxRequestBodyBytes: -1);
+        AssertLimitsRejects(maxPathBytes: 0);
+        AssertLimitsRejects(shutdownGracePeriod: TimeSpan.Zero);
+        AssertLimitsProjectionRejects(maxActiveClientConnections: 0);
+        AssertLimitsProjectionRejects(maxConcurrentTlsHandshakes: 0);
+        AssertLimitsProjectionRejects(requestsPerMinutePerIp: 0);
+        AssertLimitsProjectionRejects(upgradeRequestsPerMinutePerIp: 0);
+        AssertLimitsProjectionRejects(maxRequestHeadBytes: 0);
+        AssertLimitsProjectionRejects(maxHeaderCount: 0);
+        AssertLimitsProjectionRejects(maxHeaderLineBytes: 0);
+        AssertLimitsProjectionRejects(maxRequestBodyBytes: -1);
+        AssertLimitsProjectionRejects(maxPathBytes: 0);
+        AssertLimitsProjectionRejects(shutdownGracePeriod: TimeSpan.Zero);
         AssertEx.Throws<ArgumentNullException>(() =>
             listener.WithSniCertificates([null!]));
         AssertEx.Throws<ArgumentNullException>(() =>
@@ -2272,6 +2298,78 @@ internal static class ConfigurationTests
                 route.ResolvedOptions,
                 route.SiteName,
                 route.Retry);
+        }
+
+        static void AssertConnectionLimitsRejects(
+            int maxRequestsPerClientConnection = 100,
+            int maxIdleUpstreamConnectionsPerUpstream = 16,
+            int maxActiveUpgradedTunnels = 1024)
+        {
+            AssertEx.Throws<ArgumentOutOfRangeException>(() => new RuntimeConnectionLimits(
+                maxRequestsPerClientConnection,
+                maxIdleUpstreamConnectionsPerUpstream,
+                maxActiveUpgradedTunnels));
+        }
+
+        static void AssertConnectionLimitsProjectionRejects(
+            int maxRequestsPerClientConnection = 100,
+            int maxIdleUpstreamConnectionsPerUpstream = 16,
+            int maxActiveUpgradedTunnels = 1024)
+        {
+            AssertEx.Throws<ArgumentOutOfRangeException>(() => new RuntimeConnectionLimitsProjection(
+                maxRequestsPerClientConnection,
+                maxIdleUpstreamConnectionsPerUpstream,
+                maxActiveUpgradedTunnels));
+        }
+
+        static void AssertLimitsRejects(
+            int maxActiveClientConnections = 4096,
+            int maxConcurrentTlsHandshakes = 128,
+            int requestsPerMinutePerIp = 240,
+            int upgradeRequestsPerMinutePerIp = 30,
+            int maxRequestHeadBytes = 32768,
+            int maxHeaderCount = 128,
+            int maxHeaderLineBytes = 8192,
+            long maxRequestBodyBytes = 104857600,
+            int maxPathBytes = 8192,
+            TimeSpan? shutdownGracePeriod = null)
+        {
+            AssertEx.Throws<ArgumentOutOfRangeException>(() => new RuntimeLimits(
+                maxActiveClientConnections,
+                maxConcurrentTlsHandshakes,
+                requestsPerMinutePerIp,
+                upgradeRequestsPerMinutePerIp,
+                maxRequestHeadBytes,
+                maxHeaderCount,
+                maxHeaderLineBytes,
+                maxRequestBodyBytes,
+                maxPathBytes,
+                shutdownGracePeriod ?? TimeSpan.FromSeconds(15)));
+        }
+
+        static void AssertLimitsProjectionRejects(
+            int maxActiveClientConnections = 4096,
+            int maxConcurrentTlsHandshakes = 128,
+            int requestsPerMinutePerIp = 240,
+            int upgradeRequestsPerMinutePerIp = 30,
+            int maxRequestHeadBytes = 32768,
+            int maxHeaderCount = 128,
+            int maxHeaderLineBytes = 8192,
+            long maxRequestBodyBytes = 104857600,
+            int maxPathBytes = 8192,
+            TimeSpan? shutdownGracePeriod = null)
+        {
+            AssertEx.Throws<ArgumentOutOfRangeException>(() => new RuntimeLimitsProjection(
+                maxActiveClientConnections,
+                maxConcurrentTlsHandshakes,
+                requestsPerMinutePerIp,
+                upgradeRequestsPerMinutePerIp,
+                maxRequestHeadBytes,
+                maxHeaderCount,
+                maxHeaderLineBytes,
+                maxRequestBodyBytes,
+                maxPathBytes,
+                shutdownGracePeriod ?? TimeSpan.FromSeconds(15)));
         }
 
         var listenerResponses = RuntimeListenerResponse.FromListeners(projection.Listeners);
