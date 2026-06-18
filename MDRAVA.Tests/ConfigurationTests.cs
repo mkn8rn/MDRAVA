@@ -3437,6 +3437,18 @@ internal static class ConfigurationTests
         AssertHttp3AltSvcOptionsRejects(maxAgeSeconds: 31536001);
         AssertHttp3AltSvcProjectionRejects(maxAgeSeconds: -1);
         AssertHttp3AltSvcProjectionRejects(maxAgeSeconds: 31536001);
+        AssertHttp3ListenerReadinessRejects(enablementLevel: null!);
+        AssertHttp3ListenerReadinessRejects(enablementLevel: " ");
+        AssertHttp3ListenerReadinessRejects(disabledReason: null!);
+        AssertHttp3ListenerReadinessRejects(disabledReason: " ");
+        AssertHttp3ListenerReadinessRejects(altSvcMaxAgeSeconds: -1);
+        AssertHttp3ListenerReadinessRejects(altSvcMaxAgeSeconds: 31536001);
+        AssertHttp3ListenerReadinessProjectionRejects(enablementLevel: null!);
+        AssertHttp3ListenerReadinessProjectionRejects(enablementLevel: " ");
+        AssertHttp3ListenerReadinessProjectionRejects(disabledReason: null!);
+        AssertHttp3ListenerReadinessProjectionRejects(disabledReason: " ");
+        AssertHttp3ListenerReadinessProjectionRejects(altSvcMaxAgeSeconds: -1);
+        AssertHttp3ListenerReadinessProjectionRejects(altSvcMaxAgeSeconds: 31536001);
         AssertHttp2LimitsReject(maxConcurrentStreams: 0);
         AssertHttp2LimitsReject(maxConcurrentStreams: 1001);
         AssertHttp2LimitsReject(maxHeaderListBytes: 1023);
@@ -3645,6 +3657,40 @@ internal static class ConfigurationTests
             AssertEx.Throws<ArgumentException>(() => new RuntimeHttp3AltSvcProjection(
                 Enabled: true,
                 maxAgeSeconds));
+        }
+
+        static void AssertHttp3ListenerReadinessRejects(
+            string enablementLevel = "default",
+            string disabledReason = "default_enabled",
+            int altSvcMaxAgeSeconds = 86400)
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeHttp3ListenerReadiness(
+                Configured: true,
+                DefaultEnabled: true,
+                EnablementLevel: enablementLevel,
+                EnabledForTraffic: true,
+                DisabledReason: disabledReason,
+                AltSvcConfigured: true,
+                AltSvcMaxAgeSeconds: altSvcMaxAgeSeconds,
+                UdpQuicListenerIdentityModeled: true,
+                QuicIdentity: null));
+        }
+
+        static void AssertHttp3ListenerReadinessProjectionRejects(
+            string enablementLevel = "default",
+            string disabledReason = "default_enabled",
+            int altSvcMaxAgeSeconds = 86400)
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeHttp3ListenerReadinessProjection(
+                Configured: true,
+                DefaultEnabled: true,
+                EnablementLevel: enablementLevel,
+                EnabledForTraffic: true,
+                DisabledReason: disabledReason,
+                AltSvcConfigured: true,
+                AltSvcMaxAgeSeconds: altSvcMaxAgeSeconds,
+                UdpQuicListenerIdentityModeled: true,
+                QuicIdentity: null));
         }
 
         static void AssertHttp2LimitsReject(
