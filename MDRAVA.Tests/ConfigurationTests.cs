@@ -4163,6 +4163,12 @@ internal static class ConfigurationTests
         AssertRuntimeMaintenanceProjectionRejects(contentType: "text/plain\r\nX-Bad: value");
         AssertRuntimeMaintenanceProjectionRejects(body: null!);
         AssertRuntimeMaintenanceProjectionRejects(body: new string('x', 64 * 1024 + 1));
+        AssertRuntimeObservabilityRejects(recentDiagnosticsCapacity: 0);
+        AssertRuntimeObservabilityRejects(recentDiagnosticsCapacity: 10001);
+        AssertRuntimeObservabilityRejects(useNullLogPersistence: true);
+        AssertRuntimeObservabilityProjectionRejects(recentDiagnosticsCapacity: 0);
+        AssertRuntimeObservabilityProjectionRejects(recentDiagnosticsCapacity: 10001);
+        AssertRuntimeObservabilityProjectionRejects(useNullLogPersistence: true);
         AssertRuntimeLogPersistenceRejects(maxFileBytes: 4095);
         AssertRuntimeLogPersistenceRejects(maxFileBytes: 1024L * 1024 * 1024 + 1);
         AssertRuntimeLogPersistenceRejects(maxFiles: 0);
@@ -4524,6 +4530,50 @@ internal static class ConfigurationTests
                 clientRequestHeadTimeout ?? TimeSpan.FromSeconds(10),
                 upstreamResponseHeadTimeout ?? TimeSpan.FromSeconds(30),
                 AccessLogEnabled: true));
+        }
+
+        static void AssertRuntimeObservabilityRejects(
+            int recentDiagnosticsCapacity = 500,
+            RuntimeLogPersistenceOptions? logPersistence = null,
+            bool useNullLogPersistence = false)
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeObservabilityOptions(
+                AccessLogEnabled: true,
+                recentDiagnosticsCapacity,
+                useNullLogPersistence
+                    ? null!
+                    : logPersistence ?? CreateValidLogPersistenceOptions()));
+
+            static RuntimeLogPersistenceOptions CreateValidLogPersistenceOptions()
+            {
+                return new RuntimeLogPersistenceOptions(
+                    AccessLogEnabled: true,
+                    AdminAuditEnabled: true,
+                    MaxFileBytes: 1_048_576,
+                    MaxFiles: 8);
+            }
+        }
+
+        static void AssertRuntimeObservabilityProjectionRejects(
+            int recentDiagnosticsCapacity = 500,
+            RuntimeLogPersistenceProjection? logPersistence = null,
+            bool useNullLogPersistence = false)
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeObservabilityProjection(
+                AccessLogEnabled: true,
+                recentDiagnosticsCapacity,
+                useNullLogPersistence
+                    ? null!
+                    : logPersistence ?? CreateValidLogPersistenceProjection()));
+
+            static RuntimeLogPersistenceProjection CreateValidLogPersistenceProjection()
+            {
+                return new RuntimeLogPersistenceProjection(
+                    AccessLogEnabled: true,
+                    AdminAuditEnabled: true,
+                    MaxFileBytes: 1_048_576,
+                    MaxFiles: 8);
+            }
         }
 
         static void AssertRuntimeLogPersistenceRejects(
