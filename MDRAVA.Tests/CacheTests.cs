@@ -880,6 +880,7 @@ internal static class CacheTests
     {
         var route = Route(CachePolicy());
         var listener = Listener();
+        var policy = CacheFacts(route.Cache);
 
         AssertEx.Throws<ArgumentNullException>(
             () => ProxyCacheRuntimeMapper.ToRequestScope(null!, listener));
@@ -887,6 +888,14 @@ internal static class CacheTests
             () => ProxyCacheRuntimeMapper.ToRequestScope(route, null!));
         AssertEx.Throws<ArgumentNullException>(
             () => ProxyCacheRuntimeMapper.ToPolicyFacts(null!));
+        AssertEx.Throws<ArgumentNullException>(
+            () => new ProxyCacheRequestScope(null!, route.Host, "https", policy));
+        AssertEx.Throws<ArgumentNullException>(
+            () => new ProxyCacheRequestScope(route.Name, null!, "https", policy));
+        AssertEx.Throws<ArgumentNullException>(
+            () => new ProxyCacheRequestScope(route.Name, route.Host, null!, policy));
+        AssertEx.Throws<ArgumentNullException>(
+            () => new ProxyCacheRequestScope(route.Name, route.Host, "https", null!));
     }
 
     public static void CacheAdministrationClearReturnsPostClearStatus()
