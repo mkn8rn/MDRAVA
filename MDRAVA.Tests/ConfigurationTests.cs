@@ -3398,6 +3398,12 @@ internal static class ConfigurationTests
         object metrics = projection.Metrics;
         AssertEx.True(metrics is RuntimeMetricsProjection);
         AssertEx.False(metrics is RuntimeMetricsOptions);
+        AssertRuntimeMetricsOptionsRejects(endpointPath: null!);
+        AssertRuntimeMetricsOptionsRejects(endpointPath: " ");
+        AssertRuntimeMetricsOptionsRejects(endpointPath: "/metrics");
+        AssertRuntimeMetricsProjectionRejects(endpointPath: null!);
+        AssertRuntimeMetricsProjectionRejects(endpointPath: " ");
+        AssertRuntimeMetricsProjectionRejects(endpointPath: "/metrics");
     }
 
     public static async Task ActiveInspectionProjectionUsesListenerReadModels()
@@ -5575,6 +5581,30 @@ internal static class ConfigurationTests
           ]
         }
         """;
+    }
+
+    private static void AssertRuntimeMetricsOptionsRejects(
+        string endpointPath = RuntimeMetricsOptions.FixedAdminEndpointPath)
+    {
+        AssertEx.Throws<ArgumentException>(() => new RuntimeMetricsOptions(
+            Enabled: true,
+            EndpointPath: endpointPath,
+            ProtectedByAdminAuth: true,
+            IncludePerRouteLabels: true,
+            IncludePerUpstreamLabels: false,
+            PublicMetricsEnabled: false));
+    }
+
+    private static void AssertRuntimeMetricsProjectionRejects(
+        string endpointPath = RuntimeMetricsProjection.FixedAdminEndpointPath)
+    {
+        AssertEx.Throws<ArgumentException>(() => new RuntimeMetricsProjection(
+            Enabled: true,
+            EndpointPath: endpointPath,
+            ProtectedByAdminAuth: true,
+            IncludePerRouteLabels: true,
+            IncludePerUpstreamLabels: false,
+            PublicMetricsEnabled: false));
     }
 
     private sealed class FixedTimeProvider : TimeProvider

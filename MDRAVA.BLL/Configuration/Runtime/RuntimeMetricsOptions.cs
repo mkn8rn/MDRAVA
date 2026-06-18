@@ -1,14 +1,38 @@
 namespace MDRAVA.BLL.Configuration;
 
-public sealed record RuntimeMetricsOptions(
-    bool Enabled,
-    string EndpointPath,
-    bool ProtectedByAdminAuth,
-    bool IncludePerRouteLabels,
-    bool IncludePerUpstreamLabels,
-    bool PublicMetricsEnabled)
+public sealed record RuntimeMetricsOptions
 {
     public const string FixedAdminEndpointPath = "/admin/proxy/metrics";
+
+    public RuntimeMetricsOptions(
+        bool Enabled,
+        string EndpointPath,
+        bool ProtectedByAdminAuth,
+        bool IncludePerRouteLabels,
+        bool IncludePerUpstreamLabels,
+        bool PublicMetricsEnabled)
+    {
+        RuntimeMetricsFacts.ValidateEndpointPath(EndpointPath, nameof(EndpointPath));
+
+        this.Enabled = Enabled;
+        this.EndpointPath = EndpointPath;
+        this.ProtectedByAdminAuth = ProtectedByAdminAuth;
+        this.IncludePerRouteLabels = IncludePerRouteLabels;
+        this.IncludePerUpstreamLabels = IncludePerUpstreamLabels;
+        this.PublicMetricsEnabled = PublicMetricsEnabled;
+    }
+
+    public bool Enabled { get; }
+
+    public string EndpointPath { get; }
+
+    public bool ProtectedByAdminAuth { get; }
+
+    public bool IncludePerRouteLabels { get; }
+
+    public bool IncludePerUpstreamLabels { get; }
+
+    public bool PublicMetricsEnabled { get; }
 
     public static RuntimeMetricsOptions Default { get; } = new(
         true,

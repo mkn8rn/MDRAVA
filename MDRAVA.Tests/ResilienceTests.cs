@@ -1416,7 +1416,13 @@ internal static class ResilienceTests
             var selector = new RoundRobinUpstreamSelector(health, circuit, metrics);
             var cache = new ResponseCacheStore(clock);
             var store = CreateStore(
-                RuntimeMetricsOptions.Default with { IncludePerUpstreamLabels = includePerUpstreamLabels },
+                new RuntimeMetricsOptions(
+                    RuntimeMetricsOptions.Default.Enabled,
+                    RuntimeMetricsOptions.Default.EndpointPath,
+                    RuntimeMetricsOptions.Default.ProtectedByAdminAuth,
+                    RuntimeMetricsOptions.Default.IncludePerRouteLabels,
+                    includePerUpstreamLabels,
+                    RuntimeMetricsOptions.Default.PublicMetricsEnabled),
                 [Route([Upstream("first", 1, Circuit(1))])]);
             var acme = new AcmeCertificateStatusStore();
             var exporter = new PrometheusMetricsExporter();
