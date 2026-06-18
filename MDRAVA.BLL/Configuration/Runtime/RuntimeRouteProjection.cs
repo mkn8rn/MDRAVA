@@ -22,6 +22,13 @@ public sealed record RuntimeRouteProjection
         string SiteName,
         RuntimeRetryProjection Retry)
     {
+        RuntimeRouteFacts.Validate(
+            Name,
+            Host,
+            PathPrefix,
+            Action,
+            LoadBalancingPolicy,
+            SiteName);
         ArgumentNullException.ThrowIfNull(HealthCheck);
         ArgumentNullException.ThrowIfNull(HttpsRedirect);
         ArgumentNullException.ThrowIfNull(CanonicalHost);

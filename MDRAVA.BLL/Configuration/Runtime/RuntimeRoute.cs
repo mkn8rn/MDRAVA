@@ -61,6 +61,13 @@ public sealed record RuntimeRoute
         string SiteName,
         RuntimeRetryPolicy Retry)
     {
+        RuntimeRouteFacts.Validate(
+            Name,
+            Host,
+            PathPrefix,
+            Action,
+            LoadBalancingPolicy,
+            SiteName);
         ArgumentNullException.ThrowIfNull(Upstreams);
         ArgumentNullException.ThrowIfNull(HealthCheck);
         ArgumentNullException.ThrowIfNull(HttpsRedirect);
@@ -72,7 +79,6 @@ public sealed record RuntimeRoute
         ArgumentNullException.ThrowIfNull(Maintenance);
         ArgumentNullException.ThrowIfNull(Cache);
         ArgumentNullException.ThrowIfNull(ResolvedOptions);
-        ArgumentNullException.ThrowIfNull(SiteName);
         ArgumentNullException.ThrowIfNull(Retry);
 
         this.Name = Name;

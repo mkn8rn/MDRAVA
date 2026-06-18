@@ -3935,6 +3935,28 @@ internal static class ConfigurationTests
             ResolvedOptions: route.ResolvedOptions,
             SiteName: "home",
             Retry: null!));
+        AssertRuntimeRouteRejects(name: null!);
+        AssertRuntimeRouteRejects(name: " ");
+        AssertRuntimeRouteRejects(host: null!);
+        AssertRuntimeRouteRejects(host: " ");
+        AssertRuntimeRouteRejects(pathPrefix: null!);
+        AssertRuntimeRouteRejects(pathPrefix: " ");
+        AssertRuntimeRouteRejects(pathPrefix: "api");
+        AssertRuntimeRouteRejects(action: (RuntimeRouteAction)99);
+        AssertRuntimeRouteRejects(loadBalancingPolicy: null!);
+        AssertRuntimeRouteRejects(loadBalancingPolicy: " ");
+        AssertRuntimeRouteRejects(siteName: null!);
+        AssertRuntimeRouteProjectionRejects(name: null!);
+        AssertRuntimeRouteProjectionRejects(name: " ");
+        AssertRuntimeRouteProjectionRejects(host: null!);
+        AssertRuntimeRouteProjectionRejects(host: " ");
+        AssertRuntimeRouteProjectionRejects(pathPrefix: null!);
+        AssertRuntimeRouteProjectionRejects(pathPrefix: " ");
+        AssertRuntimeRouteProjectionRejects(pathPrefix: "api");
+        AssertRuntimeRouteProjectionRejects(action: (RuntimeRouteAction)99);
+        AssertRuntimeRouteProjectionRejects(loadBalancingPolicy: null!);
+        AssertRuntimeRouteProjectionRejects(loadBalancingPolicy: " ");
+        AssertRuntimeRouteProjectionRejects(siteName: null!);
         AssertEx.Equal("local-test", directRoute.Upstreams[0].Name);
         AssertEx.Equal("home", directRoute.SiteName);
         AssertEx.False(directRoute.Upstreams is RuntimeUpstreamProjection[]);
@@ -4024,6 +4046,100 @@ internal static class ConfigurationTests
                     OpenDuration: TimeSpan.FromSeconds(10),
                     HalfOpenMaxAttempts: 1,
                     FailureStatusCodes: [])));
+        }
+
+        static void AssertRuntimeRouteRejects(
+            string name = "home",
+            string host = "home.test",
+            string pathPrefix = "/",
+            RuntimeRouteAction action = RuntimeRouteAction.Proxy,
+            string loadBalancingPolicy = "round-robin",
+            string siteName = "home")
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeRoute(
+                name,
+                host,
+                pathPrefix,
+                action,
+                loadBalancingPolicy,
+                new RuntimeHealthCheckOptions(
+                    Enabled: false,
+                    Path: "/health",
+                    Interval: TimeSpan.FromSeconds(2),
+                    Timeout: TimeSpan.FromSeconds(1),
+                    HealthyThreshold: 1,
+                    UnhealthyThreshold: 1),
+                [],
+                new RuntimeHttpsRedirectPolicy(false, 308, null),
+                new RuntimeCanonicalHostPolicy(false, "", 308),
+                RuntimeHeaderPolicy.Empty,
+                new RuntimePathRewritePolicy("", "", ""),
+                new RuntimeRedirectPolicy(308, "", "", true),
+                new RuntimeStaticResponse(200, "text/plain; charset=utf-8", "ok"),
+                new RuntimeMaintenancePolicy(false, null, "text/plain; charset=utf-8", "Service Unavailable"),
+                RuntimeCachePolicy.Disabled,
+                new RuntimeRouteResolvedOptions(
+                    MaxRequestBodyBytes: 104857600,
+                    ClientRequestHeadTimeout: TimeSpan.FromSeconds(10),
+                    UpstreamResponseHeadTimeout: TimeSpan.FromSeconds(30),
+                    AccessLogEnabled: true),
+                siteName,
+                RuntimeRetryPolicy.Disabled));
+        }
+
+        static void AssertRuntimeRouteProjectionRejects(
+            string name = "home",
+            string host = "home.test",
+            string pathPrefix = "/",
+            RuntimeRouteAction action = RuntimeRouteAction.Proxy,
+            string loadBalancingPolicy = "round-robin",
+            string siteName = "home")
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeRouteProjection(
+                name,
+                host,
+                pathPrefix,
+                action,
+                loadBalancingPolicy,
+                new RuntimeHealthCheckProjection(
+                    Enabled: false,
+                    Path: "/health",
+                    Interval: TimeSpan.FromSeconds(2),
+                    Timeout: TimeSpan.FromSeconds(1),
+                    HealthyThreshold: 1,
+                    UnhealthyThreshold: 1),
+                [],
+                new RuntimeHttpsRedirectProjection(false, 308, null),
+                new RuntimeCanonicalHostProjection(false, "", 308),
+                new RuntimeHeaderPolicyProjection([], [], [], []),
+                new RuntimePathRewriteProjection("", "", ""),
+                new RuntimeRedirectProjection(308, "", "", true),
+                new RuntimeStaticResponseProjection(200, "text/plain; charset=utf-8", "ok"),
+                new RuntimeMaintenanceProjection(false, null, "text/plain; charset=utf-8", "Service Unavailable"),
+                new RuntimeCacheProjection(
+                    Enabled: false,
+                    MaxEntryBytes: 0,
+                    MaxTotalBytes: 0,
+                    DefaultTtl: TimeSpan.Zero,
+                    RespectOriginCacheControl: true,
+                    VaryByHeaders: [],
+                    CacheableStatusCodes: [],
+                    Methods: []),
+                new RuntimeRouteResolvedOptionsProjection(
+                    MaxRequestBodyBytes: 104857600,
+                    ClientRequestHeadTimeout: TimeSpan.FromSeconds(10),
+                    UpstreamResponseHeadTimeout: TimeSpan.FromSeconds(30),
+                    AccessLogEnabled: true),
+                siteName,
+                new RuntimeRetryProjection(
+                    Enabled: false,
+                    MaxAttempts: 1,
+                    PerAttemptTimeout: null,
+                    RetryOnConnectFailure: false,
+                    RetryOnUpstreamResponseHeadTimeout: false,
+                    RetryOnStatusCodes: [],
+                    RetryMethods: [],
+                    RetryBackoff: TimeSpan.Zero)));
         }
     }
 
