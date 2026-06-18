@@ -326,6 +326,10 @@ internal static class ResilienceTests
         AssertEx.Throws<ArgumentNullException>(() => new CircuitBreakerStatusSource(
             "route/upstream",
             null!));
+        AssertEx.Throws<ArgumentNullException>(() => fixture.Circuit.IsAvailable(null!));
+        AssertEx.Throws<ArgumentNullException>(() => fixture.Circuit.RecordRejectedIfUnavailable(null!));
+        AssertEx.Throws<ArgumentNullException>(() => fixture.Circuit.Acquire(null!));
+        AssertEx.Throws<ArgumentNullException>(() => fixture.Circuit.Snapshot(null!));
     }
 
     public static void UpstreamAttemptRecorderRecordsConfiguredStatusFailuresWithoutHealthFailure()

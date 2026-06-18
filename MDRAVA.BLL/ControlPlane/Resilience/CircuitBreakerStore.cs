@@ -16,6 +16,8 @@ public sealed partial class CircuitBreakerStore
 
     public bool IsAvailable(CircuitBreakerStatusSource source)
     {
+        ArgumentNullException.ThrowIfNull(source);
+
         if (!source.Policy.Enabled)
         {
             return true;
@@ -36,6 +38,8 @@ public sealed partial class CircuitBreakerStore
 
     public void RecordRejectedIfUnavailable(CircuitBreakerStatusSource source)
     {
+        ArgumentNullException.ThrowIfNull(source);
+
         if (!source.Policy.Enabled)
         {
             return;
@@ -57,6 +61,8 @@ public sealed partial class CircuitBreakerStore
 
     public CircuitBreakerAcquisitionResult Acquire(CircuitBreakerStatusSource source)
     {
+        ArgumentNullException.ThrowIfNull(source);
+
         if (!source.Policy.Enabled)
         {
             return CircuitBreakerAcquisitionResult.Accepted(
@@ -156,6 +162,8 @@ public sealed partial class CircuitBreakerStore
 
     public CircuitBreakerStatus Snapshot(CircuitBreakerStatusSource source)
     {
+        ArgumentNullException.ThrowIfNull(source);
+
         if (!source.Policy.Enabled)
         {
             return CircuitBreakerStatus.Disabled(source.Policy);
