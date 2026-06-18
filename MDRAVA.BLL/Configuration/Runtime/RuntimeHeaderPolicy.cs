@@ -1,4 +1,5 @@
 using MDRAVA.BLL.Http;
+using System.Collections.ObjectModel;
 
 namespace MDRAVA.BLL.Configuration;
 
@@ -10,10 +11,10 @@ public sealed record RuntimeHeaderPolicy
         IEnumerable<ProxyHeaderField> SetResponseHeaders,
         IEnumerable<string> RemoveResponseHeaders)
     {
-        this.SetRequestHeaders = RuntimeList.Copy(SetRequestHeaders);
-        this.RemoveRequestHeaders = RuntimeList.Copy(RemoveRequestHeaders);
-        this.SetResponseHeaders = RuntimeList.Copy(SetResponseHeaders);
-        this.RemoveResponseHeaders = RuntimeList.Copy(RemoveResponseHeaders);
+        this.SetRequestHeaders = CopySetHeaders(SetRequestHeaders);
+        this.RemoveRequestHeaders = CopyRemoveHeaders(RemoveRequestHeaders);
+        this.SetResponseHeaders = CopySetHeaders(SetResponseHeaders);
+        this.RemoveResponseHeaders = CopyRemoveHeaders(RemoveResponseHeaders);
     }
 
     public IReadOnlyList<ProxyHeaderField> SetRequestHeaders { get; }
@@ -25,4 +26,33 @@ public sealed record RuntimeHeaderPolicy
     public IReadOnlyList<string> RemoveResponseHeaders { get; }
 
     public static RuntimeHeaderPolicy Empty { get; } = new([], [], [], []);
+
+    private static IReadOnlyList<ProxyHeaderField> CopySetHeaders(IEnumerable<ProxyHeaderField> headers)
+    {
+        ArgumentNullException.ThrowIfNull(headers);
+
+        var copy = new List<ProxyHeaderField>();
+        foreach (var header in headers)
+        {
+            ArgumentNullException.ThrowIfNull(header);
+            ProxyHeaderPolicyFacts.ValidateSetHeader(header.Name, header.Value);
+            copy.Add(header);
+        }
+
+        return new ReadOnlyCollection<ProxyHeaderField>(copy);
+    }
+
+    private static IReadOnlyList<string> CopyRemoveHeaders(IEnumerable<string> headerNames)
+    {
+        ArgumentNullException.ThrowIfNull(headerNames);
+
+        var copy = new List<string>();
+        foreach (var headerName in headerNames)
+        {
+            ProxyHeaderPolicyFacts.ValidatePolicyHeaderName(headerName);
+            copy.Add(headerName);
+        }
+
+        return new ReadOnlyCollection<string>(copy);
+    }
 }

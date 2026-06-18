@@ -1,3 +1,5 @@
+using System.Collections.ObjectModel;
+
 namespace MDRAVA.BLL.Configuration;
 
 public sealed record RuntimeHeaderPolicyProjection
@@ -8,10 +10,10 @@ public sealed record RuntimeHeaderPolicyProjection
         IEnumerable<RuntimeHeaderFieldProjection> SetResponseHeaders,
         IEnumerable<string> RemoveResponseHeaders)
     {
-        this.SetRequestHeaders = RuntimeList.Copy(SetRequestHeaders);
-        this.RemoveRequestHeaders = RuntimeList.Copy(RemoveRequestHeaders);
-        this.SetResponseHeaders = RuntimeList.Copy(SetResponseHeaders);
-        this.RemoveResponseHeaders = RuntimeList.Copy(RemoveResponseHeaders);
+        this.SetRequestHeaders = CopySetHeaders(SetRequestHeaders);
+        this.RemoveRequestHeaders = CopyRemoveHeaders(RemoveRequestHeaders);
+        this.SetResponseHeaders = CopySetHeaders(SetResponseHeaders);
+        this.RemoveResponseHeaders = CopyRemoveHeaders(RemoveResponseHeaders);
     }
 
     public IReadOnlyList<RuntimeHeaderFieldProjection> SetRequestHeaders { get; }
@@ -21,6 +23,48 @@ public sealed record RuntimeHeaderPolicyProjection
     public IReadOnlyList<RuntimeHeaderFieldProjection> SetResponseHeaders { get; }
 
     public IReadOnlyList<string> RemoveResponseHeaders { get; }
+
+    private static IReadOnlyList<RuntimeHeaderFieldProjection> CopySetHeaders(
+        IEnumerable<RuntimeHeaderFieldProjection> headers)
+    {
+        ArgumentNullException.ThrowIfNull(headers);
+
+        var copy = new List<RuntimeHeaderFieldProjection>();
+        foreach (var header in headers)
+        {
+            ArgumentNullException.ThrowIfNull(header);
+            copy.Add(header);
+        }
+
+        return new ReadOnlyCollection<RuntimeHeaderFieldProjection>(copy);
+    }
+
+    private static IReadOnlyList<string> CopyRemoveHeaders(IEnumerable<string> headerNames)
+    {
+        ArgumentNullException.ThrowIfNull(headerNames);
+
+        var copy = new List<string>();
+        foreach (var headerName in headerNames)
+        {
+            ProxyHeaderPolicyFacts.ValidatePolicyHeaderName(headerName);
+            copy.Add(headerName);
+        }
+
+        return new ReadOnlyCollection<string>(copy);
+    }
 }
 
-public sealed record RuntimeHeaderFieldProjection(string Name, string Value);
+public sealed record RuntimeHeaderFieldProjection
+{
+    public RuntimeHeaderFieldProjection(string Name, string Value)
+    {
+        ProxyHeaderPolicyFacts.ValidateSetHeader(Name, Value);
+
+        this.Name = Name;
+        this.Value = Value;
+    }
+
+    public string Name { get; }
+
+    public string Value { get; }
+}

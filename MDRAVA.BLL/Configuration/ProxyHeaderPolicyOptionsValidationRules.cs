@@ -2,21 +2,6 @@ namespace MDRAVA.BLL.Configuration;
 
 internal static class ProxyHeaderPolicyOptionsValidationRules
 {
-    private static readonly HashSet<string> RestrictedHeaderNames = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "Connection",
-        "Keep-Alive",
-        "Proxy-Authenticate",
-        "Proxy-Authorization",
-        "TE",
-        "Trailer",
-        "Transfer-Encoding",
-        "Upgrade",
-        "Content-Length",
-        "Host",
-        "X-Request-Id"
-    };
-
     public static void Validate(
         List<string> failures,
         string routePrefix,
@@ -30,20 +15,7 @@ internal static class ProxyHeaderPolicyOptionsValidationRules
 
     public static bool IsValidHttpFieldName(string headerName)
     {
-        foreach (var character in headerName)
-        {
-            var valid = character is >= '!' and <= '~'
-                && character is not '(' and not ')' and not '<' and not '>' and not '@'
-                && character is not ',' and not ';' and not ':' and not '\\' and not '"'
-                && character is not '/' and not '[' and not ']' and not '?' and not '='
-                && character is not '{' and not '}';
-            if (!valid)
-            {
-                return false;
-            }
-        }
-
-        return true;
+        return ProxyHeaderPolicyFacts.IsValidHttpFieldName(headerName);
     }
 
     private static void ValidateHeaderSetRules(
@@ -82,7 +54,7 @@ internal static class ProxyHeaderPolicyOptionsValidationRules
             return;
         }
 
-        if (RestrictedHeaderNames.Contains(headerName))
+        if (ProxyHeaderPolicyFacts.IsRestrictedHeaderName(headerName))
         {
             failures.Add($"{prefix} '{headerName}' is restricted and cannot be modified by header policy.");
             return;

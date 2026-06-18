@@ -1402,6 +1402,56 @@ internal static class ConfigurationTests
             [],
             [null!],
             []));
+        AssertEx.Throws<ArgumentException>(() => new RuntimeHeaderPolicy(
+            [new ProxyHeaderField(" ", "value")],
+            [],
+            [],
+            []));
+        AssertEx.Throws<ArgumentException>(() => new RuntimeHeaderPolicy(
+            [new ProxyHeaderField("Host", "value")],
+            [],
+            [],
+            []));
+        AssertEx.Throws<ArgumentException>(() => new RuntimeHeaderPolicy(
+            [new ProxyHeaderField("Bad Header", "value")],
+            [],
+            [],
+            []));
+        AssertEx.Throws<ArgumentException>(() => new RuntimeHeaderPolicy(
+            [new ProxyHeaderField("X-Test", "bad\r\nvalue")],
+            [],
+            [],
+            []));
+        AssertEx.Throws<ArgumentException>(() => new RuntimeHeaderPolicy(
+            [],
+            ["Host"],
+            [],
+            []));
+        AssertEx.Throws<ArgumentException>(() => new RuntimeHeaderPolicy(
+            [],
+            ["Bad Header"],
+            [],
+            []));
+        AssertEx.Throws<ArgumentException>(() => new RuntimeHeaderFieldProjection(" ", "value"));
+        AssertEx.Throws<ArgumentException>(() => new RuntimeHeaderFieldProjection("Host", "value"));
+        AssertEx.Throws<ArgumentException>(() => new RuntimeHeaderFieldProjection("Bad Header", "value"));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeHeaderFieldProjection("X-Test", null!));
+        AssertEx.Throws<ArgumentException>(() => new RuntimeHeaderFieldProjection("X-Test", "bad\nvalue"));
+        AssertEx.Throws<ArgumentNullException>(() => new RuntimeHeaderPolicyProjection(
+            [null!],
+            [],
+            [],
+            []));
+        AssertEx.Throws<ArgumentException>(() => new RuntimeHeaderPolicyProjection(
+            [],
+            ["Host"],
+            [],
+            []));
+        AssertEx.Throws<ArgumentException>(() => new RuntimeHeaderPolicyProjection(
+            [],
+            ["Bad Header"],
+            [],
+            []));
         AssertEx.Throws<ArgumentNullException>(() => new RuntimeRetryPolicy(
             Enabled: true,
             MaxAttempts: 2,
