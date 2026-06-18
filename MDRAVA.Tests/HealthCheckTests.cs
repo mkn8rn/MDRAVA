@@ -347,7 +347,7 @@ internal static class HealthCheckTests
             new RuntimeHealthCheckOptions(
                 healthEnabled,
                 "/health",
-                TimeSpan.FromSeconds(1),
+                TimeSpan.FromSeconds(Math.Max(1, timeoutSeconds)),
                 TimeSpan.FromSeconds(timeoutSeconds),
                 healthyThreshold,
                 unhealthyThreshold),

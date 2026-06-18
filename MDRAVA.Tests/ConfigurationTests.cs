@@ -3453,6 +3453,31 @@ internal static class ConfigurationTests
         AssertEx.False(routeCollection is RuntimeRouteProjection[]);
         AssertEx.False(upstreamCollection is RuntimeUpstream[]);
         AssertEx.False(upstreamCollection is RuntimeUpstreamProjection[]);
+        object healthCheck = route.HealthCheck;
+        AssertEx.True(healthCheck is RuntimeHealthCheckProjection);
+        AssertEx.False(healthCheck is RuntimeHealthCheckOptions);
+        AssertHealthCheckOptionsRejects(path: null!);
+        AssertHealthCheckOptionsRejects(path: "health");
+        AssertHealthCheckOptionsRejects(interval: TimeSpan.Zero);
+        AssertHealthCheckOptionsRejects(interval: TimeSpan.FromSeconds(3601));
+        AssertHealthCheckOptionsRejects(timeout: TimeSpan.Zero);
+        AssertHealthCheckOptionsRejects(timeout: TimeSpan.FromSeconds(301), interval: TimeSpan.FromSeconds(301));
+        AssertHealthCheckOptionsRejects(interval: TimeSpan.FromSeconds(1), timeout: TimeSpan.FromSeconds(2));
+        AssertHealthCheckOptionsRejects(healthyThreshold: 0);
+        AssertHealthCheckOptionsRejects(healthyThreshold: 101);
+        AssertHealthCheckOptionsRejects(unhealthyThreshold: 0);
+        AssertHealthCheckOptionsRejects(unhealthyThreshold: 101);
+        AssertHealthCheckProjectionRejects(path: null!);
+        AssertHealthCheckProjectionRejects(path: "health");
+        AssertHealthCheckProjectionRejects(interval: TimeSpan.Zero);
+        AssertHealthCheckProjectionRejects(interval: TimeSpan.FromSeconds(3601));
+        AssertHealthCheckProjectionRejects(timeout: TimeSpan.Zero);
+        AssertHealthCheckProjectionRejects(timeout: TimeSpan.FromSeconds(301), interval: TimeSpan.FromSeconds(301));
+        AssertHealthCheckProjectionRejects(interval: TimeSpan.FromSeconds(1), timeout: TimeSpan.FromSeconds(2));
+        AssertHealthCheckProjectionRejects(healthyThreshold: 0);
+        AssertHealthCheckProjectionRejects(healthyThreshold: 101);
+        AssertHealthCheckProjectionRejects(unhealthyThreshold: 0);
+        AssertHealthCheckProjectionRejects(unhealthyThreshold: 101);
         var failureStatusCodes = new List<int> { 503 };
         var directCircuitBreaker = new RuntimeCircuitBreakerProjection(
             Enabled: true,
@@ -3630,6 +3655,38 @@ internal static class ConfigurationTests
         AssertEx.Equal("local-test", directRoute.Upstreams[0].Name);
         AssertEx.Equal("home", directRoute.SiteName);
         AssertEx.False(directRoute.Upstreams is RuntimeUpstreamProjection[]);
+
+        static void AssertHealthCheckOptionsRejects(
+            string path = "/health",
+            TimeSpan? interval = null,
+            TimeSpan? timeout = null,
+            int healthyThreshold = 1,
+            int unhealthyThreshold = 1)
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeHealthCheckOptions(
+                Enabled: true,
+                path,
+                interval ?? TimeSpan.FromSeconds(2),
+                timeout ?? TimeSpan.FromSeconds(1),
+                healthyThreshold,
+                unhealthyThreshold));
+        }
+
+        static void AssertHealthCheckProjectionRejects(
+            string path = "/health",
+            TimeSpan? interval = null,
+            TimeSpan? timeout = null,
+            int healthyThreshold = 1,
+            int unhealthyThreshold = 1)
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeHealthCheckProjection(
+                Enabled: true,
+                path,
+                interval ?? TimeSpan.FromSeconds(2),
+                timeout ?? TimeSpan.FromSeconds(1),
+                healthyThreshold,
+                unhealthyThreshold));
+        }
     }
 
     public static async Task ConfigReloadControllerReturnsConfigurationResponse()

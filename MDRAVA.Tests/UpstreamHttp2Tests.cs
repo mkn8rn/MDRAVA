@@ -602,7 +602,7 @@ internal static class UpstreamHttp2Tests
             new RuntimeHealthCheckOptions(
                 true,
                 "/health",
-                TimeSpan.FromSeconds(1),
+                TimeSpan.FromSeconds(2),
                 TimeSpan.FromSeconds(2),
                 1,
                 1),
