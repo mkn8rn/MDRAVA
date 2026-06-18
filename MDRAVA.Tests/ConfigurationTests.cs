@@ -3966,6 +3966,12 @@ internal static class ConfigurationTests
         AssertRuntimeUpstreamRejects(port: 65536);
         AssertRuntimeUpstreamRejects(weight: 0);
         AssertRuntimeUpstreamRejects(weight: 100001);
+        AssertRuntimeUpstreamTlsRejects(sniHost: " ");
+        AssertRuntimeUpstreamTlsRejects(sniHost: " app.internal");
+        AssertRuntimeUpstreamTlsRejects(sniHost: "https://app.internal");
+        AssertRuntimeUpstreamTlsRejects(sniHost: "app.internal/path");
+        AssertRuntimeUpstreamTlsRejects(sniHost: "app.internal:443");
+        AssertRuntimeUpstreamTlsRejects(sniHost: "*.internal");
         AssertRuntimeUpstreamProjectionRejects(routeName: null!);
         AssertRuntimeUpstreamProjectionRejects(routeName: " ");
         AssertRuntimeUpstreamProjectionRejects(name: null!);
@@ -3992,6 +3998,12 @@ internal static class ConfigurationTests
         AssertRuntimeUpstreamProjectionRejects(effectiveSniHost: " ");
         AssertRuntimeUpstreamProjectionRejects(identity: null!);
         AssertRuntimeUpstreamProjectionRejects(identity: " ");
+        AssertRuntimeUpstreamTlsProjectionRejects(sniHost: " ");
+        AssertRuntimeUpstreamTlsProjectionRejects(sniHost: " app.internal");
+        AssertRuntimeUpstreamTlsProjectionRejects(sniHost: "https://app.internal");
+        AssertRuntimeUpstreamTlsProjectionRejects(sniHost: "app.internal/path");
+        AssertRuntimeUpstreamTlsProjectionRejects(sniHost: "app.internal:443");
+        AssertRuntimeUpstreamTlsProjectionRejects(sniHost: "*.internal");
         AssertEx.Equal(503, directCircuitBreaker.FailureStatusCodes[0]);
         AssertEx.Equal(503, directUpstream.CircuitBreaker.FailureStatusCodes[0]);
         AssertEx.Equal("home/local-test", directUpstream.Identity);
@@ -4298,6 +4310,20 @@ internal static class ConfigurationTests
                     OpenDuration: TimeSpan.FromSeconds(10),
                     HalfOpenMaxAttempts: 1,
                     FailureStatusCodes: [])));
+        }
+
+        static void AssertRuntimeUpstreamTlsRejects(string? sniHost)
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeUpstreamTlsOptions(
+                ValidateCertificate: true,
+                sniHost));
+        }
+
+        static void AssertRuntimeUpstreamTlsProjectionRejects(string? sniHost)
+        {
+            AssertEx.Throws<ArgumentException>(() => new RuntimeUpstreamTlsProjection(
+                ValidateCertificate: true,
+                sniHost));
         }
 
         static void AssertRuntimeRouteRejects(
