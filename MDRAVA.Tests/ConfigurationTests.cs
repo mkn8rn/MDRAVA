@@ -1222,6 +1222,33 @@ internal static class ConfigurationTests
             VaryByHeaders: [],
             CacheableStatusCodes: [],
             Methods: null!));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new RuntimeCacheProjection(
+            Enabled: true,
+            MaxEntryBytes: -1,
+            MaxTotalBytes: 4096,
+            DefaultTtl: TimeSpan.FromSeconds(60),
+            RespectOriginCacheControl: true,
+            VaryByHeaders: [],
+            CacheableStatusCodes: [],
+            Methods: []));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new RuntimeCacheProjection(
+            Enabled: true,
+            MaxEntryBytes: 1024,
+            MaxTotalBytes: -1,
+            DefaultTtl: TimeSpan.FromSeconds(60),
+            RespectOriginCacheControl: true,
+            VaryByHeaders: [],
+            CacheableStatusCodes: [],
+            Methods: []));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new RuntimeCacheProjection(
+            Enabled: true,
+            MaxEntryBytes: 1024,
+            MaxTotalBytes: 4096,
+            DefaultTtl: TimeSpan.FromTicks(-1),
+            RespectOriginCacheControl: true,
+            VaryByHeaders: [],
+            CacheableStatusCodes: [],
+            Methods: []));
         AssertEx.Throws<ArgumentNullException>(() => new RuntimeRetryProjection(
             Enabled: true,
             MaxAttempts: 2,
@@ -1283,6 +1310,33 @@ internal static class ConfigurationTests
             VaryByHeaders: [],
             CacheableStatusCodes: [],
             Methods: [null!]));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new RuntimeCachePolicy(
+            Enabled: true,
+            MaxEntryBytes: -1,
+            MaxTotalBytes: 4096,
+            DefaultTtl: TimeSpan.FromSeconds(60),
+            RespectOriginCacheControl: true,
+            VaryByHeaders: [],
+            CacheableStatusCodes: [],
+            Methods: []));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new RuntimeCachePolicy(
+            Enabled: true,
+            MaxEntryBytes: 1024,
+            MaxTotalBytes: -1,
+            DefaultTtl: TimeSpan.FromSeconds(60),
+            RespectOriginCacheControl: true,
+            VaryByHeaders: [],
+            CacheableStatusCodes: [],
+            Methods: []));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new RuntimeCachePolicy(
+            Enabled: true,
+            MaxEntryBytes: 1024,
+            MaxTotalBytes: 4096,
+            DefaultTtl: TimeSpan.FromTicks(-1),
+            RespectOriginCacheControl: true,
+            VaryByHeaders: [],
+            CacheableStatusCodes: [],
+            Methods: []));
         AssertEx.Throws<ArgumentNullException>(() => new RuntimeHeaderPolicy(
             [null!],
             [],

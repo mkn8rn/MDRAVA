@@ -12,6 +12,13 @@ public sealed record RuntimeCacheProjection
         IEnumerable<int> CacheableStatusCodes,
         IEnumerable<string> Methods)
     {
+        ArgumentOutOfRangeException.ThrowIfNegative(MaxEntryBytes);
+        ArgumentOutOfRangeException.ThrowIfNegative(MaxTotalBytes);
+        if (DefaultTtl < TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(DefaultTtl));
+        }
+
         this.Enabled = Enabled;
         this.MaxEntryBytes = MaxEntryBytes;
         this.MaxTotalBytes = MaxTotalBytes;

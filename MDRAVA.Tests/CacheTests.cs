@@ -422,6 +422,33 @@ internal static class CacheTests
         AssertEx.False(runtime.Rejections is ProxyCacheRuntimeRejectionSnapshot[], "Cache runtime rejections should not expose a mutable array.");
         AssertEx.False(status.Rejections is ProxyCacheRejectionStatus[], "Cache status rejections should not expose a mutable array.");
         AssertEx.False(status.Routes is ProxyCacheRouteStatus[], "Cache status routes should not expose a mutable array.");
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyCachePolicyFacts(
+            Enabled: true,
+            MaxEntryBytes: -1,
+            MaxTotalBytes: 4096,
+            DefaultTtl: TimeSpan.FromSeconds(60),
+            RespectOriginCacheControl: true,
+            VaryByHeaders: [],
+            CacheableStatusCodes: [],
+            Methods: []));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyCachePolicyFacts(
+            Enabled: true,
+            MaxEntryBytes: 1024,
+            MaxTotalBytes: -1,
+            DefaultTtl: TimeSpan.FromSeconds(60),
+            RespectOriginCacheControl: true,
+            VaryByHeaders: [],
+            CacheableStatusCodes: [],
+            Methods: []));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyCachePolicyFacts(
+            Enabled: true,
+            MaxEntryBytes: 1024,
+            MaxTotalBytes: 4096,
+            DefaultTtl: TimeSpan.FromTicks(-1),
+            RespectOriginCacheControl: true,
+            VaryByHeaders: [],
+            CacheableStatusCodes: [],
+            Methods: []));
         AssertEx.Throws<ArgumentNullException>(() => new CachedProxyResponse(
             200,
             "OK",

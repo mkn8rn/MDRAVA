@@ -12,6 +12,13 @@ public sealed record ProxyCachePolicyFacts
         IReadOnlyList<int> CacheableStatusCodes,
         IReadOnlyList<string> Methods)
     {
+        ArgumentOutOfRangeException.ThrowIfNegative(MaxEntryBytes);
+        ArgumentOutOfRangeException.ThrowIfNegative(MaxTotalBytes);
+        if (DefaultTtl < TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(DefaultTtl));
+        }
+
         ArgumentNullException.ThrowIfNull(VaryByHeaders);
         ArgumentNullException.ThrowIfNull(CacheableStatusCodes);
         ArgumentNullException.ThrowIfNull(Methods);
