@@ -2824,6 +2824,24 @@ internal static class ConfigurationTests
         AssertEx.Equal<int?>(null, invalid.WouldBeVersion);
         AssertEx.Equal("parse failed", invalid.Errors[0]);
         AssertEx.Equal("sites/broken.json", invalid.FileErrors[0].Path);
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => ProxyConfigurationValidationResult.Valid(
+            sourceDirectory: "data",
+            attemptedAtUtc: attemptedAtUtc,
+            activeVersion: 0,
+            lastSuccessfulLoadAtUtc: loadedAtUtc,
+            wouldBeVersion: 5,
+            sourceFiles: ["sites/home.json"],
+            discovery: discovery));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => ProxyConfigurationValidationResult.Invalid(
+            sourceDirectory: "data",
+            attemptedAtUtc: attemptedAtUtc,
+            activeVersion: 4,
+            lastSuccessfulLoadAtUtc: loadedAtUtc,
+            wouldBeVersion: -1,
+            sourceFiles: ["sites/broken.json"],
+            discovery: discovery,
+            errors: ["parse failed"],
+            fileErrors: [ProxyConfigurationFileError.ForPath("sites/broken.json", "parse failed")]));
     }
 
     public static void ConfigurationReadResultNamesAvailableAndMissingOutcomes()
@@ -2874,6 +2892,19 @@ internal static class ConfigurationTests
         AssertEx.Equal<int?>(null, failedResult.WouldBeVersion);
         AssertEx.Equal("sites/broken.json: parse failed", failedResult.Errors[0]);
         AssertEx.Equal("sites/broken.json", failedResult.FileErrors[0].Path);
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => ProxyConfigurationLoadResult.Validated(
+            load.SourceDirectory,
+            DateTimeOffset.UnixEpoch,
+            load.SourceFiles,
+            load.Discovery,
+            wouldBeVersion: 0));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => ProxyConfigurationLoadResult.Failed(
+            load.SourceDirectory,
+            DateTimeOffset.UnixEpoch,
+            load.SourceFiles,
+            load.Discovery,
+            [ProxyConfigurationFileError.ForPath("sites/broken.json", "parse failed")],
+            wouldBeVersion: -1));
     }
 
     public static void DataDirectoryUsesConfiguredOverride()

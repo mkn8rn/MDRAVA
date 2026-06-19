@@ -49,6 +49,7 @@ public abstract partial record ProxyConfigurationLoadResult
             ArgumentException.ThrowIfNullOrWhiteSpace(sourceDirectory);
             ArgumentNullException.ThrowIfNull(sourceFiles);
             ArgumentNullException.ThrowIfNull(discovery);
+            ThrowIfNonPositive(wouldBeVersion, nameof(wouldBeVersion));
 
             SourceDirectory = sourceDirectory;
             AttemptedAtUtc = attemptedAtUtc;

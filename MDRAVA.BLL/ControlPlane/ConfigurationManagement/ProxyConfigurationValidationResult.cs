@@ -20,6 +20,8 @@ public abstract partial record ProxyConfigurationValidationResult
         ArgumentNullException.ThrowIfNull(discovery);
         ArgumentNullException.ThrowIfNull(errors);
         ArgumentNullException.ThrowIfNull(fileErrors);
+        ThrowIfNonPositive(activeVersion, nameof(activeVersion));
+        ThrowIfNonPositive(wouldBeVersion, nameof(wouldBeVersion));
 
         SourceDirectory = sourceDirectory;
         AttemptedAtUtc = attemptedAtUtc;
@@ -90,6 +92,14 @@ public abstract partial record ProxyConfigurationValidationResult
             discovery,
             errors,
             fileErrors);
+    }
+
+    private static void ThrowIfNonPositive(int? value, string paramName)
+    {
+        if (value is <= 0)
+        {
+            throw new ArgumentOutOfRangeException(paramName);
+        }
     }
 
 }

@@ -62,4 +62,12 @@ public abstract partial record ProxyConfigurationLoadResult
             wouldBeVersion);
     }
 
+    private static void ThrowIfNonPositive(int? value, string paramName)
+    {
+        if (value is <= 0)
+        {
+            throw new ArgumentOutOfRangeException(paramName);
+        }
+    }
+
 }

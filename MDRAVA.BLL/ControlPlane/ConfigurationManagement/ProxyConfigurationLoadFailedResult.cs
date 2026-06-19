@@ -18,6 +18,7 @@ public abstract partial record ProxyConfigurationLoadResult
             ArgumentNullException.ThrowIfNull(sourceFiles);
             ArgumentNullException.ThrowIfNull(discovery);
             ArgumentNullException.ThrowIfNull(fileErrors);
+            ThrowIfNonPositive(wouldBeVersion, nameof(wouldBeVersion));
             if (fileErrors.Count == 0)
             {
                 throw new ArgumentException("A failed configuration load requires at least one file error.", nameof(fileErrors));
