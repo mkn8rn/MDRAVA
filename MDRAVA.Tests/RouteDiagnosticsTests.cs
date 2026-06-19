@@ -1342,6 +1342,86 @@ internal static class RouteDiagnosticsTests
         AssertEx.Throws<ArgumentOutOfRangeException>(() => new ConfigLintSummary(-1, 0, 0));
         AssertEx.Throws<ArgumentOutOfRangeException>(() => new ConfigLintSummary(0, -1, 0));
         AssertEx.Throws<ArgumentOutOfRangeException>(() => new ConfigLintSummary(0, 0, -1));
+        AssertEx.Throws<ArgumentException>(() => new ProxyConfigLintListener(
+            " ",
+            "127.0.0.1",
+            8080,
+            true,
+            "Http",
+            false,
+            false,
+            "not_configured",
+            "disabled",
+            false,
+            null));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyConfigLintListener(
+            "web",
+            "127.0.0.1",
+            -1,
+            true,
+            "Http",
+            false,
+            false,
+            "not_configured",
+            "disabled",
+            false,
+            null));
+        AssertEx.Throws<ArgumentException>(() => new ProxyConfigLintListener(
+            "web",
+            "127.0.0.1",
+            8080,
+            true,
+            "",
+            false,
+            false,
+            "not_configured",
+            "disabled",
+            false,
+            null));
+        AssertEx.Throws<ArgumentException>(() => new ProxyConfigLintRoute(
+            " ",
+            "diag",
+            "*",
+            "/",
+            "Proxy",
+            false,
+            false,
+            "",
+            false,
+            [],
+            false,
+            [],
+            false,
+            [],
+            ""));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyConfigLintRoute(
+            "api",
+            "diag",
+            null!,
+            "/",
+            "Proxy",
+            false,
+            false,
+            "",
+            false,
+            [],
+            false,
+            [],
+            false,
+            [],
+            ""));
+        AssertEx.Throws<ArgumentException>(() => new ProxyConfigLintUpstream(
+            " ",
+            "http",
+            RuntimeUpstreamProtocol.Http1,
+            true,
+            false));
+        AssertEx.Throws<ArgumentException>(() => new ProxyConfigLintUpstream(
+            "local",
+            "http",
+            "",
+            true,
+            false));
     }
 
     public static void ConfigLintServiceShapesActiveSourceFindings()

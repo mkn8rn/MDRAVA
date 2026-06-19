@@ -57,18 +57,63 @@ public sealed record ProxyConfigLintAdminSecurity
 public sealed record ProxyConfigLintMetricsOptions(
     bool PublicMetricsEnabled);
 
-public sealed record ProxyConfigLintListener(
-    string Name,
-    string Address,
-    int Port,
-    bool Enabled,
-    string Transport,
-    bool Http3Configured,
-    bool Http3EnabledForTraffic,
-    string Http3DisabledReason,
-    string Http3EnablementLevel,
-    bool Http3AltSvcEnabled,
-    string? QuicIdentityKey);
+public sealed record ProxyConfigLintListener
+{
+    public ProxyConfigLintListener(
+        string name,
+        string address,
+        int port,
+        bool enabled,
+        string transport,
+        bool http3Configured,
+        bool http3EnabledForTraffic,
+        string http3DisabledReason,
+        string http3EnablementLevel,
+        bool http3AltSvcEnabled,
+        string? quicIdentityKey)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentException.ThrowIfNullOrWhiteSpace(address);
+        ArgumentOutOfRangeException.ThrowIfNegative(port);
+        ArgumentException.ThrowIfNullOrWhiteSpace(transport);
+        ArgumentNullException.ThrowIfNull(http3DisabledReason);
+        ArgumentException.ThrowIfNullOrWhiteSpace(http3EnablementLevel);
+
+        Name = name;
+        Address = address;
+        Port = port;
+        Enabled = enabled;
+        Transport = transport;
+        Http3Configured = http3Configured;
+        Http3EnabledForTraffic = http3EnabledForTraffic;
+        Http3DisabledReason = http3DisabledReason;
+        Http3EnablementLevel = http3EnablementLevel;
+        Http3AltSvcEnabled = http3AltSvcEnabled;
+        QuicIdentityKey = quicIdentityKey;
+    }
+
+    public string Name { get; }
+
+    public string Address { get; }
+
+    public int Port { get; }
+
+    public bool Enabled { get; }
+
+    public string Transport { get; }
+
+    public bool Http3Configured { get; }
+
+    public bool Http3EnabledForTraffic { get; }
+
+    public string Http3DisabledReason { get; }
+
+    public string Http3EnablementLevel { get; }
+
+    public bool Http3AltSvcEnabled { get; }
+
+    public string? QuicIdentityKey { get; }
+}
 
 public sealed record ProxyConfigLintRoute
 {
@@ -89,9 +134,16 @@ public sealed record ProxyConfigLintRoute
         IEnumerable<ProxyConfigLintUpstream> Upstreams,
         string StaticResponseBody)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(Name);
+        ArgumentException.ThrowIfNullOrWhiteSpace(SiteName);
+        ArgumentNullException.ThrowIfNull(Host);
+        ArgumentException.ThrowIfNullOrWhiteSpace(PathPrefix);
+        ArgumentException.ThrowIfNullOrWhiteSpace(Action);
+        ArgumentNullException.ThrowIfNull(CanonicalHostTargetHost);
         ArgumentNullException.ThrowIfNull(CacheVaryByHeaders);
         ArgumentNullException.ThrowIfNull(RetryMethods);
         ArgumentNullException.ThrowIfNull(Upstreams);
+        ArgumentNullException.ThrowIfNull(StaticResponseBody);
 
         this.Name = Name;
         this.SiteName = SiteName;
@@ -141,9 +193,33 @@ public sealed record ProxyConfigLintRoute
     public string StaticResponseBody { get; }
 }
 
-public sealed record ProxyConfigLintUpstream(
-    string Name,
-    string Scheme,
-    string Protocol,
-    bool TlsValidateCertificate,
-    bool CircuitBreakerEnabled);
+public sealed record ProxyConfigLintUpstream
+{
+    public ProxyConfigLintUpstream(
+        string name,
+        string scheme,
+        string protocol,
+        bool tlsValidateCertificate,
+        bool circuitBreakerEnabled)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentException.ThrowIfNullOrWhiteSpace(scheme);
+        ArgumentException.ThrowIfNullOrWhiteSpace(protocol);
+
+        Name = name;
+        Scheme = scheme;
+        Protocol = protocol;
+        TlsValidateCertificate = tlsValidateCertificate;
+        CircuitBreakerEnabled = circuitBreakerEnabled;
+    }
+
+    public string Name { get; }
+
+    public string Scheme { get; }
+
+    public string Protocol { get; }
+
+    public bool TlsValidateCertificate { get; }
+
+    public bool CircuitBreakerEnabled { get; }
+}
