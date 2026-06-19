@@ -355,9 +355,15 @@ internal static class MetricsTests
         AssertEx.Throws<ArgumentNullException>(() => new ProxyConfigLintMetricsSnapshot(
             Runs: 0,
             Findings: [null!]));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyConfigLintMetricsSnapshot(
+            Runs: -1,
+            Findings: []));
         AssertEx.Throws<ArgumentNullException>(() => new ProxyRouteDiagnosticsMetricsSnapshot(
             DryRuns: 0,
             DryRunFailures: [null!]));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyRouteDiagnosticsMetricsSnapshot(
+            DryRuns: -1,
+            DryRunFailures: []));
         AssertEx.Throws<ArgumentNullException>(() => new ProxyRouteDryRunFailureSnapshot(null!, 1));
         AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyRouteDryRunFailureSnapshot("no_route", -1));
         AssertEx.Throws<ArgumentException>(() => new ProxyConfigLintFindingMetricSnapshot(null!, "route_shadowed", 1));

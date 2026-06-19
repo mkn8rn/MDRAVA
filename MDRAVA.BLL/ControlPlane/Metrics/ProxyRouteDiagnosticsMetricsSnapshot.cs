@@ -8,6 +8,8 @@ public sealed record ProxyRouteDiagnosticsMetricsSnapshot
         long DryRuns,
         IEnumerable<ProxyRouteDryRunFailureSnapshot> DryRunFailures)
     {
+        ArgumentOutOfRangeException.ThrowIfNegative(DryRuns);
+
         this.DryRuns = DryRuns;
         this.DryRunFailures = MetricsList.Copy(DryRunFailures);
     }

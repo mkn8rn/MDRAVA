@@ -8,6 +8,8 @@ public sealed record ProxyConfigLintMetricsSnapshot
         long Runs,
         IEnumerable<ProxyConfigLintFindingMetricSnapshot> Findings)
     {
+        ArgumentOutOfRangeException.ThrowIfNegative(Runs);
+
         this.Runs = Runs;
         this.Findings = MetricsList.Copy(Findings);
     }
