@@ -324,6 +324,39 @@ internal static class BackupRestoreTests
         AssertEx.False(manifest.Warnings is ProxyBackupWarning[]);
         AssertEx.False(restoreValidation.Errors is ProxyRestoreValidationFinding[]);
         AssertEx.False(restoreValidation.Warnings is ProxyRestoreValidationFinding[]);
+        AssertEx.Throws<ArgumentException>(() => new ProxyBackupFileSystemEntry("", 10, generatedAtUtc));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyBackupFileSystemEntry(
+            "config/proxy.json",
+            -1,
+            generatedAtUtc));
+        AssertEx.Throws<ArgumentException>(() => new ProxyBackupManifestEntry(
+            "",
+            "config",
+            "must_backup",
+            false,
+            10,
+            generatedAtUtc));
+        AssertEx.Throws<ArgumentException>(() => new ProxyBackupManifestEntry(
+            "config/proxy.json",
+            "",
+            "must_backup",
+            false,
+            10,
+            generatedAtUtc));
+        AssertEx.Throws<ArgumentException>(() => new ProxyBackupManifestEntry(
+            "config/proxy.json",
+            "config",
+            "",
+            false,
+            10,
+            generatedAtUtc));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyBackupManifestEntry(
+            "config/proxy.json",
+            "config",
+            "must_backup",
+            false,
+            -1,
+            generatedAtUtc));
         AssertEx.Throws<ArgumentNullException>(() => ProxyBackupFileSystemScanResult.Scanned([null!], []));
         AssertEx.Throws<ArgumentNullException>(() => ProxyBackupFileSystemScanResult.Scanned([], [null!]));
         AssertEx.Throws<ArgumentNullException>(() => new ProxyBackupManifest(
