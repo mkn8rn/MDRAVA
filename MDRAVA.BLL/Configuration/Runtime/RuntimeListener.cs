@@ -65,6 +65,7 @@ public sealed record RuntimeListener
             MaxResponseHeadBytes,
             MaxChunkLineBytes,
             ForwardingBufferBytes);
+        RuntimeSniCertificateFacts.ValidateOptionalCertificateId(DefaultCertificateId);
         ArgumentNullException.ThrowIfNull(Http3AltSvc);
         ArgumentNullException.ThrowIfNull(Http2Limits);
 

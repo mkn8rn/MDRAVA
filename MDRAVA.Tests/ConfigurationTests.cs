@@ -3602,6 +3602,7 @@ internal static class ConfigurationTests
         AssertRuntimeListenerRejects(name: " ");
         AssertRuntimeListenerRejects(address: null!);
         AssertRuntimeListenerRejects(address: " ");
+        AssertRuntimeListenerRejects(defaultCertificateId: " ");
         AssertRuntimeListenerRejects(transport: (RuntimeListenerTransport)99);
         AssertRuntimeListenerIdentityRejects(name: null!);
         AssertRuntimeListenerIdentityRejects(name: " ");
@@ -3625,6 +3626,7 @@ internal static class ConfigurationTests
         AssertRuntimeListenerProjectionRejects(name: " ");
         AssertRuntimeListenerProjectionRejects(address: null!);
         AssertRuntimeListenerProjectionRejects(address: " ");
+        AssertRuntimeListenerProjectionRejects(defaultCertificateId: " ");
         AssertRuntimeListenerProjectionRejects(transport: (RuntimeListenerTransport)99);
         AssertRuntimeQuicListenerIdentityRejects(name: null!);
         AssertRuntimeQuicListenerIdentityRejects(name: " ");
@@ -3839,7 +3841,8 @@ internal static class ConfigurationTests
             int maxRequestHeadBytes = 32768,
             int maxResponseHeadBytes = 32768,
             int maxChunkLineBytes = 8192,
-            int forwardingBufferBytes = 8192)
+            int forwardingBufferBytes = 8192,
+            string? defaultCertificateId = null)
         {
             AssertEx.Throws<ArgumentException>(() => new RuntimeListener(
                 Name: name,
@@ -3847,7 +3850,7 @@ internal static class ConfigurationTests
                 Port: port,
                 Enabled: true,
                 Transport: transport,
-                DefaultCertificateId: null,
+                DefaultCertificateId: defaultCertificateId,
                 SniCertificates: [],
                 Backlog: backlog,
                 MaxRequestHeadBytes: maxRequestHeadBytes,
@@ -3897,7 +3900,8 @@ internal static class ConfigurationTests
             int maxRequestHeadBytes = 32768,
             int maxResponseHeadBytes = 32768,
             int maxChunkLineBytes = 8192,
-            int forwardingBufferBytes = 8192)
+            int forwardingBufferBytes = 8192,
+            string? defaultCertificateId = "home-cert")
         {
             AssertEx.Throws<ArgumentException>(() => new RuntimeListenerProjection(
                 Name: name,
@@ -3905,7 +3909,7 @@ internal static class ConfigurationTests
                 Port: port,
                 Enabled: listener.Enabled,
                 Transport: transport,
-                DefaultCertificateId: listener.DefaultCertificateId,
+                DefaultCertificateId: defaultCertificateId,
                 SniCertificates: [],
                 Backlog: backlog,
                 MaxRequestHeadBytes: maxRequestHeadBytes,

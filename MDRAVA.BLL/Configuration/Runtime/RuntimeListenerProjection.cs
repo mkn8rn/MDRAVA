@@ -41,6 +41,7 @@ public sealed record RuntimeListenerProjection
             MaxResponseHeadBytes,
             MaxChunkLineBytes,
             ForwardingBufferBytes);
+        RuntimeSniCertificateFacts.ValidateOptionalCertificateId(DefaultCertificateId);
 
         this.Name = Name;
         this.Address = Address;
