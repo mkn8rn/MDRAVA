@@ -19,6 +19,9 @@ public sealed record ProxyMetricsExportInput
     {
         ArgumentNullException.ThrowIfNull(Metrics);
         ArgumentNullException.ThrowIfNull(CacheStatus);
+        ArgumentOutOfRangeException.ThrowIfNegative(
+            DefaultEnabledHttp3ListenerCount,
+            nameof(DefaultEnabledHttp3ListenerCount));
 
         this.Metrics = Metrics;
         this.IncludePerRouteLabels = IncludePerRouteLabels;
@@ -54,10 +57,28 @@ public sealed record ProxyMetricsExportLabelOptions(
     bool IncludePerRouteLabels,
     bool IncludePerUpstreamLabels);
 
-public sealed record ProxyMetricsExportHttp3Facts(
-    int DefaultEnabledListenerCount,
-    bool RequestBodyStreamingEnabled,
-    bool UpstreamMultiplexingConfigured);
+public sealed record ProxyMetricsExportHttp3Facts
+{
+    public ProxyMetricsExportHttp3Facts(
+        int DefaultEnabledListenerCount,
+        bool RequestBodyStreamingEnabled,
+        bool UpstreamMultiplexingConfigured)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(
+            DefaultEnabledListenerCount,
+            nameof(DefaultEnabledListenerCount));
+
+        this.DefaultEnabledListenerCount = DefaultEnabledListenerCount;
+        this.RequestBodyStreamingEnabled = RequestBodyStreamingEnabled;
+        this.UpstreamMultiplexingConfigured = UpstreamMultiplexingConfigured;
+    }
+
+    public int DefaultEnabledListenerCount { get; }
+
+    public bool RequestBodyStreamingEnabled { get; }
+
+    public bool UpstreamMultiplexingConfigured { get; }
+}
 
 public sealed record ProxyMetricsExportConfiguration(
     bool MetricsEnabled,

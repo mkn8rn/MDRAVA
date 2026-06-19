@@ -474,6 +474,46 @@ internal static class MetricsTests
             () => ProxyMetricsExportConfigurationMapper.FromSources(true, labelOptions, null!));
     }
 
+    public static void MetricsExportHttp3CountsRejectNegativeFacts()
+    {
+        var cacheStatus = ProxyCacheStatus.FromSources(
+            entryCount: 0,
+            approximateBytes: 0,
+            hitCount: 0,
+            missCount: 0,
+            storeCount: 0,
+            evictionCount: 0,
+            storeRejectionCount: 0,
+            lastClearedAtUtc: null,
+            lastClearReason: null,
+            rejections: [],
+            routes: []);
+
+        AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+            new ProxyMetricsExportHttp3Facts(
+                DefaultEnabledListenerCount: -1,
+                RequestBodyStreamingEnabled: false,
+                UpstreamMultiplexingConfigured: false));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+            new ProxyMetricsExportInput(
+                Metrics: new ProxyMetrics().Snapshot(),
+                IncludePerRouteLabels: false,
+                IncludePerUpstreamLabels: false,
+                DefaultEnabledHttp3ListenerCount: -1,
+                Http3RequestBodyStreamingEnabled: false,
+                UpstreamHttp3MultiplexingConfigured: false,
+                cacheStatus,
+                UpstreamHealth: [],
+                AcmeCertificates: []));
+
+        var facts = new ProxyMetricsExportHttp3Facts(
+            DefaultEnabledListenerCount: 0,
+            RequestBodyStreamingEnabled: false,
+            UpstreamMultiplexingConfigured: false);
+
+        AssertEx.Equal(0, facts.DefaultEnabledListenerCount);
+    }
+
     public static void MetricsExportInputMapperCopiesSourceLists()
     {
         var upstreamHealth = new List<ProxyUpstreamStatus>

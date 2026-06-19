@@ -116,6 +116,7 @@ internal static partial class TestRegistry
     Test("Metrics export configuration mappers read narrow runtime facts", Sync(MetricsTests.MetricsExportConfigurationMappersReadNarrowRuntimeFacts), TestTaxonomy.Metrics, TestTaxonomy.Config, TestTaxonomy.Http3),
     Test("Metrics export configuration mapper consumes named facts without runtime configuration", Sync(MetricsTests.MetricsExportConfigurationMapperConsumesNamedFactsWithoutRuntimeConfiguration), TestTaxonomy.Metrics, TestTaxonomy.Config),
     Test("Metrics export configuration mapper rejects null named facts", Sync(MetricsTests.MetricsExportConfigurationMapperRejectsNullNamedFacts), TestTaxonomy.Metrics, TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
+    Test("Metrics export HTTP/3 counts reject negative facts", Sync(MetricsTests.MetricsExportHttp3CountsRejectNegativeFacts), TestTaxonomy.Metrics, TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
     Test("Metrics export input mapper copies source lists", Sync(MetricsTests.MetricsExportInputMapperCopiesSourceLists), TestTaxonomy.Metrics, TestTaxonomy.Config),
     Test("Metrics export input mapper rejects null named facts", Sync(MetricsTests.MetricsExportInputMapperRejectsNullNamedFacts), TestTaxonomy.Metrics, TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
     Test("Metrics endpoint returns 404 when metrics disabled", Sync(MetricsTests.MetricsEndpointReturnsNotFoundWhenMetricsDisabled), TestTaxonomy.Metrics),
