@@ -18,7 +18,27 @@ public abstract record ProxyRouteDiagnosticsRequestDecision
         return new RejectedDecision(failure);
     }
 
-    public sealed record AcceptedDecision(ProxyRouteDiagnosticsRequestInput Input) : ProxyRouteDiagnosticsRequestDecision;
+    public sealed record AcceptedDecision : ProxyRouteDiagnosticsRequestDecision
+    {
+        public AcceptedDecision(ProxyRouteDiagnosticsRequestInput Input)
+        {
+            ArgumentNullException.ThrowIfNull(Input);
 
-    public sealed record RejectedDecision(RouteMatchDryRunResult.FailedResult Failure) : ProxyRouteDiagnosticsRequestDecision;
+            this.Input = Input;
+        }
+
+        public ProxyRouteDiagnosticsRequestInput Input { get; }
+    }
+
+    public sealed record RejectedDecision : ProxyRouteDiagnosticsRequestDecision
+    {
+        public RejectedDecision(RouteMatchDryRunResult.FailedResult Failure)
+        {
+            ArgumentNullException.ThrowIfNull(Failure);
+
+            this.Failure = Failure;
+        }
+
+        public RouteMatchDryRunResult.FailedResult Failure { get; }
+    }
 }

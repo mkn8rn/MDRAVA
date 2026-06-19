@@ -358,6 +358,8 @@ internal static class MetricsTests
         AssertEx.Throws<ArgumentNullException>(() => new ProxyRouteDiagnosticsMetricsSnapshot(
             DryRuns: 0,
             DryRunFailures: [null!]));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRouteDryRunFailureSnapshot(null!, 1));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyRouteDryRunFailureSnapshot("no_route", -1));
         var response = ProxyMetricsSnapshotResponse.FromSnapshot(snapshot);
         AssertEx.False(response.RequestFailuresByKind is Dictionary<string, long>, "Metrics API request failures should not expose a mutable dictionary.");
         AssertEx.False(response.RequestsByRoute is ProxyRequestSeriesSnapshotResponse[], "Metrics API request series should not expose a mutable array.");

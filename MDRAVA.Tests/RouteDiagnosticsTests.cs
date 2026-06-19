@@ -1696,6 +1696,12 @@ internal static class RouteDiagnosticsTests
         AssertEx.Equal("diag.test", accepted.Input.RequestHead.Host);
         AssertEx.True(accepted.Input.Findings.Any(static finding => finding.Code == "sensitive_header_redacted"));
         AssertEx.False(accepted.Input.Findings is List<RouteMatchDryRunFinding>, "Route diagnostics request findings should not expose a mutable list.");
+        AssertEx.Throws<ArgumentNullException>(() =>
+            new ProxyRouteDiagnosticsRequestDecision.AcceptedDecision(null!));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyRouteDiagnosticsRequestDecision.Accepted(null!));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            new ProxyRouteDiagnosticsRequestDecision.RejectedDecision(null!));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyRouteDiagnosticsRequestDecision.Rejected(null!));
         AssertEx.Equal("HTTPS", request.Scheme);
         AssertEx.Equal(" diag.test ", request.Host);
         AssertEx.Equal("post", request.Method);
