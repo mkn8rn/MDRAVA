@@ -919,6 +919,15 @@ internal static class OperatorStatusTests
             CacheEnabled: true,
             HasHttp3Upstream: false);
         var routeReplacement = route with { SiteName = "replacement" };
+        AssertEx.Throws<ArgumentException>(() => new ProxyRouteSummarySource(
+            SiteName: " ",
+            IsProxyRoute: true,
+            CacheEnabled: true,
+            HasHttp3Upstream: false));
+        AssertEx.Throws<ArgumentException>(() =>
+        {
+            _ = route with { SiteName = " " };
+        });
         var routes = new List<ProxyRouteSummarySource> { route };
         var upstream = new ProxyUpstreamSummarySource(
             UpstreamHealthState.Healthy,
@@ -964,6 +973,17 @@ internal static class OperatorStatusTests
             DateTime.UnixEpoch,
             DateTime.UnixEpoch.AddDays(30));
         var loadedCertificates = new List<ProxyCertificateValiditySource> { loadedCertificate };
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyCertificateSummarySource([" "], loadedCertificates));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyCertificateValiditySource(
+                " ",
+                DateTime.UnixEpoch,
+                DateTime.UnixEpoch.AddDays(30)));
+        AssertEx.Throws<ArgumentException>(() =>
+        {
+            _ = loadedCertificate with { Id = " " };
+        });
         var certificates = new ProxyCertificateSummarySource(referencedCertificates, loadedCertificates);
         var configuration = new ProxyStatusReadinessConfigurationSourceSet(
             HasActiveConfiguration: true,
@@ -1049,6 +1069,29 @@ internal static class OperatorStatusTests
             AcmeStatuses: acmeStatuses,
             RuntimePreflight: ProxyRuntimePreflightStatus.Unknown,
             ObservedAtUtc: DateTimeOffset.UnixEpoch);
+
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyLogSummarySource(
+                AccessLogPersistenceEnabled: true,
+                AdminAuditPersistenceEnabled: true,
+                State: " ",
+                Reason: "ok"));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyLogSummarySource(
+                AccessLogPersistenceEnabled: true,
+                AdminAuditPersistenceEnabled: true,
+                State: ProxyStatusText.Healthy,
+                Reason: " "));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyLogPersistenceFailureStatus(
+                TimestampUtc: DateTimeOffset.UnixEpoch,
+                Category: " ",
+                Reason: "write_failed"));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyLogPersistenceFailureStatus(
+                TimestampUtc: DateTimeOffset.UnixEpoch,
+                Category: "io",
+                Reason: " "));
 
         configuredListeners[0] = configuredReplacement;
         runtimeListeners[0] = runtimeReplacement;

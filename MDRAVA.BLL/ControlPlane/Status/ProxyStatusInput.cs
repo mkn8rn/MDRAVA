@@ -193,4 +193,20 @@ internal static class ProxyStatusList
 
         return value;
     }
+
+    public static IReadOnlyList<string> CopyStrings(
+        IEnumerable<string> values,
+        string parameterName)
+    {
+        var copy = Copy(values);
+        foreach (var value in copy)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                throw new ArgumentException("Values cannot be empty.", parameterName);
+            }
+        }
+
+        return copy;
+    }
 }
