@@ -277,6 +277,172 @@ internal static class OperatorStatusTests
         AssertEx.Equal(3, summary.RouteCount);
     }
 
+    public static void StatusConfigurationNumericFactsRejectNegativeValues()
+    {
+        AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+            ProxyStatusConfigurationSummaryMapper.FromCounts(
+                version: -1,
+                DateTimeOffset.UnixEpoch,
+                listenerCount: 0,
+                routeCount: 0));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+            ProxyStatusConfigurationSummaryMapper.FromCounts(
+                version: 1,
+                DateTimeOffset.UnixEpoch,
+                listenerCount: -1,
+                routeCount: 0));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+            ProxyStatusConfigurationSummaryMapper.FromCounts(
+                version: 1,
+                DateTimeOffset.UnixEpoch,
+                listenerCount: 0,
+                routeCount: -1));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+            new ProxyConfigSubsystemSummary(
+                Active: true,
+                Generation: -1,
+                LoadedAtUtc: DateTimeOffset.UnixEpoch,
+                LastListenerReloadSucceeded: true,
+                LastListenerReloadReason: "listener_reload_succeeded"));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+            new ProxyStatusReadinessConfigurationSourceSet(
+                HasActiveConfiguration: true,
+                ConfigGeneration: -1,
+                ConfigurationLoadedAtUtc: DateTimeOffset.UnixEpoch,
+                ConfiguredListeners: [],
+                Routes: [],
+                Certificates: null,
+                Acme: null,
+                LimitConfiguration: null));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+            BuildReadinessSourceSet(configGeneration: -1));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+            BuildReadinessInput(configGeneration: -1));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+            new ProxyReadinessEvaluationInput(
+                HasActiveConfiguration: true,
+                ConfigGeneration: -1,
+                IsShuttingDown: false,
+                LastListenerReloadFailed: false,
+                LogPersistenceState: ProxyStatusText.Healthy,
+                RuntimePreflight: ProxyRuntimePreflightStatus.Unknown,
+                Subsystems: HealthyReadinessSubsystems(),
+                EvaluatedAtUtc: DateTimeOffset.UnixEpoch));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+            ProxyReadinessStatus.Evaluated(
+                ProxyStatusText.Healthy,
+                [],
+                DateTimeOffset.UnixEpoch,
+                configGeneration: -1));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+            BuildProxyStatus(configVersion: -1));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+            BuildProxyStatus(configuredListeners: -1));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+            BuildProxyStatus(configuredRoutes: -1));
+
+        var noConfig = BuildReadinessInput(configGeneration: null);
+
+        AssertEx.Equal(null, noConfig.ConfigGeneration);
+
+        static ProxyStatusReadinessSourceSet BuildReadinessSourceSet(int? configGeneration)
+        {
+            return new ProxyStatusReadinessSourceSet(
+                HasActiveConfiguration: configGeneration is not null,
+                ConfigGeneration: configGeneration,
+                ConfigurationLoadedAtUtc: configGeneration is null ? null : DateTimeOffset.UnixEpoch,
+                LastListenerReloadSucceeded: null,
+                LastListenerReloadFailed: false,
+                ConfiguredListeners: [],
+                RuntimeListeners: [],
+                Routes: [],
+                Certificates: null,
+                Acme: null,
+                Upstreams: [],
+                LimitConfiguration: null,
+                LimitRuntime: new ProxyLimitRuntimeSummarySource(
+                    ActiveConnections: 0,
+                    ActiveTlsHandshakes: 0,
+                    ActiveHttp2Streams: 0,
+                    ActiveHttp3Streams: 0,
+                    ActiveUpstreamHttp3Streams: 0),
+                ClientHttp3Enabled: false,
+                ClientHttp3Ready: false,
+                Log: new ProxyLogSummarySource(
+                    AccessLogPersistenceEnabled: false,
+                    AdminAuditPersistenceEnabled: false,
+                    State: ProxyStatusText.Unknown,
+                    Reason: ProxyStatusText.NotAvailable),
+                Shutdown: new ProxyShutdownSummarySource(
+                    IsRunning: false,
+                    IsShuttingDown: false,
+                    ShutdownStartedAtUtc: null,
+                    ShutdownDeadlineUtc: null));
+        }
+
+        static ProxyStatusReadinessInput BuildReadinessInput(int? configGeneration)
+        {
+            return new ProxyStatusReadinessInput(
+                HasActiveConfiguration: configGeneration is not null,
+                ConfigGeneration: configGeneration,
+                ConfigurationLoadedAtUtc: configGeneration is null ? null : DateTimeOffset.UnixEpoch,
+                LastListenerReloadSucceeded: null,
+                LastListenerReloadFailed: false,
+                ConfiguredListeners: [],
+                RuntimeListeners: [],
+                Routes: [],
+                Certificates: null,
+                Acme: null,
+                Upstreams: [],
+                LimitConfiguration: null,
+                LimitRuntime: new ProxyLimitRuntimeSummarySource(
+                    ActiveConnections: 0,
+                    ActiveTlsHandshakes: 0,
+                    ActiveHttp2Streams: 0,
+                    ActiveHttp3Streams: 0,
+                    ActiveUpstreamHttp3Streams: 0),
+                ClientHttp3Enabled: false,
+                ClientHttp3Ready: false,
+                Log: new ProxyLogSummarySource(
+                    AccessLogPersistenceEnabled: false,
+                    AdminAuditPersistenceEnabled: false,
+                    State: ProxyStatusText.Unknown,
+                    Reason: ProxyStatusText.NotAvailable),
+                Shutdown: new ProxyShutdownSummarySource(
+                    IsRunning: false,
+                    IsShuttingDown: false,
+                    ShutdownStartedAtUtc: null,
+                    ShutdownDeadlineUtc: null),
+                CacheStatus: null,
+                AcmeStatuses: [],
+                RuntimePreflight: ProxyRuntimePreflightStatus.Unknown,
+                ObservedAtUtc: DateTimeOffset.UnixEpoch);
+        }
+
+        static ProxyStatus BuildProxyStatus(
+            int? configVersion = 1,
+            int configuredListeners = 0,
+            int configuredRoutes = 0)
+        {
+            return new ProxyStatus(
+                listenerLive: false,
+                listenerName: null,
+                endpoint: null,
+                startedAt: null,
+                stoppedAt: DateTimeOffset.UnixEpoch,
+                lastError: null,
+                isShuttingDown: false,
+                shutdownStartedAtUtc: null,
+                shutdownDeadlineUtc: null,
+                configVersion: configVersion,
+                configLoadedAtUtc: DateTimeOffset.UnixEpoch,
+                configuredListeners: configuredListeners,
+                configuredRoutes: configuredRoutes,
+                metrics: new ProxyMetrics().Snapshot(),
+                upstreams: []);
+        }
+    }
+
     public static void StatusConfigurationSourceMapperShapesStatusFactsFromRuntimeFactsWithoutSnapshot()
     {
         var listener = Listener();
@@ -1966,6 +2132,31 @@ internal static class OperatorStatusTests
                 IsShuttingDown: true,
                 ShutdownStartedAtUtc: startedAt,
                 ShutdownDeadlineUtc: startedAt.AddTicks(-1)));
+        AssertEx.Throws<ArgumentException>(() =>
+            BuildStatus(
+                isShuttingDown: false,
+                shutdownStartedAtUtc: startedAt,
+                shutdownDeadlineUtc: null));
+        AssertEx.Throws<ArgumentException>(() =>
+            BuildStatus(
+                isShuttingDown: false,
+                shutdownStartedAtUtc: null,
+                shutdownDeadlineUtc: deadline));
+        AssertEx.Throws<ArgumentException>(() =>
+            BuildStatus(
+                isShuttingDown: true,
+                shutdownStartedAtUtc: null,
+                shutdownDeadlineUtc: deadline));
+        AssertEx.Throws<ArgumentException>(() =>
+            BuildStatus(
+                isShuttingDown: true,
+                shutdownStartedAtUtc: startedAt,
+                shutdownDeadlineUtc: null));
+        AssertEx.Throws<ArgumentException>(() =>
+            BuildStatus(
+                isShuttingDown: true,
+                shutdownStartedAtUtc: startedAt,
+                shutdownDeadlineUtc: startedAt.AddTicks(-1)));
 
         var source = new ProxyShutdownSummarySource(
             IsRunning: false,
@@ -1986,6 +2177,29 @@ internal static class OperatorStatusTests
         AssertEx.True(summary.IsShuttingDown);
         AssertEx.Equal(startedAt, summary.ShutdownStartedAtUtc);
         AssertEx.Equal(deadline, summary.ShutdownDeadlineUtc);
+
+        static ProxyStatus BuildStatus(
+            bool isShuttingDown,
+            DateTimeOffset? shutdownStartedAtUtc,
+            DateTimeOffset? shutdownDeadlineUtc)
+        {
+            return new ProxyStatus(
+                listenerLive: false,
+                listenerName: null,
+                endpoint: null,
+                startedAt: null,
+                stoppedAt: DateTimeOffset.UnixEpoch,
+                lastError: null,
+                isShuttingDown: isShuttingDown,
+                shutdownStartedAtUtc: shutdownStartedAtUtc,
+                shutdownDeadlineUtc: shutdownDeadlineUtc,
+                configVersion: 1,
+                configLoadedAtUtc: DateTimeOffset.UnixEpoch,
+                configuredListeners: 0,
+                configuredRoutes: 0,
+                metrics: new ProxyMetrics().Snapshot(),
+                upstreams: []);
+        }
     }
 
     public static void SubsystemSummarySourceMappersCopyProjectedLists()

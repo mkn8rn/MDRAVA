@@ -38,6 +38,7 @@ public sealed record ProxyConfigSubsystemSummary
         bool? LastListenerReloadSucceeded,
         string? LastListenerReloadReason)
     {
+        ProxyStatusFacts.RequireOptionalNonNegative(Generation, nameof(Generation));
         ProxyStatusFacts.RequireOptionalText(LastListenerReloadReason, nameof(LastListenerReloadReason));
 
         this.Active = Active;

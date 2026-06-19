@@ -31,6 +31,7 @@ public sealed record ProxyStatusReadinessSourceSet
         ArgumentNullException.ThrowIfNull(RuntimeListeners);
         ArgumentNullException.ThrowIfNull(Routes);
         ArgumentNullException.ThrowIfNull(Upstreams);
+        ProxyStatusFacts.RequireOptionalNonNegative(ConfigGeneration, nameof(ConfigGeneration));
 
         this.HasActiveConfiguration = HasActiveConfiguration;
         this.ConfigGeneration = ConfigGeneration;
@@ -100,6 +101,7 @@ public sealed record ProxyStatusReadinessConfigurationSourceSet
     {
         ArgumentNullException.ThrowIfNull(ConfiguredListeners);
         ArgumentNullException.ThrowIfNull(Routes);
+        ProxyStatusFacts.RequireOptionalNonNegative(ConfigGeneration, nameof(ConfigGeneration));
 
         this.HasActiveConfiguration = HasActiveConfiguration;
         this.ConfigGeneration = ConfigGeneration;

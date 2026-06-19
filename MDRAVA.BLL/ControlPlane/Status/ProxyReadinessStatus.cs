@@ -38,6 +38,7 @@ public sealed record ProxyReadinessStatus
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(state);
         ArgumentNullException.ThrowIfNull(reasons);
+        ProxyStatusFacts.RequireOptionalNonNegative(configGeneration, nameof(configGeneration));
 
         return new ProxyReadinessStatus(
             state,

@@ -33,6 +33,7 @@ public sealed record ProxyStatusReadinessInput
         ArgumentNullException.ThrowIfNull(Routes);
         ArgumentNullException.ThrowIfNull(Upstreams);
         ArgumentNullException.ThrowIfNull(AcmeStatuses);
+        ProxyStatusFacts.RequireOptionalNonNegative(ConfigGeneration, nameof(ConfigGeneration));
 
         this.HasActiveConfiguration = HasActiveConfiguration;
         this.ConfigGeneration = ConfigGeneration;

@@ -88,6 +88,15 @@ public sealed record ProxyStatus
         ArgumentNullException.ThrowIfNull(readiness);
         ArgumentNullException.ThrowIfNull(subsystems);
         ArgumentNullException.ThrowIfNull(runtimePreflight);
+        ProxyStatusFacts.RequireShutdownWindow(
+            isShuttingDown,
+            shutdownStartedAtUtc,
+            nameof(shutdownStartedAtUtc),
+            shutdownDeadlineUtc,
+            nameof(shutdownDeadlineUtc));
+        ProxyStatusFacts.RequireOptionalNonNegative(configVersion, nameof(configVersion));
+        ProxyStatusFacts.RequireNonNegative(configuredListeners, nameof(configuredListeners));
+        ProxyStatusFacts.RequireNonNegative(configuredRoutes, nameof(configuredRoutes));
 
         ListenerLive = listenerLive;
         ListenerName = listenerName;

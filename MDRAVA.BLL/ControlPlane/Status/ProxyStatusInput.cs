@@ -151,11 +151,32 @@ public static class ProxyStatusRuntimeSummaryMapper
     }
 }
 
-public sealed record ProxyStatusConfigurationSummary(
-    int Version,
-    DateTimeOffset LoadedAtUtc,
-    int ListenerCount,
-    int RouteCount);
+public sealed record ProxyStatusConfigurationSummary
+{
+    public ProxyStatusConfigurationSummary(
+        int Version,
+        DateTimeOffset LoadedAtUtc,
+        int ListenerCount,
+        int RouteCount)
+    {
+        ProxyStatusFacts.RequireNonNegative(Version, nameof(Version));
+        ProxyStatusFacts.RequireNonNegative(ListenerCount, nameof(ListenerCount));
+        ProxyStatusFacts.RequireNonNegative(RouteCount, nameof(RouteCount));
+
+        this.Version = Version;
+        this.LoadedAtUtc = LoadedAtUtc;
+        this.ListenerCount = ListenerCount;
+        this.RouteCount = RouteCount;
+    }
+
+    public int Version { get; }
+
+    public DateTimeOffset LoadedAtUtc { get; }
+
+    public int ListenerCount { get; }
+
+    public int RouteCount { get; }
+}
 
 public static class ProxyStatusConfigurationSummaryMapper
 {
@@ -234,6 +255,14 @@ internal static class ProxyStatusFacts
         if (value < 0)
         {
             throw new ArgumentOutOfRangeException(parameterName, "Values cannot be negative.");
+        }
+    }
+
+    public static void RequireOptionalNonNegative(int? value, string parameterName)
+    {
+        if (value is not null)
+        {
+            RequireNonNegative(value.Value, parameterName);
         }
     }
 
