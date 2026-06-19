@@ -293,6 +293,12 @@ internal static class RouteDiagnosticsTests
         AssertEx.Equal<int?>(null, proxy.GeneratedStatusCode);
         AssertEx.False(generated.ShouldProxy);
         AssertEx.Equal(308, generated.GeneratedStatusCode!.Value);
+        AssertEx.Throws<ArgumentException>(() => new ProxyRouteDiagnosticsActionDecision(
+            ShouldProxy: true,
+            GeneratedStatusCode: 308));
+        AssertEx.Throws<ArgumentException>(() => new ProxyRouteDiagnosticsActionDecision(
+            ShouldProxy: false,
+            GeneratedStatusCode: null));
     }
 
     public static void RouteDiagnosticsActionPolicyUsesSharedPolicyRedirects()
