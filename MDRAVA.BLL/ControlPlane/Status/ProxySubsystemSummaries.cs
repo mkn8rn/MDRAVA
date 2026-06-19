@@ -39,27 +39,93 @@ public sealed record ProxyConfigSubsystemSummary(
     public static ProxyConfigSubsystemSummary Unknown { get; } = new(false, null, null, null, ProxyStatusText.NotAvailable);
 }
 
-public sealed record ProxyListenerSubsystemSummary(
-    int Configured,
-    int Enabled,
-    int Active,
-    int Failed,
-    int Draining,
-    int Http1Enabled,
-    int Http2Enabled,
-    int Http3Enabled,
-    int QuicReady)
+public sealed record ProxyListenerSubsystemSummary
 {
+    public ProxyListenerSubsystemSummary(
+        int Configured,
+        int Enabled,
+        int Active,
+        int Failed,
+        int Draining,
+        int Http1Enabled,
+        int Http2Enabled,
+        int Http3Enabled,
+        int QuicReady)
+    {
+        ProxyStatusFacts.RequireNonNegative(Configured, nameof(Configured));
+        ProxyStatusFacts.RequireNonNegative(Enabled, nameof(Enabled));
+        ProxyStatusFacts.RequireNonNegative(Active, nameof(Active));
+        ProxyStatusFacts.RequireNonNegative(Failed, nameof(Failed));
+        ProxyStatusFacts.RequireNonNegative(Draining, nameof(Draining));
+        ProxyStatusFacts.RequireNonNegative(Http1Enabled, nameof(Http1Enabled));
+        ProxyStatusFacts.RequireNonNegative(Http2Enabled, nameof(Http2Enabled));
+        ProxyStatusFacts.RequireNonNegative(Http3Enabled, nameof(Http3Enabled));
+        ProxyStatusFacts.RequireNonNegative(QuicReady, nameof(QuicReady));
+
+        this.Configured = Configured;
+        this.Enabled = Enabled;
+        this.Active = Active;
+        this.Failed = Failed;
+        this.Draining = Draining;
+        this.Http1Enabled = Http1Enabled;
+        this.Http2Enabled = Http2Enabled;
+        this.Http3Enabled = Http3Enabled;
+        this.QuicReady = QuicReady;
+    }
+
+    public int Configured { get; }
+
+    public int Enabled { get; }
+
+    public int Active { get; }
+
+    public int Failed { get; }
+
+    public int Draining { get; }
+
+    public int Http1Enabled { get; }
+
+    public int Http2Enabled { get; }
+
+    public int Http3Enabled { get; }
+
+    public int QuicReady { get; }
+
     public static ProxyListenerSubsystemSummary Unknown { get; } = new(0, 0, 0, 0, 0, 0, 0, 0, 0);
 }
 
-public sealed record ProxyRouteSubsystemSummary(
-    int Sites,
-    int Routes,
-    int ProxyRoutes,
-    int GeneratedRoutes,
-    int CacheEnabledRoutes)
+public sealed record ProxyRouteSubsystemSummary
 {
+    public ProxyRouteSubsystemSummary(
+        int Sites,
+        int Routes,
+        int ProxyRoutes,
+        int GeneratedRoutes,
+        int CacheEnabledRoutes)
+    {
+        ProxyStatusFacts.RequireNonNegative(Sites, nameof(Sites));
+        ProxyStatusFacts.RequireNonNegative(Routes, nameof(Routes));
+        ProxyStatusFacts.RequireNonNegative(ProxyRoutes, nameof(ProxyRoutes));
+        ProxyStatusFacts.RequireNonNegative(GeneratedRoutes, nameof(GeneratedRoutes));
+        ProxyStatusFacts.RequireNonNegative(CacheEnabledRoutes, nameof(CacheEnabledRoutes));
+
+        this.Sites = Sites;
+        this.Routes = Routes;
+        this.ProxyRoutes = ProxyRoutes;
+        this.GeneratedRoutes = GeneratedRoutes;
+        this.CacheEnabledRoutes = CacheEnabledRoutes;
+    }
+
+    public int Sites { get; }
+
+    public int Routes { get; }
+
+    public int ProxyRoutes { get; }
+
+    public int GeneratedRoutes { get; }
+
+    public int CacheEnabledRoutes { get; }
+
     public static ProxyRouteSubsystemSummary Unknown { get; } = new(0, 0, 0, 0, 0);
 }
 
@@ -92,13 +158,38 @@ public sealed record ProxyAcmeSubsystemSummary(
     public static ProxyAcmeSubsystemSummary Unknown { get; } = new(false, 0, 0, 0, 0, null);
 }
 
-public sealed record ProxyUpstreamSubsystemSummary(
-    int Total,
-    int Healthy,
-    int Unhealthy,
-    int UnknownHealth,
-    int HealthChecksEnabled)
+public sealed record ProxyUpstreamSubsystemSummary
 {
+    public ProxyUpstreamSubsystemSummary(
+        int Total,
+        int Healthy,
+        int Unhealthy,
+        int UnknownHealth,
+        int HealthChecksEnabled)
+    {
+        ProxyStatusFacts.RequireNonNegative(Total, nameof(Total));
+        ProxyStatusFacts.RequireNonNegative(Healthy, nameof(Healthy));
+        ProxyStatusFacts.RequireNonNegative(Unhealthy, nameof(Unhealthy));
+        ProxyStatusFacts.RequireNonNegative(UnknownHealth, nameof(UnknownHealth));
+        ProxyStatusFacts.RequireNonNegative(HealthChecksEnabled, nameof(HealthChecksEnabled));
+
+        this.Total = Total;
+        this.Healthy = Healthy;
+        this.Unhealthy = Unhealthy;
+        this.UnknownHealth = UnknownHealth;
+        this.HealthChecksEnabled = HealthChecksEnabled;
+    }
+
+    public int Total { get; }
+
+    public int Healthy { get; }
+
+    public int Unhealthy { get; }
+
+    public int UnknownHealth { get; }
+
+    public int HealthChecksEnabled { get; }
+
     public static ProxyUpstreamSubsystemSummary Unknown { get; } = new(0, 0, 0, 0, 0);
 }
 
@@ -131,12 +222,33 @@ public sealed record ProxyCacheSubsystemSummary
     public static ProxyCacheSubsystemSummary Unknown { get; } = new(false, 0, 0, 0);
 }
 
-public sealed record ProxyCircuitSubsystemSummary(
-    int Enabled,
-    int Open,
-    int HalfOpen,
-    int Closed)
+public sealed record ProxyCircuitSubsystemSummary
 {
+    public ProxyCircuitSubsystemSummary(
+        int Enabled,
+        int Open,
+        int HalfOpen,
+        int Closed)
+    {
+        ProxyStatusFacts.RequireNonNegative(Enabled, nameof(Enabled));
+        ProxyStatusFacts.RequireNonNegative(Open, nameof(Open));
+        ProxyStatusFacts.RequireNonNegative(HalfOpen, nameof(HalfOpen));
+        ProxyStatusFacts.RequireNonNegative(Closed, nameof(Closed));
+
+        this.Enabled = Enabled;
+        this.Open = Open;
+        this.HalfOpen = HalfOpen;
+        this.Closed = Closed;
+    }
+
+    public int Enabled { get; }
+
+    public int Open { get; }
+
+    public int HalfOpen { get; }
+
+    public int Closed { get; }
+
     public static ProxyCircuitSubsystemSummary Unknown { get; } = new(0, 0, 0, 0);
 }
 

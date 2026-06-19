@@ -1695,6 +1695,103 @@ internal static class OperatorStatusTests
                 RequestsPerMinutePerIp: -1));
     }
 
+    public static void StatusCountSubsystemSummariesRejectNegativeOutputFacts()
+    {
+        AssertListenerSummaryRejects(Configured: -1);
+        AssertListenerSummaryRejects(Enabled: -1);
+        AssertListenerSummaryRejects(Active: -1);
+        AssertListenerSummaryRejects(Failed: -1);
+        AssertListenerSummaryRejects(Draining: -1);
+        AssertListenerSummaryRejects(Http1Enabled: -1);
+        AssertListenerSummaryRejects(Http2Enabled: -1);
+        AssertListenerSummaryRejects(Http3Enabled: -1);
+        AssertListenerSummaryRejects(QuicReady: -1);
+        AssertRouteSummaryRejects(Sites: -1);
+        AssertRouteSummaryRejects(Routes: -1);
+        AssertRouteSummaryRejects(ProxyRoutes: -1);
+        AssertRouteSummaryRejects(GeneratedRoutes: -1);
+        AssertRouteSummaryRejects(CacheEnabledRoutes: -1);
+        AssertUpstreamSummaryRejects(Total: -1);
+        AssertUpstreamSummaryRejects(Healthy: -1);
+        AssertUpstreamSummaryRejects(Unhealthy: -1);
+        AssertUpstreamSummaryRejects(UnknownHealth: -1);
+        AssertUpstreamSummaryRejects(HealthChecksEnabled: -1);
+        AssertCircuitSummaryRejects(Enabled: -1);
+        AssertCircuitSummaryRejects(Open: -1);
+        AssertCircuitSummaryRejects(HalfOpen: -1);
+        AssertCircuitSummaryRejects(Closed: -1);
+
+        static void AssertListenerSummaryRejects(
+            int Configured = 1,
+            int Enabled = 1,
+            int Active = 1,
+            int Failed = 0,
+            int Draining = 0,
+            int Http1Enabled = 1,
+            int Http2Enabled = 0,
+            int Http3Enabled = 0,
+            int QuicReady = 0)
+        {
+            AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+                new ProxyListenerSubsystemSummary(
+                    Configured,
+                    Enabled,
+                    Active,
+                    Failed,
+                    Draining,
+                    Http1Enabled,
+                    Http2Enabled,
+                    Http3Enabled,
+                    QuicReady));
+        }
+
+        static void AssertRouteSummaryRejects(
+            int Sites = 1,
+            int Routes = 1,
+            int ProxyRoutes = 1,
+            int GeneratedRoutes = 0,
+            int CacheEnabledRoutes = 0)
+        {
+            AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+                new ProxyRouteSubsystemSummary(
+                    Sites,
+                    Routes,
+                    ProxyRoutes,
+                    GeneratedRoutes,
+                    CacheEnabledRoutes));
+        }
+
+        static void AssertUpstreamSummaryRejects(
+            int Total = 1,
+            int Healthy = 1,
+            int Unhealthy = 0,
+            int UnknownHealth = 0,
+            int HealthChecksEnabled = 0)
+        {
+            AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+                new ProxyUpstreamSubsystemSummary(
+                    Total,
+                    Healthy,
+                    Unhealthy,
+                    UnknownHealth,
+                    HealthChecksEnabled));
+        }
+
+        static void AssertCircuitSummaryRejects(
+            int Enabled = 1,
+            int Open = 0,
+            int HalfOpen = 0,
+            int Closed = 1)
+        {
+            AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+                new ProxyCircuitSubsystemSummary(
+                    Enabled,
+                    Open,
+                    HalfOpen,
+                    Closed));
+        }
+    }
+
     public static void SubsystemSummarySourceMappersCopyProjectedLists()
     {
         var listener = Listener();
