@@ -350,6 +350,23 @@ internal static class ConfigurationTests
             discovery: discovery,
             listenerReload: listenerReload,
             activeConfiguration: active));
+        AssertEx.Throws<ArgumentException>(() => ProxyConfigurationReloadResult<TestConfigurationProjection>.LoadFailed(
+            sourceDirectory: " ",
+            attemptedAtUtc: attemptedAtUtc,
+            activeVersion: 7,
+            loadedAtUtc: loadedAtUtc,
+            discovery: discovery,
+            errors: ["parse failed"],
+            fileErrors: [ProxyConfigurationFileError.ForPath("sites/broken.json", "parse failed")],
+            activeConfiguration: active));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyConfigurationReloadResult<TestConfigurationProjection>.Reloaded(
+            sourceDirectory: "data",
+            attemptedAtUtc: attemptedAtUtc,
+            activeVersion: 8,
+            loadedAtUtc: loadedAtUtc,
+            discovery: null!,
+            listenerReload: listenerReload,
+            activeConfiguration: active));
 
     }
 

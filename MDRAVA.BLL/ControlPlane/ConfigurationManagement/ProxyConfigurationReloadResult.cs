@@ -16,6 +16,8 @@ public abstract partial record ProxyConfigurationReloadResult<TProjection>
         IReadOnlyList<string> errors,
         IReadOnlyList<ProxyConfigurationFileError> fileErrors)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourceDirectory);
+        ArgumentNullException.ThrowIfNull(discovery);
         ArgumentNullException.ThrowIfNull(errors);
         ArgumentNullException.ThrowIfNull(fileErrors);
         ThrowIfNonPositive(activeVersion, nameof(activeVersion));
