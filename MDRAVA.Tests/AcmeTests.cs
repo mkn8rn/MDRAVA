@@ -573,6 +573,25 @@ internal static class AcmeTests
             Domains: ["home.example.test"],
             RenewBeforeDays: 30);
 
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyAcmeConfiguredCertificateStatus(
+                " ",
+                Enabled: true,
+                Domains: ["home.example.test"],
+                RenewBeforeDays: 30));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyAcmeConfiguredCertificateStatus(
+                "home-acme",
+                Enabled: true,
+                Domains: [],
+                RenewBeforeDays: 30));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyAcmeConfiguredCertificateStatus(
+                "home-acme",
+                Enabled: true,
+                Domains: [" "],
+                RenewBeforeDays: 30));
+
         var active = AcmeCertificateLifecycleStatus.FromConfiguredCertificate(
             configured,
             new AcmeCertificateLifecycleActiveCertificate(notBefore, notAfter));
@@ -847,6 +866,39 @@ internal static class AcmeTests
             ProxyAcmeRuntimeCertificateStatusMapper.FromSources(null!));
         AssertEx.Throws<ArgumentNullException>(() =>
             ProxyAcmeRuntimeCertificateStatusMapper.FromSources([null!]));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyAcmeRuntimeCertificateSource(
+                " ",
+                "home-acme",
+                "acme",
+                notBefore,
+                notAfter));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyAcmeRuntimeCertificateSource(
+                "home-acme",
+                " ",
+                "acme",
+                notBefore,
+                notAfter));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyAcmeRuntimeCertificateSource(
+                "home-acme",
+                "home-acme",
+                " ",
+                notBefore,
+                notAfter));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyAcmeRuntimeCertificateStatus(
+                " ",
+                "acme",
+                notBefore,
+                notAfter));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyAcmeRuntimeCertificateStatus(
+                "home-acme",
+                " ",
+                notBefore,
+                notAfter));
         AssertEx.True(certificates.ContainsKey("home-acme"));
         var certificate = certificates["home-acme"];
         AssertEx.Equal("home-acme", certificate.Id);

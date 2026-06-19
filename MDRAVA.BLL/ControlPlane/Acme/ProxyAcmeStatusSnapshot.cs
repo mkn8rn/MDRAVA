@@ -40,11 +40,11 @@ public sealed record ProxyAcmeConfiguredCertificateStatus
         IEnumerable<string> Domains,
         int RenewBeforeDays)
     {
-        ArgumentNullException.ThrowIfNull(Domains);
+        ArgumentException.ThrowIfNullOrWhiteSpace(Id);
 
         this.Id = Id;
         this.Enabled = Enabled;
-        this.Domains = AcmeList.Copy(Domains);
+        this.Domains = AcmeCommandFacts.CopyRequiredStrings(Domains, nameof(Domains));
         this.RenewBeforeDays = RenewBeforeDays;
     }
 
@@ -57,8 +57,28 @@ public sealed record ProxyAcmeConfiguredCertificateStatus
     public int RenewBeforeDays { get; }
 }
 
-public sealed record ProxyAcmeRuntimeCertificateStatus(
-    string Id,
-    string Source,
-    DateTimeOffset NotBeforeUtc,
-    DateTimeOffset NotAfterUtc);
+public sealed record ProxyAcmeRuntimeCertificateStatus
+{
+    public ProxyAcmeRuntimeCertificateStatus(
+        string Id,
+        string Source,
+        DateTimeOffset NotBeforeUtc,
+        DateTimeOffset NotAfterUtc)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(Id);
+        ArgumentException.ThrowIfNullOrWhiteSpace(Source);
+
+        this.Id = Id;
+        this.Source = Source;
+        this.NotBeforeUtc = NotBeforeUtc;
+        this.NotAfterUtc = NotAfterUtc;
+    }
+
+    public string Id { get; }
+
+    public string Source { get; }
+
+    public DateTimeOffset NotBeforeUtc { get; }
+
+    public DateTimeOffset NotAfterUtc { get; }
+}
