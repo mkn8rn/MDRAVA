@@ -15,7 +15,9 @@ public abstract partial record ProxyConfigurationValidationResult
         IReadOnlyList<string> errors,
         IReadOnlyList<ProxyConfigurationFileError> fileErrors)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourceDirectory);
         ArgumentNullException.ThrowIfNull(sourceFiles);
+        ArgumentNullException.ThrowIfNull(discovery);
         ArgumentNullException.ThrowIfNull(errors);
         ArgumentNullException.ThrowIfNull(fileErrors);
 

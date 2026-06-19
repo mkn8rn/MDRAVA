@@ -555,6 +555,22 @@ internal static class ConfigurationTests
             wouldBeVersion: 2,
             [null!],
             discovery));
+        AssertEx.Throws<ArgumentException>(() => ProxyConfigurationValidationResult.Valid(
+            sourceDirectory: " ",
+            attemptedAtUtc: DateTimeOffset.UnixEpoch,
+            activeVersion: 1,
+            lastSuccessfulLoadAtUtc: DateTimeOffset.UnixEpoch,
+            wouldBeVersion: 2,
+            ["sites/home.json"],
+            discovery));
+        AssertEx.Throws<ArgumentNullException>(() => ProxyConfigurationValidationResult.Valid(
+            sourceDirectory: "data",
+            attemptedAtUtc: DateTimeOffset.UnixEpoch,
+            activeVersion: 1,
+            lastSuccessfulLoadAtUtc: DateTimeOffset.UnixEpoch,
+            wouldBeVersion: 2,
+            ["sites/home.json"],
+            discovery: null!));
         AssertEx.Throws<ArgumentNullException>(() => ProxyConfigurationValidationResult.Invalid(
             sourceDirectory: "data",
             attemptedAtUtc: DateTimeOffset.UnixEpoch,
