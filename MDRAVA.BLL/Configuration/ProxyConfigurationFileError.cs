@@ -4,6 +4,13 @@ public sealed record ProxyConfigurationFileError
 {
     private ProxyConfigurationFileError(string? path, string message)
     {
+        if (path is not null)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        }
+
+        ArgumentException.ThrowIfNullOrWhiteSpace(message);
+
         Path = path;
         Message = message;
     }

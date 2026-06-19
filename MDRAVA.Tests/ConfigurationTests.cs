@@ -19,6 +19,9 @@ internal static class ConfigurationTests
         AssertEx.Equal("global failure", global.Message);
         AssertEx.Equal("config/site.json", path.Path);
         AssertEx.Equal("path failure", path.Message);
+        AssertEx.Throws<ArgumentException>(() => ProxyConfigurationFileError.Global(" "));
+        AssertEx.Throws<ArgumentException>(() => ProxyConfigurationFileError.ForPath(" ", "path failure"));
+        AssertEx.Throws<ArgumentException>(() => ProxyConfigurationFileError.ForPath("config/site.json", " "));
     }
 
     public static void NormalizeSiteParseResultNamesParsedAndFailedStates()
