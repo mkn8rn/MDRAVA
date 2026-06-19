@@ -301,6 +301,54 @@ internal static class RouteDiagnosticsTests
             GeneratedStatusCode: null));
     }
 
+    public static void RouteDiagnosticsRoutePoliciesRejectNullFacts()
+    {
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRouteDiagnosticsMaintenancePolicy(
+            false,
+            null,
+            null!,
+            ""));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRouteDiagnosticsMaintenancePolicy(
+            false,
+            null,
+            "text/plain",
+            null!));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRouteDiagnosticsCanonicalHostPolicy(
+            false,
+            null!,
+            308));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRouteDiagnosticsRedirectPolicy(
+            302,
+            null!,
+            "",
+            false));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRouteDiagnosticsRedirectPolicy(
+            302,
+            "",
+            null!,
+            false));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRouteDiagnosticsStaticResponse(
+            200,
+            null!,
+            ""));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRouteDiagnosticsStaticResponse(
+            200,
+            "text/plain",
+            null!));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRouteDiagnosticsPathRewrite(
+            null!,
+            "",
+            ""));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRouteDiagnosticsPathRewrite(
+            "",
+            null!,
+            ""));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRouteDiagnosticsPathRewrite(
+            "",
+            "",
+            null!));
+    }
+
     public static void RouteDiagnosticsActionPolicyUsesSharedPolicyRedirects()
     {
         var route = RouteDiagnosticsRoute("api", "old.test", "/") with
