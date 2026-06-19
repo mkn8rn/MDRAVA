@@ -438,6 +438,11 @@ internal static class AdminSecurityTests
         AssertEx.Equal<string?>(null, none.Token);
         AssertEx.Equal(ProxyAdminSecurityTokenPolicy.DefaultTokenEnvironmentVariable, none.TokenEnvironmentVariable);
         AssertEx.Equal("none", none.TokenSource);
+        AssertEx.Throws<ArgumentException>(() => ProxyAdminTokenResolution.Direct("", "MDRAVA_ADMIN_TOKEN"));
+        AssertEx.Throws<ArgumentException>(() => ProxyAdminTokenResolution.Direct("direct-token", " "));
+        AssertEx.Throws<ArgumentException>(() => ProxyAdminTokenResolution.Environment("", "MDRAVA_ADMIN_TOKEN"));
+        AssertEx.Throws<ArgumentException>(() => ProxyAdminTokenResolution.Environment("environment-token", " "));
+        AssertEx.Throws<ArgumentException>(() => ProxyAdminTokenResolution.None(" "));
     }
 
     public static void AdminSecurityOptionsReadResultNamesActiveAndDefaultSources()

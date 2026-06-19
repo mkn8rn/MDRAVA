@@ -48,6 +48,9 @@ public sealed record ProxyAdminTokenResolution
 {
     private ProxyAdminTokenResolution(string? token, string tokenEnvironmentVariable, string tokenSource)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tokenEnvironmentVariable);
+        ArgumentException.ThrowIfNullOrWhiteSpace(tokenSource);
+
         Token = token;
         TokenEnvironmentVariable = tokenEnvironmentVariable;
         TokenSource = tokenSource;
@@ -61,6 +64,8 @@ public sealed record ProxyAdminTokenResolution
 
     public static ProxyAdminTokenResolution Direct(string token, string tokenEnvironmentVariable)
     {
+        ArgumentException.ThrowIfNullOrEmpty(token);
+
         return new ProxyAdminTokenResolution(
             token: token,
             tokenEnvironmentVariable: tokenEnvironmentVariable,
@@ -69,6 +74,8 @@ public sealed record ProxyAdminTokenResolution
 
     public static ProxyAdminTokenResolution Environment(string token, string tokenEnvironmentVariable)
     {
+        ArgumentException.ThrowIfNullOrEmpty(token);
+
         return new ProxyAdminTokenResolution(
             token: token,
             tokenEnvironmentVariable: tokenEnvironmentVariable,
