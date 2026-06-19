@@ -1070,7 +1070,12 @@ internal static class RouteDiagnosticsTests
         routes.Clear();
         cacheVaryByHeaders[0] = "X-Replacement";
         retryMethods[0] = "POST";
-        upstreams[0] = upstreams[0] with { Name = "replacement" };
+        upstreams[0] = new ProxyConfigLintRuntimeUpstreamSource(
+            "replacement",
+            "http",
+            RuntimeUpstreamProtocol.Http1,
+            true,
+            false);
         sourceFiles.Clear();
         adminUrls.Clear();
         cacheVaryByHeaders.Clear();
@@ -1138,6 +1143,86 @@ internal static class RouteDiagnosticsTests
         AssertEx.Equal("quic", states[1].Kind);
         AssertEx.False(states[1].Active);
         AssertEx.False(states is ProxyConfigLintRuntimeListenerState[], "Config lint runtime listener states should not expose a mutable array.");
+    }
+
+    public static void ConfigLintRuntimeSourceFactsRejectInvalidValues()
+    {
+        AssertEx.Throws<ArgumentException>(() => new ProxyConfigLintRuntimeListenerSource(
+            " ",
+            "127.0.0.1",
+            8080,
+            true,
+            "Http",
+            false,
+            false,
+            "not_configured",
+            "disabled",
+            false,
+            null));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyConfigLintRuntimeListenerSource(
+            "web",
+            "127.0.0.1",
+            -1,
+            true,
+            "Http",
+            false,
+            false,
+            "not_configured",
+            "disabled",
+            false,
+            null));
+        AssertEx.Throws<ArgumentException>(() => new ProxyConfigLintRuntimeRouteSource(
+            "api",
+            "diag",
+            "*",
+            "",
+            "Proxy",
+            false,
+            false,
+            "",
+            false,
+            [],
+            false,
+            [],
+            false,
+            [],
+            ""));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyConfigLintRuntimeRouteSource(
+            "api",
+            "diag",
+            "*",
+            "/",
+            "Proxy",
+            false,
+            false,
+            "",
+            false,
+            [],
+            false,
+            [],
+            false,
+            [],
+            null!));
+        AssertEx.Throws<ArgumentException>(() => new ProxyConfigLintRuntimeUpstreamSource(
+            "local",
+            " ",
+            RuntimeUpstreamProtocol.Http1,
+            true,
+            false));
+        AssertEx.Throws<ArgumentException>(() => new ProxyConfigLintRuntimeUpstreamSource(
+            "local",
+            "http",
+            "",
+            true,
+            false));
+        AssertEx.Throws<ArgumentException>(() => new ProxyConfigLintRuntimeListenerState(
+            " ",
+            "tcp",
+            true));
+        AssertEx.Throws<ArgumentException>(() => new ProxyConfigLintRuntimeListenerState(
+            "main|tcp",
+            "",
+            true));
     }
 
     public static void RouteDiagnosticsRuntimeRouteCopiesPolicyMethodLists()

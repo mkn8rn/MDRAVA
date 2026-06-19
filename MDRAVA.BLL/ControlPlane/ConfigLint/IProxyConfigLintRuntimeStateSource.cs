@@ -7,10 +7,27 @@ public interface IProxyConfigLintRuntimeStateSource
     IReadOnlyList<ProxyConfigLintRuntimeListenerState> GetListenerStates();
 }
 
-public sealed record ProxyConfigLintRuntimeListenerState(
-    string Identity,
-    string Kind,
-    bool Active);
+public sealed record ProxyConfigLintRuntimeListenerState
+{
+    public ProxyConfigLintRuntimeListenerState(
+        string identity,
+        string kind,
+        bool active)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(identity);
+        ArgumentException.ThrowIfNullOrWhiteSpace(kind);
+
+        Identity = identity;
+        Kind = kind;
+        Active = active;
+    }
+
+    public string Identity { get; }
+
+    public string Kind { get; }
+
+    public bool Active { get; }
+}
 
 public static class ProxyConfigLintRuntimeListenerStateMapper
 {
