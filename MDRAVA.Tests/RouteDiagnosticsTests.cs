@@ -1331,6 +1331,19 @@ internal static class RouteDiagnosticsTests
         AssertEx.True(result.Summary.Warning > 0);
     }
 
+    public static void ConfigLintFactsRejectInvalidValues()
+    {
+        AssertEx.Throws<ArgumentException>(() =>
+            new ConfigLintFinding(null!, "route_shadowed", "Route is shadowed.", null, null, null));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ConfigLintFinding("warning", " ", "Route is shadowed.", null, null, null));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ConfigLintFinding("warning", "route_shadowed", "", null, null, null));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ConfigLintSummary(-1, 0, 0));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ConfigLintSummary(0, -1, 0));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ConfigLintSummary(0, 0, -1));
+    }
+
     public static void ConfigLintServiceShapesActiveSourceFindings()
     {
         var metrics = new FixedConfigLintMetricsSink();

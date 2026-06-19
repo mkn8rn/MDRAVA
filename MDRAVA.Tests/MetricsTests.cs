@@ -360,6 +360,9 @@ internal static class MetricsTests
             DryRunFailures: [null!]));
         AssertEx.Throws<ArgumentNullException>(() => new ProxyRouteDryRunFailureSnapshot(null!, 1));
         AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyRouteDryRunFailureSnapshot("no_route", -1));
+        AssertEx.Throws<ArgumentException>(() => new ProxyConfigLintFindingMetricSnapshot(null!, "route_shadowed", 1));
+        AssertEx.Throws<ArgumentException>(() => new ProxyConfigLintFindingMetricSnapshot("warning", " ", 1));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyConfigLintFindingMetricSnapshot("warning", "route_shadowed", -1));
         var response = ProxyMetricsSnapshotResponse.FromSnapshot(snapshot);
         AssertEx.False(response.RequestFailuresByKind is Dictionary<string, long>, "Metrics API request failures should not expose a mutable dictionary.");
         AssertEx.False(response.RequestsByRoute is ProxyRequestSeriesSnapshotResponse[], "Metrics API request series should not expose a mutable array.");

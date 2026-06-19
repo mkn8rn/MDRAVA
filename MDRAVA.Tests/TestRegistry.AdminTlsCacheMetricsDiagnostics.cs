@@ -172,6 +172,7 @@ internal static partial class TestRegistry
     Test("Route diagnostics runtime route copies policy method lists", Sync(RouteDiagnosticsTests.RouteDiagnosticsRuntimeRouteCopiesPolicyMethodLists), TestTaxonomy.Config, TestTaxonomy.Routing),
     Test("Config lint handles JSON and YAML submitted config without applying", Sync(RouteDiagnosticsTests.LintHandlesJsonAndYamlSubmittedConfigWithoutApplying), TestTaxonomy.Config, TestTaxonomy.Routing),
     Test("Config lint output has stable codes and severities", Sync(RouteDiagnosticsTests.LintOutputHasStableCodesAndSeverities), TestTaxonomy.Config, TestTaxonomy.Routing),
+    Test("Config lint facts reject invalid values", Sync(RouteDiagnosticsTests.ConfigLintFactsRejectInvalidValues), TestTaxonomy.Config, TestTaxonomy.Routing, TestTaxonomy.SecurityNegativePaths),
     Test("Config lint service shapes active source findings", Sync(RouteDiagnosticsTests.ConfigLintServiceShapesActiveSourceFindings), TestTaxonomy.Config, TestTaxonomy.Routing),
     Test("Config lint status names empty and completed states", Sync(RouteDiagnosticsTests.ConfigLintStatusNamesEmptyAndCompletedStates), TestTaxonomy.Config, TestTaxonomy.Routing),
     Test("Config lint submitted configuration result names source outcomes", Sync(RouteDiagnosticsTests.ConfigLintSubmittedConfigurationResultNamesSourceOutcomes), TestTaxonomy.Config, TestTaxonomy.Routing),
