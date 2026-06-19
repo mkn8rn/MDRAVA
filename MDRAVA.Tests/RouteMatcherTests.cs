@@ -177,6 +177,24 @@ internal static class RouteMatcherTests
             () => ProxyRouteMatchRuntimeMapper.SelectRoute(null!, match));
         AssertEx.Throws<ArgumentNullException>(
             () => ProxyRouteMatchRuntimeMapper.SelectRoute(routes, null!));
+        AssertEx.Throws<ArgumentException>(
+            () => new RouteMatch(-1));
+        AssertEx.Throws<ArgumentException>(
+            () => new RouteMatchCandidate(null!, "/api"));
+        AssertEx.Throws<ArgumentException>(
+            () => new RouteMatchCandidate(" ", "/api"));
+        AssertEx.Throws<ArgumentException>(
+            () => new RouteMatchCandidate("example.test", null!));
+        AssertEx.Throws<ArgumentException>(
+            () => new RouteMatchCandidate("example.test", "api"));
+        AssertEx.Throws<ArgumentException>(
+            () => new RouteMatchRequest(null!, "/api"));
+        AssertEx.Throws<ArgumentException>(
+            () => new RouteMatchRequest(" ", "/api"));
+        AssertEx.Throws<ArgumentException>(
+            () => new RouteMatchRequest("example.test", null!));
+        AssertEx.Throws<ArgumentException>(
+            () => new RouteMatchRequest("example.test", "api"));
 
         AssertEx.Equal("example.test", ProxyRouteMatchRuntimeMapper.ToRequest(request).Host);
         AssertEx.Equal("api", ProxyRouteMatchRuntimeMapper.SelectRoute(routes, match).Name);
