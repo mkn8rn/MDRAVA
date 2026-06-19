@@ -567,6 +567,19 @@ internal static class ConfigurationTests
         AssertEx.Equal("tests/config", discoveryWithReplacementFiles.CreatedPaths[0]);
         AssertEx.Equal("tests/config/sites", discoveryWithReplacementFiles.ExistingPaths[0]);
         AssertEx.False(discoveryWithReplacementFiles.Files is ProxyConfigurationFileDiscovery[], "Discovery replacement files should not expose a mutable array.");
+        AssertEx.Throws<ArgumentException>(() => new ProxyConfigurationFileDiscovery(" ", "json", "loaded", null));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyConfigurationFileDiscovery("sites/home.json", " ", "loaded", null));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyConfigurationFileDiscovery("sites/home.json", "json", " ", null));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyConfigurationFileDiscovery("sites/home.json", "json", "loaded", " "));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyFilesystemLayout(" ", "tests/config", "tests/config/sites", "tests/logs", "tests/certs", "tests/state", "tests/config/proxy.json"));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyFilesystemLayout("tests", " ", "tests/config/sites", "tests/logs", "tests/certs", "tests/state", "tests/config/proxy.json"));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyFilesystemLayout("tests", "tests/config", "tests/config/sites", "tests/logs", "tests/certs", "tests/state", " "));
         AssertEx.Equal("sites/home.json", valid.SourceFiles[0]);
         AssertEx.False(valid.SourceFiles is string[], "Validation source files should not expose a mutable array.");
         AssertEx.Equal("sites/home.json", invalid.SourceFiles[0]);
