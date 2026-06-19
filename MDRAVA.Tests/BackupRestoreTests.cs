@@ -464,12 +464,27 @@ internal static class BackupRestoreTests
             [],
             [null!],
             wouldBeVersion: null));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => ProxyRestoreConfigurationValidationResult.Completed(
+            [],
+            [],
+            wouldBeVersion: 0));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => ProxyRestoreConfigurationValidationResult.Completed(
+            ["parse failed"],
+            [],
+            wouldBeVersion: -1));
         AssertEx.Throws<ArgumentNullException>(() => ProxyRestoreValidationResult.Completed(
             generatedAtUtc,
             activeConfigVersion: 3,
             configValidation,
             manifest,
             [null!],
+            []));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => ProxyRestoreValidationResult.Completed(
+            generatedAtUtc,
+            activeConfigVersion: 0,
+            configValidation,
+            manifest,
+            [],
             []));
         AssertEx.Throws<ArgumentNullException>(() => ProxyRestoreValidationResult.Completed(
             generatedAtUtc,

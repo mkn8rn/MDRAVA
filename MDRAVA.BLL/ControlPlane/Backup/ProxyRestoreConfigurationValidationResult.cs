@@ -19,12 +19,22 @@ public abstract record ProxyRestoreConfigurationValidationResult
         IEnumerable<ProxyConfigurationFileError> fileErrors,
         int? wouldBeVersion)
     {
+        ThrowIfNonPositive(wouldBeVersion, nameof(wouldBeVersion));
+
         var ownedErrors = BackupList.Copy(errors);
         var ownedFileErrors = BackupList.Copy(fileErrors);
 
         return ownedErrors.Count == 0 && ownedFileErrors.Count == 0
             ? new ValidResult(wouldBeVersion)
             : new InvalidResult(ownedErrors, ownedFileErrors, wouldBeVersion);
+    }
+
+    private static void ThrowIfNonPositive(int? value, string paramName)
+    {
+        if (value is <= 0)
+        {
+            throw new ArgumentOutOfRangeException(paramName);
+        }
     }
 
     public sealed record ValidResult : ProxyRestoreConfigurationValidationResult

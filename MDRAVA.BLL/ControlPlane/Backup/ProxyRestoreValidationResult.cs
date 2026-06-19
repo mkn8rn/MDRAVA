@@ -12,6 +12,8 @@ public abstract record ProxyRestoreValidationResult
     {
         ArgumentNullException.ThrowIfNull(configValidation);
         ArgumentNullException.ThrowIfNull(manifest);
+        ThrowIfNonPositive(activeConfigVersion, nameof(activeConfigVersion));
+
         GeneratedAtUtc = generatedAtUtc;
         ActiveConfigVersion = activeConfigVersion;
         ConfigValidationSucceeded = configValidation is ProxyRestoreConfigurationValidationResult.ValidResult;
@@ -60,6 +62,14 @@ public abstract record ProxyRestoreValidationResult
                 manifest,
                 ownedErrors,
                 warnings);
+    }
+
+    private static void ThrowIfNonPositive(int? value, string paramName)
+    {
+        if (value is <= 0)
+        {
+            throw new ArgumentOutOfRangeException(paramName);
+        }
     }
 
     public sealed record AcceptedResult : ProxyRestoreValidationResult
