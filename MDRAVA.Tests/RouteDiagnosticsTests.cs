@@ -1755,6 +1755,122 @@ internal static class RouteDiagnosticsTests
             null!,
             null,
             null));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRouteDiagnosticsRequestInput(
+            null!,
+            null,
+            null,
+            null,
+            "/",
+            "/",
+            accepted.Input.RequestHead,
+            false,
+            []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRouteDiagnosticsRequestInput(
+            "http",
+            null,
+            null,
+            null,
+            null!,
+            "/",
+            accepted.Input.RequestHead,
+            false,
+            []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRouteDiagnosticsRequestInput(
+            "http",
+            null,
+            null,
+            null,
+            "/",
+            null!,
+            accepted.Input.RequestHead,
+            false,
+            []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRouteDiagnosticsRequestInput(
+            "http",
+            null,
+            null,
+            null,
+            "/",
+            "/",
+            null!,
+            false,
+            []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRouteDiagnosticsRequestInput(
+            "http",
+            null,
+            null,
+            null,
+            "/",
+            "/",
+            accepted.Input.RequestHead,
+            false,
+            null!));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRouteDiagnosticsRequestInput(
+            "http",
+            null,
+            null,
+            null,
+            "/",
+            "/",
+            accepted.Input.RequestHead,
+            false,
+            [null!]));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRouteDiagnosticsRequestHead(
+            null!,
+            "/",
+            "/",
+            "HTTP/1.1",
+            "diag.test",
+            ProxyRouteDiagnosticsRequestFraming.None,
+            []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRouteDiagnosticsRequestHead(
+            "GET",
+            null!,
+            "/",
+            "HTTP/1.1",
+            "diag.test",
+            ProxyRouteDiagnosticsRequestFraming.None,
+            []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRouteDiagnosticsRequestHead(
+            "GET",
+            "/",
+            null!,
+            "HTTP/1.1",
+            "diag.test",
+            ProxyRouteDiagnosticsRequestFraming.None,
+            []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRouteDiagnosticsRequestHead(
+            "GET",
+            "/",
+            "/",
+            null!,
+            "diag.test",
+            ProxyRouteDiagnosticsRequestFraming.None,
+            []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRouteDiagnosticsRequestHead(
+            "GET",
+            "/",
+            "/",
+            "HTTP/1.1",
+            null!,
+            ProxyRouteDiagnosticsRequestFraming.None,
+            []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRouteDiagnosticsRequestHead(
+            "GET",
+            "/",
+            "/",
+            "HTTP/1.1",
+            "diag.test",
+            null!,
+            []));
+        AssertEx.Throws<ArgumentNullException>(() => new ProxyRouteDiagnosticsRequestHead(
+            "GET",
+            "/",
+            "/",
+            "HTTP/1.1",
+            "diag.test",
+            ProxyRouteDiagnosticsRequestFraming.None,
+            null!));
         AssertEx.Throws<ArgumentException>(() => new ProxyRouteDiagnosticsRequestFraming(
             ProxyRouteDiagnosticsBodyKind.None,
             1));

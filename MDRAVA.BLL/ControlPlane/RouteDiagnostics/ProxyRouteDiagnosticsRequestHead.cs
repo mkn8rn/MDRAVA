@@ -13,6 +13,12 @@ public sealed class ProxyRouteDiagnosticsRequestHead
         ProxyRouteDiagnosticsRequestFraming framing,
         IEnumerable<ProxyHeaderField> headers)
     {
+        ArgumentNullException.ThrowIfNull(method);
+        ArgumentNullException.ThrowIfNull(target);
+        ArgumentNullException.ThrowIfNull(path);
+        ArgumentNullException.ThrowIfNull(version);
+        ArgumentNullException.ThrowIfNull(host);
+        ArgumentNullException.ThrowIfNull(framing);
         ArgumentNullException.ThrowIfNull(headers);
 
         Method = method;

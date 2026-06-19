@@ -15,6 +15,9 @@ public sealed class ProxyRouteDiagnosticsRequestInput
         bool isUpgradeRequest,
         IReadOnlyList<RouteMatchDryRunFinding> findings)
     {
+        ArgumentNullException.ThrowIfNull(scheme);
+        ArgumentNullException.ThrowIfNull(target);
+        ArgumentNullException.ThrowIfNull(path);
         ArgumentNullException.ThrowIfNull(requestHead);
         ArgumentNullException.ThrowIfNull(findings);
 
@@ -26,7 +29,7 @@ public sealed class ProxyRouteDiagnosticsRequestInput
         Path = path;
         RequestHead = requestHead;
         IsUpgradeRequest = isUpgradeRequest;
-        _findings = new List<RouteMatchDryRunFinding>(findings);
+        _findings = CopyFindings(findings);
         Findings = _findings.AsReadOnly();
     }
 
@@ -53,5 +56,17 @@ public sealed class ProxyRouteDiagnosticsRequestInput
         ArgumentNullException.ThrowIfNull(finding);
 
         _findings.Add(finding);
+    }
+
+    private static List<RouteMatchDryRunFinding> CopyFindings(IReadOnlyList<RouteMatchDryRunFinding> findings)
+    {
+        var copy = new List<RouteMatchDryRunFinding>(findings.Count);
+        foreach (var finding in findings)
+        {
+            ArgumentNullException.ThrowIfNull(finding);
+            copy.Add(finding);
+        }
+
+        return copy;
     }
 }
