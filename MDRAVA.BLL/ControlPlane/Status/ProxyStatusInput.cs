@@ -213,6 +213,22 @@ internal static class ProxyStatusList
 
 internal static class ProxyStatusFacts
 {
+    public static void RequireText(string value, string parameterName)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new ArgumentException("Values cannot be empty.", parameterName);
+        }
+    }
+
+    public static void RequireOptionalText(string? value, string parameterName)
+    {
+        if (value is not null && string.IsNullOrWhiteSpace(value))
+        {
+            throw new ArgumentException("Values cannot be empty.", parameterName);
+        }
+    }
+
     public static void RequireNonNegative(int value, string parameterName)
     {
         if (value < 0)

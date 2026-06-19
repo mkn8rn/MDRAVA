@@ -29,13 +29,34 @@ public sealed record ProxySubsystemSummaries(
         ProxyProtocolSubsystemSummary.Unknown);
 }
 
-public sealed record ProxyConfigSubsystemSummary(
-    bool Active,
-    int? Generation,
-    DateTimeOffset? LoadedAtUtc,
-    bool? LastListenerReloadSucceeded,
-    string? LastListenerReloadReason)
+public sealed record ProxyConfigSubsystemSummary
 {
+    public ProxyConfigSubsystemSummary(
+        bool Active,
+        int? Generation,
+        DateTimeOffset? LoadedAtUtc,
+        bool? LastListenerReloadSucceeded,
+        string? LastListenerReloadReason)
+    {
+        ProxyStatusFacts.RequireOptionalText(LastListenerReloadReason, nameof(LastListenerReloadReason));
+
+        this.Active = Active;
+        this.Generation = Generation;
+        this.LoadedAtUtc = LoadedAtUtc;
+        this.LastListenerReloadSucceeded = LastListenerReloadSucceeded;
+        this.LastListenerReloadReason = LastListenerReloadReason;
+    }
+
+    public bool Active { get; }
+
+    public int? Generation { get; }
+
+    public DateTimeOffset? LoadedAtUtc { get; }
+
+    public bool? LastListenerReloadSucceeded { get; }
+
+    public string? LastListenerReloadReason { get; }
+
     public static ProxyConfigSubsystemSummary Unknown { get; } = new(false, null, null, null, ProxyStatusText.NotAvailable);
 }
 
@@ -129,11 +150,32 @@ public sealed record ProxyRouteSubsystemSummary
     public static ProxyRouteSubsystemSummary Unknown { get; } = new(0, 0, 0, 0, 0);
 }
 
-public sealed record ProxySubsystemIssueSummary(
-    DateTimeOffset TimestampUtc,
-    string Category,
-    string Reason,
-    string? AffectedIdentity);
+public sealed record ProxySubsystemIssueSummary
+{
+    public ProxySubsystemIssueSummary(
+        DateTimeOffset TimestampUtc,
+        string Category,
+        string Reason,
+        string? AffectedIdentity)
+    {
+        ProxyStatusFacts.RequireText(Category, nameof(Category));
+        ProxyStatusFacts.RequireText(Reason, nameof(Reason));
+        ProxyStatusFacts.RequireOptionalText(AffectedIdentity, nameof(AffectedIdentity));
+
+        this.TimestampUtc = TimestampUtc;
+        this.Category = Category;
+        this.Reason = Reason;
+        this.AffectedIdentity = AffectedIdentity;
+    }
+
+    public DateTimeOffset TimestampUtc { get; }
+
+    public string Category { get; }
+
+    public string Reason { get; }
+
+    public string? AffectedIdentity { get; }
+}
 
 public sealed record ProxyCertificateSubsystemSummary(
     int Configured,
@@ -302,12 +344,31 @@ public sealed record ProxyLimitSubsystemSummary
     public static ProxyLimitSubsystemSummary Unknown { get; } = new(0, 0, 0, 0, 0, 0, 0, 0);
 }
 
-public sealed record ProxyLogSubsystemSummary(
-    bool AccessLogPersistenceEnabled,
-    bool AdminAuditPersistenceEnabled,
-    string State,
-    string Reason)
+public sealed record ProxyLogSubsystemSummary
 {
+    public ProxyLogSubsystemSummary(
+        bool AccessLogPersistenceEnabled,
+        bool AdminAuditPersistenceEnabled,
+        string State,
+        string Reason)
+    {
+        ProxyStatusFacts.RequireText(State, nameof(State));
+        ProxyStatusFacts.RequireText(Reason, nameof(Reason));
+
+        this.AccessLogPersistenceEnabled = AccessLogPersistenceEnabled;
+        this.AdminAuditPersistenceEnabled = AdminAuditPersistenceEnabled;
+        this.State = State;
+        this.Reason = Reason;
+    }
+
+    public bool AccessLogPersistenceEnabled { get; }
+
+    public bool AdminAuditPersistenceEnabled { get; }
+
+    public string State { get; }
+
+    public string Reason { get; }
+
     public static ProxyLogSubsystemSummary Unknown { get; } = new(false, false, ProxyStatusText.Unknown, ProxyStatusText.NotAvailable);
 }
 
@@ -335,7 +396,9 @@ public sealed record ProxyProtocolSubsystemSummary
         ClientHttp3Enabled = clientHttp3Enabled;
         ClientHttp3Ready = clientHttp3Ready;
         UpstreamHttp3Configured = upstreamHttp3Configured;
-        UnsupportedHttp3Features = ProxyStatusList.Copy(unsupportedHttp3Features);
+        UnsupportedHttp3Features = ProxyStatusList.CopyStrings(
+            unsupportedHttp3Features,
+            nameof(unsupportedHttp3Features));
     }
 
     public bool ClientHttp1Enabled { get; }

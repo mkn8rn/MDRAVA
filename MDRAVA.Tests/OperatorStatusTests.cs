@@ -1792,6 +1792,70 @@ internal static class OperatorStatusTests
         }
     }
 
+    public static void StatusTextSubsystemSummariesRejectBlankOutputFacts()
+    {
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyConfigSubsystemSummary(
+                Active: true,
+                Generation: 1,
+                LoadedAtUtc: DateTimeOffset.UnixEpoch,
+                LastListenerReloadSucceeded: true,
+                LastListenerReloadReason: " "));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxySubsystemIssueSummary(
+                TimestampUtc: DateTimeOffset.UnixEpoch,
+                Category: " ",
+                Reason: "missing_reference",
+                AffectedIdentity: "cert-a"));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxySubsystemIssueSummary(
+                TimestampUtc: DateTimeOffset.UnixEpoch,
+                Category: "certificate",
+                Reason: " ",
+                AffectedIdentity: "cert-a"));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxySubsystemIssueSummary(
+                TimestampUtc: DateTimeOffset.UnixEpoch,
+                Category: "certificate",
+                Reason: "missing_reference",
+                AffectedIdentity: " "));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyLogSubsystemSummary(
+                AccessLogPersistenceEnabled: true,
+                AdminAuditPersistenceEnabled: true,
+                State: " ",
+                Reason: ProxyStatusText.Ready));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyLogSubsystemSummary(
+                AccessLogPersistenceEnabled: true,
+                AdminAuditPersistenceEnabled: true,
+                State: ProxyStatusText.Healthy,
+                Reason: " "));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyProtocolSubsystemSummary(
+                clientHttp1Enabled: true,
+                clientHttp2Enabled: false,
+                clientHttp3Enabled: false,
+                clientHttp3Ready: false,
+                upstreamHttp3Configured: false,
+                unsupportedHttp3Features: [" "]));
+
+        var config = new ProxyConfigSubsystemSummary(
+            Active: false,
+            Generation: null,
+            LoadedAtUtc: null,
+            LastListenerReloadSucceeded: null,
+            LastListenerReloadReason: null);
+        var issue = new ProxySubsystemIssueSummary(
+            TimestampUtc: DateTimeOffset.UnixEpoch,
+            Category: "certificate",
+            Reason: "missing_reference",
+            AffectedIdentity: null);
+
+        AssertEx.Equal(null, config.LastListenerReloadReason);
+        AssertEx.Equal(null, issue.AffectedIdentity);
+    }
+
     public static void SubsystemSummarySourceMappersCopyProjectedLists()
     {
         var listener = Listener();
