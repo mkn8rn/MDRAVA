@@ -14,5 +14,5 @@ public sealed record ProxyUpstreamHttp3MetricsSnapshot(
     IReadOnlyDictionary<string, long> ProtocolErrors)
 {
     public IReadOnlyDictionary<string, long> ProtocolErrors { get; } =
-        MetricsList.CopyDictionary(ProtocolErrors, StringComparer.Ordinal);
+        MetricsList.CopyCounterDictionary(ProtocolErrors, StringComparer.Ordinal);
 }

@@ -319,6 +319,9 @@ internal static class MetricsTests
         AssertEx.Throws<ArgumentNullException>(() => new ProxyRequestClassificationMetricsSnapshot(
             requestFailures,
             [null!]));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyRequestClassificationMetricsSnapshot(
+            new Dictionary<string, long>(StringComparer.Ordinal) { ["ConnectFailure"] = -1 },
+            []));
         AssertEx.Throws<ArgumentNullException>(() => new ProxyResilienceMetricsSnapshot(
             RetryAttempts: 0,
             RetryExhausted: 0,
@@ -349,6 +352,65 @@ internal static class MetricsTests
             RequestsByOutcome: [null!],
             RejectedRequests: new Dictionary<string, long>(StringComparer.Ordinal),
             ProtocolErrors: new Dictionary<string, long>(StringComparer.Ordinal),
+            QuicListenerStartSuccesses: 0,
+            QuicListenerStartFailures: 0,
+            ActiveQuicListeners: 0));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyHttp2MetricsSnapshot(
+            AcceptedConnections: 0,
+            Requests: 0,
+            ActiveStreams: 0,
+            ProtocolErrors: new Dictionary<string, long>(StringComparer.Ordinal) { ["stream_error"] = -1 }));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyUpstreamHttp3MetricsSnapshot(
+            Requests: 0,
+            ConnectionAttempts: 0,
+            ConnectionSuccesses: 0,
+            ConnectionFailures: 0,
+            PoolConnectionsOpened: 0,
+            PoolConnectionsReused: 0,
+            PoolConnectionsClosed: 0,
+            StreamLimitRejections: 0,
+            ActiveConnections: 0,
+            ActiveStreams: 0,
+            ProtocolErrors: new Dictionary<string, long>(StringComparer.Ordinal) { ["goaway"] = -1 }));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyHttp3MetricsSnapshot(
+            AcceptedConnections: 0,
+            ActiveConnections: 0,
+            Requests: 0,
+            ProxiedRequests: 0,
+            GeneratedResponses: 0,
+            ActiveStreams: 0,
+            StreamResets: 0,
+            StreamedResponses: 0,
+            ActiveResponseStreams: 0,
+            ResponseBytesSent: 0,
+            RequestBodyBytesReceived: 0,
+            ResponseStreamResets: 0,
+            AltSvcEmitted: 0,
+            AltSvcSuppressed: 0,
+            RequestsByOutcome: [],
+            RejectedRequests: new Dictionary<string, long>(StringComparer.Ordinal) { ["malformed"] = -1 },
+            ProtocolErrors: new Dictionary<string, long>(StringComparer.Ordinal),
+            QuicListenerStartSuccesses: 0,
+            QuicListenerStartFailures: 0,
+            ActiveQuicListeners: 0));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyHttp3MetricsSnapshot(
+            AcceptedConnections: 0,
+            ActiveConnections: 0,
+            Requests: 0,
+            ProxiedRequests: 0,
+            GeneratedResponses: 0,
+            ActiveStreams: 0,
+            StreamResets: 0,
+            StreamedResponses: 0,
+            ActiveResponseStreams: 0,
+            ResponseBytesSent: 0,
+            RequestBodyBytesReceived: 0,
+            ResponseStreamResets: 0,
+            AltSvcEmitted: 0,
+            AltSvcSuppressed: 0,
+            RequestsByOutcome: [],
+            RejectedRequests: new Dictionary<string, long>(StringComparer.Ordinal),
+            ProtocolErrors: new Dictionary<string, long>(StringComparer.Ordinal) { ["qpack"] = -1 },
             QuicListenerStartSuccesses: 0,
             QuicListenerStartFailures: 0,
             ActiveQuicListeners: 0));

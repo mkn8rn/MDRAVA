@@ -7,5 +7,5 @@ public sealed record ProxyHttp2MetricsSnapshot(
     IReadOnlyDictionary<string, long> ProtocolErrors)
 {
     public IReadOnlyDictionary<string, long> ProtocolErrors { get; } =
-        MetricsList.CopyDictionary(ProtocolErrors, StringComparer.Ordinal);
+        MetricsList.CopyCounterDictionary(ProtocolErrors, StringComparer.Ordinal);
 }

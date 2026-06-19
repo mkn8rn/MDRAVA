@@ -6,7 +6,7 @@ public sealed record ProxyRequestClassificationMetricsSnapshot
         IReadOnlyDictionary<string, long> FailuresByKind,
         IEnumerable<ProxyRequestSeriesSnapshot> ByRoute)
     {
-        this.FailuresByKind = MetricsList.CopyDictionary(FailuresByKind, StringComparer.Ordinal);
+        this.FailuresByKind = MetricsList.CopyCounterDictionary(FailuresByKind, StringComparer.Ordinal);
         this.ByRoute = MetricsList.Copy(ByRoute);
     }
 

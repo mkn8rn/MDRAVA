@@ -19,6 +19,24 @@ internal static class MetricsList
         return new ReadOnlyDictionary<TKey, TValue>(new Dictionary<TKey, TValue>(values, comparer));
     }
 
+    public static ReadOnlyDictionary<TKey, long> CopyCounterDictionary<TKey>(
+        IReadOnlyDictionary<TKey, long> values,
+        IEqualityComparer<TKey>? comparer = null)
+        where TKey : notnull
+    {
+        ArgumentNullException.ThrowIfNull(values);
+
+        var copy = new Dictionary<TKey, long>(comparer);
+
+        foreach (var item in values)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(item.Value);
+            copy.Add(item.Key, item.Value);
+        }
+
+        return new ReadOnlyDictionary<TKey, long>(copy);
+    }
+
     private static T RequireValue<T>(T value)
     {
         ArgumentNullException.ThrowIfNull(value);

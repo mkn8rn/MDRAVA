@@ -39,8 +39,8 @@ public sealed record ProxyHttp3MetricsSnapshot
         this.AltSvcEmitted = AltSvcEmitted;
         this.AltSvcSuppressed = AltSvcSuppressed;
         this.RequestsByOutcome = MetricsList.Copy(RequestsByOutcome);
-        this.RejectedRequests = MetricsList.CopyDictionary(RejectedRequests, StringComparer.Ordinal);
-        this.ProtocolErrors = MetricsList.CopyDictionary(ProtocolErrors, StringComparer.Ordinal);
+        this.RejectedRequests = MetricsList.CopyCounterDictionary(RejectedRequests, StringComparer.Ordinal);
+        this.ProtocolErrors = MetricsList.CopyCounterDictionary(ProtocolErrors, StringComparer.Ordinal);
         this.QuicListenerStartSuccesses = QuicListenerStartSuccesses;
         this.QuicListenerStartFailures = QuicListenerStartFailures;
         this.ActiveQuicListeners = ActiveQuicListeners;
