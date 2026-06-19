@@ -1584,6 +1584,22 @@ internal static class RouteDiagnosticsTests
         AssertEx.Equal(ProxyConfigurationNormalizeFormat.Yaml, accepted.Input.Format);
     }
 
+    public static void ConfigLintSubmittedRequestDecisionRejectsInvalidFacts()
+    {
+        AssertEx.Throws<ArgumentException>(() =>
+            new ConfigLintSubmittedRequestInput(" ", ProxyConfigurationNormalizeFormat.Json));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+            new ConfigLintSubmittedRequestInput("submitted", (ProxyConfigurationNormalizeFormat)99));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ConfigLintSubmittedRequestDecision.Accepted(null!));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            new ConfigLintSubmittedRequestDecision.AcceptedDecision(null!));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            ConfigLintSubmittedRequestDecision.Rejected(null!));
+        AssertEx.Throws<ArgumentNullException>(() =>
+            new ConfigLintSubmittedRequestDecision.RejectedDecision(null!));
+    }
+
     public static void ConfigLintSubmittedRequestReaderRejectsMissingRequest()
     {
         var decision = ConfigLintSubmittedRequestReader.Read(null);

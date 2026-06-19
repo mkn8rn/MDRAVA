@@ -3,9 +3,26 @@ using MDRAVA.BLL.ControlPlane.ConfigurationManagement;
 
 namespace MDRAVA.BLL.ControlPlane.ConfigLint;
 
-public sealed record ConfigLintSubmittedRequestInput(
-    string Text,
-    ProxyConfigurationNormalizeFormat Format);
+public sealed record ConfigLintSubmittedRequestInput
+{
+    public ConfigLintSubmittedRequestInput(
+        string text,
+        ProxyConfigurationNormalizeFormat format)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(text);
+        if (!Enum.IsDefined(format))
+        {
+            throw new ArgumentOutOfRangeException(nameof(format), format, "Submitted config format must be a defined format.");
+        }
+
+        Text = text;
+        Format = format;
+    }
+
+    public string Text { get; }
+
+    public ProxyConfigurationNormalizeFormat Format { get; }
+}
 
 public static class ConfigLintSubmittedRequestReader
 {
@@ -78,7 +95,20 @@ public static class ConfigLintSubmittedRequestReader
             return new AcceptedDecision(format);
         }
 
-        public sealed record AcceptedDecision(ProxyConfigurationNormalizeFormat Format) : ConfigLintSubmittedFormatDecision;
+        public sealed record AcceptedDecision : ConfigLintSubmittedFormatDecision
+        {
+            public AcceptedDecision(ProxyConfigurationNormalizeFormat format)
+            {
+                if (!Enum.IsDefined(format))
+                {
+                    throw new ArgumentOutOfRangeException(nameof(format), format, "Submitted config format must be a defined format.");
+                }
+
+                Format = format;
+            }
+
+            public ProxyConfigurationNormalizeFormat Format { get; }
+        }
 
         public sealed record RejectedDecision : ConfigLintSubmittedFormatDecision;
     }
@@ -102,7 +132,27 @@ public abstract record ConfigLintSubmittedRequestDecision
         return new RejectedDecision(failure);
     }
 
-    public sealed record AcceptedDecision(ConfigLintSubmittedRequestInput Input) : ConfigLintSubmittedRequestDecision;
+    public sealed record AcceptedDecision : ConfigLintSubmittedRequestDecision
+    {
+        public AcceptedDecision(ConfigLintSubmittedRequestInput input)
+        {
+            ArgumentNullException.ThrowIfNull(input);
 
-    public sealed record RejectedDecision(ConfigLintFinding Failure) : ConfigLintSubmittedRequestDecision;
+            Input = input;
+        }
+
+        public ConfigLintSubmittedRequestInput Input { get; }
+    }
+
+    public sealed record RejectedDecision : ConfigLintSubmittedRequestDecision
+    {
+        public RejectedDecision(ConfigLintFinding failure)
+        {
+            ArgumentNullException.ThrowIfNull(failure);
+
+            Failure = failure;
+        }
+
+        public ConfigLintFinding Failure { get; }
+    }
 }
