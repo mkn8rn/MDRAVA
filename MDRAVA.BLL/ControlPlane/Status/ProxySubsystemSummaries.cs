@@ -102,12 +102,32 @@ public sealed record ProxyUpstreamSubsystemSummary(
     public static ProxyUpstreamSubsystemSummary Unknown { get; } = new(0, 0, 0, 0, 0);
 }
 
-public sealed record ProxyCacheSubsystemSummary(
-    bool Enabled,
-    int EnabledRoutes,
-    int EntryCount,
-    long ApproximateBytes)
+public sealed record ProxyCacheSubsystemSummary
 {
+    public ProxyCacheSubsystemSummary(
+        bool Enabled,
+        int EnabledRoutes,
+        int EntryCount,
+        long ApproximateBytes)
+    {
+        ProxyStatusFacts.RequireNonNegative(EnabledRoutes, nameof(EnabledRoutes));
+        ProxyStatusFacts.RequireNonNegative(EntryCount, nameof(EntryCount));
+        ProxyStatusFacts.RequireNonNegative(ApproximateBytes, nameof(ApproximateBytes));
+
+        this.Enabled = Enabled;
+        this.EnabledRoutes = EnabledRoutes;
+        this.EntryCount = EntryCount;
+        this.ApproximateBytes = ApproximateBytes;
+    }
+
+    public bool Enabled { get; }
+
+    public int EnabledRoutes { get; }
+
+    public int EntryCount { get; }
+
+    public long ApproximateBytes { get; }
+
     public static ProxyCacheSubsystemSummary Unknown { get; } = new(false, 0, 0, 0);
 }
 
@@ -120,16 +140,53 @@ public sealed record ProxyCircuitSubsystemSummary(
     public static ProxyCircuitSubsystemSummary Unknown { get; } = new(0, 0, 0, 0);
 }
 
-public sealed record ProxyLimitSubsystemSummary(
-    int MaxActiveClientConnections,
-    long ActiveConnections,
-    int MaxConcurrentTlsHandshakes,
-    long ActiveTlsHandshakes,
-    long ActiveHttp2Streams,
-    long ActiveHttp3Streams,
-    long ActiveUpstreamHttp3Streams,
-    int RequestsPerMinutePerIp)
+public sealed record ProxyLimitSubsystemSummary
 {
+    public ProxyLimitSubsystemSummary(
+        int MaxActiveClientConnections,
+        long ActiveConnections,
+        int MaxConcurrentTlsHandshakes,
+        long ActiveTlsHandshakes,
+        long ActiveHttp2Streams,
+        long ActiveHttp3Streams,
+        long ActiveUpstreamHttp3Streams,
+        int RequestsPerMinutePerIp)
+    {
+        ProxyStatusFacts.RequireNonNegative(MaxActiveClientConnections, nameof(MaxActiveClientConnections));
+        ProxyStatusFacts.RequireNonNegative(ActiveConnections, nameof(ActiveConnections));
+        ProxyStatusFacts.RequireNonNegative(MaxConcurrentTlsHandshakes, nameof(MaxConcurrentTlsHandshakes));
+        ProxyStatusFacts.RequireNonNegative(ActiveTlsHandshakes, nameof(ActiveTlsHandshakes));
+        ProxyStatusFacts.RequireNonNegative(ActiveHttp2Streams, nameof(ActiveHttp2Streams));
+        ProxyStatusFacts.RequireNonNegative(ActiveHttp3Streams, nameof(ActiveHttp3Streams));
+        ProxyStatusFacts.RequireNonNegative(ActiveUpstreamHttp3Streams, nameof(ActiveUpstreamHttp3Streams));
+        ProxyStatusFacts.RequireNonNegative(RequestsPerMinutePerIp, nameof(RequestsPerMinutePerIp));
+
+        this.MaxActiveClientConnections = MaxActiveClientConnections;
+        this.ActiveConnections = ActiveConnections;
+        this.MaxConcurrentTlsHandshakes = MaxConcurrentTlsHandshakes;
+        this.ActiveTlsHandshakes = ActiveTlsHandshakes;
+        this.ActiveHttp2Streams = ActiveHttp2Streams;
+        this.ActiveHttp3Streams = ActiveHttp3Streams;
+        this.ActiveUpstreamHttp3Streams = ActiveUpstreamHttp3Streams;
+        this.RequestsPerMinutePerIp = RequestsPerMinutePerIp;
+    }
+
+    public int MaxActiveClientConnections { get; }
+
+    public long ActiveConnections { get; }
+
+    public int MaxConcurrentTlsHandshakes { get; }
+
+    public long ActiveTlsHandshakes { get; }
+
+    public long ActiveHttp2Streams { get; }
+
+    public long ActiveHttp3Streams { get; }
+
+    public long ActiveUpstreamHttp3Streams { get; }
+
+    public int RequestsPerMinutePerIp { get; }
+
     public static ProxyLimitSubsystemSummary Unknown { get; } = new(0, 0, 0, 0, 0, 0, 0, 0);
 }
 

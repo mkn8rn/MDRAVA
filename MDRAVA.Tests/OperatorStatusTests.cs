@@ -1593,6 +1593,108 @@ internal static class OperatorStatusTests
         AssertEx.Equal(1, subsystems.Limits.ActiveConnections);
     }
 
+    public static void StatusCacheAndLimitSubsystemSummariesRejectNegativeOutputFacts()
+    {
+        AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+            new ProxyCacheSubsystemSummary(
+                Enabled: true,
+                EnabledRoutes: -1,
+                EntryCount: 1,
+                ApproximateBytes: 512));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+            new ProxyCacheSubsystemSummary(
+                Enabled: true,
+                EnabledRoutes: 1,
+                EntryCount: -1,
+                ApproximateBytes: 512));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+            new ProxyCacheSubsystemSummary(
+                Enabled: true,
+                EnabledRoutes: 1,
+                EntryCount: 1,
+                ApproximateBytes: -1));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+            new ProxyLimitSubsystemSummary(
+                MaxActiveClientConnections: -1,
+                ActiveConnections: 0,
+                MaxConcurrentTlsHandshakes: 16,
+                ActiveTlsHandshakes: 0,
+                ActiveHttp2Streams: 0,
+                ActiveHttp3Streams: 0,
+                ActiveUpstreamHttp3Streams: 0,
+                RequestsPerMinutePerIp: 30));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+            new ProxyLimitSubsystemSummary(
+                MaxActiveClientConnections: 4096,
+                ActiveConnections: -1,
+                MaxConcurrentTlsHandshakes: 16,
+                ActiveTlsHandshakes: 0,
+                ActiveHttp2Streams: 0,
+                ActiveHttp3Streams: 0,
+                ActiveUpstreamHttp3Streams: 0,
+                RequestsPerMinutePerIp: 30));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+            new ProxyLimitSubsystemSummary(
+                MaxActiveClientConnections: 4096,
+                ActiveConnections: 0,
+                MaxConcurrentTlsHandshakes: -1,
+                ActiveTlsHandshakes: 0,
+                ActiveHttp2Streams: 0,
+                ActiveHttp3Streams: 0,
+                ActiveUpstreamHttp3Streams: 0,
+                RequestsPerMinutePerIp: 30));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+            new ProxyLimitSubsystemSummary(
+                MaxActiveClientConnections: 4096,
+                ActiveConnections: 0,
+                MaxConcurrentTlsHandshakes: 16,
+                ActiveTlsHandshakes: -1,
+                ActiveHttp2Streams: 0,
+                ActiveHttp3Streams: 0,
+                ActiveUpstreamHttp3Streams: 0,
+                RequestsPerMinutePerIp: 30));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+            new ProxyLimitSubsystemSummary(
+                MaxActiveClientConnections: 4096,
+                ActiveConnections: 0,
+                MaxConcurrentTlsHandshakes: 16,
+                ActiveTlsHandshakes: 0,
+                ActiveHttp2Streams: -1,
+                ActiveHttp3Streams: 0,
+                ActiveUpstreamHttp3Streams: 0,
+                RequestsPerMinutePerIp: 30));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+            new ProxyLimitSubsystemSummary(
+                MaxActiveClientConnections: 4096,
+                ActiveConnections: 0,
+                MaxConcurrentTlsHandshakes: 16,
+                ActiveTlsHandshakes: 0,
+                ActiveHttp2Streams: 0,
+                ActiveHttp3Streams: -1,
+                ActiveUpstreamHttp3Streams: 0,
+                RequestsPerMinutePerIp: 30));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+            new ProxyLimitSubsystemSummary(
+                MaxActiveClientConnections: 4096,
+                ActiveConnections: 0,
+                MaxConcurrentTlsHandshakes: 16,
+                ActiveTlsHandshakes: 0,
+                ActiveHttp2Streams: 0,
+                ActiveHttp3Streams: 0,
+                ActiveUpstreamHttp3Streams: -1,
+                RequestsPerMinutePerIp: 30));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+            new ProxyLimitSubsystemSummary(
+                MaxActiveClientConnections: 4096,
+                ActiveConnections: 0,
+                MaxConcurrentTlsHandshakes: 16,
+                ActiveTlsHandshakes: 0,
+                ActiveHttp2Streams: 0,
+                ActiveHttp3Streams: 0,
+                ActiveUpstreamHttp3Streams: 0,
+                RequestsPerMinutePerIp: -1));
+    }
+
     public static void SubsystemSummarySourceMappersCopyProjectedLists()
     {
         var listener = Listener();
