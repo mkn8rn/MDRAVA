@@ -103,6 +103,18 @@ internal static class Http1RequestParserTests
             null,
             "",
             [null!]));
+        AssertEx.Throws<ArgumentException>(() => new Http1RequestFraming(Http1BodyKind.None, 1));
+        AssertEx.Throws<ArgumentException>(() => new Http1RequestFraming(Http1BodyKind.Chunked, 1));
+        AssertEx.Throws<ArgumentException>(() => new Http1RequestFraming(Http1BodyKind.ContentLength, null));
+        AssertEx.Throws<ArgumentException>(() => new Http1RequestFraming(Http1BodyKind.ContentLength, 0));
+        AssertEx.Throws<ArgumentException>(() => new Http1RequestFraming(Http1BodyKind.CloseDelimited, null));
+        AssertEx.Throws<ArgumentException>(() => new Http1RequestFraming((Http1BodyKind)99, null));
+        AssertEx.Throws<ArgumentException>(() => new Http1ResponseFraming(Http1BodyKind.None, 1));
+        AssertEx.Throws<ArgumentException>(() => new Http1ResponseFraming(Http1BodyKind.Chunked, 1));
+        AssertEx.Throws<ArgumentException>(() => new Http1ResponseFraming(Http1BodyKind.CloseDelimited, 1));
+        AssertEx.Throws<ArgumentException>(() => new Http1ResponseFraming(Http1BodyKind.ContentLength, null));
+        AssertEx.Throws<ArgumentException>(() => new Http1ResponseFraming(Http1BodyKind.ContentLength, 0));
+        AssertEx.Throws<ArgumentException>(() => new Http1ResponseFraming((Http1BodyKind)99, null));
     }
 
     public static void RejectsMissingHost()

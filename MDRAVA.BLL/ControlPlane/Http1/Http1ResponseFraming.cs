@@ -1,7 +1,21 @@
 namespace MDRAVA.BLL.ControlPlane.Http1;
 
-public sealed record Http1ResponseFraming(Http1BodyKind Kind, long? ContentLength)
+public sealed record Http1ResponseFraming
 {
+    public Http1ResponseFraming(
+        Http1BodyKind Kind,
+        long? ContentLength)
+    {
+        Http1FramingFacts.ValidateResponse(Kind, ContentLength);
+
+        this.Kind = Kind;
+        this.ContentLength = ContentLength;
+    }
+
+    public Http1BodyKind Kind { get; }
+
+    public long? ContentLength { get; }
+
     public static Http1ResponseFraming None { get; } = new(Http1BodyKind.None, null);
 
     public static Http1ResponseFraming FromContentLength(long contentLength)
