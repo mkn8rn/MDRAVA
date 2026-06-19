@@ -18,14 +18,13 @@ public sealed record AcmeCertificateLifecycleStatus
         string LastResult,
         string? ErrorSummary)
     {
-        ArgumentNullException.ThrowIfNull(CertificateId);
-        ArgumentNullException.ThrowIfNull(Domains);
-        ArgumentNullException.ThrowIfNull(Source);
-        ArgumentNullException.ThrowIfNull(LastResult);
+        ArgumentException.ThrowIfNullOrWhiteSpace(CertificateId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(Source);
+        ArgumentException.ThrowIfNullOrWhiteSpace(LastResult);
 
         this.CertificateId = CertificateId;
         this.Enabled = Enabled;
-        this.Domains = AcmeList.Copy(Domains);
+        this.Domains = AcmeCommandFacts.CopyRequiredStrings(Domains, nameof(Domains));
         this.Active = Active;
         this.Source = Source;
         this.NotBeforeUtc = NotBeforeUtc;
