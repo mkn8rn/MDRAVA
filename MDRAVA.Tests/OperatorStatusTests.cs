@@ -1391,6 +1391,10 @@ internal static class OperatorStatusTests
 
         var source = ProxyAcmeSummaryConfigurationSourceMapper.FromSource(acme);
 
+        AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+            new ProxyAcmeSummaryConfigurationSource(
+                Enabled: true,
+                ConfiguredCertificates: -1));
         AssertEx.True(source.Enabled);
         AssertEx.Equal(1, source.ConfiguredCertificates);
     }
@@ -1456,6 +1460,21 @@ internal static class OperatorStatusTests
 
         var source = ProxyLimitConfigurationSummarySourceMapper.FromSource(limits);
 
+        AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+            new ProxyLimitConfigurationSummarySource(
+                MaxActiveClientConnections: -1,
+                MaxConcurrentTlsHandshakes: 7,
+                RequestsPerMinutePerIp: 45));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+            new ProxyLimitConfigurationSummarySource(
+                MaxActiveClientConnections: 123,
+                MaxConcurrentTlsHandshakes: -1,
+                RequestsPerMinutePerIp: 45));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+            new ProxyLimitConfigurationSummarySource(
+                MaxActiveClientConnections: 123,
+                MaxConcurrentTlsHandshakes: 7,
+                RequestsPerMinutePerIp: -1));
         AssertEx.Equal(123, source.MaxActiveClientConnections);
         AssertEx.Equal(7, source.MaxConcurrentTlsHandshakes);
         AssertEx.Equal(45, source.RequestsPerMinutePerIp);
@@ -1598,6 +1617,12 @@ internal static class OperatorStatusTests
 
         var runtimeListeners = ProxyRuntimeListenerSummarySourceMapper.FromSources(listenerStatuses);
         var upstreams = ProxyUpstreamSummarySourceMapper.FromStatusResponses(upstreamStatuses);
+        var runtimeLimits = ProxyLimitSummarySourceMapper.FromSources(
+            activeConnections: 1,
+            activeTlsHandshakes: 2,
+            activeHttp2Streams: 3,
+            activeHttp3Streams: 4,
+            activeUpstreamHttp3Streams: 5);
 
         listenerStatuses.Clear();
         upstreamStatuses.Clear();
@@ -1610,10 +1635,45 @@ internal static class OperatorStatusTests
         AssertEx.Equal(UpstreamHealthState.Healthy, upstreams[0].HealthState);
         AssertEx.True(upstreams[0].HealthCheckEnabled);
         AssertEx.False(upstreams is ProxyUpstreamSummarySource[], "Subsystem upstream sources should not expose a mutable array.");
+        AssertEx.Equal(1, runtimeLimits.ActiveConnections);
+        AssertEx.Equal(2, runtimeLimits.ActiveTlsHandshakes);
+        AssertEx.Equal(3, runtimeLimits.ActiveHttp2Streams);
+        AssertEx.Equal(4, runtimeLimits.ActiveHttp3Streams);
+        AssertEx.Equal(5, runtimeLimits.ActiveUpstreamHttp3Streams);
         AssertEx.Throws<ArgumentNullException>(() => ProxyRuntimeListenerSummarySourceMapper.FromSources(null!));
         AssertEx.Throws<ArgumentNullException>(() => ProxyUpstreamSummarySourceMapper.FromStatusResponses(null!));
         AssertEx.Throws<ArgumentNullException>(() => ProxyRuntimeListenerSummarySourceMapper.FromSources([null!]));
         AssertEx.Throws<ArgumentNullException>(() => ProxyUpstreamSummarySourceMapper.FromStatusResponses([null!]));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => ProxyLimitSummarySourceMapper.FromSources(
+            activeConnections: -1,
+            activeTlsHandshakes: 2,
+            activeHttp2Streams: 3,
+            activeHttp3Streams: 4,
+            activeUpstreamHttp3Streams: 5));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => ProxyLimitSummarySourceMapper.FromSources(
+            activeConnections: 1,
+            activeTlsHandshakes: -1,
+            activeHttp2Streams: 3,
+            activeHttp3Streams: 4,
+            activeUpstreamHttp3Streams: 5));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => ProxyLimitSummarySourceMapper.FromSources(
+            activeConnections: 1,
+            activeTlsHandshakes: 2,
+            activeHttp2Streams: -1,
+            activeHttp3Streams: 4,
+            activeUpstreamHttp3Streams: 5));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => ProxyLimitSummarySourceMapper.FromSources(
+            activeConnections: 1,
+            activeTlsHandshakes: 2,
+            activeHttp2Streams: 3,
+            activeHttp3Streams: -1,
+            activeUpstreamHttp3Streams: 5));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => ProxyLimitSummarySourceMapper.FromSources(
+            activeConnections: 1,
+            activeTlsHandshakes: 2,
+            activeHttp2Streams: 3,
+            activeHttp3Streams: 4,
+            activeUpstreamHttp3Streams: -1));
     }
 
     public static void SubsystemSummaryBuilderCountsNarrowListenerRouteAndUpstreamSources()

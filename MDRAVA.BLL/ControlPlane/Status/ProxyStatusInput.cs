@@ -210,3 +210,22 @@ internal static class ProxyStatusList
         return copy;
     }
 }
+
+internal static class ProxyStatusFacts
+{
+    public static void RequireNonNegative(int value, string parameterName)
+    {
+        if (value < 0)
+        {
+            throw new ArgumentOutOfRangeException(parameterName, "Values cannot be negative.");
+        }
+    }
+
+    public static void RequireNonNegative(long value, string parameterName)
+    {
+        if (value < 0)
+        {
+            throw new ArgumentOutOfRangeException(parameterName, "Values cannot be negative.");
+        }
+    }
+}
