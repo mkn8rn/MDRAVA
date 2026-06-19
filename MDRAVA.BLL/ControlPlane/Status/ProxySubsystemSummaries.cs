@@ -431,12 +431,35 @@ public sealed record ProxyLogSubsystemSummary
     public static ProxyLogSubsystemSummary Unknown { get; } = new(false, false, ProxyStatusText.Unknown, ProxyStatusText.NotAvailable);
 }
 
-public sealed record ProxyShutdownSubsystemSummary(
-    bool IsRunning,
-    bool IsShuttingDown,
-    DateTimeOffset? ShutdownStartedAtUtc,
-    DateTimeOffset? ShutdownDeadlineUtc)
+public sealed record ProxyShutdownSubsystemSummary
 {
+    public ProxyShutdownSubsystemSummary(
+        bool IsRunning,
+        bool IsShuttingDown,
+        DateTimeOffset? ShutdownStartedAtUtc,
+        DateTimeOffset? ShutdownDeadlineUtc)
+    {
+        ProxyStatusFacts.RequireShutdownWindow(
+            IsShuttingDown,
+            ShutdownStartedAtUtc,
+            nameof(ShutdownStartedAtUtc),
+            ShutdownDeadlineUtc,
+            nameof(ShutdownDeadlineUtc));
+
+        this.IsRunning = IsRunning;
+        this.IsShuttingDown = IsShuttingDown;
+        this.ShutdownStartedAtUtc = ShutdownStartedAtUtc;
+        this.ShutdownDeadlineUtc = ShutdownDeadlineUtc;
+    }
+
+    public bool IsRunning { get; }
+
+    public bool IsShuttingDown { get; }
+
+    public DateTimeOffset? ShutdownStartedAtUtc { get; }
+
+    public DateTimeOffset? ShutdownDeadlineUtc { get; }
+
     public static ProxyShutdownSubsystemSummary Unknown { get; } = new(false, false, null, null);
 }
 

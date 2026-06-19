@@ -1901,6 +1901,93 @@ internal static class OperatorStatusTests
         AssertEx.Equal(null, issue.AffectedIdentity);
     }
 
+    public static void StatusShutdownSummariesRejectIncoherentLifecycleFacts()
+    {
+        var startedAt = DateTimeOffset.UnixEpoch.AddMinutes(1);
+        var deadline = startedAt.AddMinutes(2);
+
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyShutdownSummarySource(
+                IsRunning: true,
+                IsShuttingDown: false,
+                ShutdownStartedAtUtc: startedAt,
+                ShutdownDeadlineUtc: null));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyShutdownSummarySource(
+                IsRunning: true,
+                IsShuttingDown: false,
+                ShutdownStartedAtUtc: null,
+                ShutdownDeadlineUtc: deadline));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyShutdownSummarySource(
+                IsRunning: false,
+                IsShuttingDown: true,
+                ShutdownStartedAtUtc: null,
+                ShutdownDeadlineUtc: deadline));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyShutdownSummarySource(
+                IsRunning: false,
+                IsShuttingDown: true,
+                ShutdownStartedAtUtc: startedAt,
+                ShutdownDeadlineUtc: null));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyShutdownSummarySource(
+                IsRunning: false,
+                IsShuttingDown: true,
+                ShutdownStartedAtUtc: startedAt,
+                ShutdownDeadlineUtc: startedAt.AddTicks(-1)));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyShutdownSubsystemSummary(
+                IsRunning: true,
+                IsShuttingDown: false,
+                ShutdownStartedAtUtc: startedAt,
+                ShutdownDeadlineUtc: null));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyShutdownSubsystemSummary(
+                IsRunning: true,
+                IsShuttingDown: false,
+                ShutdownStartedAtUtc: null,
+                ShutdownDeadlineUtc: deadline));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyShutdownSubsystemSummary(
+                IsRunning: false,
+                IsShuttingDown: true,
+                ShutdownStartedAtUtc: null,
+                ShutdownDeadlineUtc: deadline));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyShutdownSubsystemSummary(
+                IsRunning: false,
+                IsShuttingDown: true,
+                ShutdownStartedAtUtc: startedAt,
+                ShutdownDeadlineUtc: null));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyShutdownSubsystemSummary(
+                IsRunning: false,
+                IsShuttingDown: true,
+                ShutdownStartedAtUtc: startedAt,
+                ShutdownDeadlineUtc: startedAt.AddTicks(-1)));
+
+        var source = new ProxyShutdownSummarySource(
+            IsRunning: false,
+            IsShuttingDown: true,
+            ShutdownStartedAtUtc: startedAt,
+            ShutdownDeadlineUtc: deadline);
+        var summary = new ProxyShutdownSubsystemSummary(
+            IsRunning: false,
+            IsShuttingDown: true,
+            ShutdownStartedAtUtc: startedAt,
+            ShutdownDeadlineUtc: deadline);
+
+        AssertEx.False(source.IsRunning);
+        AssertEx.True(source.IsShuttingDown);
+        AssertEx.Equal(startedAt, source.ShutdownStartedAtUtc);
+        AssertEx.Equal(deadline, source.ShutdownDeadlineUtc);
+        AssertEx.False(summary.IsRunning);
+        AssertEx.True(summary.IsShuttingDown);
+        AssertEx.Equal(startedAt, summary.ShutdownStartedAtUtc);
+        AssertEx.Equal(deadline, summary.ShutdownDeadlineUtc);
+    }
+
     public static void SubsystemSummarySourceMappersCopyProjectedLists()
     {
         var listener = Listener();

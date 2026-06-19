@@ -244,4 +244,52 @@ internal static class ProxyStatusFacts
             throw new ArgumentOutOfRangeException(parameterName, "Values cannot be negative.");
         }
     }
+
+    public static void RequireShutdownWindow(
+        bool isShuttingDown,
+        DateTimeOffset? startedAtUtc,
+        string startedAtParameterName,
+        DateTimeOffset? deadlineUtc,
+        string deadlineParameterName)
+    {
+        if (!isShuttingDown)
+        {
+            if (startedAtUtc is not null)
+            {
+                throw new ArgumentException(
+                    "Shutdown start cannot be set when shutdown is not active.",
+                    startedAtParameterName);
+            }
+
+            if (deadlineUtc is not null)
+            {
+                throw new ArgumentException(
+                    "Shutdown deadline cannot be set when shutdown is not active.",
+                    deadlineParameterName);
+            }
+
+            return;
+        }
+
+        if (startedAtUtc is null)
+        {
+            throw new ArgumentException(
+                "Shutdown start is required when shutdown is active.",
+                startedAtParameterName);
+        }
+
+        if (deadlineUtc is null)
+        {
+            throw new ArgumentException(
+                "Shutdown deadline is required when shutdown is active.",
+                deadlineParameterName);
+        }
+
+        if (deadlineUtc.Value < startedAtUtc.Value)
+        {
+            throw new ArgumentException(
+                "Shutdown deadline cannot be before shutdown start.",
+                deadlineParameterName);
+        }
+    }
 }

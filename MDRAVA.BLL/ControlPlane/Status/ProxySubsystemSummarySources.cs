@@ -201,8 +201,32 @@ public sealed record ProxyLogSummarySource
     public string Reason { get; }
 }
 
-public sealed record ProxyShutdownSummarySource(
-    bool IsRunning,
-    bool IsShuttingDown,
-    DateTimeOffset? ShutdownStartedAtUtc,
-    DateTimeOffset? ShutdownDeadlineUtc);
+public sealed record ProxyShutdownSummarySource
+{
+    public ProxyShutdownSummarySource(
+        bool IsRunning,
+        bool IsShuttingDown,
+        DateTimeOffset? ShutdownStartedAtUtc,
+        DateTimeOffset? ShutdownDeadlineUtc)
+    {
+        ProxyStatusFacts.RequireShutdownWindow(
+            IsShuttingDown,
+            ShutdownStartedAtUtc,
+            nameof(ShutdownStartedAtUtc),
+            ShutdownDeadlineUtc,
+            nameof(ShutdownDeadlineUtc));
+
+        this.IsRunning = IsRunning;
+        this.IsShuttingDown = IsShuttingDown;
+        this.ShutdownStartedAtUtc = ShutdownStartedAtUtc;
+        this.ShutdownDeadlineUtc = ShutdownDeadlineUtc;
+    }
+
+    public bool IsRunning { get; }
+
+    public bool IsShuttingDown { get; }
+
+    public DateTimeOffset? ShutdownStartedAtUtc { get; }
+
+    public DateTimeOffset? ShutdownDeadlineUtc { get; }
+}
