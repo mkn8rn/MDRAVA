@@ -239,6 +239,36 @@ internal static class AcmeTests
         AssertEx.Equal("loaded", lifecycle.LastResult);
         AssertEx.Equal("home.example.test", lifecycle.Domains[0]);
         AssertEx.Equal("home-acme", status.Certificates[0].CertificateId);
+        AssertEx.Throws<ArgumentException>(() => new AcmeCertificateIssueRequest(
+            CertificateId: " ",
+            Domains: ["home.example.test"],
+            DirectoryUrl: "https://acme.example.test/directory",
+            ContactEmails: ["ops@example.test"],
+            TermsAccepted: true));
+        AssertEx.Throws<ArgumentException>(() => new AcmeCertificateIssueRequest(
+            CertificateId: "home-acme",
+            Domains: [],
+            DirectoryUrl: "https://acme.example.test/directory",
+            ContactEmails: ["ops@example.test"],
+            TermsAccepted: true));
+        AssertEx.Throws<ArgumentException>(() => new AcmeCertificateIssueRequest(
+            CertificateId: "home-acme",
+            Domains: [" "],
+            DirectoryUrl: "https://acme.example.test/directory",
+            ContactEmails: ["ops@example.test"],
+            TermsAccepted: true));
+        AssertEx.Throws<ArgumentException>(() => new AcmeCertificateIssueRequest(
+            CertificateId: "home-acme",
+            Domains: ["home.example.test"],
+            DirectoryUrl: " ",
+            ContactEmails: ["ops@example.test"],
+            TermsAccepted: true));
+        AssertEx.Throws<ArgumentException>(() => new AcmeCertificateIssueRequest(
+            CertificateId: "home-acme",
+            Domains: ["home.example.test"],
+            DirectoryUrl: "https://acme.example.test/directory",
+            ContactEmails: [" "],
+            TermsAccepted: true));
         AssertEx.Throws<ArgumentNullException>(() => new AcmeCertificateIssueRequest(
             CertificateId: "home-acme",
             Domains: [null!],
