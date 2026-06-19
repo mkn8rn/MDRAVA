@@ -281,6 +281,48 @@ internal static class AcmeTests
             DirectoryUrl: "https://acme.example.test/directory",
             ContactEmails: [null!],
             TermsAccepted: true));
+        AssertEx.Throws<ArgumentException>(() => new AcmeCertificateMaterialWriteRequest(
+            StoragePath: " ",
+            CertificateId: "home-acme",
+            Domains: ["home.example.test"],
+            DataDirectory: "data",
+            WrittenAtUtc: DateTimeOffset.UnixEpoch,
+            PfxBytes: [1]));
+        AssertEx.Throws<ArgumentException>(() => new AcmeCertificateMaterialWriteRequest(
+            StoragePath: "acme",
+            CertificateId: " ",
+            Domains: ["home.example.test"],
+            DataDirectory: "data",
+            WrittenAtUtc: DateTimeOffset.UnixEpoch,
+            PfxBytes: [1]));
+        AssertEx.Throws<ArgumentException>(() => new AcmeCertificateMaterialWriteRequest(
+            StoragePath: "acme",
+            CertificateId: "home-acme",
+            Domains: [],
+            DataDirectory: "data",
+            WrittenAtUtc: DateTimeOffset.UnixEpoch,
+            PfxBytes: [1]));
+        AssertEx.Throws<ArgumentException>(() => new AcmeCertificateMaterialWriteRequest(
+            StoragePath: "acme",
+            CertificateId: "home-acme",
+            Domains: [" "],
+            DataDirectory: "data",
+            WrittenAtUtc: DateTimeOffset.UnixEpoch,
+            PfxBytes: [1]));
+        AssertEx.Throws<ArgumentException>(() => new AcmeCertificateMaterialWriteRequest(
+            StoragePath: "acme",
+            CertificateId: "home-acme",
+            Domains: ["home.example.test"],
+            DataDirectory: " ",
+            WrittenAtUtc: DateTimeOffset.UnixEpoch,
+            PfxBytes: [1]));
+        AssertEx.Throws<ArgumentException>(() => new AcmeCertificateMaterialWriteRequest(
+            StoragePath: "acme",
+            CertificateId: "home-acme",
+            Domains: ["home.example.test"],
+            DataDirectory: "data",
+            WrittenAtUtc: DateTimeOffset.UnixEpoch,
+            PfxBytes: []));
         AssertEx.Throws<ArgumentNullException>(() => new AcmeCertificateMaterialWriteRequest(
             StoragePath: "acme",
             CertificateId: "home-acme",

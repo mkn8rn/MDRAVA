@@ -12,15 +12,16 @@ public sealed record AcmeCertificateMaterialWriteRequest
         DateTimeOffset WrittenAtUtc,
         byte[] PfxBytes)
     {
-        ArgumentNullException.ThrowIfNull(Domains);
-        ArgumentNullException.ThrowIfNull(PfxBytes);
+        ArgumentException.ThrowIfNullOrWhiteSpace(StoragePath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(CertificateId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(DataDirectory);
 
         this.StoragePath = StoragePath;
         this.CertificateId = CertificateId;
-        this.Domains = AcmeList.Copy(Domains);
+        this.Domains = AcmeCommandFacts.CopyRequiredStrings(Domains, nameof(Domains));
         this.DataDirectory = DataDirectory;
         this.WrittenAtUtc = WrittenAtUtc;
-        _pfxBytes = PfxBytes.ToArray();
+        _pfxBytes = AcmeCommandFacts.CopyRequiredBytes(PfxBytes, nameof(PfxBytes));
     }
 
     public string StoragePath { get; }
