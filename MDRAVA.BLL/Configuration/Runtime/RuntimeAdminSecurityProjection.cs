@@ -11,8 +11,10 @@ public sealed record RuntimeAdminSecurityProjection
         string TokenSource,
         int RecentAuditCapacity)
     {
-        ArgumentNullException.ThrowIfNull(TokenEnvironmentVariable);
-        ArgumentNullException.ThrowIfNull(TokenSource);
+        RuntimeAdminSecurityFacts.Validate(
+            TokenEnvironmentVariable,
+            TokenSource,
+            RecentAuditCapacity);
 
         this.Urls = RuntimeList.Copy(Urls);
         this.RequireAuthentication = RequireAuthentication;

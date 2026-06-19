@@ -1303,6 +1303,38 @@ internal static class ConfigurationTests
             TokenEnvironmentVariable: "MDRAVA_ADMIN_TOKEN",
             TokenSource: "environment",
             RecentAuditCapacity: 128));
+        AssertEx.Throws<ArgumentException>(() => new RuntimeAdminSecurityOptions(
+            Urls: [],
+            RequireAuthentication: true,
+            HasConfiguredToken: true,
+            Token: "secret",
+            TokenEnvironmentVariable: " ",
+            TokenSource: "environment",
+            RecentAuditCapacity: 128));
+        AssertEx.Throws<ArgumentException>(() => new RuntimeAdminSecurityOptions(
+            Urls: [],
+            RequireAuthentication: true,
+            HasConfiguredToken: true,
+            Token: "secret",
+            TokenEnvironmentVariable: "MDRAVA_ADMIN_TOKEN",
+            TokenSource: " ",
+            RecentAuditCapacity: 128));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new RuntimeAdminSecurityOptions(
+            Urls: [],
+            RequireAuthentication: true,
+            HasConfiguredToken: true,
+            Token: "secret",
+            TokenEnvironmentVariable: "MDRAVA_ADMIN_TOKEN",
+            TokenSource: "environment",
+            RecentAuditCapacity: 0));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new RuntimeAdminSecurityOptions(
+            Urls: [],
+            RequireAuthentication: true,
+            HasConfiguredToken: true,
+            Token: "secret",
+            TokenEnvironmentVariable: "MDRAVA_ADMIN_TOKEN",
+            TokenSource: "environment",
+            RecentAuditCapacity: 10_001));
         AssertEx.Throws<ArgumentNullException>(() => new RuntimeAdminSecurityProjection(
             Urls: [],
             RequireAuthentication: true,
@@ -1319,6 +1351,38 @@ internal static class ConfigurationTests
             TokenEnvironmentVariable: "MDRAVA_ADMIN_TOKEN",
             TokenSource: null!,
             RecentAuditCapacity: 128));
+        AssertEx.Throws<ArgumentException>(() => new RuntimeAdminSecurityProjection(
+            Urls: [],
+            RequireAuthentication: true,
+            HasConfiguredToken: true,
+            Token: "***",
+            TokenEnvironmentVariable: " ",
+            TokenSource: "environment",
+            RecentAuditCapacity: 128));
+        AssertEx.Throws<ArgumentException>(() => new RuntimeAdminSecurityProjection(
+            Urls: [],
+            RequireAuthentication: true,
+            HasConfiguredToken: true,
+            Token: "***",
+            TokenEnvironmentVariable: "MDRAVA_ADMIN_TOKEN",
+            TokenSource: " ",
+            RecentAuditCapacity: 128));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new RuntimeAdminSecurityProjection(
+            Urls: [],
+            RequireAuthentication: true,
+            HasConfiguredToken: true,
+            Token: "***",
+            TokenEnvironmentVariable: "MDRAVA_ADMIN_TOKEN",
+            TokenSource: "environment",
+            RecentAuditCapacity: 0));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new RuntimeAdminSecurityProjection(
+            Urls: [],
+            RequireAuthentication: true,
+            HasConfiguredToken: true,
+            Token: "***",
+            TokenEnvironmentVariable: "MDRAVA_ADMIN_TOKEN",
+            TokenSource: "environment",
+            RecentAuditCapacity: 10_001));
         AssertEx.Throws<ArgumentNullException>(() => new RuntimeForwardedHeadersProjection(
             Enabled: true,
             TrustedProxies: null!));

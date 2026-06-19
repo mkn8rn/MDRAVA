@@ -11,6 +11,11 @@ public sealed record RuntimeAdminSecurityOptions
         string TokenSource,
         int RecentAuditCapacity)
     {
+        RuntimeAdminSecurityFacts.Validate(
+            TokenEnvironmentVariable,
+            TokenSource,
+            RecentAuditCapacity);
+
         this.Urls = RuntimeList.Copy(Urls);
         this.RequireAuthentication = RequireAuthentication;
         this.HasConfiguredToken = HasConfiguredToken;
