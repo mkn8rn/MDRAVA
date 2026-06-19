@@ -1716,6 +1716,16 @@ internal static class OperatorStatusTests
         AssertUpstreamSummaryRejects(Unhealthy: -1);
         AssertUpstreamSummaryRejects(UnknownHealth: -1);
         AssertUpstreamSummaryRejects(HealthChecksEnabled: -1);
+        AssertCertificateSummaryRejects(Configured: -1);
+        AssertCertificateSummaryRejects(Loaded: -1);
+        AssertCertificateSummaryRejects(MissingReferences: -1);
+        AssertCertificateSummaryRejects(Expired: -1);
+        AssertCertificateSummaryRejects(NotYetValid: -1);
+        AssertCertificateSummaryRejects(ExpiringSoon: -1);
+        AssertAcmeSummaryRejects(Configured: -1);
+        AssertAcmeSummaryRejects(Active: -1);
+        AssertAcmeSummaryRejects(Failed: -1);
+        AssertAcmeSummaryRejects(RenewalBackoff: -1);
         AssertCircuitSummaryRejects(Enabled: -1);
         AssertCircuitSummaryRejects(Open: -1);
         AssertCircuitSummaryRejects(HalfOpen: -1);
@@ -1775,6 +1785,41 @@ internal static class OperatorStatusTests
                     Unhealthy,
                     UnknownHealth,
                     HealthChecksEnabled));
+        }
+
+        static void AssertCertificateSummaryRejects(
+            int Configured = 1,
+            int Loaded = 1,
+            int MissingReferences = 0,
+            int Expired = 0,
+            int NotYetValid = 0,
+            int ExpiringSoon = 0)
+        {
+            AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+                new ProxyCertificateSubsystemSummary(
+                    Configured,
+                    Loaded,
+                    MissingReferences,
+                    Expired,
+                    NotYetValid,
+                    ExpiringSoon,
+                    LastIssue: null));
+        }
+
+        static void AssertAcmeSummaryRejects(
+            int Configured = 1,
+            int Active = 1,
+            int Failed = 0,
+            int RenewalBackoff = 0)
+        {
+            AssertEx.Throws<ArgumentOutOfRangeException>(() =>
+                new ProxyAcmeSubsystemSummary(
+                    Enabled: true,
+                    Configured,
+                    Active,
+                    Failed,
+                    RenewalBackoff,
+                    LastIssue: null));
         }
 
         static void AssertCircuitSummaryRejects(

@@ -177,26 +177,85 @@ public sealed record ProxySubsystemIssueSummary
     public string? AffectedIdentity { get; }
 }
 
-public sealed record ProxyCertificateSubsystemSummary(
-    int Configured,
-    int Loaded,
-    int MissingReferences,
-    int Expired,
-    int NotYetValid,
-    int ExpiringSoon,
-    ProxySubsystemIssueSummary? LastIssue)
+public sealed record ProxyCertificateSubsystemSummary
 {
+    public ProxyCertificateSubsystemSummary(
+        int Configured,
+        int Loaded,
+        int MissingReferences,
+        int Expired,
+        int NotYetValid,
+        int ExpiringSoon,
+        ProxySubsystemIssueSummary? LastIssue)
+    {
+        ProxyStatusFacts.RequireNonNegative(Configured, nameof(Configured));
+        ProxyStatusFacts.RequireNonNegative(Loaded, nameof(Loaded));
+        ProxyStatusFacts.RequireNonNegative(MissingReferences, nameof(MissingReferences));
+        ProxyStatusFacts.RequireNonNegative(Expired, nameof(Expired));
+        ProxyStatusFacts.RequireNonNegative(NotYetValid, nameof(NotYetValid));
+        ProxyStatusFacts.RequireNonNegative(ExpiringSoon, nameof(ExpiringSoon));
+
+        this.Configured = Configured;
+        this.Loaded = Loaded;
+        this.MissingReferences = MissingReferences;
+        this.Expired = Expired;
+        this.NotYetValid = NotYetValid;
+        this.ExpiringSoon = ExpiringSoon;
+        this.LastIssue = LastIssue;
+    }
+
+    public int Configured { get; }
+
+    public int Loaded { get; }
+
+    public int MissingReferences { get; }
+
+    public int Expired { get; }
+
+    public int NotYetValid { get; }
+
+    public int ExpiringSoon { get; }
+
+    public ProxySubsystemIssueSummary? LastIssue { get; }
+
     public static ProxyCertificateSubsystemSummary Unknown { get; } = new(0, 0, 0, 0, 0, 0, null);
 }
 
-public sealed record ProxyAcmeSubsystemSummary(
-    bool Enabled,
-    int Configured,
-    int Active,
-    int Failed,
-    int RenewalBackoff,
-    ProxySubsystemIssueSummary? LastIssue)
+public sealed record ProxyAcmeSubsystemSummary
 {
+    public ProxyAcmeSubsystemSummary(
+        bool Enabled,
+        int Configured,
+        int Active,
+        int Failed,
+        int RenewalBackoff,
+        ProxySubsystemIssueSummary? LastIssue)
+    {
+        ProxyStatusFacts.RequireNonNegative(Configured, nameof(Configured));
+        ProxyStatusFacts.RequireNonNegative(Active, nameof(Active));
+        ProxyStatusFacts.RequireNonNegative(Failed, nameof(Failed));
+        ProxyStatusFacts.RequireNonNegative(RenewalBackoff, nameof(RenewalBackoff));
+
+        this.Enabled = Enabled;
+        this.Configured = Configured;
+        this.Active = Active;
+        this.Failed = Failed;
+        this.RenewalBackoff = RenewalBackoff;
+        this.LastIssue = LastIssue;
+    }
+
+    public bool Enabled { get; }
+
+    public int Configured { get; }
+
+    public int Active { get; }
+
+    public int Failed { get; }
+
+    public int RenewalBackoff { get; }
+
+    public ProxySubsystemIssueSummary? LastIssue { get; }
+
     public static ProxyAcmeSubsystemSummary Unknown { get; } = new(false, 0, 0, 0, 0, null);
 }
 
