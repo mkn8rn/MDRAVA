@@ -1,10 +1,25 @@
 namespace MDRAVA.BLL.ControlPlane.RouteDiagnostics;
 
-public sealed record RouteMatchDryRunPolicy(
-    bool Enabled,
-    bool WouldApply,
-    string Reason)
+public sealed record RouteMatchDryRunPolicy
 {
+    public RouteMatchDryRunPolicy(
+        bool Enabled,
+        bool WouldApply,
+        string Reason)
+    {
+        ArgumentNullException.ThrowIfNull(Reason);
+
+        this.Enabled = Enabled;
+        this.WouldApply = WouldApply;
+        this.Reason = Reason;
+    }
+
+    public bool Enabled { get; }
+
+    public bool WouldApply { get; }
+
+    public string Reason { get; }
+
     public static RouteMatchDryRunPolicy Disabled(string reason)
     {
         return new RouteMatchDryRunPolicy(

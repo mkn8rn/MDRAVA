@@ -146,6 +146,7 @@ internal static partial class TestRegistry
     Test("Route dry-run policy explainer uses named policy outcomes", Sync(RouteDiagnosticsTests.DryRunPolicyExplainerUsesNamedPolicyOutcomes), TestTaxonomy.Routing, TestTaxonomy.Caching, TestTaxonomy.RetryCircuit),
     Test("Route diagnostics action decision names proxy and generated responses", Sync(RouteDiagnosticsTests.RouteDiagnosticsActionDecisionNamesProxyAndGeneratedResponses), TestTaxonomy.Routing),
     Test("Route diagnostics route policies reject null facts", Sync(RouteDiagnosticsTests.RouteDiagnosticsRoutePoliciesRejectNullFacts), TestTaxonomy.Routing),
+    Test("Route diagnostics dry-run outputs reject null facts", Sync(RouteDiagnosticsTests.RouteDiagnosticsDryRunOutputsRejectNullFacts), TestTaxonomy.Routing),
     Test("Route diagnostics action policy uses shared policy redirects", Sync(RouteDiagnosticsTests.RouteDiagnosticsActionPolicyUsesSharedPolicyRedirects), TestTaxonomy.Routing),
     Test("Generated route response header policy builds framed headers", Sync(RouteDiagnosticsTests.GeneratedRouteResponseHeaderPolicyBuildsFramedHeaders), TestTaxonomy.Routing, TestTaxonomy.Headers),
     Test("Request context records generated failure response", Sync(RouteDiagnosticsTests.RequestContextRecordsGeneratedFailureResponse), TestTaxonomy.Routing, TestTaxonomy.Metrics),

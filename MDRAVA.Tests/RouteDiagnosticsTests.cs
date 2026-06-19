@@ -349,6 +349,106 @@ internal static class RouteDiagnosticsTests
             null!));
     }
 
+    public static void RouteDiagnosticsDryRunOutputsRejectNullFacts()
+    {
+        AssertEx.Throws<ArgumentNullException>(() => new RouteMatchDryRunRoute(
+            null!,
+            "api",
+            "example.test",
+            "/"));
+        AssertEx.Throws<ArgumentNullException>(() => new RouteMatchDryRunRoute(
+            "site",
+            null!,
+            "example.test",
+            "/"));
+        AssertEx.Throws<ArgumentNullException>(() => new RouteMatchDryRunRoute(
+            "site",
+            "api",
+            null!,
+            "/"));
+        AssertEx.Throws<ArgumentNullException>(() => new RouteMatchDryRunRoute(
+            "site",
+            "api",
+            "example.test",
+            null!));
+        AssertEx.Throws<ArgumentNullException>(() => new RouteMatchDryRunListener(
+            null!,
+            "http",
+            "127.0.0.1",
+            8080,
+            "Http1"));
+        AssertEx.Throws<ArgumentNullException>(() => new RouteMatchDryRunListener(
+            "plain",
+            null!,
+            "127.0.0.1",
+            8080,
+            "Http1"));
+        AssertEx.Throws<ArgumentNullException>(() => new RouteMatchDryRunListener(
+            "plain",
+            "http",
+            null!,
+            8080,
+            "Http1"));
+        AssertEx.Throws<ArgumentNullException>(() => new RouteMatchDryRunListener(
+            "plain",
+            "http",
+            "127.0.0.1",
+            8080,
+            null!));
+        AssertEx.Throws<ArgumentNullException>(() => new RouteMatchDryRunUpstream(
+            null!,
+            "http",
+            RuntimeUpstreamProtocol.Http1,
+            "127.0.0.1:5000",
+            1,
+            "selected"));
+        AssertEx.Throws<ArgumentNullException>(() => new RouteMatchDryRunUpstream(
+            "local",
+            null!,
+            RuntimeUpstreamProtocol.Http1,
+            "127.0.0.1:5000",
+            1,
+            "selected"));
+        AssertEx.Throws<ArgumentNullException>(() => new RouteMatchDryRunUpstream(
+            "local",
+            "http",
+            null!,
+            "127.0.0.1:5000",
+            1,
+            "selected"));
+        AssertEx.Throws<ArgumentNullException>(() => new RouteMatchDryRunUpstream(
+            "local",
+            "http",
+            RuntimeUpstreamProtocol.Http1,
+            null!,
+            1,
+            "selected"));
+        AssertEx.Throws<ArgumentNullException>(() => new RouteMatchDryRunUpstream(
+            "local",
+            "http",
+            RuntimeUpstreamProtocol.Http1,
+            "127.0.0.1:5000",
+            1,
+            null!));
+        AssertEx.Throws<ArgumentNullException>(() => new RouteMatchDryRunFinding(
+            null!,
+            "code",
+            "message"));
+        AssertEx.Throws<ArgumentNullException>(() => new RouteMatchDryRunFinding(
+            "warning",
+            null!,
+            "message"));
+        AssertEx.Throws<ArgumentNullException>(() => new RouteMatchDryRunFinding(
+            "warning",
+            "code",
+            null!));
+        AssertEx.Throws<ArgumentNullException>(() => new RouteMatchDryRunPolicy(
+            false,
+            false,
+            null!));
+        AssertEx.Throws<ArgumentNullException>(() => RouteMatchDryRunPolicy.Disabled(null!));
+    }
+
     public static void RouteDiagnosticsActionPolicyUsesSharedPolicyRedirects()
     {
         var route = RouteDiagnosticsRoute("api", "old.test", "/") with
