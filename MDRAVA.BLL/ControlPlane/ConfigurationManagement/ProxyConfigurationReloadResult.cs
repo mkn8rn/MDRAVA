@@ -18,6 +18,7 @@ public abstract partial record ProxyConfigurationReloadResult<TProjection>
     {
         ArgumentNullException.ThrowIfNull(errors);
         ArgumentNullException.ThrowIfNull(fileErrors);
+        ThrowIfNonPositive(activeVersion, nameof(activeVersion));
 
         SourceDirectory = sourceDirectory;
         AttemptedAtUtc = attemptedAtUtc;
@@ -112,6 +113,14 @@ public abstract partial record ProxyConfigurationReloadResult<TProjection>
             discovery,
             listenerReload,
             activeConfiguration);
+    }
+
+    private static void ThrowIfNonPositive(int? value, string paramName)
+    {
+        if (value is <= 0)
+        {
+            throw new ArgumentOutOfRangeException(paramName);
+        }
     }
 
 }

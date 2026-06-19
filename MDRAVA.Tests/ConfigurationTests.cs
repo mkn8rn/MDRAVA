@@ -325,6 +325,31 @@ internal static class ConfigurationTests
         AssertEx.Equal(0, reloaded.FileErrors.Count);
         AssertEx.Equal(listenerReload, reloadedResult.ListenerReload);
         AssertEx.Equal(active, reloadedResult.ActiveConfiguration);
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => ProxyConfigurationReloadResult<TestConfigurationProjection>.LoadFailed(
+            sourceDirectory: "data",
+            attemptedAtUtc: attemptedAtUtc,
+            activeVersion: 0,
+            loadedAtUtc: loadedAtUtc,
+            discovery: discovery,
+            errors: ["parse failed"],
+            fileErrors: [ProxyConfigurationFileError.ForPath("sites/broken.json", "parse failed")],
+            activeConfiguration: active));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => ProxyConfigurationReloadResult<TestConfigurationProjection>.ListenerReloadFailed(
+            sourceDirectory: "data",
+            attemptedAtUtc: attemptedAtUtc,
+            activeVersion: -1,
+            loadedAtUtc: loadedAtUtc,
+            discovery: discovery,
+            listenerReload: failedListenerReload,
+            activeConfiguration: active));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => ProxyConfigurationReloadResult<TestConfigurationProjection>.Reloaded(
+            sourceDirectory: "data",
+            attemptedAtUtc: attemptedAtUtc,
+            activeVersion: 0,
+            loadedAtUtc: loadedAtUtc,
+            discovery: discovery,
+            listenerReload: listenerReload,
+            activeConfiguration: active));
 
     }
 
