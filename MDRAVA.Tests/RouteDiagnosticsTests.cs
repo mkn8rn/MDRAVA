@@ -1601,6 +1601,24 @@ internal static class RouteDiagnosticsTests
             null!,
             null,
             null));
+        AssertEx.Throws<ArgumentException>(() => new ProxyRouteDiagnosticsRequestFraming(
+            ProxyRouteDiagnosticsBodyKind.None,
+            1));
+        AssertEx.Throws<ArgumentException>(() => new ProxyRouteDiagnosticsRequestFraming(
+            ProxyRouteDiagnosticsBodyKind.Chunked,
+            1));
+        AssertEx.Throws<ArgumentException>(() => new ProxyRouteDiagnosticsRequestFraming(
+            ProxyRouteDiagnosticsBodyKind.ContentLength,
+            null));
+        AssertEx.Throws<ArgumentException>(() => new ProxyRouteDiagnosticsRequestFraming(
+            ProxyRouteDiagnosticsBodyKind.ContentLength,
+            0));
+        AssertEx.Throws<ArgumentException>(() => new ProxyRouteDiagnosticsRequestFraming(
+            ProxyRouteDiagnosticsBodyKind.CloseDelimited,
+            null));
+        AssertEx.Throws<ArgumentException>(() => new ProxyRouteDiagnosticsRequestFraming(
+            (ProxyRouteDiagnosticsBodyKind)99,
+            null));
     }
 
     public static void RouteDiagnosticsRequestReaderRejectsInvalidScheme()
