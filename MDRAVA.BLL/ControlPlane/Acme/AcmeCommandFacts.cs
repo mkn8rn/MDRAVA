@@ -3,7 +3,7 @@ namespace MDRAVA.BLL.ControlPlane.Acme;
 internal static class AcmeCommandFacts
 {
     public static IReadOnlyList<string> CopyRequiredStrings(
-        IReadOnlyList<string> values,
+        IEnumerable<string> values,
         string parameterName)
     {
         var copy = CopyStrings(values, parameterName);
@@ -16,7 +16,7 @@ internal static class AcmeCommandFacts
     }
 
     public static IReadOnlyList<string> CopyStrings(
-        IReadOnlyList<string> values,
+        IEnumerable<string> values,
         string parameterName)
     {
         var copy = AcmeList.Copy(values);

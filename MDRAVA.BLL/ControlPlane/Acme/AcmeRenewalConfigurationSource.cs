@@ -13,13 +13,14 @@ public sealed record AcmeRenewalConfigurationInput
         int RetryAfterMinutes,
         IEnumerable<AcmeRenewalCertificateInput> Certificates)
     {
-        ArgumentNullException.ThrowIfNull(ContactEmails);
         ArgumentNullException.ThrowIfNull(Certificates);
+        ArgumentException.ThrowIfNullOrWhiteSpace(StoragePath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(DirectoryUrl);
 
         this.Enabled = Enabled;
         this.StoragePath = StoragePath;
         this.DirectoryUrl = DirectoryUrl;
-        this.ContactEmails = AcmeList.Copy(ContactEmails);
+        this.ContactEmails = AcmeCommandFacts.CopyStrings(ContactEmails, nameof(ContactEmails));
         this.TermsAccepted = TermsAccepted;
         this.RetryAfterMinutes = RetryAfterMinutes;
         this.Certificates = AcmeList.Copy(Certificates.Select(RequireCertificate));
@@ -56,11 +57,11 @@ public sealed record AcmeRenewalCertificateInput
         int RenewBeforeDays,
         AcmeRenewalActiveCertificate? ActiveCertificate)
     {
-        ArgumentNullException.ThrowIfNull(Domains);
+        ArgumentException.ThrowIfNullOrWhiteSpace(Id);
 
         this.Id = Id;
         this.Enabled = Enabled;
-        this.Domains = AcmeList.Copy(Domains);
+        this.Domains = AcmeCommandFacts.CopyRequiredStrings(Domains, nameof(Domains));
         this.RenewBeforeDays = RenewBeforeDays;
         this.ActiveCertificate = ActiveCertificate;
     }
@@ -91,13 +92,14 @@ public sealed record AcmeRenewalConfigurationSourceSet
         int RetryAfterMinutes,
         IEnumerable<AcmeRenewalCertificateSource> Certificates)
     {
-        ArgumentNullException.ThrowIfNull(ContactEmails);
         ArgumentNullException.ThrowIfNull(Certificates);
+        ArgumentException.ThrowIfNullOrWhiteSpace(StoragePath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(DirectoryUrl);
 
         this.Enabled = Enabled;
         this.StoragePath = StoragePath;
         this.DirectoryUrl = DirectoryUrl;
-        this.ContactEmails = AcmeList.Copy(ContactEmails);
+        this.ContactEmails = AcmeCommandFacts.CopyStrings(ContactEmails, nameof(ContactEmails));
         this.TermsAccepted = TermsAccepted;
         this.RetryAfterMinutes = RetryAfterMinutes;
         this.Certificates = AcmeList.Copy(Certificates.Select(RequireCertificate));
@@ -134,11 +136,11 @@ public sealed record AcmeRenewalCertificateSource
         int RenewBeforeDays,
         AcmeRenewalActiveCertificate? ActiveCertificate)
     {
-        ArgumentNullException.ThrowIfNull(Domains);
+        ArgumentException.ThrowIfNullOrWhiteSpace(Id);
 
         this.Id = Id;
         this.Enabled = Enabled;
-        this.Domains = AcmeList.Copy(Domains);
+        this.Domains = AcmeCommandFacts.CopyRequiredStrings(Domains, nameof(Domains));
         this.RenewBeforeDays = RenewBeforeDays;
         this.ActiveCertificate = ActiveCertificate;
     }

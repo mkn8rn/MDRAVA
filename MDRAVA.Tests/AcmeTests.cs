@@ -1092,6 +1092,68 @@ internal static class AcmeTests
         certificateDomains.Clear();
         certificates.Clear();
 
+        AssertEx.Throws<ArgumentException>(() => new AcmeRenewalConfigurationSourceSet(
+            Enabled: true,
+            StoragePath: " ",
+            DirectoryUrl: "https://acme.example.test/directory",
+            ContactEmails: ["ops@example.test"],
+            TermsAccepted: true,
+            RetryAfterMinutes: 15,
+            Certificates: []));
+        AssertEx.Throws<ArgumentException>(() => new AcmeRenewalConfigurationSourceSet(
+            Enabled: true,
+            StoragePath: "acme",
+            DirectoryUrl: " ",
+            ContactEmails: ["ops@example.test"],
+            TermsAccepted: true,
+            RetryAfterMinutes: 15,
+            Certificates: []));
+        AssertEx.Throws<ArgumentException>(() => new AcmeRenewalConfigurationSourceSet(
+            Enabled: true,
+            StoragePath: "acme",
+            DirectoryUrl: "https://acme.example.test/directory",
+            ContactEmails: [" "],
+            TermsAccepted: true,
+            RetryAfterMinutes: 15,
+            Certificates: []));
+        AssertEx.Throws<ArgumentException>(() => new AcmeRenewalCertificateSource(
+            " ",
+            Enabled: true,
+            Domains: ["home.example.test"],
+            RenewBeforeDays: 20,
+            ActiveCertificate: null));
+        AssertEx.Throws<ArgumentException>(() => new AcmeRenewalCertificateSource(
+            "home-acme",
+            Enabled: true,
+            Domains: [],
+            RenewBeforeDays: 20,
+            ActiveCertificate: null));
+        AssertEx.Throws<ArgumentException>(() => new AcmeRenewalCertificateSource(
+            "home-acme",
+            Enabled: true,
+            Domains: [" "],
+            RenewBeforeDays: 20,
+            ActiveCertificate: null));
+        AssertEx.Throws<ArgumentException>(() => new AcmeRenewalConfigurationInput(
+            Enabled: true,
+            StoragePath: " ",
+            DirectoryUrl: "https://acme.example.test/directory",
+            ContactEmails: ["ops@example.test"],
+            TermsAccepted: true,
+            RetryAfterMinutes: 15,
+            Certificates: []));
+        AssertEx.Throws<ArgumentException>(() => new AcmeRenewalCertificateInput(
+            " ",
+            Enabled: true,
+            Domains: ["home.example.test"],
+            RenewBeforeDays: 20,
+            ActiveCertificate: null));
+        AssertEx.Throws<ArgumentException>(() => new AcmeRenewalCertificateInput(
+            "home-acme",
+            Enabled: true,
+            Domains: [],
+            RenewBeforeDays: 20,
+            ActiveCertificate: null));
         AssertEx.Throws<ArgumentNullException>(() => new AcmeRenewalConfigurationSourceSet(
             Enabled: true,
             StoragePath: "acme",
