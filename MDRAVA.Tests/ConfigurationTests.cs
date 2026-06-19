@@ -248,6 +248,9 @@ internal static class ConfigurationTests
         AssertEx.Equal("yaml", failed.Format);
         AssertEx.Equal("parse failed", failed.Errors[0]);
         AssertEx.Equal("parse failed", failed.FileErrors[0].Message);
+        AssertEx.Throws<ArgumentException>(() => ProxyConfigurationNormalizeResult.Normalized(" ", "{}"));
+        AssertEx.Throws<ArgumentException>(() => ProxyConfigurationNormalizeResult.Failed(" ", [ProxyConfigurationFileError.Global("parse failed")]));
+        AssertEx.Throws<ArgumentException>(() => ProxyConfigurationNormalizeResult.Failed("json", []));
     }
 
     public static void ConfigurationReloadResultNamesReloadOutcomes()

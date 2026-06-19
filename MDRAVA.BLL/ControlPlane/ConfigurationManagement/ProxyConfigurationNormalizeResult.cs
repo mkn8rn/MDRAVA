@@ -10,6 +10,7 @@ public abstract record ProxyConfigurationNormalizeResult
         IReadOnlyList<string> errors,
         IReadOnlyList<ProxyConfigurationFileError> fileErrors)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(format);
         ArgumentNullException.ThrowIfNull(errors);
         ArgumentNullException.ThrowIfNull(fileErrors);
 
@@ -67,6 +68,10 @@ public abstract record ProxyConfigurationNormalizeResult
                 CreateErrors(fileErrors),
                 fileErrors)
         {
+            if (fileErrors.Count == 0)
+            {
+                throw new ArgumentException("A failed configuration normalize result requires at least one file error.", nameof(fileErrors));
+            }
         }
 
         private static IReadOnlyList<string> CreateErrors(IReadOnlyList<ProxyConfigurationFileError> fileErrors)
