@@ -1975,6 +1975,23 @@ internal static class ConfigurationTests
         AssertEx.False(snapshot.Certificates is Dictionary<string, RuntimeCertificate>);
         AssertEx.False(snapshot.Listeners is RuntimeListener[]);
         AssertEx.False(snapshot.Routes is RuntimeRoute[]);
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyConfigurationSnapshot(
+            0,
+            snapshot.LoadedAtUtc,
+            snapshot.SourceDirectory,
+            snapshot.SourceFiles,
+            snapshot.Discovery,
+            snapshot.AdminSecurity,
+            snapshot.Acme,
+            snapshot.Timeouts,
+            snapshot.ConnectionLimits,
+            snapshot.Observability,
+            snapshot.Limits,
+            snapshot.ForwardedHeaders,
+            snapshot.Certificates,
+            snapshot.Listeners,
+            snapshot.Routes,
+            snapshot.Metrics));
         AssertConnectionLimitsRejects(maxRequestsPerClientConnection: 0);
         AssertConnectionLimitsRejects(maxIdleUpstreamConnectionsPerUpstream: -1);
         AssertConnectionLimitsRejects(maxActiveUpgradedTunnels: 0);

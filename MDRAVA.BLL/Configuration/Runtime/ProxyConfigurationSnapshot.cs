@@ -56,6 +56,8 @@ public sealed record ProxyConfigurationSnapshot
         IReadOnlyList<RuntimeRoute> Routes,
         RuntimeMetricsOptions Metrics)
     {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(Version);
+
         this.Version = Version;
         this.LoadedAtUtc = LoadedAtUtc;
         this.SourceDirectory = SourceDirectory;
