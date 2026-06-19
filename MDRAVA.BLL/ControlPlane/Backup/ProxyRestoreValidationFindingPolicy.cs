@@ -2,9 +2,23 @@ using MDRAVA.BLL.ControlPlane.Status;
 
 namespace MDRAVA.BLL.ControlPlane.Backup;
 
-public sealed record ProxyRestoreValidationFindingShape(
-    string Code,
-    string Message);
+public sealed record ProxyRestoreValidationFindingShape
+{
+    public ProxyRestoreValidationFindingShape(
+        string Code,
+        string Message)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(Code);
+        ArgumentException.ThrowIfNullOrWhiteSpace(Message);
+
+        this.Code = Code;
+        this.Message = Message;
+    }
+
+    public string Code { get; }
+
+    public string Message { get; }
+}
 
 public static class ProxyRestoreValidationFindingPolicy
 {

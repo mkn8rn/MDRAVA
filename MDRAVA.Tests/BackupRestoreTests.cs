@@ -357,6 +357,96 @@ internal static class BackupRestoreTests
             false,
             -1,
             generatedAtUtc));
+        AssertEx.Throws<ArgumentException>(() => new ProxyBackupFileClassification(
+            "",
+            "must_backup",
+            false));
+        AssertEx.Throws<ArgumentException>(() => new ProxyBackupFileClassification(
+            "config",
+            "",
+            false));
+        AssertEx.Throws<ArgumentException>(() => new ProxyBackupDirectoryRequirement(
+            "",
+            "must_backup",
+            false));
+        AssertEx.Throws<ArgumentException>(() => new ProxyBackupDirectoryRequirement(
+            "config",
+            "",
+            false));
+        AssertEx.Throws<ArgumentException>(() => new ProxyBackupDirectoryStatus(
+            "",
+            true,
+            "must_backup",
+            false));
+        AssertEx.Throws<ArgumentException>(() => new ProxyBackupDirectoryStatus(
+            "config",
+            true,
+            "",
+            false));
+        AssertEx.Throws<ArgumentException>(() => new ProxyBackupManifestCount(
+            "",
+            "must_backup",
+            1,
+            10));
+        AssertEx.Throws<ArgumentException>(() => new ProxyBackupManifestCount(
+            "config",
+            "",
+            1,
+            10));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyBackupManifestCount(
+            "config",
+            "must_backup",
+            -1,
+            10));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyBackupManifestCount(
+            "config",
+            "must_backup",
+            1,
+            -1));
+        AssertEx.Throws<ArgumentException>(() => new ProxyBackupWarning(
+            "",
+            "Manifest warning.",
+            null));
+        AssertEx.Throws<ArgumentException>(() => new ProxyBackupWarning(
+            "manifest_warning",
+            "",
+            null));
+        AssertEx.Throws<ArgumentException>(() => new ProxyBackupWarning(
+            "manifest_warning",
+            "Manifest warning.",
+            ""));
+        AssertEx.Throws<ArgumentException>(() => new ProxyBackupFileSystemWarning(
+            "",
+            "logs"));
+        AssertEx.Throws<ArgumentException>(() => new ProxyBackupFileSystemWarning(
+            "directory_unreadable",
+            ""));
+        AssertEx.Throws<ArgumentException>(() => new ProxyRestoreValidationFindingShape(
+            "",
+            "Finding."));
+        AssertEx.Throws<ArgumentException>(() => new ProxyRestoreValidationFindingShape(
+            "finding",
+            ""));
+        AssertEx.Throws<ArgumentException>(() => new ProxyRestoreValidationFinding(
+            "",
+            "finding",
+            "Finding.",
+            null));
+        AssertEx.Throws<ArgumentException>(() => new ProxyRestoreValidationFinding(
+            ProxyStatusText.Error,
+            "",
+            "Finding.",
+            null));
+        AssertEx.Throws<ArgumentException>(() => new ProxyRestoreValidationFinding(
+            ProxyStatusText.Error,
+            "finding",
+            "",
+            null));
+        AssertEx.Throws<ArgumentException>(() => new ProxyRestoreValidationFinding(
+            ProxyStatusText.Error,
+            "finding",
+            "Finding.",
+            ""));
         AssertEx.Throws<ArgumentNullException>(() => ProxyBackupFileSystemScanResult.Scanned([null!], []));
         AssertEx.Throws<ArgumentNullException>(() => ProxyBackupFileSystemScanResult.Scanned([], [null!]));
         AssertEx.Throws<ArgumentNullException>(() => new ProxyBackupManifest(
