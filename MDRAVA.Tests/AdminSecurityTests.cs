@@ -87,6 +87,8 @@ internal static class AdminSecurityTests
         var input = new AdminBindPolicyInput([], startupSecurity);
 
         AssertEx.Throws<ArgumentNullException>(() => new AdminStartupSecurityOptions(null!, false, false));
+        AssertEx.Throws<ArgumentNullException>(() => new AdminStartupSecurityOptions([null!], false, false));
+        AssertEx.Throws<ArgumentException>(() => new AdminStartupSecurityOptions([" "], false, false));
         AssertEx.Throws<ArgumentNullException>(() => new AdminBindPolicyInput([], null!));
         AssertEx.Throws<ArgumentException>(() => new AdminBindCandidate([], " ", ApplyToWebHost: true));
         AssertEx.Throws<ArgumentNullException>(() => new AdminBindCandidate([null!], "test", ApplyToWebHost: true));
