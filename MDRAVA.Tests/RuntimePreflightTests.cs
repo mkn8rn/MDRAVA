@@ -116,6 +116,85 @@ internal static class RuntimePreflightTests
         AssertEx.Equal(ProxyStatusText.Ok, healthy.Reason);
     }
 
+    public static void RuntimePreflightFactsRejectBlankText()
+    {
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyRuntimePreflightDirectoryRequirement(
+                ProxyRuntimePreflightDirectoryKind.Config,
+                Name: " ",
+                RelativePath: "config",
+                Critical: true));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyRuntimePreflightDirectoryRequirement(
+                ProxyRuntimePreflightDirectoryKind.Config,
+                Name: "config_directory",
+                RelativePath: " ",
+                Critical: true));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyRuntimePreflightProbeClassification(
+                Severity: " ",
+                Reason: "missing_directory"));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyRuntimePreflightProbeClassification(
+                Severity: ProxyStatusText.Error,
+                Reason: " "));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyRuntimePreflightCheck(
+                Name: " ",
+                RelativePath: "config",
+                Exists: false,
+                Created: false,
+                CanRead: false,
+                CanWrite: false,
+                Severity: ProxyStatusText.Error,
+                Reason: "missing_directory"));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyRuntimePreflightCheck(
+                Name: "config_directory",
+                RelativePath: " ",
+                Exists: false,
+                Created: false,
+                CanRead: false,
+                CanWrite: false,
+                Severity: ProxyStatusText.Error,
+                Reason: "missing_directory"));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyRuntimePreflightCheck(
+                Name: "config_directory",
+                RelativePath: "config",
+                Exists: false,
+                Created: false,
+                CanRead: false,
+                CanWrite: false,
+                Severity: " ",
+                Reason: "missing_directory"));
+        AssertEx.Throws<ArgumentException>(() =>
+            new ProxyRuntimePreflightCheck(
+                Name: "config_directory",
+                RelativePath: "config",
+                Exists: false,
+                Created: false,
+                CanRead: false,
+                CanWrite: false,
+                Severity: ProxyStatusText.Error,
+                Reason: " "));
+
+        var check = new ProxyRuntimePreflightCheck(
+            Name: "config_directory",
+            RelativePath: "config",
+            Exists: false,
+            Created: false,
+            CanRead: false,
+            CanWrite: false,
+            Severity: ProxyStatusText.Error,
+            Reason: "missing_directory");
+
+        AssertEx.Equal("config_directory", check.Name);
+        AssertEx.Equal("config", check.RelativePath);
+        AssertEx.Equal(ProxyStatusText.Error, check.Severity);
+        AssertEx.Equal("missing_directory", check.Reason);
+    }
+
     public static void RuntimeDirectoryProbeResultNamesCommonOutcomes()
     {
         var missing = ProxyRuntimeDirectoryProbeResult.Missing();

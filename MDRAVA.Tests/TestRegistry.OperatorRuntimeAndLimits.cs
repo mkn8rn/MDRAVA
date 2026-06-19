@@ -78,6 +78,7 @@ internal static partial class TestRegistry
     Test("Runtime preflight rejects unsafe child path", Sync(RuntimePreflightTests.RuntimePreflightRejectsUnsafeChildPath), TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
     Test("Runtime preflight inspect does not create missing directories", Sync(RuntimePreflightTests.RuntimePreflightInspectDoesNotCreateMissingDirectories), TestTaxonomy.Config, TestTaxonomy.SecurityNegativePaths),
     Test("Runtime preflight probe policy classifies reason and severity", Sync(RuntimePreflightTests.RuntimePreflightProbePolicyClassifiesReasonAndSeverity), TestTaxonomy.Config),
+    Test("Runtime preflight facts reject blank text", Sync(RuntimePreflightTests.RuntimePreflightFactsRejectBlankText), TestTaxonomy.Config),
     Test("Runtime directory probe result names common outcomes", Sync(RuntimePreflightTests.RuntimeDirectoryProbeResultNamesCommonOutcomes), TestTaxonomy.Config),
     Test("Runtime preflight directory policy lists expected directories", Sync(RuntimePreflightTests.RuntimePreflightDirectoryPolicyListsExpectedDirectories), TestTaxonomy.Config),
     Test("Runtime preflight status builder builds state and bounded reasons", Sync(RuntimePreflightTests.RuntimePreflightStatusBuilderBuildsStateAndBoundedReasons), TestTaxonomy.Config),

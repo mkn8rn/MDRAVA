@@ -2,9 +2,23 @@ using MDRAVA.BLL.ControlPlane.Status;
 
 namespace MDRAVA.BLL.ControlPlane.RuntimePreflight;
 
-public sealed record ProxyRuntimePreflightProbeClassification(
-    string Severity,
-    string Reason);
+public sealed record ProxyRuntimePreflightProbeClassification
+{
+    public ProxyRuntimePreflightProbeClassification(
+        string Severity,
+        string Reason)
+    {
+        ProxyStatusFacts.RequireText(Severity, nameof(Severity));
+        ProxyStatusFacts.RequireText(Reason, nameof(Reason));
+
+        this.Severity = Severity;
+        this.Reason = Reason;
+    }
+
+    public string Severity { get; }
+
+    public string Reason { get; }
+}
 
 public static class ProxyRuntimePreflightProbePolicy
 {
