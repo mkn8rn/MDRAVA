@@ -88,6 +88,29 @@ internal static class AdminSecurityTests
 
         AssertEx.Throws<ArgumentNullException>(() => new AdminStartupSecurityOptions(null!, false, false));
         AssertEx.Throws<ArgumentNullException>(() => new AdminBindPolicyInput([], null!));
+        AssertEx.Throws<ArgumentException>(() => new AdminBindCandidate([], " ", ApplyToWebHost: true));
+        AssertEx.Throws<ArgumentNullException>(() => new AdminBindCandidate([null!], "test", ApplyToWebHost: true));
+        AssertEx.Throws<ArgumentException>(() => new AdminBindResolution(
+            [AdminBindPolicy.DefaultAdminUrl],
+            " ",
+            ApplyToWebHost: true,
+            IsLocalOnly: true,
+            RequireAuthentication: false,
+            HasConfiguredToken: false));
+        AssertEx.Throws<ArgumentException>(() => new AdminBindResolution(
+            [],
+            "test",
+            ApplyToWebHost: true,
+            IsLocalOnly: true,
+            RequireAuthentication: false,
+            HasConfiguredToken: false));
+        AssertEx.Throws<ArgumentNullException>(() => new AdminBindResolution(
+            [null!],
+            "test",
+            ApplyToWebHost: true,
+            IsLocalOnly: true,
+            RequireAuthentication: false,
+            HasConfiguredToken: false));
         AssertEx.Throws<ArgumentNullException>(() => AdminBindPolicy.Resolve(null!, new ProxyAdminUrlPolicy()));
         AssertEx.Throws<ArgumentNullException>(() => AdminBindPolicy.Resolve(input, null!));
         AssertEx.Throws<ArgumentNullException>(() => AdminBindPolicyInputMapper.FromStartupConfiguration(

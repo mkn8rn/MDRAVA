@@ -134,6 +134,8 @@ public sealed record AdminBindCandidate
         string Source,
         bool ApplyToWebHost)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(Source);
+
         this.Urls = RuntimeList.Copy(Urls);
         this.Source = Source;
         this.ApplyToWebHost = ApplyToWebHost;
@@ -156,7 +158,14 @@ public sealed record AdminBindResolution
         bool RequireAuthentication,
         bool HasConfiguredToken)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(Source);
+
         this.Urls = RuntimeList.Copy(Urls);
+        if (this.Urls.Count == 0)
+        {
+            throw new ArgumentException("Admin bind resolution must contain at least one URL.", nameof(Urls));
+        }
+
         this.Source = Source;
         this.ApplyToWebHost = ApplyToWebHost;
         this.IsLocalOnly = IsLocalOnly;
