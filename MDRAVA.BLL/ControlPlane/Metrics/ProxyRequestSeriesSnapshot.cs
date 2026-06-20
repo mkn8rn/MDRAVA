@@ -5,4 +5,7 @@ public sealed record ProxyRequestSeriesSnapshot(
     string Route,
     string Action,
     string StatusClass,
-    long Count);
+    long Count)
+{
+    public long Count { get; } = MetricsList.RequireCounter(Count, nameof(Count));
+}

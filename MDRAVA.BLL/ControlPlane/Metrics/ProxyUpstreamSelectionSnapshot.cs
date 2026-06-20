@@ -5,4 +5,7 @@ public sealed record ProxyUpstreamSelectionSnapshot(
     string Upstream,
     string Scheme,
     string Protocol,
-    long Count);
+    long Count)
+{
+    public long Count { get; } = MetricsList.RequireCounter(Count, nameof(Count));
+}

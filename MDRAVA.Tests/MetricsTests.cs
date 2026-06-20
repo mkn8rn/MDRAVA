@@ -319,6 +319,12 @@ internal static class MetricsTests
         AssertEx.Throws<ArgumentNullException>(() => new ProxyRequestClassificationMetricsSnapshot(
             requestFailures,
             [null!]));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyRequestSeriesSnapshot(
+            Site: "site-a",
+            Route: "route-a",
+            Action: "proxy",
+            StatusClass: "2xx",
+            Count: -1));
         AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyRequestClassificationMetricsSnapshot(
             new Dictionary<string, long>(StringComparer.Ordinal) { ["ConnectFailure"] = -1 },
             []));
@@ -331,9 +337,21 @@ internal static class MetricsTests
             CircuitClosed: 0,
             CircuitRejections: 0,
             NoAvailableUpstreamFailures: 0));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyRetrySkippedSnapshot(
+            Reason: "unsafe_method",
+            Count: -1));
         AssertEx.Throws<ArgumentNullException>(() => new ProxyUpstreamSelectionMetricsSnapshot(
             Total: 0,
             ByUpstream: [null!]));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyUpstreamSelectionMetricsSnapshot(
+            Total: -1,
+            ByUpstream: []));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyUpstreamSelectionSnapshot(
+            Route: "route-a",
+            Upstream: "upstream-a",
+            Scheme: "https",
+            Protocol: "http2",
+            Count: -1));
         AssertEx.Throws<ArgumentNullException>(() => new ProxyHttp3MetricsSnapshot(
             AcceptedConnections: 0,
             ActiveConnections: 0,
@@ -355,6 +373,11 @@ internal static class MetricsTests
             QuicListenerStartSuccesses: 0,
             QuicListenerStartFailures: 0,
             ActiveQuicListeners: 0));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyHttp3RequestOutcomeSnapshot(
+            Method: "GET",
+            Outcome: "proxied",
+            StatusClass: "2xx",
+            Count: -1));
         AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyHttp2MetricsSnapshot(
             AcceptedConnections: 0,
             Requests: 0,

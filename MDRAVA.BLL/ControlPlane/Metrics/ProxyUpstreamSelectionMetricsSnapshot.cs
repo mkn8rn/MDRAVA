@@ -6,6 +6,8 @@ public sealed record ProxyUpstreamSelectionMetricsSnapshot
         long Total,
         IEnumerable<ProxyUpstreamSelectionSnapshot> ByUpstream)
     {
+        ArgumentOutOfRangeException.ThrowIfNegative(Total);
+
         this.Total = Total;
         this.ByUpstream = MetricsList.Copy(ByUpstream);
     }

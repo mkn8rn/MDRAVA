@@ -37,6 +37,13 @@ internal static class MetricsList
         return new ReadOnlyDictionary<TKey, long>(copy);
     }
 
+    public static long RequireCounter(long value, string parameterName)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(value, parameterName);
+
+        return value;
+    }
+
     private static T RequireValue<T>(T value)
     {
         ArgumentNullException.ThrowIfNull(value);
