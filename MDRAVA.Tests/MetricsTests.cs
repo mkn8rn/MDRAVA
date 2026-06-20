@@ -316,6 +316,15 @@ internal static class MetricsTests
         AssertEx.False(snapshot.Http3.ProtocolErrors is Dictionary<string, long>);
         AssertEx.False(snapshot.ConfigLint.Findings is ProxyConfigLintFindingMetricSnapshot[]);
         AssertEx.False(snapshot.RouteDiagnostics.DryRunFailures is ProxyRouteDryRunFailureSnapshot[]);
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyClientConnectionMetricsSnapshot(
+            Accepted: -1,
+            Active: 0,
+            ClosedByIdleTimeout: 0,
+            ClosedByMaxRequests: 0));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyTrafficMetricsSnapshot(
+            Requests: 0,
+            BytesRead: -1,
+            BytesWritten: 0));
         AssertEx.Throws<ArgumentNullException>(() => new ProxyRequestClassificationMetricsSnapshot(
             requestFailures,
             [null!]));
@@ -373,6 +382,21 @@ internal static class MetricsTests
             QuicListenerStartSuccesses: 0,
             QuicListenerStartFailures: 0,
             ActiveQuicListeners: 0));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyTlsMetricsSnapshot(
+            HandshakeAttempts: 0,
+            HandshakeSuccesses: 0,
+            HandshakeFailures: 0,
+            HandshakeTimeouts: 0,
+            NoCertificateForSniFailures: 0,
+            ActiveHandshakes: -1,
+            HandshakeAdmissionRejections: 0));
+        AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyTunnelMetricsSnapshot(
+            Active: 0,
+            Total: 0,
+            IdleTimeouts: 0,
+            BytesClientToUpstream: -1,
+            BytesUpstreamToClient: 0,
+            RelayFailures: 0));
         AssertEx.Throws<ArgumentOutOfRangeException>(() => new ProxyHttp3RequestOutcomeSnapshot(
             Method: "GET",
             Outcome: "proxied",
